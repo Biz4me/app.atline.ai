@@ -17,14 +17,14 @@ const modules: Module[] = [
 
 export default function FormationPage() {
   return (
-    <DashboardShell>
-      <div className="flex gap-6">
+    <DashboardShell layout="with-sidebar">
+      <div className="flex flex-col gap-6 lg:flex-row lg:gap-8">
         {/* Main content */}
-        <div className="min-w-0 flex-1 lg:max-w-[800px]">
+        <div className="min-w-0 flex-1 lg:max-w-[680px]">
           {/* Page header */}
           <div className="mb-6">
-            <h1 className="font-heading text-lg font-semibold text-white">Formation</h1>
-            <p className="mt-0.5 text-xs text-muted-foreground">
+            <h1 className="font-heading text-2xl font-semibold text-white">Formation</h1>
+            <p className="mt-1 text-sm text-muted-foreground">
               Methode Go Pro — Eric Worre
             </p>
           </div>

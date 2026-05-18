@@ -5,12 +5,15 @@ import { MobileHeader, DesktopHeader } from "./header"
 import { MobileBottomNav, DesktopSidebar } from "./navigation"
 import { cn } from "@/lib/utils"
 
+type LayoutVariant = "standard" | "with-sidebar"
+
 interface DashboardShellProps {
   children: React.ReactNode
   breadcrumbs?: { label: string; href?: string }[]
+  layout?: LayoutVariant
 }
 
-export function DashboardShell({ children, breadcrumbs }: DashboardShellProps) {
+export function DashboardShell({ children, breadcrumbs, layout = "standard" }: DashboardShellProps) {
   const [sidebarCollapsed] = useState(false)
 
   return (
@@ -32,8 +35,16 @@ export function DashboardShell({ children, breadcrumbs }: DashboardShellProps) {
         <DesktopHeader breadcrumbs={breadcrumbs} />
 
         {/* Page content */}
-        <main className="flex-1 px-4 pb-20 pt-[72px] lg:px-6 lg:pb-6 lg:pt-6">
-          {children}
+        <main className="flex-1 px-4 pb-20 pt-[72px] lg:px-8 lg:pb-8 lg:pt-8">
+          <div
+            className={cn(
+              "mx-auto",
+              layout === "standard" && "max-w-[960px]",
+              layout === "with-sidebar" && "max-w-[1000px]"
+            )}
+          >
+            {children}
+          </div>
         </main>
       </div>
 

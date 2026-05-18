@@ -78,7 +78,7 @@ export function ChatInterface() {
       {/* Messages area */}
       <div
         ref={scrollRef}
-        className="flex-1 overflow-y-auto px-4 py-4 lg:px-6"
+        className="flex-1 overflow-y-auto px-3 py-4 lg:px-4"
       >
         {messages.length === 0 ? (
           // Empty state

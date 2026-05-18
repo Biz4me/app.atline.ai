@@ -21,10 +21,10 @@ export function ChatMessage({ role, content, isStreaming }: ChatMessageProps) {
       {/* Message bubble */}
       <div
         className={cn(
-          "max-w-[85%] rounded-[12px] px-4 py-3 lg:max-w-[60%]",
+          "rounded-[12px] px-4 py-3",
           isUser
-            ? "bg-primary text-white"
-            : "border border-border bg-card text-foreground"
+            ? "max-w-[80%] bg-primary text-white lg:max-w-[60%]"
+            : "max-w-[85%] border border-border bg-card text-foreground lg:max-w-[70%]"
         )}
       >
         <p className="whitespace-pre-wrap text-sm leading-relaxed">{content}</p>

@@ -29,7 +29,7 @@ const hotProspects = [
 export default function HomePage() {
   return (
     <DashboardShell breadcrumbs={[{ label: "Accueil" }]}>
-      <div className="mx-auto max-w-4xl space-y-6">
+      <div className="space-y-6 lg:space-y-8">
         <DailyBriefing
           userName="Patrice"
           message="Tu as 2 prospects chauds à suivre et une formation à compléter."
