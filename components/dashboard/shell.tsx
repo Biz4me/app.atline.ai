@@ -38,12 +38,12 @@ export function DashboardShell({ children, breadcrumbs, layout = "standard" }: D
         <DesktopTopBar breadcrumbs={breadcrumbs} />
 
         {/* Page content */}
-        <main className="flex-1 px-4 pb-16 pt-12 lg:px-8 lg:pb-8 lg:pt-8">
+        <main className="flex-1 px-4 pb-20 pt-[60px] lg:px-8 lg:pb-8 lg:pt-6">
           <div
             className={cn(
               "mx-auto",
-              layout === "standard" && "max-w-[960px]",
-              layout === "with-sidebar" && "max-w-[1000px]"
+              layout === "standard" && "max-w-3xl",
+              layout === "with-sidebar" && "max-w-4xl"
             )}
           >
             {children}

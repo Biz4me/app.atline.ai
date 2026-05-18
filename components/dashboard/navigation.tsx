@@ -5,7 +5,6 @@ import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
 import {
-  IconFlame,
   IconCalendar,
   IconPhone,
   IconUsers,
@@ -30,10 +29,10 @@ import { AtlineLogo } from "./logo"
 // ═══════════════════════════════════════════════════════════════
 
 const statsBarItems = [
-  { href: "/croissance", icon: IconFlame, value: "12", color: "#F59E0B" },
-  { href: "/agenda", icon: IconCalendar, value: "3", color: "#06B6D4" },
-  { href: "/simulations", icon: IconPhone, value: "8", color: "#7C6FE8" },
-  { href: "/reseau", icon: IconUsers, value: "24", color: "#10B981" },
+  { href: "/croissance", icon: IconTrophy, value: "225", color: "#EAB308" },
+  { href: "/markline", icon: IconBroadcast, value: "5", color: "#06B6D4" },
+  { href: "/reseau", icon: IconUsers, value: "24", color: "#7C6FE8" },
+  { href: "/agenda", icon: IconCalendar, value: "3", color: "#10B981" },
 ]
 
 export function MobileStatsBar() {
