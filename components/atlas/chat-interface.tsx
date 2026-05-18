@@ -110,7 +110,7 @@ export function ChatInterface() {
       </div>
 
       {/* Quick prompts with toast */}
-      <div className="relative overflow-hidden w-full">
+      <div className="relative w-full">
         <MessageToast messagesRemaining={8} />
         <QuickPrompts onSelect={handleQuickPrompt} />
       </div>
