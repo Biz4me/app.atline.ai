@@ -99,20 +99,24 @@ export function MobileBottomNav({ onPlusClick }: MobileBottomNavProps) {
   const pathname = usePathname()
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-50 h-14 border-t border-white/[0.08] bg-[#18181B] lg:hidden">
+    <nav className="fixed bottom-0 left-0 right-0 z-50 h-[52px] border-t border-white/[0.08] bg-[#18181B] lg:hidden">
       <div className="flex h-full items-center justify-around px-1">
         {bottomNavItems.map((item) => {
           const isActive = pathname === item.href || pathname.startsWith(item.href + "/")
           
           // Atlas center tab - special rendering
           if (item.isCenter) {
+            const isAtlasActive = pathname === "/atlas" || pathname.startsWith("/atlas/")
             return (
               <Link
                 key={item.href}
                 href={item.href}
-                className="flex min-h-[44px] flex-col items-center justify-center px-2"
+                className="flex min-h-[44px] flex-col items-center justify-center gap-1 px-2"
               >
                 <AtlasTriangleLogo className="h-7 w-7" />
+                {isAtlasActive && (
+                  <span className="h-1 w-1 rounded-full bg-primary" />
+                )}
               </Link>
             )
           }
@@ -122,16 +126,14 @@ export function MobileBottomNav({ onPlusClick }: MobileBottomNavProps) {
             <Link
               key={item.href}
               href={item.href}
-              className="flex min-h-[44px] flex-col items-center justify-center px-2"
+              className="flex min-h-[44px] flex-col items-center justify-center gap-1 px-2"
             >
               <Icon
                 className="h-5 w-5"
                 style={{ color: isActive ? "#7C6FE8" : "#71717A" }}
               />
               {isActive && (
-                <span className="mt-0.5 text-[10px] font-medium text-primary">
-                  {item.label}
-                </span>
+                <span className="h-1 w-1 rounded-full bg-primary" />
               )}
             </Link>
           )
@@ -139,7 +141,7 @@ export function MobileBottomNav({ onPlusClick }: MobileBottomNavProps) {
         {/* Plus button */}
         <button
           onClick={onPlusClick}
-          className="flex min-h-[44px] flex-col items-center justify-center px-2"
+          className="flex min-h-[44px] flex-col items-center justify-center gap-1 px-2"
         >
           <IconGridDots className="h-5 w-5 text-[#71717A]" />
         </button>
