@@ -1,8 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { MobileHeader, DesktopHeader } from "@/components/dashboard/header"
-import { MobileBottomNav, DesktopSidebar } from "@/components/dashboard/navigation"
+import { MobileStatsBar, MobileBottomNav, PlusDrawer, DesktopSidebar, DesktopTopBar } from "@/components/dashboard/navigation"
 import { cn } from "@/lib/utils"
 
 interface ChatShellProps {
@@ -11,27 +10,31 @@ interface ChatShellProps {
 }
 
 export function ChatShell({ children, breadcrumbs }: ChatShellProps) {
-  const [sidebarCollapsed] = useState(false)
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
+  const [drawerOpen, setDrawerOpen] = useState(false)
 
   return (
     <div className="flex h-screen flex-col overflow-hidden bg-background">
-      {/* Mobile header */}
-      <MobileHeader />
+      {/* Mobile stats bar */}
+      <MobileStatsBar />
 
       {/* Desktop sidebar */}
-      <DesktopSidebar collapsed={sidebarCollapsed} />
+      <DesktopSidebar
+        collapsed={sidebarCollapsed}
+        onToggle={() => setSidebarCollapsed(!sidebarCollapsed)}
+      />
 
       {/* Main content area */}
       <div
         className={cn(
           "flex flex-1 flex-col overflow-hidden transition-all duration-300",
-          "pt-[56px] pb-[68px]", // Mobile: header + bottom nav
+          "pt-11 pb-14", // Mobile: stats bar (44px) + bottom nav (56px)
           "lg:pt-0 lg:pb-0",
           sidebarCollapsed ? "lg:pl-16" : "lg:pl-60"
         )}
       >
-        {/* Desktop header */}
-        <DesktopHeader breadcrumbs={breadcrumbs} />
+        {/* Desktop top bar */}
+        <DesktopTopBar breadcrumbs={breadcrumbs} />
 
         {/* Chat content - centered at 720px on desktop */}
         <main className="flex flex-1 flex-col overflow-hidden">
@@ -42,7 +45,10 @@ export function ChatShell({ children, breadcrumbs }: ChatShellProps) {
       </div>
 
       {/* Mobile bottom nav */}
-      <MobileBottomNav />
+      <MobileBottomNav onPlusClick={() => setDrawerOpen(true)} />
+
+      {/* Plus drawer */}
+      <PlusDrawer isOpen={drawerOpen} onClose={() => setDrawerOpen(false)} />
     </div>
   )
 }
