@@ -26,6 +26,15 @@
       "@/*": [
         "./src/*"
       ],
+      "@/components/*": [
+        "./components/*"
+      ],
+      "@/lib/*": [
+        "./lib/*"
+      ],
+      "@/hooks/*": [
+        "./hooks/*"
+      ],
       "@payload-config": [
         "./src/payload.config.ts"
       ]
