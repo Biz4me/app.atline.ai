@@ -1,322 +1,416 @@
 'use client'
 
-import { useState } from 'react'
-import { useRouter } from 'next/navigation'
-import { ArrowLeft, Send, Sparkles, RotateCcw, ChevronRight, Star, Mic } from 'lucide-react'
+import { useState, useEffect, useRef, Suspense } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
+import { ChevronLeft, Mic, Search, X, Volume2 } from 'lucide-react'
 import { contacts } from '@/lib/data'
-import { DiscAvatar } from '@/components/disc-avatar'
-import { DiscBadge } from '@/components/pills'
 import { cn } from '@/lib/utils'
-import type { DiscType } from '@/lib/types'
+import type { Contact } from '@/lib/types'
 
-type Msg = { id: string; role: 'me' | 'them'; text: string }
+/* ── Types ──────────────────────────────────────────────────── */
+type Phase = 'Invitation' | 'Suivi' | 'Démarrage' | 'Coaching'
 
-type Phase = 'INVITATION' | 'SUIVI' | 'DEMARRAGE' | 'COACHING'
+const phases: Phase[] = ['Invitation', 'Suivi', 'Démarrage', 'Coaching']
 
-const phases: { id: Phase; label: string; desc: string; color: string }[] = [
-  { id: 'INVITATION', label: 'Invitation', desc: 'Découvrir et inviter', color: 'bg-blue-500' },
-  { id: 'SUIVI', label: 'Suivi', desc: 'Relancer et qualifier', color: 'bg-amber-500' },
-  { id: 'DEMARRAGE', label: 'Démarrage', desc: 'Conclure et enrôler', color: 'bg-primary' },
-  { id: 'COACHING', label: 'Coaching', desc: 'Former et accompagner', color: 'bg-success' },
+/* Per-phase per-personality prospect replies (text mode fallback) */
+const priorityContacts = [
+  { id: 'c1', firstName: 'Sophie', lastName: 'Laurent', city: 'Lyon', stage: 'chaud' as const },
+  { id: 'c5', firstName: 'Karim', lastName: 'Benali', city: 'Marseille', stage: 'chaud' as const },
+  { id: 'c2', firstName: 'Marc', lastName: 'Dubois', city: 'Paris', stage: 'prospect' as const },
+  { id: 'c3', firstName: 'Thomas', lastName: 'Petit', city: 'Toulouse', stage: 'prospect' as const },
 ]
 
-const phaseReplies: Record<Phase, Record<DiscType, string[]>> = {
-  INVITATION: {
-    D: ["Concrètement, ça me rapporte quoi ?", "OK, mais en deux phrases.", "Envoie les chiffres."],
-    I: ["Ah super intéressant ! Raconte-moi.", "J'adore l'idée ! On en parle ?", "Tu connais qui d'autre ?"],
-    S: ["Je comprends, laisse-moi y réfléchir.", "C'est gentil de penser à moi.", "Je peux prendre le temps ?"],
-    C: ["Tu as des données sur ce point ?", "Quelle est la méthodologie ?", "Je veux vérifier les détails."],
-  },
-  SUIVI: {
-    D: ["Bon, j'ai réfléchi. C'est quoi le prochain pas ?", "Tu peux me garantir quoi exactement ?", "On signe quand ?"],
-    I: ["J'ai un peu oublié, tu peux me re-pitcher ?", "Mes amis pourraient être intéressés non ?", "On se fait un café cette semaine ?"],
-    S: ["J'ai besoin encore d'un peu de temps.", "Ma famille n'est pas sûre...", "C'est risqué comme investissement ?"],
-    C: ["J'ai fait des recherches. J'ai des questions.", "Quels sont les vrais chiffres de succès ?", "Puis-je parler à quelqu'un qui l'a déjà fait ?"],
-  },
-  DEMARRAGE: {
-    D: ["OK je veux démarrer vite. Qu'est-ce que je fais là maintenant ?", "Je veux les chiffres de mon potentiel.", "Qu'est-ce que ça coûte vraiment ?"],
-    I: ["Je suis trop motivé ! C'est par où ?", "Qui sont les stars de ton réseau ?", "J'adore ça, on fête ça comment ?"],
-    S: ["Je veux comprendre exactement chaque étape.", "Je peux commencer doucement ?", "Tu seras là pour m'accompagner ?"],
-    C: ["Je veux voir le contrat en détail.", "Quelles sont mes obligations légales ?", "Quel est le plan B si ça ne marche pas ?"],
-  },
-  COACHING: {
-    D: ["Mon équipe n'avance pas assez vite.", "Comment je double mes résultats ce mois ?", "Quels sont les leviers clés ?"],
-    I: ["Comment je motive mes filleuls ?", "Ils sont découragés, qu'est-ce que je fais ?", "On peut faire un événement d'équipe ?"],
-    S: ["Un de mes filleuls pense à arrêter...", "Comment je gère les conflits dans l'équipe ?", "Je veux pas les brusquer."],
-    C: ["Analyse ma structure de réseau.", "Comment optimiser mon plan de compensation ?", "Quelles métriques suivre en priorité ?"],
-  },
+const stagePillColors: Record<string, string> = {
+  chaud: 'bg-red-100 text-red-600',
+  prospect: 'bg-amber-100 text-amber-600',
+  qualifie: 'bg-orange-100 text-orange-600',
+  client: 'bg-green-100 text-green-700',
+  partenaire: 'bg-blue-100 text-blue-700',
+  nouveau: 'bg-gray-100 text-gray-600',
 }
 
-const discProfiles: Record<DiscType, string> = {
-  D: 'Direct, orienté résultat. Va droit au but, déteste perdre du temps.',
-  I: 'Enthousiaste, relationnel. Aime les histoires et la reconnaissance.',
-  S: 'Posé, prudent. Cherche la confiance et déteste la pression.',
-  C: 'Analytique, factuel. Veut des données, des preuves, des détails.',
+const stageLabel: Record<string, string> = {
+  chaud: 'Chaud',
+  prospect: 'Qualifié',
+  client: 'Client',
+  partenaire: 'Partenaire',
+  nouveau: 'Nouveau',
 }
 
-const phaseHints: Record<Phase, Record<DiscType, string>> = {
-  INVITATION: {
-    D: "Sois direct et chiffré. Une question puissante suffit. Pas de blabla.",
-    I: "Parle d'abord de la communauté et du style de vie. Les chiffres viennent après.",
-    S: "Prends ton temps, montre que tu t'intéresses à lui/elle d'abord.",
-    C: "Prépare des faits concrets. Il/elle voudra vérifier par lui-même.",
-  },
-  SUIVI: {
-    D: "Sois factuel et concis. Propose un prochain pas clair et limité dans le temps.",
-    I: "Re-crée l'émotion. Partage un témoignage enthousiaste.",
-    S: "Montre de la patience. Ne force pas. Propose une ressource rassurante.",
-    C: "Prépare des réponses aux objections avec preuves à l'appui.",
-  },
-  DEMARRAGE: {
-    D: "Propose un plan d'action rapide en 3 étapes maximum.",
-    I: "Célèbre la décision ! Parle de la communauté qui l'attend.",
-    S: "Décompose le démarrage en micro-étapes non menaçantes.",
-    C: "Montre le plan complet, les documents, les formations disponibles.",
-  },
-  COACHING: {
-    D: "Donne des objectifs chiffrés et des délais clairs.",
-    I: "Mise sur la motivation collective et les challenges d'équipe.",
-    S: "Accompagne individuellement. Valorise chaque petit progrès.",
-    C: "Analyse les données ensemble. Propose une stratégie structurée.",
-  },
+/* Simulator call lines */
+const callLines: Record<Phase, string[]> = {
+  Invitation: [
+    "Bonjour ! J'ai vu votre post, ça m'intéresse vraiment.",
+    "Concrètement, ça m'apporterait quoi ?",
+    "Tu connais beaucoup de personnes dans ce domaine ?",
+    "Je peux prendre le temps d'y réfléchir ?",
+  ],
+  Suivi: [
+    "J'ai réfléchi depuis la dernière fois…",
+    "Tu peux me garantir quelque chose ?",
+    "Ma famille n'est pas sûre de tout ça.",
+    "Quelles preuves tu as que ça marche ?",
+  ],
+  Démarrage: [
+    "OK, je veux démarrer. Qu'est-ce que je fais maintenant ?",
+    "Je veux voir tous les chiffres d'abord.",
+    "Tu seras là pour m'accompagner ?",
+    "C'est par où pour commencer ?",
+  ],
+  Coaching: [
+    "Mon équipe n'avance pas assez vite.",
+    "Comment je motive mes filleuls découragés ?",
+    "Quels sont les leviers clés selon toi ?",
+    "Un de mes filleuls pense à arrêter…",
+  ],
 }
 
-export default function AriaPage() {
+/* ── Setup screen ────────────────────────────────────────────── */
+function SetupScreen({
+  phase,
+  setPhase,
+  onStart,
+}: {
+  phase: Phase
+  setPhase: (p: Phase) => void
+  onStart: (c: typeof priorityContacts[0]) => void
+}) {
   const router = useRouter()
-  const [phase, setPhase] = useState<Phase>('INVITATION')
-  const [target, setTarget] = useState(contacts[0])
-  const [messages, setMessages] = useState<Msg[]>([])
-  const [draft, setDraft] = useState('')
-  const [score, setScore] = useState(0)
-  const [showHint, setShowHint] = useState(false)
-  const [sessionCount, setSessionCount] = useState(0)
-  const [showPhaseSelect, setShowPhaseSelect] = useState(false)
+  const [query, setQuery] = useState('')
+  const [selected, setSelected] = useState<typeof priorityContacts[0] | null>(null)
 
-  const disc = (target.disc ?? 'D') as DiscType
-  const replies = phaseReplies[phase][disc]
-  const hint = phaseHints[phase][disc]
-  const currentPhaseData = phases.find((p) => p.id === phase)!
-
-  function send() {
-    if (!draft.trim()) return
-    const mine: Msg = { id: crypto.randomUUID(), role: 'me', text: draft.trim() }
-    const replyText = replies[messages.filter(m => m.role === 'them').length % replies.length]
-    const reply: Msg = { id: crypto.randomUUID(), role: 'them', text: replyText }
-    setMessages((m) => [...m, mine, reply])
-    setDraft('')
-    // Score heuristic: longer messages score better
-    if (draft.trim().length > 20) setScore((s) => Math.min(100, s + 12))
-    else setScore((s) => Math.min(100, s + 5))
-  }
-
-  function reset() {
-    if (messages.length > 0) setSessionCount((n) => n + 1)
-    setMessages([])
-    setScore(0)
-    setShowHint(false)
-  }
-
-  const scoreLabel = score >= 80 ? 'Excellent !' : score >= 50 ? 'Bien' : score >= 20 ? 'À améliorer' : '—'
-  const scoreColor = score >= 80 ? 'text-success' : score >= 50 ? 'text-amber-400' : 'text-white/40'
+  const filtered = query
+    ? priorityContacts.filter((c) =>
+        `${c.firstName} ${c.lastName}`.toLowerCase().includes(query.toLowerCase())
+      )
+    : priorityContacts
 
   return (
-    <div className="flex h-[100dvh] flex-col bg-[#0F0F0F] text-white">
+    <div className="flex min-h-dvh flex-col bg-background">
       {/* Header */}
-      <header className="sticky top-0 z-20 flex items-center gap-3 border-b border-white/10 bg-[#0F0F0F]/95 px-4 py-3 backdrop-blur">
+      <header
+        className="sticky top-0 z-30 flex items-center gap-3 border-b border-border bg-background/90 px-4 py-3 backdrop-blur"
+        style={{ paddingTop: 'max(0.75rem, env(safe-area-inset-top))' }}
+      >
         <button
           type="button"
           onClick={() => router.back()}
-          aria-label="Retour"
-          className="grid size-9 place-items-center rounded-full text-white/50 transition-colors hover:bg-white/10"
+          className="-ml-1 flex size-9 items-center justify-center rounded-full text-muted-foreground active:bg-muted"
         >
-          <ArrowLeft className="size-5" />
+          <ChevronLeft className="size-5 stroke-[1.5]" />
         </button>
-        <div className="flex flex-1 items-center gap-2">
-          <Sparkles className="size-4 text-[#F97316]" />
-          <h1 className="font-display text-lg font-semibold text-white">ARIA</h1>
-          <span className="rounded-full bg-white/10 px-2 py-0.5 text-[10px] font-bold text-white/60 uppercase tracking-wide">
-            {currentPhaseData.label}
-          </span>
-        </div>
-        {messages.length > 0 && (
-          <div className={cn('text-sm font-bold', scoreColor)}>{score}pts</div>
-        )}
-        <button
-          type="button"
-          onClick={reset}
-          aria-label="Réinitialiser"
-          className="grid size-9 place-items-center rounded-full text-white/50 transition-colors hover:bg-white/10"
-        >
-          <RotateCcw className="size-4" />
-        </button>
+        <h1 className="flex-1 font-display text-lg font-bold text-foreground">Préparer mon appel</h1>
       </header>
 
-      {/* Phase selector */}
-      {showPhaseSelect ? (
-        <div className="border-b border-white/10 bg-[#141414] px-4 py-3">
-          <p className="mb-2 text-xs font-medium text-white/40">Choisir une phase d'entraînement</p>
-          <div className="grid grid-cols-2 gap-2">
+      <div className="flex flex-col gap-6 px-4 pt-5 pb-10">
+        {/* Card principale */}
+        <div className="rounded-2xl border border-border bg-surface p-5">
+          {/* Header card */}
+          <div className="mb-5 flex items-center gap-3">
+            <span className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-primary/10">
+              <Mic className="size-5 stroke-[1.5] text-primary" />
+            </span>
+            <div>
+              <p className="text-sm font-bold text-foreground">Simulateur vocal Aria</p>
+              <p className="text-xs text-muted-foreground">Entraîne-toi face à un prospect IA</p>
+            </div>
+          </div>
+
+          {/* Phase */}
+          <p className="mb-2.5 text-xs font-bold text-foreground">Phase</p>
+          <div className="mb-5 flex flex-wrap gap-2">
             {phases.map((p) => (
               <button
-                key={p.id}
+                key={p}
                 type="button"
-                onClick={() => { setPhase(p.id); setShowPhaseSelect(false); reset() }}
+                onClick={() => setPhase(p)}
                 className={cn(
-                  'flex items-center gap-2 rounded-xl border px-3 py-2.5 text-left transition-colors',
-                  phase === p.id ? 'border-[#F97316] bg-[#F97316]/10' : 'border-white/10 bg-black/20 hover:bg-white/5'
+                  'rounded-full px-3.5 py-1.5 text-xs font-semibold transition-colors',
+                  phase === p
+                    ? 'bg-primary/15 text-primary border border-primary/30'
+                    : 'border border-border bg-surface text-muted-foreground'
                 )}
               >
-                <span className={cn('size-2.5 shrink-0 rounded-full', p.color)} />
-                <div>
-                  <p className="text-sm font-bold text-white">{p.label}</p>
-                  <p className="text-[10px] text-white/40">{p.desc}</p>
-                </div>
+                {p}
               </button>
             ))}
           </div>
-        </div>
-      ) : (
-        <>
-          {/* Phase strip */}
+
+          {/* Contact à simuler */}
+          <p className="mb-2.5 text-xs font-bold text-foreground">Contact à simuler</p>
+
+          {selected ? (
+            /* Contact sélectionné */
+            <div className="mb-4 flex items-center gap-3 rounded-xl border border-border bg-muted/50 p-3">
+              <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-primary text-sm font-bold text-primary-foreground">
+                {selected.firstName[0]}{selected.lastName[0]}
+              </span>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-bold text-foreground">{selected.firstName} {selected.lastName}</p>
+                <span className={cn('text-[11px] font-bold', stagePillColors[selected.stage])}>
+                  {stageLabel[selected.stage]}
+                </span>
+              </div>
+              <button type="button" onClick={() => setSelected(null)} className="text-muted-foreground">
+                <X className="size-4" />
+              </button>
+            </div>
+          ) : (
+            /* Search */
+            <div className="relative mb-4">
+              <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground stroke-[1.5]" />
+              <input
+                type="search"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Rechercher un contact..."
+                className="w-full rounded-xl border border-border bg-muted py-2.5 pl-9 pr-4 text-sm placeholder:text-muted-foreground outline-none focus:ring-2 focus:ring-ring/40"
+              />
+            </div>
+          )}
+
+          {/* Bouton simuler */}
           <button
             type="button"
-            onClick={() => setShowPhaseSelect(true)}
-            className="flex items-center gap-3 border-b border-white/10 bg-[#141414] px-4 py-2 text-left"
+            onClick={() => selected && onStart(selected)}
+            disabled={!selected}
+            className={cn(
+              'flex w-full items-center justify-center gap-2 rounded-xl py-3.5 text-sm font-bold transition-all',
+              selected
+                ? 'bg-primary text-primary-foreground active:scale-[0.98]'
+                : 'bg-muted text-muted-foreground cursor-not-allowed'
+            )}
           >
-            <div className="flex flex-1 items-center gap-2">
-              {phases.map((p) => (
-                <div key={p.id} className="flex items-center gap-1">
-                  <span className={cn('size-1.5 rounded-full', p.id === phase ? p.color : 'bg-white/20')} />
-                  <span className={cn('text-[11px] font-semibold', p.id === phase ? 'text-white' : 'text-white/30')}>
-                    {p.label}
-                  </span>
-                </div>
-              ))}
-            </div>
-            <ChevronRight className="size-4 text-white/30" />
+            <Mic className="size-4 stroke-2" />
+            {selected
+              ? `Simuler l'appel avec ${selected.firstName}`
+              : 'Sélectionne un contact'}
           </button>
+        </div>
 
-          {/* Contact selector */}
-          <div className="border-b border-white/10 bg-[#141414] px-4 py-2.5">
-            <div className="flex gap-2 overflow-x-auto pb-0.5 [scrollbar-width:none]">
-              {contacts.slice(0, 6).map((c) => (
+        {/* Priorités du jour */}
+        {!selected && (
+          <div>
+            <p className="mb-3 text-[11px] font-extrabold uppercase tracking-widest text-primary">
+              Tes priorités du jour
+            </p>
+            <div className="flex flex-col gap-2">
+              {filtered.map((c) => (
                 <button
                   key={c.id}
                   type="button"
-                  onClick={() => { setTarget(c); reset() }}
-                  className={cn(
-                    'flex shrink-0 items-center gap-2 rounded-full border py-1 pl-1 pr-3 transition-colors',
-                    c.id === target.id ? 'border-[#F97316] bg-[#F97316]/10' : 'border-white/10 bg-[#0F0F0F] hover:bg-white/5',
-                  )}
+                  onClick={() => setSelected(c)}
+                  className="flex items-center gap-3 rounded-2xl border border-border bg-surface p-3.5 text-left transition-colors active:bg-muted"
                 >
-                  <DiscAvatar firstName={c.firstName} lastName={c.lastName} disc={c.disc} size="sm" />
-                  <span className="text-sm font-medium text-white">{c.firstName}</span>
+                  <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-primary text-sm font-bold text-primary-foreground">
+                    {c.firstName[0]}{c.lastName[0]}
+                  </span>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-bold text-foreground">{c.firstName} {c.lastName}</p>
+                    <p className="text-xs text-muted-foreground">{c.city}</p>
+                  </div>
+                  <span className={cn('shrink-0 rounded-full px-2.5 py-0.5 text-[11px] font-bold', stagePillColors[c.stage])}>
+                    {stageLabel[c.stage]}
+                  </span>
                 </button>
               ))}
             </div>
           </div>
-        </>
-      )}
-
-      {/* DISC context */}
-      <div className="flex items-start gap-2 bg-white/5 px-4 py-2.5">
-        <DiscBadge disc={disc} />
-        <p className="flex-1 text-pretty text-xs leading-relaxed text-white/50">{discProfiles[disc]}</p>
-        <button
-          type="button"
-          onClick={() => setShowHint((v) => !v)}
-          className={cn('shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold transition-colors', showHint ? 'bg-[#F97316]/20 text-[#F97316]' : 'bg-white/10 text-white/40')}
-        >
-          Conseil
-        </button>
-      </div>
-
-      {/* Hint banner */}
-      {showHint && (
-        <div className="flex items-start gap-2 border-b border-white/10 bg-[#F97316]/5 px-4 py-2.5">
-          <Sparkles className="size-4 shrink-0 text-[#F97316] mt-0.5" />
-          <p className="text-xs text-white/70 leading-relaxed">{hint}</p>
-        </div>
-      )}
-
-      {/* Messages */}
-      <div className="flex-1 overflow-y-auto px-4 py-4">
-        {messages.length === 0 && (
-          <div className="mt-10 flex flex-col items-center gap-3 text-center">
-            <div className="grid size-14 place-items-center rounded-full bg-[#F97316]/10">
-              <Mic className="size-7 text-[#F97316]" />
-            </div>
-            <p className="max-w-[260px] text-pretty text-sm text-white/40">
-              Phase <span className="font-bold text-white">{currentPhaseData.label}</span> avec {target.firstName} (DISC {disc}).<br />
-              Écris ton message pour commencer la simulation.
-            </p>
-            {sessionCount > 0 && (
-              <div className="flex items-center gap-1 rounded-full bg-white/10 px-3 py-1.5">
-                <Star className="size-3.5 text-amber-400 fill-amber-400" />
-                <span className="text-xs font-semibold text-white">{sessionCount} session{sessionCount > 1 ? 's' : ''} complétée{sessionCount > 1 ? 's' : ''}</span>
-              </div>
-            )}
-          </div>
         )}
-        <div className="flex flex-col gap-3">
-          {messages.map((m) => (
-            <div key={m.id} className={cn('flex', m.role === 'me' ? 'justify-end' : 'justify-start')}>
-              <div className={cn(
-                'max-w-[78%] rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed',
-                m.role === 'me' ? 'rounded-br-md bg-[#F97316] text-white' : 'rounded-bl-md bg-white/10 text-white/90',
-              )}>
-                {m.text}
-              </div>
-            </div>
-          ))}
-        </div>
-
-        {/* Score card après 3 échanges */}
-        {messages.length >= 6 && (
-          <div className="mt-4 rounded-2xl border border-white/10 bg-white/5 p-4 text-center">
-            <p className="mb-1 text-xs text-white/40">Score de cet échange</p>
-            <p className={cn('font-display text-3xl font-bold', scoreColor)}>{score}</p>
-            <p className={cn('text-sm font-semibold', scoreColor)}>{scoreLabel}</p>
-            <div className="mt-3 flex justify-center gap-2">
-              <button
-                type="button"
-                onClick={reset}
-                className="rounded-xl bg-white/10 px-4 py-2 text-sm font-semibold text-white transition-colors active:bg-white/20"
-              >
-                Réessayer
-              </button>
-              <button
-                type="button"
-                onClick={() => { setPhase(phases[(phases.findIndex(p => p.id === phase) + 1) % phases.length].id); reset() }}
-                className="rounded-xl bg-[#F97316] px-4 py-2 text-sm font-semibold text-white"
-              >
-                Phase suivante
-              </button>
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* Compose */}
-      <div className="sticky bottom-0 flex items-end gap-2 border-t border-white/10 bg-[#0F0F0F]/95 px-4 py-3 backdrop-blur pb-[max(0.75rem,env(safe-area-inset-bottom))]">
-        <textarea
-          value={draft}
-          onChange={(e) => setDraft(e.target.value)}
-          onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send() } }}
-          rows={1}
-          placeholder={`Écris ton message à ${target.firstName}…`}
-          className="max-h-28 flex-1 resize-none rounded-2xl border border-white/20 bg-white/10 px-4 py-2.5 text-sm text-white outline-none placeholder:text-white/40 focus:border-[#F97316]"
-        />
-        <button
-          type="button"
-          onClick={send}
-          disabled={!draft.trim()}
-          aria-label="Envoyer"
-          className="grid size-11 shrink-0 place-items-center rounded-full bg-[#F97316] text-white transition-opacity disabled:opacity-40 active:scale-95"
-        >
-          <Send className="size-5" />
-        </button>
       </div>
     </div>
+  )
+}
+
+/* ── Simulator screen (dark) ────────────────────────────────── */
+function SimulatorScreen({
+  contact,
+  phase,
+  onBack,
+}: {
+  contact: typeof priorityContacts[0]
+  phase: Phase
+  onBack: () => void
+}) {
+  const [speaking, setSpeaking] = useState(true) // prospect is speaking
+  const [holding, setHolding] = useState(false)
+  const [lineIndex, setLineIndex] = useState(0)
+  const [userSpoke, setUserSpoke] = useState(false)
+  const lines = callLines[phase]
+
+  /* Cycle through lines */
+  useEffect(() => {
+    if (!speaking) return
+    const t = setTimeout(() => setSpeaking(false), 2800)
+    return () => clearTimeout(t)
+  }, [speaking, lineIndex])
+
+  const handleMicPress = () => {
+    setHolding(true)
+    setUserSpoke(false)
+  }
+
+  const handleMicRelease = () => {
+    setHolding(false)
+    setUserSpoke(true)
+    setTimeout(() => {
+      const next = (lineIndex + 1) % lines.length
+      setLineIndex(next)
+      setSpeaking(true)
+      setUserSpoke(false)
+    }, 600)
+  }
+
+  const initials = `${contact.firstName[0]}${contact.lastName[0]}`
+
+  return (
+    <div
+      className="flex min-h-dvh flex-col items-center bg-[#111111] text-white"
+      style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
+    >
+      {/* Back */}
+      <div
+        className="flex w-full items-center px-4 pt-4"
+        style={{ paddingTop: 'max(1rem, env(safe-area-inset-top))' }}
+      >
+        <button
+          type="button"
+          onClick={onBack}
+          className="flex size-9 items-center justify-center rounded-full bg-white/10 text-white active:bg-white/20"
+        >
+          <ChevronLeft className="size-5 stroke-[1.5]" />
+        </button>
+        <span className="mx-auto text-sm font-semibold text-white/60">Simulation en cours</span>
+        <div className="size-9" />
+      </div>
+
+      {/* Contact info */}
+      <div className="mt-12 flex flex-col items-center gap-4 px-6 text-center">
+        {/* Avatar */}
+        <div className="relative">
+          <div className={cn(
+            'flex size-24 items-center justify-center rounded-full text-2xl font-bold text-white transition-all duration-300',
+            speaking ? 'bg-primary ring-4 ring-primary/30 scale-105' : 'bg-zinc-600'
+          )}>
+            {initials}
+          </div>
+          {speaking && (
+            <span className="absolute -bottom-1 -right-1 flex size-6 items-center justify-center rounded-full bg-primary">
+              <Volume2 className="size-3.5 text-white" />
+            </span>
+          )}
+        </div>
+
+        <div>
+          <h2 className="font-display text-2xl font-bold text-white">
+            {contact.firstName} {contact.lastName}
+          </h2>
+          <div className="mt-1.5 flex items-center justify-center gap-2">
+            <span className={cn('rounded-full px-2.5 py-0.5 text-[11px] font-bold', stagePillColors[contact.stage])}>
+              {stageLabel[contact.stage]}
+            </span>
+            <span className="text-xs text-white/50">Phase {phase}</span>
+          </div>
+        </div>
+
+        {/* What prospect says */}
+        <div className="mt-4 min-h-[72px] rounded-2xl bg-white/8 px-5 py-4">
+          {speaking ? (
+            <div className="flex items-center gap-3">
+              {/* Audio wave bars */}
+              <div className="flex items-center gap-0.5">
+                {[3, 5, 8, 5, 7, 4, 6, 3, 5].map((h, i) => (
+                  <div
+                    key={i}
+                    className="w-1 rounded-full bg-primary"
+                    style={{
+                      height: `${h * 3}px`,
+                      animation: `pulse 0.6s ease-in-out ${i * 0.07}s infinite alternate`,
+                    }}
+                  />
+                ))}
+              </div>
+              <span className="text-sm font-medium text-white/80">
+                {contact.firstName} parle…
+              </span>
+            </div>
+          ) : userSpoke ? (
+            <p className="text-center text-xs text-white/50">En attente…</p>
+          ) : (
+            <p className="text-center text-sm text-white/90 leading-relaxed italic">
+              « {lines[lineIndex]} »
+            </p>
+          )}
+        </div>
+      </div>
+
+      {/* Spacer */}
+      <div className="flex-1" />
+
+      {/* Mic button */}
+      <div className="flex flex-col items-center gap-3 pb-16">
+        <button
+          type="button"
+          onPointerDown={handleMicPress}
+          onPointerUp={handleMicRelease}
+          onPointerLeave={handleMicRelease}
+          className={cn(
+            'flex size-20 items-center justify-center rounded-full transition-all duration-150 select-none',
+            holding
+              ? 'bg-primary scale-110 shadow-2xl shadow-primary/50 ring-8 ring-primary/20'
+              : 'bg-primary shadow-lg shadow-primary/30 active:scale-95'
+          )}
+        >
+          <Mic className={cn('size-8 stroke-[1.5] text-white', holding && 'stroke-2')} />
+        </button>
+        <p className="text-xs text-white/50">
+          {holding ? 'Relâche pour envoyer' : 'Maintiens pour parler'}
+        </p>
+      </div>
+
+      <style>{`
+        @keyframes pulse {
+          from { transform: scaleY(0.4); }
+          to { transform: scaleY(1); }
+        }
+      `}</style>
+    </div>
+  )
+}
+
+/* ── Page principale ─────────────────────────────────────────── */
+function AriaPageContent() {
+  const searchParams = useSearchParams()
+  const initialPhase = (searchParams.get('phase') as Phase) ?? 'Invitation'
+
+  const [phase, setPhase] = useState<Phase>(
+    phases.includes(initialPhase) ? initialPhase : 'Invitation'
+  )
+  const [simulatingContact, setSimulatingContact] = useState<typeof priorityContacts[0] | null>(null)
+
+  if (simulatingContact) {
+    return (
+      <SimulatorScreen
+        contact={simulatingContact}
+        phase={phase}
+        onBack={() => setSimulatingContact(null)}
+      />
+    )
+  }
+
+  return (
+    <SetupScreen
+      phase={phase}
+      setPhase={setPhase}
+      onStart={(c) => setSimulatingContact(c)}
+    />
+  )
+}
+
+export default function AriaPage() {
+  return (
+    <Suspense fallback={null}>
+      <AriaPageContent />
+    </Suspense>
   )
 }
