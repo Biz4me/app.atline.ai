@@ -79,7 +79,7 @@ export default function AriaPage() {
         </button>
         <div className="flex items-center gap-1.5">
           <Sparkles className="size-4 text-[#F97316]" />
-          <h1 className="font-serif text-lg font-semibold text-white">ARIA</h1>
+          <h1 className="font-display text-lg font-semibold text-white">ARIA</h1>
         </div>
         <button
           onClick={() => setMessages([])}

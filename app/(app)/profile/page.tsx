@@ -29,7 +29,7 @@ export default function ProfilePage() {
       <section className="flex items-center gap-4">
         <DiscAvatar firstName={currentUser.firstName} lastName={currentUser.lastName} disc="I" size="xl" />
         <div className="min-w-0">
-          <h1 className="font-serif text-2xl font-semibold leading-tight">
+          <h1 className="font-display text-2xl font-semibold leading-tight">
             {currentUser.firstName} {currentUser.lastName}
           </h1>
           <div className="mt-1 inline-flex items-center gap-1.5 rounded-full bg-primary/10 px-2.5 py-1 text-xs font-bold text-primary">
@@ -43,17 +43,17 @@ export default function ProfilePage() {
       <section className="grid grid-cols-3 gap-3">
         <Card className="flex flex-col items-center gap-1 p-3 text-center">
           <Flame className="size-5 text-primary" />
-          <span className="font-serif text-xl font-semibold">{currentUser.streak}</span>
+          <span className="font-display text-xl font-semibold">{currentUser.streak}</span>
           <span className="text-[11px] text-muted-foreground">jours de série</span>
         </Card>
         <Card className="flex flex-col items-center gap-1 p-3 text-center">
           <Trophy className="size-5 text-money" />
-          <span className="font-serif text-xl font-semibold">Niv. {currentUser.level}</span>
+          <span className="font-display text-xl font-semibold">Niv. {currentUser.level}</span>
           <span className="text-[11px] text-muted-foreground">niveau</span>
         </Card>
         <Card className="flex flex-col items-center gap-1 p-3 text-center">
           <Users className="size-5 text-info" />
-          <span className="font-serif text-xl font-semibold">{currentUser.directReferrals}</span>
+          <span className="font-display text-xl font-semibold">{currentUser.directReferrals}</span>
           <span className="text-[11px] text-muted-foreground">filleuls</span>
         </Card>
       </section>
@@ -62,7 +62,7 @@ export default function ProfilePage() {
       <Card className="flex items-center justify-between p-4">
         <div>
           <p className="text-xs font-medium text-muted-foreground">Commission du mois</p>
-          <p className="font-serif text-2xl font-semibold text-money">{euro(networkStats.monthCommission)}</p>
+          <p className="font-display text-2xl font-semibold text-money">{euro(networkStats.monthCommission)}</p>
         </div>
         <Link
           href="/network"

@@ -66,7 +66,7 @@ export default function OnboardingPage() {
         >
           <Icon className="size-11" style={{ color: current.accent }} />
         </span>
-        <h1 className="text-balance font-serif text-3xl font-semibold leading-tight">
+        <h1 className="text-balance font-display text-3xl font-semibold leading-tight">
           {current.title}
         </h1>
         <p className="mt-4 max-w-xs text-pretty text-base leading-relaxed text-muted-foreground">
