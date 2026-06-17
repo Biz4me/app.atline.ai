@@ -1,7 +1,7 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
-import { Bell, ChevronLeft } from 'lucide-react'
+import { Bell, ChevronLeft, SquarePen } from 'lucide-react'
 import { DiscAvatar } from '@/components/disc-avatar'
 import { currentUser } from '@/lib/data'
 import Link from 'next/link'
@@ -10,9 +10,15 @@ interface AppHeaderProps {
   title: string
   back?: boolean
   showActions?: boolean
+  showNova?: boolean
 }
 
-export function AppHeader({ title, back = false, showActions = true }: AppHeaderProps) {
+export function AppHeader({
+  title,
+  back = false,
+  showActions = true,
+  showNova = false,
+}: AppHeaderProps) {
   const router = useRouter()
   return (
     <header
@@ -33,7 +39,16 @@ export function AppHeader({ title, back = false, showActions = true }: AppHeader
         {title}
       </h1>
       {showActions && (
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1">
+          {showNova && (
+            <Link
+              href="/nova"
+              aria-label="Créer un post Nova"
+              className="flex size-9 items-center justify-center rounded-full text-fg-2 transition-colors active:bg-muted"
+            >
+              <SquarePen className="size-5 stroke-[1.5]" />
+            </Link>
+          )}
           <button
             type="button"
             aria-label="Notifications"

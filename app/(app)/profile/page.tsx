@@ -1,79 +1,116 @@
 'use client'
 
-import Link from 'next/link'
 import Image from 'next/image'
 import {
-  Flame,
-  Trophy,
-  Users,
   Crown,
   ChevronRight,
-  Sparkles,
   Bell,
   Shield,
   CircleHelp,
   LogOut,
   Settings,
+  Copy,
+  Check,
 } from 'lucide-react'
+import { useState } from 'react'
 import { Card } from '@/components/card'
 import { DiscAvatar } from '@/components/disc-avatar'
-import { currentUser, businesses, networkStats, euro } from '@/lib/data'
+import { currentUser, businesses, euro, networkStats } from '@/lib/data'
 import { useBusiness } from '@/components/business-provider'
+import { toast } from 'sonner'
+
+const referralLink = 'atline.ai/rejoindre/lea-moreau'
 
 export default function ProfilePage() {
   const { current: activeBusiness } = useBusiness()
+  const [copied, setCopied] = useState(false)
+
+  const handleCopy = () => {
+    navigator.clipboard.writeText(`https://${referralLink}`)
+    setCopied(true)
+    toast.success('Lien copié !')
+    setTimeout(() => setCopied(false), 2000)
+  }
 
   return (
-    <div className="space-y-5 px-4 pb-6 pt-4">
-      {/* Identity */}
+    <div className="space-y-5 px-4 pb-6 pt-5">
+      {/* Identité */}
       <section className="flex items-center gap-4">
         <DiscAvatar firstName={currentUser.firstName} lastName={currentUser.lastName} disc="I" size="xl" />
-        <div className="min-w-0">
+        <div className="min-w-0 flex-1">
           <h1 className="font-display text-2xl font-semibold leading-tight">
             {currentUser.firstName} {currentUser.lastName}
           </h1>
-          <div className="mt-1 inline-flex items-center gap-1.5 rounded-full bg-primary/10 px-2.5 py-1 text-xs font-bold text-primary">
+          <div className="mt-1.5 inline-flex items-center gap-1.5 rounded-full bg-primary/10 px-2.5 py-1 text-xs font-bold text-primary">
             <Crown className="size-3.5" />
             Plan Pro
           </div>
         </div>
+        <button
+          type="button"
+          onClick={() => toast.info('Modifier le profil')}
+          className="shrink-0 rounded-xl border border-border bg-surface px-3 py-2 text-xs font-semibold text-fg-2 transition-colors active:bg-muted"
+        >
+          Modifier
+        </button>
       </section>
 
-      {/* Gamification */}
-      <section className="grid grid-cols-3 gap-3">
-        <Card className="flex flex-col items-center gap-1 p-3 text-center">
-          <Flame className="size-5 text-primary" />
-          <span className="font-display text-xl font-semibold">{currentUser.streak}</span>
-          <span className="text-[11px] text-muted-foreground">jours de série</span>
-        </Card>
-        <Card className="flex flex-col items-center gap-1 p-3 text-center">
-          <Trophy className="size-5 text-gold" />
-          <span className="font-display text-xl font-semibold">Niv. {currentUser.level}</span>
-          <span className="text-[11px] text-muted-foreground">niveau</span>
-        </Card>
-        <Card className="flex flex-col items-center gap-1 p-3 text-center">
-          <Users className="size-5 text-info" />
-          <span className="font-display text-xl font-semibold">{currentUser.directReferrals}</span>
-          <span className="text-[11px] text-muted-foreground">filleuls</span>
-        </Card>
-      </section>
-
-      {/* Commission highlight */}
+      {/* Commission du mois */}
       <Card className="flex items-center justify-between p-4">
         <div>
           <p className="text-xs font-medium text-muted-foreground">Commission du mois</p>
-          <p className="font-display text-2xl font-semibold text-gold">{euro(networkStats.monthCommission)}</p>
+          <p className="font-display text-2xl font-semibold text-gold">
+            {euro(networkStats.monthCommission)}
+          </p>
         </div>
-        <Link
-          href="/network"
-          className="inline-flex items-center gap-1 rounded-full bg-secondary px-3 py-2 text-xs font-semibold"
-        >
-          Mon réseau
-          <ChevronRight className="size-3.5" />
-        </Link>
+        <span className="rounded-full bg-success/15 px-2.5 py-1 text-xs font-bold text-success">
+          {currentUser.directReferrals} filleuls
+        </span>
       </Card>
 
-      {/* Businesses */}
+      {/* Hub public — lien de parrainage */}
+      <section>
+        <h2 className="mb-2 px-1 text-sm font-semibold text-muted-foreground">Mon hub public</h2>
+        <Card className="p-4">
+          <p className="mb-3 text-xs text-muted-foreground text-pretty">
+            Partage ce lien pour que tes prospects rejoignent directement ton équipe.
+          </p>
+          <div className="flex items-center gap-2 rounded-xl border border-border bg-muted px-3 py-2.5">
+            <span className="flex-1 truncate text-sm font-medium text-foreground">
+              {referralLink}
+            </span>
+            <button
+              type="button"
+              onClick={handleCopy}
+              aria-label="Copier le lien"
+              className="shrink-0 rounded-lg p-1.5 text-primary transition-colors active:bg-primary/10"
+            >
+              {copied ? (
+                <Check className="size-4 stroke-2" />
+              ) : (
+                <Copy className="size-4 stroke-[1.5]" />
+              )}
+            </button>
+          </div>
+        </Card>
+      </section>
+
+      {/* Coordonnées */}
+      <section>
+        <h2 className="mb-2 px-1 text-sm font-semibold text-muted-foreground">Coordonnées</h2>
+        <Card className="divide-y divide-border p-0">
+          <div className="flex items-center justify-between px-4 py-3">
+            <span className="text-sm text-muted-foreground">Email</span>
+            <span className="text-sm font-semibold text-foreground">lea.moreau@email.fr</span>
+          </div>
+          <div className="flex items-center justify-between px-4 py-3">
+            <span className="text-sm text-muted-foreground">Téléphone</span>
+            <span className="text-sm font-semibold text-foreground">06 12 34 56 78</span>
+          </div>
+        </Card>
+      </section>
+
+      {/* Mes activités */}
       <section>
         <h2 className="mb-2 px-1 text-sm font-semibold text-muted-foreground">Mes activités</h2>
         <Card className="divide-y divide-border p-0">
@@ -96,35 +133,17 @@ export default function ProfilePage() {
               )}
             </div>
           ))}
-          <button className="flex w-full items-center gap-2 px-4 py-3 text-sm font-semibold text-primary">
-            <span className="grid size-9 place-items-center rounded-xl border border-dashed border-primary/40">+</span>
-            Ajouter une activité
-          </button>
         </Card>
       </section>
 
-      {/* Quick access to AI */}
-      <Link href="/aria" className="block">
-        <Card className="flex items-center gap-3 p-4">
-          <span className="grid size-10 place-items-center rounded-full bg-primary/10">
-            <Sparkles className="size-5 text-primary" />
-          </span>
-          <div className="flex-1">
-            <p className="text-sm font-semibold">Entraînement ARIA</p>
-            <p className="text-xs text-muted-foreground">Simule tes conversations de vente</p>
-          </div>
-          <ChevronRight className="size-4 text-muted-foreground" />
-        </Card>
-      </Link>
-
-      {/* Settings list */}
+      {/* Réglages */}
       <section>
         <h2 className="mb-2 px-1 text-sm font-semibold text-muted-foreground">Réglages</h2>
         <Card className="divide-y divide-border p-0">
           {[
             { icon: Bell, label: 'Notifications' },
             { icon: Shield, label: 'Confidentialité & sécurité' },
-            { icon: Settings, label: 'Préférences de l’app' },
+            { icon: Settings, label: "Préférences de l'app" },
             { icon: CircleHelp, label: 'Aide & support' },
           ].map((row) => (
             <button key={row.label} className="flex w-full items-center gap-3 px-4 py-3.5 text-left">

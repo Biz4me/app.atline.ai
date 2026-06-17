@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { useState } from 'react'
 import { cn } from '@/lib/utils'
-import { Home, Users, Sparkles, User } from 'lucide-react'
+import { Compass, Users, User, GitFork } from 'lucide-react'
 import {
   Sheet,
   SheetContent,
@@ -12,12 +12,12 @@ import {
   SheetTitle,
   SheetDescription,
 } from '@/components/ui/sheet'
-import { PenLine, UserPlus, PhoneCall, Network } from 'lucide-react'
+import { UserPlus, PhoneCall, Network, BarChart2 } from 'lucide-react'
 
 const tabs = [
-  { href: '/home', label: 'Accueil', icon: Home },
+  { href: '/home', label: 'Parcours', icon: Compass },
   { href: '/contacts', label: 'Contacts', icon: Users },
-  { href: '/nova', label: 'Nova', icon: Sparkles },
+  { href: '/network', label: 'Réseau', icon: GitFork },
   { href: '/profile', label: 'Moi', icon: User },
 ]
 
@@ -30,10 +30,10 @@ export function BottomNav() {
     pathname === href || pathname.startsWith(href + '/')
 
   const actions = [
-    { label: 'Créer un post', desc: 'Nova génère ton contenu', icon: PenLine, href: '/nova/create' },
     { label: 'Ajouter un contact', desc: 'Nouveau prospect au CRM', icon: UserPlus, href: '/contacts' },
     { label: 'Simuler un appel', desc: 'Entraîne-toi avec ARIA', icon: PhoneCall, href: '/aria' },
     { label: 'Voir mon réseau', desc: 'Arbre et commissions', icon: Network, href: '/network' },
+    { label: 'Mes stats', desc: 'Performance du mois', icon: BarChart2, href: '/home' },
   ]
 
   return (
@@ -46,6 +46,7 @@ export function BottomNav() {
           <NavItem tab={tabs[0]} active={isActive(tabs[0].href)} />
           <NavItem tab={tabs[1]} active={isActive(tabs[1].href)} />
 
+          {/* Atlas central */}
           <div className="flex justify-center">
             <button
               type="button"
@@ -109,7 +110,7 @@ function NavItem({
   tab,
   active,
 }: {
-  tab: { href: string; label: string; icon: typeof Home }
+  tab: { href: string; label: string; icon: typeof User }
   active: boolean
 }) {
   const Icon = tab.icon
