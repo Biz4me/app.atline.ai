@@ -9,7 +9,7 @@ import { DiscAvatar } from '@/components/disc-avatar'
 import { StagePill } from '@/components/pills'
 import { contacts } from '@/lib/data'
 import type { ContactStage } from '@/lib/types'
-import { Search, UserPlus, Users } from 'lucide-react'
+import { Search, UserPlus, Users, X } from 'lucide-react'
 import { AddContactSheet } from '@/components/add-contact-sheet'
 
 type Segment = 'prospects' | 'clients' | 'partenaires'
@@ -26,10 +26,18 @@ const stageFilters: Record<Segment, { id: string; label: string; stages?: Contac
     { id: 'chaud', label: 'Chauds', stages: ['chaud'] },
     { id: 'prospect', label: 'Qualifiés', stages: ['prospect'] },
     { id: 'nouveau', label: 'Nouveaux', stages: ['nouveau'] },
+    { id: 'contacte', label: 'Contacté', stages: ['chaud', 'prospect'] },
   ],
   clients: [{ id: 'tous', label: 'Tous' }],
   partenaires: [{ id: 'tous', label: 'Tous' }],
 }
+
+const discInfoColors = [
+  { letter: 'D', color: '#DC2626', label: 'Dominant', desc: 'Direct, résultats' },
+  { letter: 'I', color: '#F59E0B', label: 'Influent', desc: 'Enthousiaste, lien' },
+  { letter: 'S', color: '#22C55E', label: 'Stable', desc: 'Fiable, confiance' },
+  { letter: 'C', color: '#3B82F6', label: 'Consciencieux', desc: 'Analytique, précis' },
+]
 
 function ContactsContent() {
   const { current } = useBusiness()
@@ -37,6 +45,7 @@ function ContactsContent() {
   const [stageFilter, setStageFilter] = useState('tous')
   const [query, setQuery] = useState('')
   const [addOpen, setAddOpen] = useState(false)
+  const [discInfoDismissed, setDiscInfoDismissed] = useState(false)
 
   const handleSegmentChange = (seg: Segment) => {
     setSegment(seg)
@@ -118,6 +127,40 @@ function ContactsContent() {
                 {f.label}
               </button>
             ))}
+          </div>
+        )}
+
+        {/* DISC info card dismissable */}
+        {!discInfoDismissed && (
+          <div className="relative rounded-2xl border border-border bg-surface p-4">
+            <button
+              type="button"
+              onClick={() => setDiscInfoDismissed(true)}
+              className="absolute right-3 top-3 text-muted-foreground"
+              aria-label="Fermer"
+            >
+              <X className="size-4" />
+            </button>
+            <p className="mb-3 text-xs font-semibold text-foreground">
+              Travaille mieux avec tes contacts
+            </p>
+            <p className="mb-3 text-xs text-muted-foreground leading-relaxed">
+              Identifie le profil DISC de chaque contact pour adapter ta communication.
+            </p>
+            <div className="grid grid-cols-4 gap-2">
+              {discInfoColors.map((d) => (
+                <div key={d.letter} className="flex flex-col items-center gap-1">
+                  <span
+                    className="flex size-8 items-center justify-center rounded-lg text-xs font-bold text-white"
+                    style={{ backgroundColor: d.color }}
+                  >
+                    {d.letter}
+                  </span>
+                  <span className="text-center text-[10px] font-semibold text-foreground">{d.label}</span>
+                  <span className="text-center text-[9px] text-muted-foreground">{d.desc}</span>
+                </div>
+              ))}
+            </div>
           </div>
         )}
 

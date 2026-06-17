@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { useState } from 'react'
 import { cn } from '@/lib/utils'
-import { Compass, Users, User, GitFork } from 'lucide-react'
+import { Compass, Users, User, GitFork, Sparkles, UserPlus, PhoneCall, Network, BarChart2 } from 'lucide-react'
 import {
   Sheet,
   SheetContent,
@@ -12,7 +12,6 @@ import {
   SheetTitle,
   SheetDescription,
 } from '@/components/ui/sheet'
-import { UserPlus, PhoneCall, Network, BarChart2 } from 'lucide-react'
 
 const tabs = [
   { href: '/home', label: 'Parcours', icon: Compass },
@@ -46,7 +45,7 @@ export function BottomNav() {
           <NavItem tab={tabs[0]} active={isActive(tabs[0].href)} />
           <NavItem tab={tabs[1]} active={isActive(tabs[1].href)} />
 
-          {/* Atlas central */}
+          {/* Atlas FAB central */}
           <div className="flex justify-center">
             <button
               type="button"
@@ -54,7 +53,7 @@ export function BottomNav() {
               aria-label="Ouvrir Atlas"
               className="-translate-y-4 flex size-[58px] items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg shadow-primary/30 transition-transform active:scale-95"
             >
-              <span className="font-display text-2xl font-bold leading-none">A</span>
+              <Sparkles className="size-6 stroke-[1.5]" />
             </button>
           </div>
 
@@ -64,14 +63,11 @@ export function BottomNav() {
       </nav>
 
       <Sheet open={atlasOpen} onOpenChange={setAtlasOpen}>
-        <SheetContent
-          side="bottom"
-          className="mx-auto max-w-[480px] rounded-t-3xl border-border"
-        >
+        <SheetContent side="bottom" className="mx-auto max-w-[480px] rounded-t-3xl border-border">
           <SheetHeader className="text-left">
             <div className="flex items-center gap-3">
-              <span className="flex size-10 items-center justify-center rounded-full bg-primary text-primary-foreground font-display text-lg font-bold">
-                A
+              <span className="flex size-10 items-center justify-center rounded-full bg-primary text-primary-foreground">
+                <Sparkles className="size-5 stroke-[1.5]" />
               </span>
               <div>
                 <SheetTitle className="font-display text-lg">Atlas</SheetTitle>
@@ -84,10 +80,7 @@ export function BottomNav() {
               <button
                 key={a.label}
                 type="button"
-                onClick={() => {
-                  setAtlasOpen(false)
-                  router.push(a.href)
-                }}
+                onClick={() => { setAtlasOpen(false); router.push(a.href) }}
                 className="flex items-center gap-3 rounded-2xl border border-border bg-surface p-3.5 text-left transition-colors active:bg-muted"
               >
                 <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-accent text-accent-foreground">
@@ -106,13 +99,7 @@ export function BottomNav() {
   )
 }
 
-function NavItem({
-  tab,
-  active,
-}: {
-  tab: { href: string; label: string; icon: typeof User }
-  active: boolean
-}) {
+function NavItem({ tab, active }: { tab: { href: string; label: string; icon: typeof User }; active: boolean }) {
   const Icon = tab.icon
   return (
     <Link

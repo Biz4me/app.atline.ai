@@ -1,7 +1,7 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
-import { Bell, ChevronLeft, SquarePen, Plus } from 'lucide-react'
+import { Bell, ChevronLeft, SquarePen, Plus, CalendarDays, MessageCircle } from 'lucide-react'
 import { DiscAvatar } from '@/components/disc-avatar'
 import { currentUser } from '@/lib/data'
 import Link from 'next/link'
@@ -37,7 +37,7 @@ export function AppHeader({
           <ChevronLeft className="size-5 stroke-[1.5]" />
         </button>
       )}
-      <h1 className="flex-1 truncate font-display text-2xl font-semibold text-foreground">
+      <h1 className="flex-1 truncate font-display text-[28px] font-bold leading-tight tracking-[-0.025em] text-foreground">
         {title}
       </h1>
       {showActions && (
@@ -60,6 +60,15 @@ export function AppHeader({
               <Plus className="size-5 stroke-[1.5]" />
             </Link>
           )}
+          {/* Calendar → Nova */}
+          <Link
+            href="/nova"
+            aria-label="Calendrier éditorial"
+            className="flex size-9 items-center justify-center rounded-full text-fg-2 transition-colors active:bg-muted"
+          >
+            <CalendarDays className="size-5 stroke-[1.5]" />
+          </Link>
+          {/* Notifications */}
           <Link
             href="/notifications"
             aria-label="Notifications"
@@ -67,6 +76,15 @@ export function AppHeader({
           >
             <Bell className="size-5 stroke-[1.5]" />
             <span className="absolute right-1.5 top-1.5 size-2 rounded-full bg-primary ring-2 ring-background" />
+          </Link>
+          {/* Messages */}
+          <Link
+            href="/messages"
+            aria-label="Messages"
+            className="relative flex size-9 items-center justify-center rounded-full text-fg-2 transition-colors active:bg-muted"
+          >
+            <MessageCircle className="size-5 stroke-[1.5]" />
+            <span className="absolute right-1 top-1 flex size-4 items-center justify-center rounded-full bg-primary text-[9px] font-bold text-primary-foreground ring-2 ring-background">2</span>
           </Link>
           <Link href="/profile" aria-label="Mon profil">
             <DiscAvatar

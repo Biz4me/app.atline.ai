@@ -302,6 +302,40 @@ export default function HomePage() {
           </Link>
         </section>
 
+        {/* Ma communauté */}
+        <section>
+          <SectionTitle
+            action={
+              <Link href="/communaute" className="text-xs font-semibold text-primary">
+                Tout voir
+              </Link>
+            }
+          >
+            Ma communauté
+          </SectionTitle>
+          <Link href="/communaute">
+            <Card className="p-4 transition-colors active:bg-muted/50">
+              <div className="flex items-center gap-3 mb-3">
+                <span className="flex size-10 items-center justify-center rounded-xl bg-violet-100">
+                  <Users className="size-5 stroke-[1.5] text-violet-600" />
+                </span>
+                <div>
+                  <p className="text-sm font-bold text-foreground">Forum Atline</p>
+                  <p className="text-xs text-muted-foreground">3 nouvelles discussions</p>
+                </div>
+                <ChevronRight className="ml-auto size-4 text-muted-foreground" />
+              </div>
+              <div className="flex gap-2">
+                {['Prospection', 'Mindset', 'Wins'].map((tag) => (
+                  <span key={tag} className="rounded-full bg-muted px-2.5 py-1 text-[11px] font-semibold text-muted-foreground">
+                    {tag}
+                  </span>
+                ))}
+              </div>
+            </Card>
+          </Link>
+        </section>
+
         {/* Performance du mois */}
         <section>
           <SectionTitle>Performance du mois</SectionTitle>

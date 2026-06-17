@@ -77,8 +77,8 @@ export default function ContactDetailPage({
           </div>
         </div>
 
-        {/* 3 action tiles */}
-        <div className="grid grid-cols-3 gap-2">
+        {/* 4 action tiles */}
+        <div className="grid grid-cols-4 gap-2">
           <ActionTile
             icon={MessageSquare}
             label="Message"
@@ -93,28 +93,13 @@ export default function ContactDetailPage({
             icon={CalendarPlus}
             label="RDV"
             href="/nova"
-            onClick={() => toast.success('Planifier un rendez-vous')}
           />
-        </div>
-
-        {/* 2 boutons IA orange-soft */}
-        <div className="grid grid-cols-2 gap-2">
-          <button
-            type="button"
-            onClick={() => router.push('/aria')}
-            className="flex items-center justify-center gap-2 rounded-2xl bg-primary/10 px-3 py-3 text-sm font-bold text-primary transition-colors active:bg-primary/20"
-          >
-            <Mic className="size-4 stroke-2" />
-            Simuler ARIA
-          </button>
-          <button
-            type="button"
+          <ActionTile
+            icon={Sparkles}
+            label="Atlas"
             onClick={() => toast.success('Atlas analyse ce contact…')}
-            className="flex items-center justify-center gap-2 rounded-2xl bg-primary/10 px-3 py-3 text-sm font-bold text-primary transition-colors active:bg-primary/20"
-          >
-            <Sparkles className="size-4 stroke-2" />
-            Atlas
-          </button>
+            primary
+          />
         </div>
 
         {/* 3 tabs */}
@@ -128,35 +113,33 @@ export default function ContactDetailPage({
           {/* Infos */}
           <TabsContent value="infos" className="mt-4 flex flex-col gap-3">
             {contact.disc && (
-              <Card className="p-4">
-                <div className="flex items-start gap-3">
+              <Card className="px-4 py-3">
+                <div className="flex items-center gap-2.5">
                   <span
-                    className="flex size-10 shrink-0 items-center justify-center rounded-xl text-sm font-bold text-white"
+                    className="flex size-7 shrink-0 items-center justify-center rounded-lg text-xs font-bold text-white"
                     style={{ backgroundColor: discColors[contact.disc] }}
                   >
                     {contact.disc}
                   </span>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-bold text-foreground">
-                      Profil {discLabels[contact.disc]}
-                    </p>
-                    <p className="mt-0.5 text-xs text-muted-foreground leading-relaxed">
-                      {discDescriptions[contact.disc]}
-                    </p>
-                  </div>
+                  <span className="text-sm font-bold text-foreground">
+                    {discLabels[contact.disc]}
+                  </span>
+                  <span className="flex-1 truncate text-xs text-muted-foreground">
+                    {discDescriptions[contact.disc]}
+                  </span>
                   <button
                     type="button"
-                    className="shrink-0 text-xs font-semibold text-primary"
+                    className="shrink-0 flex items-center gap-0.5 text-xs font-semibold text-primary"
                     onClick={() => toast.info('Modifier le profil DISC')}
                   >
-                    Modifier
+                    Modifier →
                   </button>
                 </div>
               </Card>
             )}
 
             <Card className="divide-y divide-border">
-              <InfoRow icon={Phone} label="Téléphone" value={contact.phone ?? '—'} />
+              <PhoneRow value={contact.phone ?? '—'} />
               <InfoRow icon={Mail} label="Email" value={contact.email ?? '—'} />
               <InfoRow icon={Link2} label="Source" value={contact.source} />
               <InfoRow
@@ -212,26 +195,51 @@ function ActionTile({
   label,
   href,
   onClick,
+  primary,
 }: {
   icon: typeof MessageSquare
   label: string
   href?: string
   onClick?: () => void
+  primary?: boolean
 }) {
-  const cls = 'flex flex-col items-center gap-1.5 rounded-2xl border border-border bg-surface py-4 text-center shadow-card transition-colors active:bg-muted'
+  const cls = primary
+    ? 'flex flex-col items-center gap-1.5 rounded-2xl bg-primary py-4 text-center shadow-lg shadow-primary/20 transition-colors active:opacity-90'
+    : 'flex flex-col items-center gap-1.5 rounded-2xl border border-border bg-surface py-4 text-center shadow-card transition-colors active:bg-muted'
+  const iconCls = primary ? 'size-5 stroke-[1.5] text-primary-foreground' : 'size-5 stroke-[1.5] text-muted-foreground'
+  const textCls = primary ? 'text-xs font-semibold text-primary-foreground' : 'text-xs font-semibold text-foreground'
   if (href) {
     return (
       <Link href={href} onClick={onClick} className={cls}>
-        <Icon className="size-5 stroke-[1.5] text-muted-foreground" />
-        <span className="text-xs font-semibold text-foreground">{label}</span>
+        <Icon className={iconCls} />
+        <span className={textCls}>{label}</span>
       </Link>
     )
   }
   return (
     <button type="button" onClick={onClick} className={cls}>
-      <Icon className="size-5 stroke-[1.5] text-muted-foreground" />
-      <span className="text-xs font-semibold text-foreground">{label}</span>
+      <Icon className={iconCls} />
+      <span className={textCls}>{label}</span>
     </button>
+  )
+}
+
+function PhoneRow({ value }: { value: string }) {
+  return (
+    <div className="flex items-center gap-3 p-4">
+      <Phone className="size-4 shrink-0 stroke-[1.5] text-muted-foreground" />
+      <span className="text-sm text-muted-foreground">Téléphone</span>
+      {value !== '—' ? (
+        <a
+          href={`tel:${value}`}
+          className="ml-auto truncate text-sm font-semibold text-primary"
+        >
+          {value}
+        </a>
+      ) : (
+        <span className="ml-auto text-sm font-semibold text-foreground">—</span>
+      )}
+    </div>
   )
 }
 

@@ -1,29 +1,23 @@
 'use client'
 
-import Image from 'next/image'
 import {
   Crown,
-  ChevronRight,
-  Bell,
-  Shield,
-  CircleHelp,
-  LogOut,
-  Settings,
   Copy,
   Check,
+  LogOut,
+  Pencil,
+  Mail,
+  Phone,
 } from 'lucide-react'
 import { useState } from 'react'
-import Link from 'next/link'
 import { Card } from '@/components/card'
 import { DiscAvatar } from '@/components/disc-avatar'
-import { currentUser, businesses, euro, networkStats } from '@/lib/data'
-import { useBusiness } from '@/components/business-provider'
+import { currentUser } from '@/lib/data'
 import { toast } from 'sonner'
 
 const referralLink = 'atline.ai/rejoindre/lea-moreau'
 
 export default function ProfilePage() {
-  const { current: activeBusiness } = useBusiness()
   const [copied, setCopied] = useState(false)
 
   const handleCopy = () => {
@@ -34,47 +28,39 @@ export default function ProfilePage() {
   }
 
   return (
-    <div className="space-y-5 px-4 pb-6 pt-5">
-      {/* Identité */}
-      <section className="flex items-center gap-4">
+    <div className="flex flex-col items-center gap-5 px-4 pb-8 pt-8">
+      {/* Avatar large */}
+      <div className="relative">
         <DiscAvatar firstName={currentUser.firstName} lastName={currentUser.lastName} disc="I" size="xl" />
-        <div className="min-w-0 flex-1">
-          <h1 className="font-display text-2xl font-semibold leading-tight">
-            {currentUser.firstName} {currentUser.lastName}
-          </h1>
-          <div className="mt-1.5 inline-flex items-center gap-1.5 rounded-full bg-primary/10 px-2.5 py-1 text-xs font-bold text-primary">
-            <Crown className="size-3.5" />
-            Plan Pro
-          </div>
-        </div>
         <button
           type="button"
-          onClick={() => toast.info('Modifier le profil')}
-          className="shrink-0 rounded-xl border border-border bg-surface px-3 py-2 text-xs font-semibold text-fg-2 transition-colors active:bg-muted"
+          onClick={() => toast.info('Changer la photo')}
+          className="absolute -bottom-1 -right-1 flex size-7 items-center justify-center rounded-full border-2 border-background bg-primary text-primary-foreground"
         >
-          Modifier
+          <Pencil className="size-3 stroke-[2]" />
         </button>
-      </section>
+      </div>
 
-      {/* Commission du mois */}
-      <Card className="flex items-center justify-between p-4">
-        <div>
-          <p className="text-xs font-medium text-muted-foreground">Commission du mois</p>
-          <p className="font-display text-2xl font-semibold text-gold">
-            {euro(networkStats.monthCommission)}
-          </p>
+      {/* Nom + plan */}
+      <div className="flex flex-col items-center gap-2 text-center">
+        <h1 className="font-display text-[28px] font-bold leading-tight tracking-[-0.025em] text-foreground">
+          {currentUser.firstName} {currentUser.lastName}
+        </h1>
+        <div className="inline-flex items-center gap-1.5 rounded-full bg-primary/10 px-3 py-1 text-xs font-bold text-primary">
+          <Crown className="size-3.5" />
+          Plan Pro
         </div>
-        <span className="rounded-full bg-success/15 px-2.5 py-1 text-xs font-bold text-success">
-          {currentUser.directReferrals} filleuls
-        </span>
-      </Card>
+        <p className="max-w-[260px] text-sm text-muted-foreground leading-relaxed">
+          Distributrice indépendante · MLM depuis 2 ans. Passionnée d'accompagnement et de bien-être.
+        </p>
+      </div>
 
       {/* Hub public — lien de parrainage */}
-      <section>
-        <h2 className="mb-2 px-1 text-sm font-semibold text-muted-foreground">Mon hub public</h2>
+      <div className="w-full">
+        <p className="mb-2 px-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Mon hub public</p>
         <Card className="p-4">
-          <p className="mb-3 text-xs text-muted-foreground text-pretty">
-            Partage ce lien pour que tes prospects rejoignent directement ton équipe.
+          <p className="mb-3 text-xs text-muted-foreground">
+            Partage ce lien pour que tes prospects rejoignent ton équipe.
           </p>
           <div className="flex items-center gap-2 rounded-xl border border-border bg-muted px-3 py-2.5">
             <span className="flex-1 truncate text-sm font-medium text-foreground">
@@ -94,91 +80,47 @@ export default function ProfilePage() {
             </button>
           </div>
         </Card>
-      </section>
+      </div>
 
       {/* Coordonnées */}
-      <section>
-        <h2 className="mb-2 px-1 text-sm font-semibold text-muted-foreground">Coordonnées</h2>
+      <div className="w-full">
+        <p className="mb-2 px-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Coordonnées</p>
         <Card className="divide-y divide-border p-0">
-          <div className="flex items-center justify-between px-4 py-3">
+          <div className="flex items-center gap-3 px-4 py-3">
+            <Mail className="size-4 shrink-0 stroke-[1.5] text-muted-foreground" />
             <span className="text-sm text-muted-foreground">Email</span>
-            <span className="text-sm font-semibold text-foreground">lea.moreau@email.fr</span>
+            <span className="ml-auto text-sm font-semibold text-foreground">lea.moreau@email.fr</span>
           </div>
-          <div className="flex items-center justify-between px-4 py-3">
+          <div className="flex items-center gap-3 px-4 py-3">
+            <Phone className="size-4 shrink-0 stroke-[1.5] text-muted-foreground" />
             <span className="text-sm text-muted-foreground">Téléphone</span>
-            <span className="text-sm font-semibold text-foreground">06 12 34 56 78</span>
+            <a href="tel:0612345678" className="ml-auto text-sm font-semibold text-primary">
+              06 12 34 56 78
+            </a>
           </div>
         </Card>
-      </section>
+      </div>
 
-      {/* Mes activités */}
-      <section>
-        <h2 className="mb-2 px-1 text-sm font-semibold text-muted-foreground">Mes activités</h2>
-        <Card className="divide-y divide-border p-0">
-          {businesses.map((b) => (
-            <div key={b.id} className="flex items-center gap-3 px-4 py-3">
-              <span
-                className="grid size-9 shrink-0 place-items-center rounded-xl text-sm font-bold text-white"
-                style={{ backgroundColor: b.color }}
-              >
-                {b.initials}
-              </span>
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-semibold">{b.name}</p>
-                {b.isAtline && <p className="text-xs text-muted-foreground">Activité principale</p>}
-              </div>
-              {b.id === activeBusiness.id && (
-                <span className="rounded-full bg-success/15 px-2 py-0.5 text-[11px] font-bold text-success">
-                  Active
-                </span>
-              )}
-            </div>
-          ))}
-        </Card>
-      </section>
+      {/* CTA Modifier */}
+      <button
+        type="button"
+        onClick={() => toast.info('Modifier mon profil')}
+        className="w-full rounded-2xl bg-primary py-4 text-sm font-bold text-primary-foreground transition-transform active:scale-[0.98]"
+      >
+        Modifier mon profil
+      </button>
 
-      {/* Abonnement */}
-      <Link href="/abonnement">
-        <Card className="flex items-center gap-3 p-4 transition-colors active:bg-muted/50">
-          <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-primary/10">
-            <Crown className="size-5 text-primary" />
-          </span>
-          <div className="flex-1">
-            <p className="text-sm font-bold text-foreground">Plan Pro</p>
-            <p className="text-xs text-muted-foreground">Actif · Renouvellement le 1 juillet</p>
-          </div>
-          <ChevronRight className="size-4 text-muted-foreground" />
-        </Card>
-      </Link>
-
-      {/* Réglages */}
-      <section>
-        <h2 className="mb-2 px-1 text-sm font-semibold text-muted-foreground">Réglages</h2>
-        <Card className="divide-y divide-border p-0">
-          {[
-            { icon: Bell, label: 'Notifications', href: '/notifications' },
-            { icon: Shield, label: 'Confidentialité & sécurité', href: '/settings' },
-            { icon: Settings, label: "Préférences de l'app", href: '/settings' },
-            { icon: CircleHelp, label: 'Aide & support', href: '/settings' },
-          ].map((row) => (
-            <Link key={row.label} href={row.href} className="flex w-full items-center gap-3 px-4 py-3.5 text-left transition-colors active:bg-muted">
-              <row.icon className="size-5 text-muted-foreground" />
-              <span className="flex-1 text-sm font-medium text-foreground">{row.label}</span>
-              <ChevronRight className="size-4 text-muted-foreground" />
-            </Link>
-          ))}
-        </Card>
-      </section>
-
-      <button className="flex w-full items-center justify-center gap-2 rounded-2xl border border-border py-3.5 text-sm font-semibold text-destructive">
-        <LogOut className="size-4" />
+      {/* Déconnexion */}
+      <button
+        type="button"
+        onClick={() => toast.error('Déconnexion')}
+        className="flex w-full items-center justify-center gap-2 rounded-2xl border border-border py-3.5 text-sm font-semibold text-destructive transition-colors active:bg-muted"
+      >
+        <LogOut className="size-4 stroke-[1.5]" />
         Se déconnecter
       </button>
 
-      <div className="flex flex-col items-center gap-2 pt-2 text-center">
-        <Image src="/brand/atline-icon.png" alt="Atline" width={28} height={28} className="opacity-40" />
-        <p className="text-xs text-muted-foreground">Atline · version 1.0.0</p>
-      </div>
+      <p className="text-xs text-muted-foreground">Atline · version 1.0.0</p>
     </div>
   )
 }
