@@ -200,7 +200,7 @@ export default function CommunautePage() {
           </span>
         </div>
 
-        {/* Liste des discussions */}
+        {/* Threads actifs */}
         <div className="flex flex-col gap-2.5">
           {filtered.map((thread) => (
             <div
