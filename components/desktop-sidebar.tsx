@@ -48,12 +48,25 @@ export function DesktopSidebar({ collapsed, onToggle }: Props) {
         collapsed ? 'w-16' : 'w-60',
       )}
     >
-      {/* BusinessSwitcher — direct, pas de logo */}
+      {/* BusinessSwitcher + toggle collapse */}
       <div className={cn(
-        'flex items-center px-3 py-3 shrink-0',
-        collapsed && 'justify-center px-2',
+        'flex items-center gap-2 px-3 py-3 shrink-0',
+        collapsed ? 'flex-col justify-center px-2' : '',
       )}>
         <BusinessSwitcher collapsed={collapsed} />
+        <button
+          type="button"
+          onClick={onToggle}
+          className={cn(
+            'flex items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground',
+            collapsed ? 'size-8 mt-1' : 'ml-auto size-8',
+          )}
+        >
+          {collapsed
+            ? <PanelLeftOpen className="size-4" />
+            : <PanelLeftClose className="size-4" />
+          }
+        </button>
       </div>
 
       <div className="mx-3 h-px bg-border shrink-0" />
@@ -77,21 +90,6 @@ export function DesktopSidebar({ collapsed, onToggle }: Props) {
 
         <NavItem href="/settings" label="Paramètres" icon={Settings} active={isActive('/settings')} collapsed={collapsed} />
         <NavItem href="/profile"  label="Mon profil" icon={User}     active={isActive('/profile')}  collapsed={collapsed} />
-
-        <button
-          type="button"
-          onClick={onToggle}
-          className={cn(
-            'mt-1 flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium',
-            'text-muted-foreground transition-colors hover:bg-muted hover:text-foreground',
-            collapsed && 'justify-center px-0',
-          )}
-        >
-          {collapsed
-            ? <PanelLeftOpen className="size-5 shrink-0" />
-            : <><PanelLeftClose className="size-5 shrink-0" /><span>Réduire</span></>
-          }
-        </button>
       </div>
     </aside>
   )
