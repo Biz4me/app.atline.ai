@@ -40,7 +40,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           'app-shell pb-[110px] lg:pb-0 lg:max-w-none lg:mx-0',
           'transition-[padding-left,padding-right] duration-200 ease-out',
           collapsed ? 'lg:pl-16' : 'lg:pl-60',
-          atlasCollapsed ? 'lg:pr-0' : 'lg:pr-[280px]',
+          atlasCollapsed ? 'lg:pr-0' : 'lg:pr-[320px]',
         )}
       >
         {children}

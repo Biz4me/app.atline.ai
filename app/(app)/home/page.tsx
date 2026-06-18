@@ -197,10 +197,6 @@ export default function HomePage() {
       {/* ══════════════ DESKTOP ══════════════ */}
       <div className="hidden lg:block px-8 pt-8 pb-10 max-w-6xl mx-auto">
 
-        <h1 className="font-display text-2xl font-extrabold tracking-[-0.025em] text-foreground mb-6">
-          Mon parcours
-        </h1>
-
         {/* KPI strip — mêmes Cards que le reste du site */}
         <div className="grid grid-cols-4 gap-4 mb-6">
           {[
