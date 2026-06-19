@@ -350,7 +350,7 @@ export default function HomePage() {
             { label: 'Contacts actifs',  value: '12',  sub: '+2 cette semaine' },
             { label: 'Score ARIA',       value: '82',  sub: 'Moyenne 30 jours'  },
             { label: 'Formation',        value: '60%', sub: 'Module 3 en cours' },
-            { label: 'Filleuls actifs',  value: '4',   sub: 'sur 7 filleuls'    },
+            { label: 'Partenaires actifs', value: '4',   sub: 'sur 7 partenaires'  },
           ].map((kpi) => (
             <Card key={kpi.label} className="px-4 py-3">
               <p className="text-xs font-medium text-muted-foreground">{kpi.label}</p>
@@ -464,7 +464,7 @@ export default function HomePage() {
                   {[
                     { n: '3', label: 'relances' },
                     { n: '2', label: 'simulations' },
-                    { n: '+1', label: 'filleul' },
+                    { n: '+1', label: 'partenaire' },
                   ].map((s) => (
                     <div key={s.label}>
                       <span className="text-sm font-bold text-foreground">{s.n}</span>
@@ -480,7 +480,7 @@ export default function HomePage() {
               <div className="flex items-center justify-between px-5 py-3.5 border-b border-border">
                 <div>
                   <p className="text-sm font-bold text-foreground">Mon réseau bouge</p>
-                  <p className="text-[11px] text-muted-foreground mt-0.5">3 filleuls actifs cette semaine</p>
+                  <p className="text-[11px] text-muted-foreground mt-0.5">3 partenaires actifs cette semaine</p>
                 </div>
                 <Link href="/network" className="text-xs font-medium text-muted-foreground hover:text-foreground transition-colors">Voir →</Link>
               </div>
