@@ -501,22 +501,17 @@ export default function ContactDetailPage({
           {/* Left card — profil */}
           <Card className="flex flex-col overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
 
-            {/* Avatar + nom */}
-            <div className="flex flex-col items-center gap-3 px-5 pt-6 pb-4 text-center border-b border-border shrink-0">
+            {/* Avatar */}
+            <div className="flex flex-col items-center gap-2 px-5 pt-6 pb-4 text-center border-b border-border shrink-0">
               <div
                 className="flex size-16 items-center justify-center rounded-full text-xl font-bold text-white bg-muted"
                 style={avatarBg ? { backgroundColor: avatarBg } : undefined}
               >
                 {initials}
               </div>
-              <div>
-                <p className="text-sm font-bold text-foreground">
-                  {contact.firstName} {contact.lastName}
-                </p>
-                {contact.city && (
-                  <p className="text-[11px] text-muted-foreground mt-0.5">{contact.city}</p>
-                )}
-              </div>
+              {contact.city && (
+                <p className="text-[11px] text-muted-foreground">{contact.city}</p>
+              )}
             </div>
 
             {/* 3 action tiles */}
