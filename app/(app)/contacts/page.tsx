@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useMemo, useState, useRef, useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { TopBar } from '@/components/top-bar'
@@ -10,7 +10,7 @@ import { StagePill, DiscBadge } from '@/components/pills'
 import { contacts } from '@/lib/data'
 import type { Contact, ContactStage } from '@/lib/types'
 import {
-  Search, Plus, UserRound,
+  Search, Plus, UserRound, ChevronDown, Check,
   Mic, Sparkles, Trash2, ArrowUpDown, ArrowUp, ArrowDown,
 } from 'lucide-react'
 import { AddContactSheet } from '@/components/add-contact-sheet'
@@ -102,6 +102,18 @@ function ContactsContent() {
   const [addOpen, setAddOpen]         = useState(false)
   const [sortKey, setSortKey]         = useState<SortKey | null>(null)
   const [sortDir, setSortDir]         = useState<SortDir>('asc')
+  const [dropdownOpen, setDropdownOpen] = useState(false)
+  const dropdownRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    function handleClick(e: MouseEvent) {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+        setDropdownOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClick)
+    return () => document.removeEventListener('mousedown', handleClick)
+  }, [])
 
   const handleSegmentChange = (seg: Segment) => {
     setSegment(seg)
@@ -308,45 +320,66 @@ function ContactsContent() {
             </div>
 
             {/* Segments */}
-            <div className="flex items-center gap-1">
-              {(Object.keys(segmentConfig) as Segment[]).map((seg) => (
-                <button
-                  key={seg}
-                  type="button"
-                  onClick={() => handleSegmentChange(seg)}
-                  className={cn(
-                    'rounded-lg px-4 py-2 text-sm font-medium transition-colors',
-                    segment === seg
-                      ? 'bg-primary/10 text-primary'
-                      : 'text-muted-foreground hover:bg-muted hover:text-foreground'
-                  )}
-                >
-                  {segmentConfig[seg].label}
-                </button>
-              ))}
+            <div ref={dropdownRef} className="relative flex items-center gap-1">
+              {(Object.keys(segmentConfig) as Segment[]).map((seg) => {
+                const hasFilters = stageFilters[seg].length > 1
+                const activeFilter = segment === seg && hasFilters && stageFilter !== 'tous'
+                  ? stageFilters[seg].find((f) => f.id === stageFilter)?.label
+                  : null
+                return (
+                  <button
+                    key={seg}
+                    type="button"
+                    onClick={() => {
+                      if (seg !== segment) handleSegmentChange(seg)
+                      if (hasFilters) setDropdownOpen(seg === segment ? !dropdownOpen : true)
+                    }}
+                    className={cn(
+                      'flex items-center gap-1.5 rounded-lg px-4 py-2 text-sm font-medium transition-colors',
+                      segment === seg
+                        ? 'bg-primary/10 text-primary'
+                        : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                    )}
+                  >
+                    {segmentConfig[seg].label}
+                    {activeFilter && (
+                      <span className="text-[11px] font-bold opacity-70">· {activeFilter}</span>
+                    )}
+                    {hasFilters && (
+                      <ChevronDown className={cn(
+                        'size-3.5 stroke-2 transition-transform',
+                        dropdownOpen && segment === seg && 'rotate-180'
+                      )} />
+                    )}
+                  </button>
+                )
+              })}
+
+              {/* Dropdown filtres */}
+              {dropdownOpen && filters.length > 1 && (
+                <div className="absolute left-0 top-full mt-1.5 z-20 min-w-[160px] rounded-xl border border-border bg-surface shadow-lg overflow-hidden py-1">
+                  {filters.map((f) => (
+                    <button
+                      key={f.id}
+                      type="button"
+                      onClick={() => { setStageFilter(f.id); setDropdownOpen(false) }}
+                      className={cn(
+                        'flex w-full items-center gap-2.5 px-3 py-2.5 text-sm text-left transition-colors',
+                        stageFilter === f.id
+                          ? 'bg-primary/5 text-primary font-medium'
+                          : 'text-foreground hover:bg-muted'
+                      )}
+                    >
+                      <span className="flex size-4 shrink-0 items-center justify-center">
+                        {stageFilter === f.id && <Check className="size-3.5 stroke-2" />}
+                      </span>
+                      {f.label}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
-
-          {/* Chips filtres */}
-          {filters.length > 1 && (
-            <div className="flex gap-2 px-6 pb-3">
-              {filters.map((f) => (
-                <button
-                  key={f.id}
-                  type="button"
-                  onClick={() => setStageFilter(f.id)}
-                  className={cn(
-                    'rounded-full px-3 py-1 text-xs font-medium transition-colors',
-                    stageFilter === f.id
-                      ? 'bg-primary/10 text-primary'
-                      : 'border border-border text-muted-foreground hover:text-foreground'
-                  )}
-                >
-                  {f.label}
-                </button>
-              ))}
-            </div>
-          )}
         </div>
 
         {/* Main : table + panel */}
@@ -463,7 +496,12 @@ function ContactsContent() {
                           <button
                             type="button"
                             title="Supprimer"
-                            onClick={() => toast.error(`Supprimer ${c.firstName} ${c.lastName} ?`)}
+                            onClick={() => toast(`Supprimer ${c.firstName} ${c.lastName} ?`, {
+                              description: 'Cette action est irréversible.',
+                              action: { label: 'Supprimer', onClick: () => toast.success('Contact supprimé') },
+                              cancel: { label: 'Annuler', onClick: () => {} },
+                              duration: 7000,
+                            })}
                             className="flex size-8 items-center justify-center rounded-lg text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors"
                           >
                             <Trash2 className="size-4 stroke-[1.5]" />
