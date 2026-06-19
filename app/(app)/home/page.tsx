@@ -469,28 +469,24 @@ export default function HomePage() {
                   <div key={item.id} className="flex items-center gap-3 px-5 py-3.5 hover:bg-muted/20 transition-colors">
                     <span className={cn('flex size-9 shrink-0 items-center justify-center rounded-full text-[11px] font-bold text-white', item.avatarBg)}>
                       {item.initials}
-                      </span>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm text-foreground leading-snug">
-                          <span className="font-bold">{item.name}</span>{' '}
-                          <span className="text-muted-foreground">{item.label}</span>
-                        </p>
-                        <p className="text-[11px] text-muted-foreground mt-0.5">{item.sub}</p>
-                        <p className="mt-1.5 text-xs text-primary font-medium">
-                          → {item.trigger}
-                        </p>
-                      </div>
-                      <Link
-                        href={item.cta}
-                        className="shrink-0 rounded-xl border border-border bg-surface px-3 py-1.5 text-xs font-semibold text-foreground hover:bg-muted transition-colors"
-                      >
-                        {item.ctaLabel}
-                      </Link>
+                    </span>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm text-foreground leading-snug">
+                        <span className="font-bold">{item.name}</span>{' '}
+                        <span className="text-muted-foreground">{item.label}</span>
+                      </p>
+                      <p className="text-[11px] text-muted-foreground mt-0.5">{item.sub}</p>
                     </div>
-                )
-              })}
-            </div>
-          </Card>
+                    <Link
+                      href={item.cta}
+                      className="shrink-0 rounded-xl border border-border bg-surface px-3 py-1.5 text-xs font-semibold text-foreground hover:bg-muted transition-colors"
+                    >
+                      {item.ctaLabel}
+                    </Link>
+                  </div>
+                ))}
+              </div>
+            </Card>
 
             {/* Zone 3 — Journal de bord */}
             <Card className="p-0 overflow-hidden">
