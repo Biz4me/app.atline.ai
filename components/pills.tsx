@@ -15,7 +15,7 @@ export function StagePill({ stage, className }: { stage: ContactStage; className
   return (
     <span
       className={cn(
-        'inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-bold',
+        'inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-medium',
         stageStyles[stage],
         className,
       )}
