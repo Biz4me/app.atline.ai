@@ -17,22 +17,24 @@ import { AddContactSheet } from '@/components/add-contact-sheet'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
 
-type Segment = 'prospects' | 'clients' | 'partenaires'
+type Segment = 'tous' | 'prospects' | 'clients' | 'partenaires'
 type SortKey = 'name' | 'disc' | 'stage' | 'city' | 'lastInteraction'
 type SortDir = 'asc' | 'desc'
 
 const segmentConfig: Record<Segment, { label: string; stages: ContactStage[] }> = {
+  tous:        { label: 'Tous',        stages: ['nouveau', 'chaud', 'prospect', 'client', 'partenaire'] },
   prospects:   { label: 'Prospects',   stages: ['nouveau', 'chaud', 'prospect'] },
   clients:     { label: 'Clients',     stages: ['client']                        },
   partenaires: { label: 'Partenaires', stages: ['partenaire']                   },
 }
 
 const stageFilters: Record<Segment, { id: string; label: string; stages?: ContactStage[] }[]> = {
+  tous:        [{ id: 'tous', label: 'Tous' }],
   prospects: [
     { id: 'tous',     label: 'Tous' },
-    { id: 'chaud',    label: 'Chaud',   stages: ['chaud']    },
+    { id: 'chaud',    label: 'Chaud',    stages: ['chaud']    },
     { id: 'qualifie', label: 'Qualifié', stages: ['prospect'] },
-    { id: 'nouveau',  label: 'Nouveau', stages: ['nouveau']  },
+    { id: 'nouveau',  label: 'Nouveau',  stages: ['nouveau']  },
   ],
   clients:     [{ id: 'tous', label: 'Tous' }],
   partenaires: [{ id: 'tous', label: 'Tous' }],
@@ -96,7 +98,7 @@ function Th({
 function ContactsContent() {
   const { current } = useBusiness()
   const router = useRouter()
-  const [segment, setSegment]         = useState<Segment>('prospects')
+  const [segment, setSegment]         = useState<Segment>('tous')
   const [stageFilter, setStageFilter] = useState('tous')
   const [query, setQuery]             = useState('')
   const [addOpen, setAddOpen]         = useState(false)
@@ -305,80 +307,80 @@ function ContactsContent() {
         </div>
 
         {/* Toolbar */}
-        <div className="flex flex-col border-b border-border shrink-0">
-          <div className="flex items-center gap-4 px-6 py-3">
-            {/* Recherche */}
-            <div className="relative w-72">
-              <Search className="absolute left-3 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
-              <input
-                type="search"
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                placeholder="Rechercher un contact…"
-                className="w-full rounded-lg border border-border bg-muted py-2 pl-9 pr-3 text-sm outline-none placeholder:text-muted-foreground focus:ring-1 focus:ring-ring/40"
-              />
-            </div>
+        <div className="flex items-center gap-3 border-b border-border px-6 py-3 shrink-0">
+          {/* Recherche */}
+          <div className="relative w-64 shrink-0">
+            <Search className="absolute left-3 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
+            <input
+              type="search"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Rechercher un contact…"
+              className="w-full rounded-lg border border-border bg-muted py-2 pl-9 pr-3 text-sm outline-none placeholder:text-muted-foreground focus:ring-1 focus:ring-ring/40"
+            />
+          </div>
 
-            {/* Segments */}
-            <div ref={dropdownRef} className="relative flex items-center gap-1">
-              {(Object.keys(segmentConfig) as Segment[]).map((seg) => {
-                const hasFilters = stageFilters[seg].length > 1
-                const activeFilter = segment === seg && hasFilters && stageFilter !== 'tous'
-                  ? stageFilters[seg].find((f) => f.id === stageFilter)?.label
-                  : null
-                return (
+          <div className="h-5 w-px bg-border shrink-0" />
+
+          {/* Segments + dropdown */}
+          <div ref={dropdownRef} className="relative flex items-center gap-1">
+            {(Object.keys(segmentConfig) as Segment[]).map((seg) => {
+              const hasFilters = stageFilters[seg].length > 1
+              const activeFilter = segment === seg && hasFilters && stageFilter !== 'tous'
+                ? stageFilters[seg].find((f) => f.id === stageFilter)?.label
+                : null
+              return (
+                <button
+                  key={seg}
+                  type="button"
+                  onClick={() => {
+                    if (seg !== segment) handleSegmentChange(seg)
+                    if (hasFilters) setDropdownOpen(seg === segment ? !dropdownOpen : true)
+                  }}
+                  className={cn(
+                    'flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium transition-colors',
+                    segment === seg
+                      ? 'bg-primary/10 text-primary'
+                      : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                  )}
+                >
+                  {segmentConfig[seg].label}
+                  {activeFilter && (
+                    <span className="text-[11px] font-bold opacity-70">· {activeFilter}</span>
+                  )}
+                  {hasFilters && (
+                    <ChevronDown className={cn(
+                      'size-3.5 stroke-2 transition-transform',
+                      dropdownOpen && segment === seg && 'rotate-180'
+                    )} />
+                  )}
+                </button>
+              )
+            })}
+
+            {/* Dropdown filtres */}
+            {dropdownOpen && filters.length > 1 && (
+              <div className="absolute left-0 top-full mt-1.5 z-20 min-w-[160px] rounded-xl border border-border bg-surface shadow-lg overflow-hidden py-1">
+                {filters.map((f) => (
                   <button
-                    key={seg}
+                    key={f.id}
                     type="button"
-                    onClick={() => {
-                      if (seg !== segment) handleSegmentChange(seg)
-                      if (hasFilters) setDropdownOpen(seg === segment ? !dropdownOpen : true)
-                    }}
+                    onClick={() => { setStageFilter(f.id); setDropdownOpen(false) }}
                     className={cn(
-                      'flex items-center gap-1.5 rounded-lg px-4 py-2 text-sm font-medium transition-colors',
-                      segment === seg
-                        ? 'bg-primary/10 text-primary'
-                        : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                      'flex w-full items-center gap-2.5 px-3 py-2.5 text-sm text-left transition-colors',
+                      stageFilter === f.id
+                        ? 'bg-primary/5 text-primary font-medium'
+                        : 'text-foreground hover:bg-muted'
                     )}
                   >
-                    {segmentConfig[seg].label}
-                    {activeFilter && (
-                      <span className="text-[11px] font-bold opacity-70">· {activeFilter}</span>
-                    )}
-                    {hasFilters && (
-                      <ChevronDown className={cn(
-                        'size-3.5 stroke-2 transition-transform',
-                        dropdownOpen && segment === seg && 'rotate-180'
-                      )} />
-                    )}
+                    <span className="flex size-4 shrink-0 items-center justify-center">
+                      {stageFilter === f.id && <Check className="size-3.5 stroke-2" />}
+                    </span>
+                    {f.label}
                   </button>
-                )
-              })}
-
-              {/* Dropdown filtres */}
-              {dropdownOpen && filters.length > 1 && (
-                <div className="absolute left-0 top-full mt-1.5 z-20 min-w-[160px] rounded-xl border border-border bg-surface shadow-lg overflow-hidden py-1">
-                  {filters.map((f) => (
-                    <button
-                      key={f.id}
-                      type="button"
-                      onClick={() => { setStageFilter(f.id); setDropdownOpen(false) }}
-                      className={cn(
-                        'flex w-full items-center gap-2.5 px-3 py-2.5 text-sm text-left transition-colors',
-                        stageFilter === f.id
-                          ? 'bg-primary/5 text-primary font-medium'
-                          : 'text-foreground hover:bg-muted'
-                      )}
-                    >
-                      <span className="flex size-4 shrink-0 items-center justify-center">
-                        {stageFilter === f.id && <Check className="size-3.5 stroke-2" />}
-                      </span>
-                      {f.label}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
 
@@ -424,7 +426,7 @@ function ContactsContent() {
                     <tr
                       key={c.id}
                       onClick={() => router.push(`/contacts/${c.id}`)}
-                      className="border-b border-border cursor-pointer transition-colors hover:bg-muted/40 group/row"
+                      className="border-b border-border cursor-pointer transition-colors hover:bg-muted/40"
                     >
                       {/* Checkbox */}
                       <td className="px-4 py-3.5" onClick={(e) => e.stopPropagation()}>
@@ -478,7 +480,7 @@ function ContactsContent() {
 
                       {/* Actions */}
                       <td className="px-4 py-3.5" onClick={(e) => e.stopPropagation()}>
-                        <div className="flex items-center justify-end gap-0.5 opacity-0 group-hover/row:opacity-100 transition-opacity">
+                        <div className="flex items-center justify-end gap-0.5">
                           <Link
                             href={`/atlas?contact=${c.id}`}
                             title="Préparer avec Atlas"
