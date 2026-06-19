@@ -12,8 +12,6 @@ import {
   Search,
   Users,
   Check,
-  Sparkles,
-  Mic,
 } from 'lucide-react'
 import Link from 'next/link'
 import { useState } from 'react'
@@ -64,6 +62,12 @@ const agenda = [
 ]
 
 const ariaPhases = ['Invitation', 'Suivi', 'Démarrage', 'Coaching']
+
+const DESKTOP_RDV = [
+  { day: 'AUJ.',  time: '14:00', title: 'Call équipe hebdo',             sub: 'Visio · 6 participants'  },
+  { day: 'AUJ.',  time: '16:30', title: "Présentation produit — Sophie", sub: "Prospect · présentiel"   },
+  { day: 'DEM.',  time: '09:00', title: 'Closing avec Karim',             sub: 'Appel téléphonique'      },
+]
 
 // ── Données desktop ───────────────────────────────────────────────────────────
 
@@ -487,37 +491,25 @@ export default function HomePage() {
           {/* ── Colonne droite ── */}
           <div className="flex flex-col gap-5">
 
-            {/* Sessions avec Atlas */}
+            {/* Prochains rendez-vous */}
             <Card className="p-0 overflow-hidden">
               <div className="flex items-center justify-between px-5 py-3.5 border-b border-border">
-                <div className="flex items-center gap-2">
-                  <span className="text-sm font-bold text-foreground">Sessions avec Atlas</span>
-                </div>
-                <Link href="/atlas" className="text-xs font-medium text-muted-foreground hover:text-foreground transition-colors">Tout voir →</Link>
+                <span className="text-sm font-bold text-foreground">Prochains rendez-vous</span>
+                <Link href="/agenda" className="text-xs font-medium text-muted-foreground hover:text-foreground transition-colors">Agenda →</Link>
               </div>
-              <div className="flex flex-col gap-0.5 p-2">
-                {[
-                  { icon: Sparkles, label: "Stratégie — relances prospects c...", time: "Auj. · 09:12", score: null },
-                  { icon: Mic,      label: "Débrief simulation — Closing", time: "Hier · 18:40", score: 88 },
-                  { icon: Sparkles, label: "Préparation call équipe", time: "Hier · 08:30", score: null },
-                ].map((s, i) => {
-                  const Icon = s.icon
-                  return (
-                    <Link key={i} href="/atlas"
-                      className="flex items-center gap-3 rounded-xl px-3 py-2.5 hover:bg-muted transition-colors group">
-                      <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-muted group-hover:bg-background transition-colors">
-                        <Icon className="size-3.5 text-muted-foreground stroke-[1.5]" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-xs font-medium text-foreground truncate">{s.label}</p>
-                        <p className="text-[11px] text-muted-foreground">{s.time}</p>
-                      </div>
-                      {s.score && (
-                        <span className="flex size-6 items-center justify-center rounded-md bg-[#22c55e]/10 text-[#22c55e] text-[10px] font-bold shrink-0">{s.score}</span>
-                      )}
-                    </Link>
-                  )
-                })}
+              <div className="px-5 py-4 flex flex-col gap-4">
+                {DESKTOP_RDV.map((r, i) => (
+                  <div key={i} className="flex items-start gap-3">
+                    <div className="text-center shrink-0 w-10">
+                      <p className="text-[10px] font-bold text-muted-foreground">{r.day}</p>
+                      <p className="text-sm font-bold text-foreground tabular-nums">{r.time}</p>
+                    </div>
+                    <div className="flex-1 min-w-0 border-l border-border pl-3">
+                      <p className="text-xs font-medium text-foreground leading-tight">{r.title}</p>
+                      <p className="text-[11px] text-muted-foreground mt-0.5">{r.sub}</p>
+                    </div>
+                  </div>
+                ))}
               </div>
             </Card>
 

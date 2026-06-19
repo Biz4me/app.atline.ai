@@ -5,7 +5,7 @@ import { usePathname } from 'next/navigation'
 import { useRef, useState, useEffect } from 'react'
 import { cn } from '@/lib/utils'
 import {
-  ChevronLeft, ChevronRight, Sparkles, Mic, CalendarDays,
+  ChevronLeft, ChevronRight, Sparkles, Mic,
   Search, X, History,
 } from 'lucide-react'
 import { toast } from 'sonner'
@@ -16,11 +16,6 @@ const ATLAS_SESSIONS = [
   { id: '3', icon: Sparkles, label: "Préparation call équipe",             time: "Hier · 08:30",  score: null },
 ]
 
-const RDV = [
-  { day: 'AUJ.',  time: '14:00', title: 'Call équipe hebdo',           sub: 'Visio · 6 participants' },
-  { day: 'AUJ.',  time: '16:30', title: "Présentation produit — Sophie", sub: "Prospect · présentiel" },
-  { day: 'DEM.',  time: '09:00', title: 'Closing avec Karim',           sub: 'Appel téléphonique' },
-]
 
 const ariaContacts = [
   { id: 'c1', name: 'Sophie Laurent', stage: 'Closing',     sim: 'Suivi' },
@@ -213,25 +208,31 @@ export function AtlasSidebar({ collapsed, onToggle }: Props) {
             </div>
           </div>
 
-          {/* ── Card Prochains RDV ── */}
+          {/* ── Card Sessions avec Atlas ── */}
           <div className="rounded-xl border border-border bg-surface overflow-hidden">
             <div className="flex items-center justify-between px-4 py-3 border-b border-border">
-              <p className="text-sm font-bold text-foreground">Prochains rendez-vous</p>
-              <Link href="/agenda" className="text-xs font-medium text-muted-foreground hover:text-foreground transition-colors">Agenda →</Link>
+              <p className="text-sm font-bold text-foreground">Sessions avec Atlas</p>
+              <Link href="/atlas" className="text-xs font-medium text-muted-foreground hover:text-foreground transition-colors">Tout voir →</Link>
             </div>
-            <div className="px-4 py-3 flex flex-col gap-3">
-              {RDV.map((r, i) => (
-                <div key={i} className="flex items-start gap-3">
-                  <div className="text-center shrink-0 w-10">
-                    <p className="text-[10px] font-bold text-muted-foreground">{r.day}</p>
-                    <p className="text-sm font-bold text-foreground tabular-nums">{r.time}</p>
-                  </div>
-                  <div className="flex-1 min-w-0 border-l border-border pl-3">
-                    <p className="text-xs font-medium text-foreground leading-tight">{r.title}</p>
-                    <p className="text-[11px] text-muted-foreground mt-0.5">{r.sub}</p>
-                  </div>
-                </div>
-              ))}
+            <div className="flex flex-col gap-0.5 p-2">
+              {ATLAS_SESSIONS.map((s) => {
+                const Icon = s.icon
+                return (
+                  <Link key={s.id} href="/atlas"
+                    className="flex items-center gap-3 rounded-xl px-3 py-2.5 hover:bg-muted transition-colors group">
+                    <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-muted group-hover:bg-background transition-colors">
+                      <Icon className="size-3.5 text-muted-foreground stroke-[1.5]" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-medium text-foreground truncate">{s.label}</p>
+                      <p className="text-[11px] text-muted-foreground">{s.time}</p>
+                    </div>
+                    {s.score && (
+                      <span className="flex size-6 items-center justify-center rounded-md bg-[#22c55e]/10 text-[#22c55e] text-[10px] font-bold shrink-0">{s.score}</span>
+                    )}
+                  </Link>
+                )
+              })}
             </div>
           </div>
 
