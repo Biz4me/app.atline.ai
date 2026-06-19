@@ -2,15 +2,15 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Waypoints, Users, BookOpen, Zap, MessageSquare, CalendarDays, Sparkles } from 'lucide-react'
+import { Route, ContactRound, SquarePen, BookOpen, MessageSquare, CalendarDays, Sparkles } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { BusinessSwitcher } from '@/components/business-switcher'
 
 const NAV_TABS = [
-  { href: '/home',      icon: Waypoints, label: 'Parcours'                },
-  { href: '/contacts',  icon: Users,     label: 'CRM'                     },
-  { href: '/formation', icon: BookOpen,  label: 'Formation'               },
-  { href: '/nova',      icon: Zap,       label: 'Nova', color: '#8B5CF6'  },
+  { href: '/home',      icon: Route,        label: 'Parcours'  },
+  { href: '/contacts',  icon: ContactRound, label: 'CRM'       },
+  { href: '/nova',      icon: SquarePen,    label: 'Contenu'   },
+  { href: '/formation', icon: BookOpen,     label: 'Formation' },
 ]
 
 export function DesktopTopBar() {
@@ -24,8 +24,8 @@ export function DesktopTopBar() {
       </div>
 
       {/* Center — section tabs */}
-      <div className="flex h-full items-stretch justify-center">
-        {NAV_TABS.map(({ href, icon: Icon, label, color: agentColor }) => {
+      <div className="flex flex-1 h-full items-stretch justify-center">
+        {NAV_TABS.map(({ href, icon: Icon, label }) => {
           const active = pathname === href || pathname.startsWith(href + '/')
           return (
             <Link
@@ -34,9 +34,8 @@ export function DesktopTopBar() {
               title={label}
               className={cn(
                 'relative flex items-center justify-center px-5 transition-colors',
-                active && !agentColor ? 'text-primary' : !active ? 'text-muted-foreground hover:text-foreground' : ''
+                active ? 'text-primary' : 'text-muted-foreground hover:text-foreground'
               )}
-              style={active && agentColor ? { color: agentColor } : undefined}
             >
               <Icon className={cn('size-5', active ? 'stroke-[2]' : 'stroke-[1.5]')} />
               {active && (
