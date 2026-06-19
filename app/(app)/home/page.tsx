@@ -11,15 +11,11 @@ import {
   History,
   Search,
   Users,
-  Mic,
-  CheckCircle2,
-  X,
   Check,
-  ThumbsUp,
   Sparkles,
 } from 'lucide-react'
 import Link from 'next/link'
-import { useState, useRef, useEffect } from 'react'
+import { useState } from 'react'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
 
@@ -192,15 +188,6 @@ const feedItems: FeedItem[] = [
 
 // ── Contacts ARIA (simulés) ───────────────────────────────────────────────────
 
-const ariaContacts = [
-  { id: 'c1', name: 'Sophie Laurent', stage: 'Closing', sim: 'Suivi' },
-  { id: 'c2', name: 'Thomas Renard', stage: 'Découverte', sim: 'Invitation' },
-  { id: 'c3', name: 'Julie Moreau', stage: 'Suivi J+7', sim: 'Suivi' },
-  { id: 'c4', name: 'Marie Dupont', stage: 'Filleule', sim: 'Démarrage' },
-  { id: 'c5', name: 'Alex Martin', stage: 'Partenaire', sim: 'Coaching' },
-  { id: 'c6', name: 'Sarah Petit', stage: 'Prospect', sim: 'Invitation' },
-]
-
 const JOURNAL = [
   { label: 'Simulation ARIA — score 82/100', time: "Aujourd'hui · 10h14" },
   { label: 'Contact ajouté — Marie Dupont (prospect)', time: 'Hier · 16h32' },
@@ -217,37 +204,7 @@ export default function HomePage() {
 
   // Tasks checkables
   const [checkedTasks, setCheckedTasks] = useState<Set<string>>(new Set(['t3']))
-
-  // Desktop ARIA state
-  const [deskSearch, setDeskSearch] = useState('')
-  const [deskOpen, setDeskOpen] = useState(false)
-  const [deskContact, setDeskContact] = useState<typeof ariaContacts[0] | null>(null)
-  const deskRef = useRef<HTMLDivElement>(null)
-
-  const filtered = ariaContacts.filter((c) =>
-    c.name.toLowerCase().includes(deskSearch.toLowerCase())
-  )
-
-  useEffect(() => {
-    function handleClick(e: MouseEvent) {
-      if (deskRef.current && !deskRef.current.contains(e.target as Node)) {
-        setDeskOpen(false)
-      }
-    }
-    document.addEventListener('mousedown', handleClick)
-    return () => document.removeEventListener('mousedown', handleClick)
-  }, [])
-
-  function selectContact(c: typeof ariaContacts[0]) {
-    setDeskContact(c)
-    setDeskSearch(c.name)
-    setDeskOpen(false)
-  }
-
-  function clearContact() {
-    setDeskContact(null)
-    setDeskSearch('')
-  }
+  const allDone = checkedTasks.size >= dailyTasks.length
 
   return (
     <>
@@ -397,8 +354,11 @@ export default function HomePage() {
                       Ton plan du jour{' '}
                       <span className="font-normal text-muted-foreground text-xs">· par Atlas</span>
                     </p>
-                    <p className="text-xs text-muted-foreground mt-0.5">
-                      {dailyTasks.filter((t) => !checkedTasks.has(t.id)).length} actions restantes
+                    <p className={cn(
+                      'text-xs mt-0.5',
+                      allDone ? 'text-[#22c55e] font-semibold' : 'text-muted-foreground'
+                    )}>
+                      {allDone ? 'Toutes les actions terminées ✓' : `${dailyTasks.filter((t) => !checkedTasks.has(t.id)).length} actions restantes`}
                     </p>
                   </div>
                 </div>
@@ -410,6 +370,20 @@ export default function HomePage() {
                   Discuter
                 </Link>
               </div>
+              {allDone ? (
+                <div className="flex items-center gap-3 px-5 py-5">
+                  <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-[#22c55e]/10">
+                    <Check className="size-5 text-[#22c55e] stroke-[2.5]" />
+                  </span>
+                  <div>
+                    <p className="text-sm font-semibold text-foreground">Plan du jour bouclé</p>
+                    <button type="button" onClick={() => setCheckedTasks(new Set())}
+                      className="text-xs text-muted-foreground hover:text-foreground transition-colors mt-0.5">
+                      Tout décocher
+                    </button>
+                  </div>
+                </div>
+              ) : (
               <div className="divide-y divide-border">
                 {dailyTasks.map((task) => {
                   const Icon = task.icon
@@ -456,6 +430,7 @@ export default function HomePage() {
                   )
                 })}
               </div>
+              )}
             </Card>
 
             {/* Zone 2 — Mon réseau bouge */}
@@ -518,117 +493,6 @@ export default function HomePage() {
 
           {/* ── Colonne droite ── */}
           <div className="flex flex-col gap-5">
-
-            {/* ARIA — nouvelle version */}
-            <Card className="p-0 overflow-hidden">
-              <div className="flex items-center justify-between px-5 py-3.5 border-b border-border">
-                <div className="flex items-center gap-2">
-                  <Mic className="size-4 stroke-[1.5] text-muted-foreground" />
-                  <span className="text-sm font-bold text-foreground">Simulateur ARIA</span>
-                </div>
-                <Link href="/aria" className="text-xs font-semibold text-primary">Voir tout →</Link>
-              </div>
-              <div className="p-4 flex flex-col gap-4">
-
-                {/* Recherche contact avec dropdown */}
-                <div ref={deskRef} className="relative">
-                  <div className={cn(
-                    'flex items-center gap-2 rounded-xl border bg-muted px-3 py-2.5 transition-colors',
-                    deskOpen ? 'border-primary/40 ring-2 ring-primary/20' : 'border-border'
-                  )}>
-                    <Search className="size-4 shrink-0 text-muted-foreground stroke-[1.5]" />
-                    <input
-                      type="text"
-                      value={deskSearch}
-                      onChange={(e) => {
-                        setDeskSearch(e.target.value)
-                        setDeskContact(null)
-                        setDeskOpen(e.target.value.length > 0)
-                      }}
-                      onFocus={() => { if (deskSearch.length > 0 && !deskContact) setDeskOpen(true) }}
-                      placeholder="Rechercher un contact..."
-                      className="flex-1 bg-transparent text-sm text-foreground placeholder:text-muted-foreground outline-none"
-                    />
-                    {deskSearch && (
-                      <button type="button" onClick={clearContact} className="text-muted-foreground hover:text-foreground transition-colors">
-                        <X className="size-3.5" />
-                      </button>
-                    )}
-                  </div>
-
-                  {/* Dropdown */}
-                  {deskOpen && filtered.length > 0 && (
-                    <div className="absolute left-0 right-0 top-full mt-1 z-20 rounded-xl border border-border bg-surface shadow-lg overflow-hidden">
-                      {filtered.map((c) => (
-                        <button
-                          key={c.id}
-                          type="button"
-                          onClick={() => selectContact(c)}
-                          className="flex w-full items-center justify-between px-3.5 py-2.5 text-left hover:bg-muted transition-colors"
-                        >
-                          <span className="text-sm font-medium text-foreground">{c.name}</span>
-                          <span className="text-[11px] text-muted-foreground">{c.stage}</span>
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
-
-                {/* Contact sélectionné — Atlas détecte le type */}
-                {deskContact ? (
-                  <div className="rounded-xl bg-muted/60 px-3.5 py-3 flex items-center gap-3">
-                    <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-primary/10 font-display text-sm font-bold text-primary">
-                      {deskContact.name.split(' ').map((n) => n[0]).join('')}
-                    </span>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold text-foreground">{deskContact.name}</p>
-                      <p className="text-[11px] text-muted-foreground">{deskContact.stage}</p>
-                    </div>
-                    <span className="rounded-full bg-primary/10 px-2.5 py-1 text-[11px] font-bold text-primary">
-                      {deskContact.sim}
-                    </span>
-                  </div>
-                ) : (
-                  <p className="text-xs text-muted-foreground text-center py-1">
-                    Atlas détecte automatiquement le type de simulation
-                  </p>
-                )}
-
-                {/* Bouton simuler */}
-                <Link
-                  href={deskContact ? `/aria?contact=${deskContact.id}&sim=${deskContact.sim}` : '/aria'}
-                  className={cn(
-                    'flex w-full items-center justify-center gap-2 rounded-xl py-2.5 text-sm font-bold transition-opacity',
-                    deskContact
-                      ? 'bg-primary text-primary-foreground hover:opacity-90'
-                      : 'bg-muted text-muted-foreground pointer-events-none'
-                  )}
-                >
-                  <Mic className="size-4 stroke-2" />
-                  {deskContact ? `Simuler — ${deskContact.sim}` : 'Simuler'}
-                </Link>
-
-                {/* Sessions précédentes */}
-                <button
-                  type="button"
-                  onClick={() => toast.info('Sessions précédentes')}
-                  className="flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground transition-colors"
-                >
-                  <History className="size-4 stroke-[1.5] shrink-0" />
-                  <span className="flex-1 text-left">Mes sessions précédentes</span>
-                  <ChevronRight className="size-3.5 shrink-0" />
-                </button>
-
-                {/* Dernière session */}
-                <div className="flex items-start gap-3 rounded-xl bg-muted/60 p-3">
-                  <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-success text-white font-display text-sm font-bold">82</span>
-                  <div className="min-w-0">
-                    <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-0.5">Dernière · Sophie Laurent</p>
-                    <p className="text-xs text-foreground leading-relaxed italic">« Bonne accroche — travaille ta relance sur l'objection prix. »</p>
-                  </div>
-                </div>
-              </div>
-            </Card>
 
             {/* Formation */}
             <Card className="p-0 overflow-hidden">
