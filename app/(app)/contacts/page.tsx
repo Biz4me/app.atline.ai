@@ -111,53 +111,57 @@ function ThFilter({
   onChange: (v: string) => void
   open: boolean
   onToggle: () => void
-  containerRef: React.RefObject<HTMLDivElement>
+  containerRef: { current: HTMLDivElement | null }
   className?: string
 }) {
   const active = current === sortKey
   return (
     <th className={cn('px-4 py-3 text-left', className)}>
-      <div className="flex items-center gap-1">
+      <div ref={containerRef} className="relative inline-flex items-center gap-1.5">
+        <span className="text-xs font-medium text-muted-foreground">{label}</span>
+
+        {/* Chevron filtre — avant l'icône de tri */}
+        <button
+          type="button"
+          onClick={onToggle}
+          className={cn(
+            'flex size-5 items-center justify-center rounded transition-colors',
+            value !== 'all' ? 'text-primary' : 'text-muted-foreground hover:text-foreground'
+          )}
+        >
+          <ChevronDown className={cn('size-3 stroke-2 transition-transform', open && 'rotate-180')} />
+        </button>
+
+        {/* Icône tri */}
         <button
           type="button"
           onClick={() => onSort(sortKey)}
-          className="flex items-center gap-4 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors"
+          className="flex size-5 items-center justify-center rounded text-muted-foreground hover:text-foreground transition-colors"
         >
-          {label}
           <SortIcon active={active} dir={dir} />
         </button>
-        <div ref={containerRef} className="relative">
-          <button
-            type="button"
-            onClick={onToggle}
-            className={cn(
-              'flex size-5 items-center justify-center rounded transition-colors',
-              value !== 'all' ? 'text-primary' : 'text-muted-foreground hover:text-foreground'
-            )}
-          >
-            <ChevronDown className={cn('size-3 stroke-2 transition-transform', open && 'rotate-180')} />
-          </button>
-          {open && (
-            <div className="absolute left-0 top-full mt-1.5 z-20 min-w-[160px] rounded-xl border border-border bg-surface shadow-lg overflow-hidden py-1">
-              {options.map((opt) => (
-                <button
-                  key={opt.id}
-                  type="button"
-                  onClick={() => onChange(opt.id)}
-                  className={cn(
-                    'flex w-full items-center gap-2.5 px-3 py-2.5 text-sm text-left transition-colors',
-                    value === opt.id ? 'bg-primary/5 text-primary font-medium' : 'text-foreground hover:bg-muted'
-                  )}
-                >
-                  <span className="flex size-4 shrink-0 items-center justify-center">
-                    {value === opt.id && <Check className="size-3.5 stroke-2" />}
-                  </span>
-                  {opt.label}
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
+
+        {/* Dropdown aligné sur le début du wrapper */}
+        {open && (
+          <div className="absolute left-0 top-full mt-1.5 z-20 min-w-[170px] rounded-xl border border-border bg-surface shadow-lg overflow-hidden py-1">
+            {options.map((opt) => (
+              <button
+                key={opt.id}
+                type="button"
+                onClick={() => onChange(opt.id)}
+                className={cn(
+                  'flex w-full items-center gap-2.5 px-3 py-2.5 text-sm text-left transition-colors',
+                  value === opt.id ? 'bg-primary/5 text-primary font-medium' : 'text-foreground hover:bg-muted'
+                )}
+              >
+                <span className="flex size-4 shrink-0 items-center justify-center">
+                  {value === opt.id && <Check className="size-3.5 stroke-2" />}
+                </span>
+                {opt.label}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
     </th>
   )
