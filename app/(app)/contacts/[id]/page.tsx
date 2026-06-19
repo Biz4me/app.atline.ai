@@ -33,11 +33,11 @@ const stageLabel: Record<string, string> = {
 }
 
 const stagePill: Record<string, string> = {
-  chaud: 'bg-red-100 text-red-600',
-  prospect: 'bg-amber-100 text-amber-600',
-  client: 'bg-green-100 text-green-700',
-  partenaire: 'bg-blue-100 text-blue-700',
-  nouveau: 'bg-gray-100 text-gray-600',
+  chaud:      'bg-primary/10 text-primary',
+  prospect:   'bg-info/10 text-info',
+  client:     'bg-success/10 text-success',
+  partenaire: 'bg-violet/10 text-violet',
+  nouveau:    'bg-muted text-muted-foreground',
 }
 
 /* Statut = catégorie affichée dans le header */
@@ -66,10 +66,10 @@ const personalityDesc: Record<string, string> = {
   C: 'Analytique, prudent — veut des preuves.',
 }
 const personalityBg: Record<string, string> = {
-  D: 'bg-red-500',
-  I: 'bg-amber-400',
-  S: 'bg-green-500',
-  C: 'bg-blue-500',
+  D: '#dc2626',
+  I: '#f59e0b',
+  S: '#22c55e',
+  C: '#3b82f6',
 }
 
 const timelineIcons = {
@@ -296,7 +296,7 @@ export default function ContactDetailPage({
 
   const initials = `${contact.firstName[0]}${contact.lastName[0]}`
   const personality = contact.disc ? personalityName[contact.disc] : null
-  const avatarBg = contact.disc ? personalityBg[contact.disc] : 'bg-zinc-400'
+  const avatarBg = contact.disc ? personalityBg[contact.disc] : undefined
   const statut = getStatut(contact.stage)
 
   /* shared blocks rendered in both mobile and desktop columns */
@@ -355,7 +355,7 @@ export default function ContactDetailPage({
         <div className="flex flex-col gap-5 lg:border-r lg:border-border lg:px-8 lg:py-8 lg:sticky lg:top-0 lg:h-[calc(100dvh-73px)] lg:overflow-y-auto">
           {/* Avatar + nom (mobile only — desktop has header) */}
           <div className="flex flex-col items-center gap-3 text-center lg:hidden">
-            <div className={cn('flex size-20 items-center justify-center rounded-full text-2xl font-bold text-white', avatarBg)}>
+            <div className="flex size-20 items-center justify-center rounded-full text-2xl font-bold text-white bg-muted" style={avatarBg ? { backgroundColor: avatarBg } : undefined}>
               {initials}
             </div>
             <div>
@@ -373,7 +373,7 @@ export default function ContactDetailPage({
 
           {/* Avatar desktop centré */}
           <div className="hidden lg:flex flex-col items-center gap-4 text-center">
-            <div className={cn('flex size-24 items-center justify-center rounded-full text-3xl font-bold text-white', avatarBg)}>
+            <div className="flex size-24 items-center justify-center rounded-full text-3xl font-bold text-white bg-muted" style={avatarBg ? { backgroundColor: avatarBg } : undefined}>
               {initials}
             </div>
             {contact.city && <span className="text-sm text-muted-foreground">{contact.city}</span>}
@@ -463,7 +463,7 @@ export default function ContactDetailPage({
               <p className="mb-3 text-[11px] font-extrabold uppercase tracking-widest text-primary">Personnalité</p>
               {contact.disc ? (
                 <div className="flex items-center gap-3">
-                  <span className={cn('flex size-9 shrink-0 items-center justify-center rounded-xl text-sm font-bold text-white', personalityBg[contact.disc])}>
+                  <span className="flex size-9 shrink-0 items-center justify-center rounded-xl text-sm font-bold text-white" style={{ backgroundColor: personalityBg[contact.disc] }}>
                     {personalityName[contact.disc][0]}
                   </span>
                   <div className="flex-1 min-w-0">
