@@ -55,7 +55,7 @@ export function DesktopTopBar() {
           type="button"
           onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
           title={theme === 'dark' ? 'Mode clair' : 'Mode sombre'}
-          className="flex size-10 items-center justify-center rounded-full text-muted-foreground hover:bg-muted transition-colors"
+          className="flex size-10 items-center justify-center rounded-full text-muted-foreground hover:bg-muted transition-colors outline-none"
         >
           {theme === 'dark'
             ? <Sun className="size-[18px] stroke-[1.5]" />

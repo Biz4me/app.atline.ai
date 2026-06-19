@@ -146,7 +146,7 @@ const feedItems: FeedItem[] = [
     avatarBg: 'bg-muted',
     name: 'Marie',
     label: 'a terminé le module 2',
-    sub: 'il y a 4h · ta filleule',
+    sub: 'il y a 4h · ta partenaire',
     trigger: 'Tu es au module 3 — continue',
     cta: '/network',
     ctaLabel: 'Voir',
