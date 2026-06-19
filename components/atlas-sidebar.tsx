@@ -1,19 +1,20 @@
 'use client'
 
-import { useState, useRef, useEffect } from 'react'
+import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { cn } from '@/lib/utils'
-import { PanelRightClose, PanelRightOpen, CalendarDays, Send, Sparkles } from 'lucide-react'
+import { PanelRightClose, PanelRightOpen, CalendarDays, Sparkles, Mic, ChevronRight } from 'lucide-react'
 
-const rdvs = [
-  { time: '14:00', name: 'Sophie Laurent', stage: 'Closing', stageColor: 'bg-red-100 text-red-600' },
-  { time: '16:30', name: 'Julie Moreau', stage: 'Découverte', stageColor: 'bg-blue-100 text-blue-600' },
+const ATLAS_SESSIONS = [
+  { id: '1', icon: Sparkles, label: "Stratégie — relances prospects c...", time: "Auj. · 09:12", score: null },
+  { id: '2', icon: Mic,      label: "Débrief simulation — Closing",        time: "Hier · 18:40",  score: 88 },
+  { id: '3', icon: Sparkles, label: "Préparation call équipe",             time: "Hier · 08:30",  score: null },
 ]
 
-type Msg = { id: string; from: 'atlas' | 'user'; text: string }
-
-const INITIAL_MESSAGES: Msg[] = [
-  { id: '1', from: 'atlas', text: "Bonjour ! Sophie est en phase de closing. Relance-la avec un chiffre concret : gain moyen de 400 EUR/mois en 3 mois." },
+const RDV = [
+  { day: 'AUJ.',  time: '14:00', title: 'Call équipe hebdo',        sub: 'Visio · 6 participants',  stage: 'Closing',     stageColor: 'bg-red-100 text-red-700' },
+  { day: 'AUJ.',  time: '16:30', title: "Présentation produit — Sophie", sub: 'Prospect · présentiel', stage: "Découverte", stageColor: 'bg-blue-100 text-blue-700' },
+  { day: 'DEM.',  time: '09:00', title: 'Closing avec Karim',         sub: 'Appel téléphonique',      stage: null,          stageColor: '' },
 ]
 
 interface Props {
@@ -23,30 +24,7 @@ interface Props {
 
 export function AtlasSidebar({ collapsed, onToggle }: Props) {
   const pathname = usePathname()
-  const [input, setInput] = useState('')
-  const [messages, setMessages] = useState<Msg[]>(INITIAL_MESSAGES)
-  const bottomRef = useRef<HTMLDivElement>(null)
-
-  // Auto-hide on /atlas page (the page itself IS Atlas)
   const hiddenOnThisPage = pathname === '/atlas' || pathname.startsWith('/atlas/')
-
-  useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }, [messages])
-
-  const send = () => {
-    if (!input.trim()) return
-    const userMsg: Msg = { id: Date.now().toString(), from: 'user', text: input }
-    setMessages((prev) => [...prev, userMsg])
-    setInput('')
-    // Simulated response
-    setTimeout(() => {
-      setMessages((prev) => [
-        ...prev,
-        { id: Date.now().toString(), from: 'atlas', text: "Je prends en compte ta question. Mode demo actif — bientot connecte a ton CRM." },
-      ])
-    }, 800)
-  }
 
   if (hiddenOnThisPage) return null
 
@@ -54,91 +32,108 @@ export function AtlasSidebar({ collapsed, onToggle }: Props) {
 
   return (
     <>
-      {/* Sidebar */}
       <aside
         className={cn(
           'hidden lg:flex flex-col fixed right-0 top-14 h-[calc(100dvh-3.5rem)] z-40',
-          'bg-surface border-l border-border',
+          'bg-background border-l border-border',
           'transition-[width,opacity] duration-200 ease-out overflow-hidden',
-          isOpen ? 'w-[320px] opacity-100' : 'w-0 opacity-0 pointer-events-none',
+          isOpen ? 'w-[300px] opacity-100' : 'w-0 opacity-0 pointer-events-none',
         )}
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-4 py-3 border-b border-border shrink-0">
+        <div className="flex items-center justify-between px-4 h-12 border-b border-border shrink-0">
           <div className="flex items-center gap-2">
-            <span className="flex size-6 items-center justify-center rounded-full bg-primary text-primary-foreground font-display text-xs font-bold">A</span>
-            <span className="text-sm font-bold text-foreground">Atlas</span>
+            <Sparkles className="size-4 text-primary stroke-[1.5]" />
+            <span className="text-sm font-semibold text-foreground">Atlas</span>
           </div>
-          <button type="button" onClick={onToggle} title="Masquer Atlas"
+          <button type="button" onClick={onToggle} title="Masquer"
             className="flex size-7 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground transition-colors">
             <PanelRightClose className="size-4" />
           </button>
         </div>
 
-        {/* Suggestion contextuelle */}
-        <div className="px-4 py-3 border-b border-border shrink-0">
-          <div className="rounded-xl bg-primary/5 border border-primary/15 p-3">
-            <div className="flex items-start gap-2">
-              <Sparkles className="size-3.5 text-primary shrink-0 mt-0.5 stroke-[1.5]" />
-              <p className="text-xs text-foreground leading-relaxed">
-                Sophie est prête pour le closing — relance-la avec un chiffre concret.
-              </p>
+        <div className="flex-1 overflow-y-auto">
+          {/* Sessions Atlas */}
+          <div className="px-4 pt-4 pb-2">
+            <div className="flex items-center justify-between mb-3">
+              <p className="text-xs font-semibold text-foreground">Sessions avec Atlas</p>
+              <Link href="/atlas" className="text-[11px] text-primary font-medium hover:underline">
+                Tout voir
+              </Link>
+            </div>
+            <div className="flex flex-col gap-0.5">
+              {ATLAS_SESSIONS.map((s) => {
+                const Icon = s.icon
+                return (
+                  <Link key={s.id} href="/atlas"
+                    className="flex items-center gap-3 rounded-xl px-3 py-2.5 hover:bg-muted transition-colors group">
+                    <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-muted group-hover:bg-background transition-colors">
+                      <Icon className="size-3.5 text-muted-foreground stroke-[1.5]" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-medium text-foreground truncate">{s.label}</p>
+                      <p className="text-[11px] text-muted-foreground">{s.time}</p>
+                    </div>
+                    {s.score && (
+                      <span className="text-xs font-bold text-success shrink-0">{s.score}</span>
+                    )}
+                  </Link>
+                )
+              })}
             </div>
           </div>
-        </div>
 
-        {/* Prochains RDV */}
-        <div className="px-4 py-3 border-b border-border shrink-0">
-          <div className="flex items-center justify-between mb-2">
-            <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Prochains RDV</p>
-            <CalendarDays className="size-3.5 text-muted-foreground" />
-          </div>
-          <div className="flex flex-col gap-2">
-            {rdvs.map((r) => (
-              <div key={r.time} className="flex items-center gap-2">
-                <span className="text-xs font-bold text-foreground tabular-nums w-10 shrink-0">{r.time}</span>
-                <span className={cn('rounded-full px-2 py-0.5 text-[10px] font-bold shrink-0', r.stageColor)}>{r.stage}</span>
-                <span className="text-xs text-foreground truncate">{r.name}</span>
+          <div className="mx-4 h-px bg-border" />
+
+          {/* ARIA */}
+          <div className="px-4 pt-4 pb-2">
+            <div className="flex items-center justify-between mb-3">
+              <p className="text-xs font-semibold text-foreground">Entraînement ARIA</p>
+              <Link href="/aria" className="text-[11px] text-primary font-medium hover:underline">
+                S&apos;entraîner
+              </Link>
+            </div>
+            <div className="flex items-center gap-3 bg-muted rounded-xl px-3 py-3">
+              <div className="relative flex size-12 shrink-0 items-center justify-center">
+                <svg className="size-12 -rotate-90" viewBox="0 0 48 48">
+                  <circle cx="24" cy="24" r="20" fill="none" stroke="var(--border)" strokeWidth="4" />
+                  <circle cx="24" cy="24" r="20" fill="none" stroke="#f97316" strokeWidth="4"
+                    strokeDasharray={`${2 * Math.PI * 20 * 0.74} ${2 * Math.PI * 20 * 0.26}`}
+                    strokeLinecap="round" />
+                </svg>
+                <span className="absolute text-sm font-bold text-foreground">74</span>
               </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Chat Atlas */}
-        <div className="flex-1 overflow-y-auto px-4 py-3 flex flex-col gap-3">
-          {messages.map((msg) => (
-            <div key={msg.id} className={cn('flex', msg.from === 'user' ? 'justify-end' : 'justify-start')}>
-              {msg.from === 'atlas' && (
-                <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground font-display text-[9px] font-bold mr-2 mt-0.5">A</span>
-              )}
-              <div className={cn(
-                'max-w-[220px] rounded-2xl px-3 py-2 text-xs leading-relaxed',
-                msg.from === 'atlas'
-                  ? 'bg-muted text-foreground rounded-tl-sm'
-                  : 'bg-primary text-primary-foreground rounded-tr-sm'
-              )}>
-                {msg.text}
+              <div>
+                <p className="text-xs font-semibold text-foreground">Bon niveau</p>
+                <p className="text-[11px] text-muted-foreground">15 simulations avec ARIA</p>
               </div>
             </div>
-          ))}
-          <div ref={bottomRef} />
-        </div>
+          </div>
 
-        {/* Input chat */}
-        <div className="px-4 py-3 border-t border-border shrink-0">
-          <div className="flex items-center gap-2 rounded-xl border border-border bg-muted px-3 py-2">
-            <input
-              type="text"
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={(e) => { if (e.key === 'Enter') send() }}
-              placeholder="Demander à Atlas…"
-              className="flex-1 bg-transparent text-xs text-foreground placeholder:text-muted-foreground outline-none"
-            />
-            <button type="button" onClick={send} disabled={!input.trim()}
-              className="flex size-6 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground disabled:opacity-30 transition-opacity">
-              <Send className="size-3 stroke-2" />
-            </button>
+          <div className="mx-4 h-px bg-border" />
+
+          {/* Prochains RDV */}
+          <div className="px-4 pt-4 pb-4">
+            <div className="flex items-center justify-between mb-3">
+              <p className="text-xs font-semibold text-foreground">Prochains rendez-vous</p>
+              <Link href="/agenda" className="text-[11px] text-primary font-medium hover:underline flex items-center gap-0.5">
+                Voir l&apos;agenda <ChevronRight className="size-3" />
+              </Link>
+            </div>
+            <div className="flex flex-col gap-2">
+              {RDV.map((r, i) => (
+                <div key={i} className="flex items-start gap-3">
+                  <div className="text-center shrink-0 w-10">
+                    <p className="text-[10px] font-bold text-muted-foreground">{r.day}</p>
+                    <p className="text-sm font-bold text-foreground tabular-nums">{r.time}</p>
+                  </div>
+                  <div className="flex-1 min-w-0 border-l border-border pl-3">
+                    <p className="text-xs font-medium text-foreground leading-tight">{r.title}</p>
+                    <p className="text-[11px] text-muted-foreground mt-0.5">{r.sub}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       </aside>
@@ -146,7 +141,7 @@ export function AtlasSidebar({ collapsed, onToggle }: Props) {
       {/* Tab flottante quand collapsed */}
       {!isOpen && !hiddenOnThisPage && (
         <button type="button" onClick={onToggle} title="Ouvrir Atlas"
-          className="hidden lg:flex fixed right-0 top-1/2 -translate-y-1/2 z-40 flex-col items-center gap-1 rounded-l-xl border border-r-0 border-border bg-surface px-1.5 py-3 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors shadow-sm">
+          className="hidden lg:flex fixed right-0 top-1/2 -translate-y-1/2 z-40 flex-col items-center gap-1 rounded-l-xl border border-r-0 border-border bg-background px-1.5 py-3 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors shadow-sm">
           <PanelRightOpen className="size-3.5" />
           <span className="text-[9px] font-bold tracking-wider [writing-mode:vertical-lr] rotate-180">ATLAS</span>
         </button>
