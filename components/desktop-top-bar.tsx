@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Route, ContactRound, SquarePen, BookOpen, MessageSquare, CalendarDays, Sparkles, Plus } from 'lucide-react'
+import { Route, ContactRound, SquarePen, BookOpen, MessageSquare, CalendarDays, Sparkles, Grid3X3 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { BusinessSwitcher } from '@/components/business-switcher'
 
@@ -52,7 +52,7 @@ export function DesktopTopBar() {
           type="button"
           className="flex size-10 items-center justify-center rounded-full text-muted-foreground hover:bg-muted transition-colors"
         >
-          <Plus className="size-[26px] stroke-[1.5]" />
+          <Grid3X3 className="size-[26px] stroke-[1.5]" />
         </button>
         <Link
           href="/messages"
