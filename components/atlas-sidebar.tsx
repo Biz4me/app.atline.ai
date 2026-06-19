@@ -186,9 +186,10 @@ export function AtlasSidebar({ collapsed, onToggle }: Props) {
                 className={cn(
                   'flex w-full items-center justify-center gap-2 rounded-xl py-2.5 text-xs font-bold transition-opacity',
                   contact
-                    ? 'bg-primary text-primary-foreground hover:opacity-90'
+                    ? 'text-white hover:opacity-90'
                     : 'bg-muted text-muted-foreground pointer-events-none'
                 )}
+                style={contact ? { backgroundColor: '#14B8A6' } : undefined}
               >
                 <Mic className="size-3.5 stroke-2" />
                 {contact ? `Simuler — ${contact.sim}` : 'Simuler'}
