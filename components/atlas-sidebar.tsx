@@ -13,7 +13,7 @@ const rdvs = [
 type Msg = { id: string; from: 'atlas' | 'user'; text: string }
 
 const INITIAL_MESSAGES: Msg[] = [
-  { id: '1', from: 'atlas', text: "Bonjour ! Sophie est en phase de closing — relance-la avec un chiffre concret : « En 3 mois j'ai ajouté 400€/mois. »" },
+  { id: '1', from: 'atlas', text: "Bonjour ! Sophie est en phase de closing. Relance-la avec un chiffre concret : gain moyen de 400 EUR/mois en 3 mois." },
 ]
 
 interface Props {
@@ -43,7 +43,7 @@ export function AtlasSidebar({ collapsed, onToggle }: Props) {
     setTimeout(() => {
       setMessages((prev) => [
         ...prev,
-        { id: Date.now().toString(), from: 'atlas', text: "Je prends en compte ta question. Pour l'instant je suis en mode demo - bientot connecte a ton CRM." },
+        { id: Date.now().toString(), from: 'atlas', text: "Je prends en compte ta question. Mode demo actif — bientot connecte a ton CRM." },
       ])
     }, 800)
   }

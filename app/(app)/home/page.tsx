@@ -13,11 +13,14 @@ import {
   Users,
   Mic,
   CheckCircle2,
+  X,
 } from 'lucide-react'
 import Link from 'next/link'
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
+
+// ── Données mobiles (inchangées) ─────────────────────────────────────────────
 
 const dailyTasks = [
   {
@@ -62,15 +65,182 @@ const agenda = [
 
 const ariaPhases = ['Invitation', 'Suivi', 'Démarrage', 'Coaching']
 
+// ── Données desktop ───────────────────────────────────────────────────────────
+
+type FeedAction = {
+  kind: 'action'
+  id: string
+  tag: string
+  tagColor: string
+  icon: React.ElementType
+  iconBg: string
+  iconColor: string
+  label: string
+  cta: string
+  ctaLabel: string
+  ctaPrimary: boolean
+}
+
+type FeedNetwork = {
+  kind: 'network'
+  id: string
+  initials: string
+  avatarBg: string
+  name: string
+  label: string
+  sub: string
+  trigger: string
+  cta: string
+  ctaLabel: string
+}
+
+type FeedItem = FeedAction | FeedNetwork
+
+const feedItems: FeedItem[] = [
+  {
+    kind: 'action',
+    id: 'f1',
+    tag: 'AGIS',
+    tagColor: 'bg-primary/10 text-primary',
+    icon: Flame,
+    iconBg: 'bg-orange-100',
+    iconColor: 'text-primary',
+    label: 'Relancer Sophie — prospect chaud depuis 5 jours',
+    cta: '/contacts/c1',
+    ctaLabel: 'Préparer',
+    ctaPrimary: true,
+  },
+  {
+    kind: 'network',
+    id: 'f2',
+    initials: 'TH',
+    avatarBg: 'bg-blue-400',
+    name: 'Thomas',
+    label: 'a signé son premier closing',
+    sub: 'il y a 2h · ton N1',
+    trigger: 'Appelle tes prospects chauds',
+    cta: '/contacts',
+    ctaLabel: 'Féliciter',
+  },
+  {
+    kind: 'action',
+    id: 'f3',
+    tag: 'HONORE',
+    tagColor: 'bg-amber-100 text-amber-700',
+    icon: CalendarDays,
+    iconBg: 'bg-amber-100',
+    iconColor: 'text-amber-600',
+    label: '14:00 — Closing avec Sophie Laurent',
+    cta: '/agenda',
+    ctaLabel: 'Agenda',
+    ctaPrimary: false,
+  },
+  {
+    kind: 'network',
+    id: 'f4',
+    initials: 'MA',
+    avatarBg: 'bg-green-400',
+    name: 'Marie',
+    label: 'a terminé le module 2',
+    sub: 'il y a 4h · ta filleule',
+    trigger: 'Tu es au module 3 — continue',
+    cta: '/network',
+    ctaLabel: 'Voir',
+  },
+  {
+    kind: 'action',
+    id: 'f5',
+    tag: 'APPRENDS',
+    tagColor: 'bg-green-100 text-green-700',
+    icon: BookOpen,
+    iconBg: 'bg-green-100',
+    iconColor: 'text-green-600',
+    label: 'Module 3 — 4 leçons restantes',
+    cta: '/formation',
+    ctaLabel: 'Reprendre',
+    ctaPrimary: false,
+  },
+  {
+    kind: 'network',
+    id: 'f6',
+    initials: 'LU',
+    avatarBg: 'bg-violet-400',
+    name: 'Lucas',
+    label: 'a ajouté 3 contacts cette semaine',
+    sub: 'hier · ton N2',
+    trigger: 'Tu as 2 prospects en attente de relance',
+    cta: '/network',
+    ctaLabel: 'Motiver',
+  },
+  {
+    kind: 'action',
+    id: 'f7',
+    tag: 'AGIS',
+    tagColor: 'bg-primary/10 text-primary',
+    icon: PhoneCall,
+    iconBg: 'bg-blue-100',
+    iconColor: 'text-blue-600',
+    label: 'Appeler Julie Moreau — suivi à J+7',
+    cta: '/contacts',
+    ctaLabel: 'Script',
+    ctaPrimary: false,
+  },
+]
+
+// ── Contacts ARIA (simulés) ───────────────────────────────────────────────────
+
+const ariaContacts = [
+  { id: 'c1', name: 'Sophie Laurent', stage: 'Closing', sim: 'Suivi' },
+  { id: 'c2', name: 'Thomas Renard', stage: 'Découverte', sim: 'Invitation' },
+  { id: 'c3', name: 'Julie Moreau', stage: 'Suivi J+7', sim: 'Suivi' },
+  { id: 'c4', name: 'Marie Dupont', stage: 'Filleule', sim: 'Démarrage' },
+  { id: 'c5', name: 'Alex Martin', stage: 'Partenaire', sim: 'Coaching' },
+  { id: 'c6', name: 'Sarah Petit', stage: 'Prospect', sim: 'Invitation' },
+]
+
+// ── Page ─────────────────────────────────────────────────────────────────────
+
 export default function HomePage() {
+  // Mobile state
   const [ariaPhase, setAriaPhase] = useState('Invitation')
   const [ariaSearch, setAriaSearch] = useState('')
+
+  // Desktop ARIA state
+  const [deskSearch, setDeskSearch] = useState('')
+  const [deskOpen, setDeskOpen] = useState(false)
+  const [deskContact, setDeskContact] = useState<typeof ariaContacts[0] | null>(null)
+  const deskRef = useRef<HTMLDivElement>(null)
+
+  const filtered = ariaContacts.filter((c) =>
+    c.name.toLowerCase().includes(deskSearch.toLowerCase())
+  )
+
+  useEffect(() => {
+    function handleClick(e: MouseEvent) {
+      if (deskRef.current && !deskRef.current.contains(e.target as Node)) {
+        setDeskOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClick)
+    return () => document.removeEventListener('mousedown', handleClick)
+  }, [])
+
+  function selectContact(c: typeof ariaContacts[0]) {
+    setDeskContact(c)
+    setDeskSearch(c.name)
+    setDeskOpen(false)
+  }
+
+  function clearContact() {
+    setDeskContact(null)
+    setDeskSearch('')
+  }
 
   return (
     <>
       <TopBar />
 
-      {/* ══════════════ MOBILE ══════════════ */}
+      {/* ══════════════ MOBILE — NE PAS TOUCHER ══════════════ */}
       <div className="lg:hidden px-4 pt-5 pb-8">
         <h1 className="font-display text-[32px] font-extrabold leading-tight tracking-[-0.025em] text-foreground">
           Mon parcours
@@ -197,7 +367,7 @@ export default function HomePage() {
       {/* ══════════════ DESKTOP ══════════════ */}
       <div className="hidden lg:block px-8 pt-8 pb-10 max-w-6xl mx-auto">
 
-        {/* KPI strip — mêmes Cards que le reste du site */}
+        {/* KPI strip */}
         <div className="grid grid-cols-4 gap-4 mb-6">
           {[
             { label: 'Contacts actifs', value: '12', sub: '+2 cette semaine', valueColor: '' },
@@ -222,114 +392,179 @@ export default function HomePage() {
         {/* Grille 2 colonnes */}
         <div className="grid grid-cols-[1fr_340px] gap-6 items-start">
 
-          {/* ── Colonne gauche ── */}
-          <div className="flex flex-col gap-5">
-
-            {/* Plan du jour */}
-            <Card className="p-0 overflow-hidden">
-              <div className="flex items-center justify-between px-5 py-3.5 border-b border-border">
-                <div className="flex items-center gap-2.5">
-                  <span className="flex size-6 items-center justify-center rounded-full bg-primary text-primary-foreground font-display text-xs font-bold">A</span>
-                  <span className="text-sm font-bold text-foreground">Plan du jour</span>
-                </div>
-                <span className="text-xs text-muted-foreground">jeudi 18 juin · 2/3 faits</span>
+          {/* ── Colonne gauche — Fil d'activité ── */}
+          <Card className="p-0 overflow-hidden">
+            <div className="flex items-center justify-between px-5 py-3.5 border-b border-border">
+              <div className="flex items-center gap-2.5">
+                <span className="flex size-6 items-center justify-center rounded-full bg-primary text-primary-foreground font-display text-xs font-bold">A</span>
+                <span className="text-sm font-bold text-foreground">Fil du jour</span>
               </div>
-              <div className="divide-y divide-border">
-                {dailyTasks.map((task) => {
-                  const Icon = task.icon
+              <span className="text-xs text-muted-foreground">jeudi 18 juin · 7 éléments</span>
+            </div>
+            <div className="divide-y divide-border">
+              {feedItems.map((item) => {
+                if (item.kind === 'action') {
+                  const Icon = item.icon
                   return (
-                    <Link key={task.id} href={task.cta} className="flex items-center gap-3 px-5 py-3.5 hover:bg-muted/40 transition-colors">
-                      <span className={cn('flex size-9 shrink-0 items-center justify-center rounded-xl', task.done ? 'bg-success/15' : task.iconBg)}>
-                        {task.done
-                          ? <CheckCircle2 className="size-4 stroke-2 text-success" />
-                          : <Icon className={cn('size-4 stroke-[1.5]', task.iconColor)} />}
+                    <div key={item.id} className="flex items-center gap-3 px-5 py-3.5 hover:bg-muted/30 transition-colors">
+                      <span className={cn('flex size-9 shrink-0 items-center justify-center rounded-xl', item.iconBg)}>
+                        <Icon className={cn('size-4 stroke-[1.5]', item.iconColor)} />
                       </span>
-                      <span className={cn('flex-1 text-sm font-medium leading-snug', task.done ? 'line-through text-muted-foreground' : 'text-foreground')}>
-                        {task.label}
-                      </span>
-                      {!task.done && (
-                        <span className={cn('shrink-0 rounded-xl px-3.5 py-1.5 text-xs font-bold', task.ctaPrimary ? 'bg-primary text-primary-foreground' : 'border border-border bg-surface text-foreground')}>
-                          {task.ctaLabel}
+                      <div className="flex-1 min-w-0">
+                        <span className={cn('inline-block rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider mb-1', item.tagColor)}>
+                          {item.tag}
                         </span>
-                      )}
-                    </Link>
-                  )
-                })}
-              </div>
-            </Card>
-
-            {/* Rapport Atlas */}
-            <Card className="p-0 overflow-hidden">
-              <div className="flex items-center justify-between px-5 py-3.5 border-b border-border">
-                <div className="flex items-center gap-2.5">
-                  <span className="flex size-6 items-center justify-center rounded-full bg-primary/10">
-                    <span className="font-display text-xs font-bold text-primary">A</span>
-                  </span>
-                  <span className="text-sm font-bold text-foreground">Rapport Atlas · 9–15 juin</span>
-                </div>
-                <Link href="/network" className="text-xs font-semibold text-primary">Voir tout →</Link>
-              </div>
-              <div className="px-5 py-4">
-                <div className="grid grid-cols-4 gap-3 mb-4">
-                  {[
-                    { label: 'Contacts', value: '8' },
-                    { label: 'Appels', value: '5' },
-                    { label: 'RDV', value: '2' },
-                    { label: 'Score', value: '82', color: 'text-success' },
-                  ].map((s) => (
-                    <div key={s.label} className="rounded-xl bg-muted/60 px-3 py-2.5">
-                      <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{s.label}</p>
-                      <p className={cn('mt-0.5 font-display text-xl font-bold', s.color ?? 'text-foreground')}>{s.value}</p>
+                        <p className="text-sm font-medium text-foreground leading-snug truncate">{item.label}</p>
+                      </div>
+                      <Link
+                        href={item.cta}
+                        className={cn(
+                          'shrink-0 rounded-xl px-3.5 py-1.5 text-xs font-bold transition-colors',
+                          item.ctaPrimary
+                            ? 'bg-primary text-primary-foreground hover:opacity-90'
+                            : 'border border-border bg-surface text-foreground hover:bg-muted'
+                        )}
+                      >
+                        {item.ctaLabel}
+                      </Link>
                     </div>
-                  ))}
-                </div>
-                <p className="text-sm text-muted-foreground italic leading-relaxed">
-                  « Excellente semaine sur l'invitation. Point à améliorer : gestion des objections prix. »
-                </p>
-              </div>
-            </Card>
+                  )
+                }
 
-            {/* Agenda */}
-            <Card className="p-0 overflow-hidden">
-              <div className="flex items-center justify-between px-5 py-3.5 border-b border-border">
-                <div className="flex items-center gap-2">
-                  <CalendarDays className="size-4 stroke-[1.5] text-muted-foreground" />
-                  <span className="text-sm font-bold text-foreground">Agenda du jour</span>
-                </div>
-                <Link href="/agenda" className="text-xs font-semibold text-primary">Voir tout →</Link>
-              </div>
-              <div className="divide-y divide-border">
-                {agenda.map((item) => (
-                  <Link key={item.time} href={item.href} className="flex items-center gap-3 px-5 py-3.5 hover:bg-muted/40 transition-colors">
-                    <span className="w-12 shrink-0 text-sm font-bold text-foreground tabular-nums">{item.time}</span>
-                    <span className={cn('rounded-full px-2.5 py-0.5 text-[11px] font-bold shrink-0', item.stageColor)}>{item.stage}</span>
-                    <span className="flex-1 text-sm text-foreground">{item.name}</span>
-                    <ChevronRight className="size-4 shrink-0 text-muted-foreground" />
-                  </Link>
-                ))}
-              </div>
-            </Card>
-
-          </div>
+                // network item
+                return (
+                  <div key={item.id} className="px-5 py-3.5 hover:bg-muted/30 transition-colors">
+                    <div className="flex items-start gap-3">
+                      <span className={cn('flex size-9 shrink-0 items-center justify-center rounded-full text-[11px] font-bold text-white', item.avatarBg)}>
+                        {item.initials}
+                      </span>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm text-foreground leading-snug">
+                          <span className="font-bold">{item.name}</span>{' '}
+                          <span className="text-muted-foreground">{item.label}</span>
+                        </p>
+                        <p className="text-[11px] text-muted-foreground mt-0.5">{item.sub}</p>
+                        <p className="mt-1.5 text-xs text-primary font-medium">
+                          → {item.trigger}
+                        </p>
+                      </div>
+                      <Link
+                        href={item.cta}
+                        className="shrink-0 rounded-xl border border-border bg-surface px-3 py-1.5 text-xs font-semibold text-foreground hover:bg-muted transition-colors"
+                      >
+                        {item.ctaLabel}
+                      </Link>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          </Card>
 
           {/* ── Colonne droite ── */}
           <div className="flex flex-col gap-5">
 
-            {/* ARIA */}
+            {/* ARIA — nouvelle version */}
             <Card className="p-0 overflow-hidden">
               <div className="flex items-center justify-between px-5 py-3.5 border-b border-border">
-                <span className="text-sm font-bold text-foreground">Simulateur ARIA</span>
-                <Link href="/aria" className="text-xs font-semibold text-primary">Lancer →</Link>
+                <div className="flex items-center gap-2">
+                  <Mic className="size-4 stroke-[1.5] text-muted-foreground" />
+                  <span className="text-sm font-bold text-foreground">Simulateur ARIA</span>
+                </div>
+                <Link href="/aria" className="text-xs font-semibold text-primary">Voir tout →</Link>
               </div>
               <div className="p-4 flex flex-col gap-4">
-                <div className="flex flex-wrap gap-2">
-                  {ariaPhases.map((phase) => (
-                    <button key={phase} type="button" onClick={() => setAriaPhase(phase)}
-                      className={cn('rounded-full px-3.5 py-1.5 text-xs font-semibold transition-colors', ariaPhase === phase ? 'bg-primary/10 text-primary border border-primary/30' : 'border border-border bg-surface text-muted-foreground')}>
-                      {phase}
-                    </button>
-                  ))}
+
+                {/* Recherche contact avec dropdown */}
+                <div ref={deskRef} className="relative">
+                  <div className={cn(
+                    'flex items-center gap-2 rounded-xl border bg-muted px-3 py-2.5 transition-colors',
+                    deskOpen ? 'border-primary/40 ring-2 ring-primary/20' : 'border-border'
+                  )}>
+                    <Search className="size-4 shrink-0 text-muted-foreground stroke-[1.5]" />
+                    <input
+                      type="text"
+                      value={deskSearch}
+                      onChange={(e) => {
+                        setDeskSearch(e.target.value)
+                        setDeskContact(null)
+                        setDeskOpen(e.target.value.length > 0)
+                      }}
+                      onFocus={() => { if (deskSearch.length > 0 && !deskContact) setDeskOpen(true) }}
+                      placeholder="Rechercher un contact..."
+                      className="flex-1 bg-transparent text-sm text-foreground placeholder:text-muted-foreground outline-none"
+                    />
+                    {deskSearch && (
+                      <button type="button" onClick={clearContact} className="text-muted-foreground hover:text-foreground transition-colors">
+                        <X className="size-3.5" />
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Dropdown */}
+                  {deskOpen && filtered.length > 0 && (
+                    <div className="absolute left-0 right-0 top-full mt-1 z-20 rounded-xl border border-border bg-surface shadow-lg overflow-hidden">
+                      {filtered.map((c) => (
+                        <button
+                          key={c.id}
+                          type="button"
+                          onClick={() => selectContact(c)}
+                          className="flex w-full items-center justify-between px-3.5 py-2.5 text-left hover:bg-muted transition-colors"
+                        >
+                          <span className="text-sm font-medium text-foreground">{c.name}</span>
+                          <span className="text-[11px] text-muted-foreground">{c.stage}</span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 </div>
+
+                {/* Contact sélectionné — Atlas détecte le type */}
+                {deskContact ? (
+                  <div className="rounded-xl bg-muted/60 px-3.5 py-3 flex items-center gap-3">
+                    <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-primary/10 font-display text-sm font-bold text-primary">
+                      {deskContact.name.split(' ').map((n) => n[0]).join('')}
+                    </span>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold text-foreground">{deskContact.name}</p>
+                      <p className="text-[11px] text-muted-foreground">{deskContact.stage}</p>
+                    </div>
+                    <span className="rounded-full bg-primary/10 px-2.5 py-1 text-[11px] font-bold text-primary">
+                      {deskContact.sim}
+                    </span>
+                  </div>
+                ) : (
+                  <p className="text-xs text-muted-foreground text-center py-1">
+                    Atlas détecte automatiquement le type de simulation
+                  </p>
+                )}
+
+                {/* Bouton simuler */}
+                <Link
+                  href={deskContact ? `/aria?contact=${deskContact.id}&sim=${deskContact.sim}` : '/aria'}
+                  className={cn(
+                    'flex w-full items-center justify-center gap-2 rounded-xl py-2.5 text-sm font-bold transition-opacity',
+                    deskContact
+                      ? 'bg-primary text-primary-foreground hover:opacity-90'
+                      : 'bg-muted text-muted-foreground pointer-events-none'
+                  )}
+                >
+                  <Mic className="size-4 stroke-2" />
+                  {deskContact ? `Simuler — ${deskContact.sim}` : 'Simuler'}
+                </Link>
+
+                {/* Sessions précédentes */}
+                <button
+                  type="button"
+                  onClick={() => toast.info('Sessions précédentes')}
+                  className="flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  <History className="size-4 stroke-[1.5] shrink-0" />
+                  <span className="flex-1 text-left">Mes sessions précédentes</span>
+                  <ChevronRight className="size-3.5 shrink-0" />
+                </button>
+
+                {/* Dernière session */}
                 <div className="flex items-start gap-3 rounded-xl bg-muted/60 p-3">
                   <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-success text-white font-display text-sm font-bold">82</span>
                   <div className="min-w-0">
@@ -337,17 +572,6 @@ export default function HomePage() {
                     <p className="text-xs text-foreground leading-relaxed italic">« Bonne accroche — travaille ta relance sur l'objection prix. »</p>
                   </div>
                 </div>
-                <Link href={`/aria?phase=${ariaPhase}`}
-                  className="flex w-full items-center justify-center gap-2 rounded-xl bg-primary py-2.5 text-sm font-bold text-primary-foreground hover:opacity-90 transition-opacity">
-                  <Mic className="size-4 stroke-2" />
-                  Simuler — {ariaPhase}
-                </Link>
-                <button type="button" onClick={() => toast.info('Sessions précédentes')}
-                  className="flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground transition-colors">
-                  <History className="size-4 stroke-[1.5] shrink-0" />
-                  <span className="flex-1 text-left">Mes sessions précédentes</span>
-                  <ChevronRight className="size-3.5 shrink-0" />
-                </button>
               </div>
             </Card>
 
