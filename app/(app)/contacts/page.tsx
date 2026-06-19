@@ -440,11 +440,11 @@ function ContactsContent() {
           </div>
         </div>
 
-        {/* Card principale — toolbar + table + pagination */}
-        <div className="flex flex-col flex-1 overflow-hidden rounded-2xl border border-border bg-background shadow-sm">
+        {/* Toolbar + table + pagination — directement sur le fond gris */}
+        <div className="flex flex-col flex-1 overflow-hidden">
 
         {/* Toolbar */}
-        <div className="flex items-center gap-3 border-b border-border px-6 py-3 shrink-0">
+        <div className="flex items-center gap-3 px-1 pb-3 shrink-0">
           {/* Recherche */}
           <div className="relative w-64 shrink-0">
             <Search className="absolute left-3 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
@@ -518,8 +518,8 @@ function ContactsContent() {
           </div>
         </div>
 
-        {/* Main : table + pagination */}
-        <div className="flex flex-col flex-1 overflow-hidden">
+        {/* Main : table + pagination — card blanche sur le fond gris */}
+        <div className="flex flex-col flex-1 overflow-hidden rounded-2xl border border-border bg-background shadow-sm">
 
           {/* Table — scroll sans barre visible */}
           <div className="flex-1 overflow-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
