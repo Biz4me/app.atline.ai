@@ -518,8 +518,8 @@ function ContactsContent() {
           </div>
         </div>
 
-        {/* Main : table + pagination — card blanche sur le fond gris */}
-        <div className="flex flex-col flex-1 overflow-hidden rounded-2xl bg-background">
+        {/* Main : table + pagination — même Card que la Home */}
+        <div className="flex flex-col flex-1 overflow-hidden rounded-2xl border border-border bg-surface shadow-card">
 
           {/* Table — scroll sans barre visible */}
           <div className="flex-1 overflow-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
