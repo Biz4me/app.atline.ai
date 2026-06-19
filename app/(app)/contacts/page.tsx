@@ -15,6 +15,7 @@ import {
   Download, Upload, FileUp, X,
 } from 'lucide-react'
 import { AddContactSheet } from '@/components/add-contact-sheet'
+import { Card } from '@/components/card'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
 
@@ -385,7 +386,29 @@ function ContactsContent() {
       </div>
 
       {/* ══ DESKTOP ═════════════════════════════════════════════ */}
-      <div className="hidden lg:flex flex-col h-[calc(100dvh-56px)] overflow-hidden bg-muted/40 px-8 pt-8 pb-8">
+      <div className="hidden lg:flex flex-col h-[calc(100dvh-56px)] overflow-hidden bg-muted/40 px-8 pt-8 pb-8 gap-4">
+
+        {/* KPI Strip — même pattern que Home */}
+        {(() => {
+          const all    = contacts.filter((c) => c.businessId === current.id)
+          const chauds = all.filter((c) => c.stage === 'chaud').length
+          const nouveaux = all.filter((c) => c.stage === 'nouveau').length
+          return (
+            <div className="grid grid-cols-3 gap-3 shrink-0">
+              {[
+                { label: 'Total contacts',    value: String(all.length), sub: 'dans ma liste'    },
+                { label: 'Contacts chauds',   value: String(chauds),     sub: 'à relancer'       },
+                { label: 'Sans qualification', value: String(nouveaux),  sub: 'à qualifier'      },
+              ].map((kpi) => (
+                <Card key={kpi.label} className="px-4 py-3">
+                  <p className="text-xs font-medium text-muted-foreground">{kpi.label}</p>
+                  <p className="text-xl font-bold text-foreground mt-1 tabular-nums">{kpi.value}</p>
+                  <p className="text-[11px] text-muted-foreground mt-0.5">{kpi.sub}</p>
+                </Card>
+              ))}
+            </div>
+          )
+        })()}
 
         {/* Card — même composant que la Home */}
         <div className="flex flex-col flex-1 min-h-0 overflow-hidden rounded-2xl border border-border bg-surface shadow-card">
