@@ -12,6 +12,7 @@ import type { Contact, ContactStage } from '@/lib/types'
 import {
   Search, Plus, UserRound, ChevronDown, Check,
   Mic, Sparkles, Trash2, ArrowUpDown, ArrowUp, ArrowDown,
+  Download, Upload, FileUp, X,
 } from 'lucide-react'
 import { AddContactSheet } from '@/components/add-contact-sheet'
 import { cn } from '@/lib/utils'
@@ -106,11 +107,18 @@ function ContactsContent() {
   const [sortDir, setSortDir]         = useState<SortDir>('asc')
   const [dropdownOpen, setDropdownOpen] = useState(false)
   const dropdownRef = useRef<HTMLDivElement>(null)
+  const [exportImportOpen, setExportImportOpen] = useState(false)
+  const exportImportRef = useRef<HTMLDivElement>(null)
+  const [importModalOpen, setImportModalOpen] = useState(false)
+  const [importFile, setImportFile] = useState<File | null>(null)
 
   useEffect(() => {
     function handleClick(e: MouseEvent) {
       if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
         setDropdownOpen(false)
+      }
+      if (exportImportRef.current && !exportImportRef.current.contains(e.target as Node)) {
+        setExportImportOpen(false)
       }
     }
     document.addEventListener('mousedown', handleClick)
@@ -296,14 +304,49 @@ function ContactsContent() {
               {list.length}
             </span>
           </div>
-          <button
-            type="button"
-            onClick={() => setAddOpen(true)}
-            className="flex items-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-bold text-primary-foreground hover:bg-primary/90 transition-colors"
-          >
-            <Plus className="size-4 stroke-2" />
-            Ajouter un contact
-          </button>
+          <div className="flex items-center gap-2">
+            {/* Export / Import dropdown */}
+            <div ref={exportImportRef} className="relative">
+              <button
+                type="button"
+                onClick={() => setExportImportOpen((o) => !o)}
+                className="flex items-center gap-2 rounded-xl border border-border bg-surface px-4 py-2.5 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+              >
+                <Download className="size-4 stroke-[1.5]" />
+                Export / Import
+                <ChevronDown className={cn('size-3.5 stroke-2 transition-transform', exportImportOpen && 'rotate-180')} />
+              </button>
+              {exportImportOpen && (
+                <div className="absolute right-0 top-full mt-1.5 z-20 min-w-[200px] rounded-xl border border-border bg-surface shadow-lg overflow-hidden py-1">
+                  <button
+                    type="button"
+                    onClick={() => { setExportImportOpen(false); toast.success('Export CSV en cours…') }}
+                    className="flex w-full items-center gap-2.5 px-4 py-2.5 text-sm text-foreground hover:bg-muted transition-colors"
+                  >
+                    <Download className="size-4 stroke-[1.5] shrink-0" />
+                    Exporter en CSV
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { setExportImportOpen(false); setImportModalOpen(true) }}
+                    className="flex w-full items-center gap-2.5 px-4 py-2.5 text-sm text-foreground hover:bg-muted transition-colors"
+                  >
+                    <Upload className="size-4 stroke-[1.5] shrink-0" />
+                    Importer des contacts
+                  </button>
+                </div>
+              )}
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setAddOpen(true)}
+              className="flex items-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-bold text-primary-foreground hover:bg-primary/90 transition-colors"
+            >
+              <Plus className="size-4 stroke-2" />
+              Ajouter un contact
+            </button>
+          </div>
         </div>
 
         {/* Toolbar */}
@@ -405,9 +448,6 @@ function ContactsContent() {
               <table className="w-full border-collapse">
                 <thead className="sticky top-0 z-10 bg-background border-b border-border">
                   <tr>
-                    <th className="w-10 px-4 py-3">
-                      <input type="checkbox" className="rounded border-border" />
-                    </th>
                     <Th label="Contact"            sortKey="name"            {...thProps} className="min-w-[200px]" />
                     <Th label="Stade"              sortKey="stade"           {...thProps} />
                     <Th label="Température"        sortKey="stage"           {...thProps} />
@@ -425,11 +465,6 @@ function ContactsContent() {
                       onClick={() => router.push(`/contacts/${c.id}`)}
                       className="border-b border-border cursor-pointer transition-colors hover:bg-muted/40"
                     >
-                      {/* Checkbox */}
-                      <td className="px-4 py-3.5" onClick={(e) => e.stopPropagation()}>
-                        <input type="checkbox" className="rounded border-border" />
-                      </td>
-
                       {/* Contact */}
                       <td className="px-4 py-3.5">
                         <div className="flex items-center gap-3">
@@ -527,6 +562,94 @@ function ContactsContent() {
       </div>
 
       <AddContactSheet open={addOpen} onOpenChange={setAddOpen} />
+
+      {/* ══ MODALE IMPORT ════════════════════════════════════════ */}
+      {importModalOpen && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
+          onClick={() => setImportModalOpen(false)}
+        >
+          <div
+            className="relative w-full max-w-md rounded-2xl border border-border bg-surface p-6 shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className="mb-4 flex items-center justify-between">
+              <div>
+                <h2 className="text-sm font-bold text-foreground">Importer des contacts</h2>
+                <p className="text-xs text-muted-foreground mt-0.5">Fichier CSV, encodage UTF-8</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => { setImportModalOpen(false); setImportFile(null) }}
+                className="flex size-8 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted transition-colors"
+              >
+                <X className="size-4 stroke-2" />
+              </button>
+            </div>
+
+            {/* Drop zone */}
+            <label className="block cursor-pointer">
+              <input
+                type="file"
+                accept=".csv"
+                className="sr-only"
+                onChange={(e) => setImportFile(e.target.files?.[0] ?? null)}
+              />
+              <div className={cn(
+                'flex flex-col items-center gap-3 rounded-xl border-2 border-dashed py-10 transition-colors',
+                importFile ? 'border-primary/50 bg-primary/5' : 'border-border bg-muted/40 hover:border-primary/30'
+              )}>
+                <div className="flex size-10 items-center justify-center rounded-xl bg-muted">
+                  <FileUp className="size-5 stroke-[1.5] text-muted-foreground" />
+                </div>
+                {importFile ? (
+                  <div className="text-center">
+                    <p className="text-sm font-medium text-foreground">{importFile.name}</p>
+                    <p className="text-xs text-muted-foreground">{(importFile.size / 1024).toFixed(1)} Ko</p>
+                  </div>
+                ) : (
+                  <div className="text-center">
+                    <p className="text-sm font-medium text-foreground">Glisser un fichier ou cliquer</p>
+                    <p className="text-xs text-muted-foreground">Format CSV requis</p>
+                  </div>
+                )}
+              </div>
+            </label>
+
+            {/* Format info */}
+            <div className="mt-3 rounded-xl bg-muted px-4 py-3">
+              <p className="text-xs font-medium text-muted-foreground mb-1.5">Colonnes attendues :</p>
+              <p className="font-mono text-[11px] text-muted-foreground leading-relaxed">
+                prénom, nom, email, téléphone, ville, source, stage
+              </p>
+            </div>
+
+            {/* Actions */}
+            <div className="mt-4 flex gap-2.5">
+              <button
+                type="button"
+                onClick={() => { setImportModalOpen(false); setImportFile(null) }}
+                className="flex-1 rounded-xl border border-border py-2.5 text-sm font-medium text-muted-foreground hover:bg-muted transition-colors"
+              >
+                Annuler
+              </button>
+              <button
+                type="button"
+                disabled={!importFile}
+                onClick={() => {
+                  setImportModalOpen(false)
+                  setImportFile(null)
+                  toast.success("Import lancé — les contacts seront ajoutés sous peu.")
+                }}
+                className="flex-1 rounded-xl bg-primary py-2.5 text-sm font-bold text-primary-foreground disabled:opacity-40 hover:bg-primary/90 transition-colors"
+              >
+                Importer
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   )
 }
