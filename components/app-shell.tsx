@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, type ReactNode } from 'react'
+import { useState, useEffect, type ReactNode } from 'react'
 import { usePathname } from 'next/navigation'
 import { cn } from '@/lib/utils'
 import { DesktopSidebar } from '@/components/desktop-sidebar'
@@ -23,6 +23,12 @@ export function AppShell({ children, initialCollapsed, initialAtlasCollapsed }: 
 
   const [collapsed, setCollapsed] = useState(initialCollapsed)
   const [atlasCollapsed, setAtlasCollapsed] = useState(initialAtlasCollapsed)
+
+  useEffect(() => {
+    if (pathname.startsWith('/contacts')) {
+      setAtlasCollapsed(false)
+    }
+  }, [pathname])
 
   const toggle = () => {
     setCollapsed((v) => {

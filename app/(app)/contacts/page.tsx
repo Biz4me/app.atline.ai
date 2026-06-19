@@ -385,7 +385,10 @@ function ContactsContent() {
       </div>
 
       {/* ══ DESKTOP ═════════════════════════════════════════════ */}
-      <div className="hidden lg:flex flex-col h-[calc(100dvh-56px)] overflow-hidden">
+      <div className="hidden lg:flex flex-col h-[calc(100dvh-56px)] overflow-hidden bg-muted/40 p-4 gap-0">
+
+        {/* Card principale */}
+        <div className="flex flex-col flex-1 overflow-hidden rounded-2xl border border-border bg-background shadow-sm">
 
         {/* Sub-header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-border shrink-0">
@@ -776,6 +779,7 @@ function ContactsContent() {
             </div>
           )}
         </div>
+        </div>{/* fin card principale */}
       </div>
 
       <AddContactSheet open={addOpen} onOpenChange={setAddOpen} />
