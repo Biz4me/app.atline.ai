@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { TopBar } from '@/components/top-bar'
 import { useBusiness } from '@/components/business-provider'
 import { DiscAvatar } from '@/components/disc-avatar'
@@ -9,9 +10,8 @@ import { StagePill, DiscBadge } from '@/components/pills'
 import { contacts } from '@/lib/data'
 import type { Contact, ContactStage } from '@/lib/types'
 import {
-  Search, Plus, MessageSquare, PhoneCall, CalendarPlus,
-  Mic, Phone, Mail, Link2, Clock, UserRound,
-  Sparkles, Trash2, Eye, ArrowUpDown, ArrowUp, ArrowDown, X,
+  Search, Plus, UserRound,
+  Mic, Sparkles, Trash2, ArrowUpDown, ArrowUp, ArrowDown,
 } from 'lucide-react'
 import { AddContactSheet } from '@/components/add-contact-sheet'
 import { cn } from '@/lib/utils'
@@ -92,175 +92,20 @@ function Th({
   )
 }
 
-/* ── Desktop — panneau contact ───────────────────────────────── */
-function DesktopContactPanel({ contact, onClose }: { contact: Contact; onClose: () => void }) {
-  const initials = `${contact.firstName[0]}${contact.lastName[0]}`
-  const avatarColor = contact.disc ? discHex[contact.disc] : undefined
-
-  return (
-    <div className="flex flex-col h-full overflow-y-auto">
-      {/* Profil */}
-      <div className="flex flex-col items-center gap-3 px-6 py-6 border-b border-border relative">
-        <button
-          type="button"
-          onClick={onClose}
-          className="absolute right-4 top-4 flex size-7 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
-        >
-          <X className="size-4" />
-        </button>
-        <div
-          className="flex size-[64px] items-center justify-center rounded-full text-xl font-bold text-white"
-          style={{ backgroundColor: avatarColor ?? 'var(--muted)' }}
-        >
-          {initials}
-        </div>
-        <div className="text-center">
-          <h2 className="text-base font-bold text-foreground">
-            {contact.firstName} {contact.lastName}
-          </h2>
-          {contact.city && (
-            <p className="text-sm text-muted-foreground mt-0.5">{contact.city}</p>
-          )}
-        </div>
-        <div className="flex items-center gap-2 flex-wrap justify-center">
-          {contact.disc && <DiscBadge disc={contact.disc} />}
-          <StagePill stage={contact.stage} />
-        </div>
-      </div>
-
-      {/* 3 actions */}
-      <div className="grid grid-cols-3 gap-2 p-4 border-b border-border">
-        {([
-          { icon: MessageSquare, label: 'Message', href: `/messages/${contact.id}` },
-          { icon: PhoneCall,     label: 'Appel',   href: undefined                  },
-          { icon: CalendarPlus,  label: 'RDV',     href: '/agenda'                  },
-        ] as const).map((tile) => {
-          const Icon = tile.icon
-          const cls = 'flex flex-col items-center gap-1.5 rounded-xl border border-border bg-surface py-3 transition-colors hover:bg-muted/50'
-          if (tile.href) {
-            return (
-              <Link key={tile.label} href={tile.href} className={cls}>
-                <Icon className="size-[18px] stroke-[1.5] text-primary" />
-                <span className="text-xs font-medium text-foreground">{tile.label}</span>
-              </Link>
-            )
-          }
-          return (
-            <button key={tile.label} type="button"
-              onClick={() => toast.success(`Appel vers ${contact.firstName}`)}
-              className={cls}
-            >
-              <Icon className="size-[18px] stroke-[1.5] text-primary" />
-              <span className="text-xs font-medium text-foreground">{tile.label}</span>
-            </button>
-          )
-        })}
-      </div>
-
-      {/* Actions IA — Atlas avant ARIA */}
-      <div className="grid grid-cols-2 gap-2 px-4 py-3 border-b border-border">
-        <Link
-          href={`/atlas?contact=${contact.id}`}
-          className="flex items-center justify-center gap-2 rounded-xl bg-primary/10 py-2.5 text-xs font-bold text-primary hover:bg-primary/15 transition-colors"
-        >
-          <Sparkles className="size-3.5 stroke-[1.5]" />
-          Préparer
-        </Link>
-        <Link
-          href={`/aria?contact=${contact.id}`}
-          className="flex items-center justify-center gap-2 rounded-xl py-2.5 text-xs font-bold text-white hover:opacity-90 transition-opacity"
-          style={{ backgroundColor: '#14B8A6' }}
-        >
-          <Mic className="size-3.5 stroke-[1.5]" />
-          Simuler
-        </Link>
-      </div>
-
-      {/* Coordonnées */}
-      <div className="flex flex-col divide-y divide-border px-4">
-        {contact.phone && (
-          <div className="flex items-center gap-3 py-3">
-            <Phone className="size-4 shrink-0 stroke-[1.5] text-muted-foreground" />
-            <a href={`tel:${contact.phone}`} className="text-sm font-medium text-primary">
-              {contact.phone}
-            </a>
-          </div>
-        )}
-        {contact.email && (
-          <div className="flex items-center gap-3 py-3">
-            <Mail className="size-4 shrink-0 stroke-[1.5] text-muted-foreground" />
-            <span className="text-sm text-muted-foreground truncate">{contact.email}</span>
-          </div>
-        )}
-        {contact.source && (
-          <div className="flex items-center gap-3 py-3">
-            <Link2 className="size-4 shrink-0 stroke-[1.5] text-muted-foreground" />
-            <span className={cn('text-sm font-medium', sourceColor(contact.source))}>
-              {contact.source}
-            </span>
-          </div>
-        )}
-        <div className="flex items-center gap-3 py-3">
-          <Clock className="size-4 shrink-0 stroke-[1.5] text-muted-foreground" />
-          <span className="text-sm text-muted-foreground">
-            Dernier contact ·{' '}
-            <span className="font-medium text-foreground">{contact.lastInteraction}</span>
-          </span>
-        </div>
-      </div>
-
-      {/* Note */}
-      {contact.notes && (
-        <div className="px-4 py-4 border-t border-border">
-          <p className="eyebrow mb-2">Note</p>
-          <p className="text-sm text-muted-foreground leading-relaxed line-clamp-4">
-            {contact.notes}
-          </p>
-        </div>
-      )}
-
-      {/* Lien fiche complète */}
-      <div className="mt-auto px-4 py-4 border-t border-border">
-        <Link
-          href={`/contacts/${contact.id}`}
-          className="flex items-center justify-center gap-2 rounded-xl border border-border bg-surface py-2.5 text-sm font-medium text-foreground hover:bg-muted transition-colors"
-        >
-          Voir la fiche complète →
-        </Link>
-      </div>
-    </div>
-  )
-}
-
-/* ── Desktop — état vide ─────────────────────────────────────── */
-function DesktopEmptyState() {
-  return (
-    <div className="flex flex-col items-center justify-center h-full gap-3 text-center px-8">
-      <div className="flex size-12 items-center justify-center rounded-2xl bg-muted">
-        <UserRound className="size-6 stroke-[1.5] text-muted-foreground" />
-      </div>
-      <p className="text-sm text-muted-foreground">
-        Sélectionne un contact pour voir sa fiche
-      </p>
-    </div>
-  )
-}
-
 /* ── Page principale ─────────────────────────────────────────── */
 function ContactsContent() {
   const { current } = useBusiness()
+  const router = useRouter()
   const [segment, setSegment]         = useState<Segment>('prospects')
   const [stageFilter, setStageFilter] = useState('tous')
   const [query, setQuery]             = useState('')
   const [addOpen, setAddOpen]         = useState(false)
-  const [selectedId, setSelectedId]   = useState<string | null>(null)
   const [sortKey, setSortKey]         = useState<SortKey | null>(null)
   const [sortDir, setSortDir]         = useState<SortDir>('asc')
 
   const handleSegmentChange = (seg: Segment) => {
     setSegment(seg)
     setStageFilter('tous')
-    setSelectedId(null)
   }
 
   function toggleSort(key: SortKey) {
@@ -303,9 +148,7 @@ function ContactsContent() {
     return result
   }, [segment, stageFilter, query, current.id, sortKey, sortDir])
 
-  const filters  = stageFilters[segment]
-  const selected = list.find((c) => c.id === selectedId) ?? null
-
+  const filters = stageFilters[segment]
   const thProps = { current: sortKey, dir: sortDir, onSort: toggleSort }
 
   return (
@@ -547,13 +390,8 @@ function ContactsContent() {
                   {list.map((c) => (
                     <tr
                       key={c.id}
-                      onClick={() => setSelectedId(c.id === selectedId ? null : c.id)}
-                      className={cn(
-                        'border-b border-border cursor-pointer transition-colors group/row',
-                        selectedId === c.id
-                          ? 'bg-primary/5'
-                          : 'hover:bg-muted/40'
-                      )}
+                      onClick={() => router.push(`/contacts/${c.id}`)}
+                      className="border-b border-border cursor-pointer transition-colors hover:bg-muted/40 group/row"
                     >
                       {/* Checkbox */}
                       <td className="px-4 py-3.5" onClick={(e) => e.stopPropagation()}>
@@ -609,13 +447,6 @@ function ContactsContent() {
                       <td className="px-4 py-3.5" onClick={(e) => e.stopPropagation()}>
                         <div className="flex items-center justify-end gap-0.5 opacity-0 group-hover/row:opacity-100 transition-opacity">
                           <Link
-                            href={`/contacts/${c.id}`}
-                            title="Voir la fiche"
-                            className="flex size-8 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
-                          >
-                            <Eye className="size-4 stroke-[1.5]" />
-                          </Link>
-                          <Link
                             href={`/atlas?contact=${c.id}`}
                             title="Préparer avec Atlas"
                             className="flex size-8 items-center justify-center rounded-lg text-muted-foreground hover:bg-primary/10 hover:text-primary transition-colors"
@@ -645,23 +476,6 @@ function ContactsContent() {
               </table>
             )}
           </div>
-
-          {/* Panneau détail */}
-          {selected && (
-            <div className="w-[340px] shrink-0 border-l border-border overflow-hidden">
-              <DesktopContactPanel
-                contact={selected}
-                onClose={() => setSelectedId(null)}
-              />
-            </div>
-          )}
-
-          {/* État vide panel */}
-          {!selected && list.length > 0 && (
-            <div className="w-[340px] shrink-0 border-l border-border overflow-hidden">
-              <DesktopEmptyState />
-            </div>
-          )}
         </div>
       </div>
 
