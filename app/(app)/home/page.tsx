@@ -14,6 +14,9 @@ import {
   Mic,
   CheckCircle2,
   X,
+  Check,
+  ThumbsUp,
+  Sparkles,
 } from 'lucide-react'
 import Link from 'next/link'
 import { useState, useRef, useEffect } from 'react'
@@ -198,12 +201,22 @@ const ariaContacts = [
   { id: 'c6', name: 'Sarah Petit', stage: 'Prospect', sim: 'Invitation' },
 ]
 
+const JOURNAL = [
+  { label: 'Simulation ARIA — score 82/100', time: "Aujourd'hui · 10h14" },
+  { label: 'Contact ajouté — Marie Dupont (prospect)', time: 'Hier · 16h32' },
+  { label: 'Formation Module 2 terminé', time: 'Hier · 09h05' },
+  { label: 'Simulation ARIA — score 71/100', time: 'Lundi · 14h20' },
+]
+
 // ── Page ─────────────────────────────────────────────────────────────────────
 
 export default function HomePage() {
   // Mobile state
   const [ariaPhase, setAriaPhase] = useState('Invitation')
   const [ariaSearch, setAriaSearch] = useState('')
+
+  // Tasks checkables
+  const [checkedTasks, setCheckedTasks] = useState<Set<string>>(new Set(['t3']))
 
   // Desktop ARIA state
   const [deskSearch, setDeskSearch] = useState('')
@@ -367,76 +380,95 @@ export default function HomePage() {
       {/* ══════════════ DESKTOP ══════════════ */}
       <div className="hidden lg:block px-8 pt-8 pb-10 max-w-6xl mx-auto">
 
-        {/* KPI strip */}
-        <div className="grid grid-cols-4 gap-4 mb-6">
-          {[
-            { label: 'Contacts actifs', value: '12', sub: '+2 cette semaine', valueColor: '' },
-            { label: 'Score ARIA', value: '82', sub: '▲ +6 pts vs semaine passée', valueColor: 'text-success' },
-            { label: 'Progression', value: '60%', sub: null, valueColor: '' },
-            { label: 'Filleuls Atline', value: '3', sub: '2 mois offerts', valueColor: '' },
-          ].map((kpi) => (
-            <Card key={kpi.label} className="p-4">
-              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-widest mb-1">{kpi.label}</p>
-              <p className={cn('font-display text-3xl font-extrabold leading-none', kpi.valueColor || 'text-foreground')}>{kpi.value}</p>
-              {kpi.label === 'Progression' ? (
-                <div className="mt-2 h-1.5 w-full rounded-full bg-muted overflow-hidden">
-                  <div className="h-full w-[60%] rounded-full bg-primary" />
-                </div>
-              ) : (
-                <p className="mt-1.5 text-xs text-muted-foreground">{kpi.sub}</p>
-              )}
-            </Card>
-          ))}
-        </div>
-
-        {/* Grille 2 colonnes */}
         <div className="grid grid-cols-[1fr_340px] gap-6 items-start">
 
-          {/* ── Colonne gauche — Fil d'activité ── */}
-          <Card className="p-0 overflow-hidden">
-            <div className="flex items-center justify-between px-5 py-3.5 border-b border-border">
-              <div className="flex items-center gap-2.5">
-                <span className="flex size-6 items-center justify-center rounded-full bg-primary text-primary-foreground font-display text-xs font-bold">A</span>
-                <span className="text-sm font-bold text-foreground">Fil du jour</span>
+          {/* ── Colonne gauche — 3 zones ── */}
+          <div className="flex flex-col gap-5">
+
+            {/* Zone 1 — Plan du jour */}
+            <Card className="p-0 overflow-hidden">
+              <div className="flex items-start justify-between px-5 py-4 border-b border-border">
+                <div className="flex items-start gap-3">
+                  <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-primary/10">
+                    <Sparkles className="size-4 text-primary stroke-[1.5]" />
+                  </span>
+                  <div>
+                    <p className="text-sm font-bold text-foreground">
+                      Ton plan du jour{' '}
+                      <span className="font-normal text-muted-foreground text-xs">· par Atlas</span>
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      {dailyTasks.filter((t) => !checkedTasks.has(t.id)).length} actions restantes
+                    </p>
+                  </div>
+                </div>
+                <Link
+                  href="/atlas"
+                  className="flex items-center gap-1.5 rounded-xl bg-primary px-3.5 py-2 text-xs font-bold text-primary-foreground hover:opacity-90 transition-opacity shrink-0"
+                >
+                  <Sparkles className="size-3.5 stroke-2" />
+                  Discuter
+                </Link>
               </div>
-              <span className="text-xs text-muted-foreground">jeudi 18 juin · 7 éléments</span>
-            </div>
-            <div className="divide-y divide-border">
-              {feedItems.map((item) => {
-                if (item.kind === 'action') {
-                  const Icon = item.icon
+              <div className="divide-y divide-border">
+                {dailyTasks.map((task) => {
+                  const Icon = task.icon
+                  const done = checkedTasks.has(task.id)
                   return (
-                    <div key={item.id} className="flex items-center gap-3 px-5 py-3.5 hover:bg-muted/30 transition-colors">
-                      <span className={cn('flex size-9 shrink-0 items-center justify-center rounded-xl', item.iconBg)}>
-                        <Icon className={cn('size-4 stroke-[1.5]', item.iconColor)} />
-                      </span>
-                      <div className="flex-1 min-w-0">
-                        <span className={cn('inline-block rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider mb-1', item.tagColor)}>
-                          {item.tag}
-                        </span>
-                        <p className="text-sm font-medium text-foreground leading-snug truncate">{item.label}</p>
-                      </div>
-                      <Link
-                        href={item.cta}
+                    <div key={task.id} className={cn(
+                      'flex items-center gap-4 px-5 py-3.5 transition-colors hover:bg-muted/20',
+                      done && 'opacity-50'
+                    )}>
+                      <button
+                        type="button"
+                        onClick={() => setCheckedTasks((prev) => {
+                          const next = new Set(prev)
+                          next.has(task.id) ? next.delete(task.id) : next.add(task.id)
+                          return next
+                        })}
                         className={cn(
-                          'shrink-0 rounded-xl px-3.5 py-1.5 text-xs font-bold transition-colors',
-                          item.ctaPrimary
-                            ? 'bg-primary text-primary-foreground hover:opacity-90'
-                            : 'border border-border bg-surface text-foreground hover:bg-muted'
+                          'flex size-5 shrink-0 items-center justify-center rounded-full border-2 transition-colors',
+                          done ? 'border-primary bg-primary' : 'border-border hover:border-primary'
                         )}
                       >
-                        {item.ctaLabel}
-                      </Link>
+                        {done && <Check className="size-3 text-primary-foreground stroke-[3]" />}
+                      </button>
+                      <span className={cn('flex size-8 shrink-0 items-center justify-center rounded-lg', task.iconBg)}>
+                        <Icon className={cn('size-4 stroke-[1.5]', task.iconColor)} />
+                      </span>
+                      <p className={cn('flex-1 text-sm text-foreground', done && 'line-through text-muted-foreground')}>
+                        {task.label}
+                      </p>
+                      {!done && (
+                        <Link
+                          href={task.cta}
+                          className={cn(
+                            'shrink-0 rounded-xl px-3 py-1.5 text-xs font-bold transition-colors',
+                            task.ctaPrimary
+                              ? 'bg-primary text-primary-foreground hover:opacity-90'
+                              : 'border border-border bg-surface text-foreground hover:bg-muted'
+                          )}
+                        >
+                          {task.ctaLabel}
+                        </Link>
+                      )}
                     </div>
                   )
-                }
+                })}
+              </div>
+            </Card>
 
-                // network item
-                return (
-                  <div key={item.id} className="px-5 py-3.5 hover:bg-muted/30 transition-colors">
-                    <div className="flex items-start gap-3">
-                      <span className={cn('flex size-9 shrink-0 items-center justify-center rounded-full text-[11px] font-bold text-white', item.avatarBg)}>
-                        {item.initials}
+            {/* Zone 2 — Mon réseau bouge */}
+            <Card className="p-0 overflow-hidden">
+              <div className="flex items-center justify-between px-5 py-3.5 border-b border-border">
+                <p className="text-sm font-bold text-foreground">Mon réseau bouge</p>
+                <Link href="/network" className="text-xs font-semibold text-primary">Voir →</Link>
+              </div>
+              <div className="divide-y divide-border">
+                {(feedItems.filter((f) => f.kind === 'network') as FeedNetwork[]).map((item) => (
+                  <div key={item.id} className="flex items-center gap-3 px-5 py-3.5 hover:bg-muted/20 transition-colors">
+                    <span className={cn('flex size-9 shrink-0 items-center justify-center rounded-full text-[11px] font-bold text-white', item.avatarBg)}>
+                      {item.initials}
                       </span>
                       <div className="flex-1 min-w-0">
                         <p className="text-sm text-foreground leading-snug">
@@ -455,11 +487,38 @@ export default function HomePage() {
                         {item.ctaLabel}
                       </Link>
                     </div>
-                  </div>
                 )
               })}
             </div>
           </Card>
+
+            {/* Zone 3 — Journal de bord */}
+            <Card className="p-0 overflow-hidden">
+              <div className="flex items-center justify-between px-5 py-3.5 border-b border-border">
+                <p className="text-sm font-bold text-foreground">Journal de bord</p>
+              </div>
+              <div className="px-5 py-4 flex flex-col gap-4">
+                {JOURNAL.map((entry, i) => (
+                  <div key={i} className="flex items-start gap-3">
+                    <div className="flex flex-col items-center shrink-0 pt-1">
+                      <div className={cn(
+                        'size-2 rounded-full shrink-0',
+                        i === 0 ? 'bg-primary' : 'bg-border'
+                      )} />
+                      {i < JOURNAL.length - 1 && (
+                        <div className="w-px flex-1 bg-border mt-1.5 min-h-[24px]" />
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0 pb-1">
+                      <p className="text-sm text-foreground leading-snug">{entry.label}</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">{entry.time}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </Card>
+
+          </div>
 
           {/* ── Colonne droite ── */}
           <div className="flex flex-col gap-5">
