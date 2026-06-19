@@ -1,7 +1,7 @@
 'use client'
 
 import { useRef, useState, useEffect } from 'react'
-import { Check, ChevronDown } from 'lucide-react'
+import { Check, ChevronDown, Plus } from 'lucide-react'
 import { useBusiness } from '@/components/business-provider'
 import {
   Sheet,
@@ -93,6 +93,17 @@ export function BusinessSwitcher({ collapsed, variant = 'sheet' }: Props) {
                 {current.id === b.id && <Check className="size-3.5 shrink-0 text-primary" />}
               </button>
             ))}
+            <div className="mx-2 my-1 h-px bg-border" />
+            <button
+              type="button"
+              onClick={() => setOpen(false)}
+              className="flex w-full items-center gap-2.5 px-3 py-2 hover:bg-muted transition-colors"
+            >
+              <span className="flex size-6 shrink-0 items-center justify-center rounded-full border border-dashed border-border text-muted-foreground">
+                <Plus className="size-3" />
+              </span>
+              <p className="text-sm font-medium text-muted-foreground">Ajouter une activité</p>
+            </button>
           </div>
         )}
       </div>
