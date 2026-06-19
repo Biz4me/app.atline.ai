@@ -413,70 +413,17 @@ function ContactsContent() {
         {/* Card — même composant que la Home */}
         <div className="flex flex-col flex-1 min-h-0 overflow-hidden rounded-2xl border border-border bg-surface shadow-card">
 
-        {/* Sub-header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-border shrink-0">
-          <div className="flex items-center gap-3">
-            <h1 className="text-sm font-bold text-foreground">Mes contacts</h1>
-            <span className="rounded-full bg-muted px-2.5 py-0.5 text-xs font-medium text-muted-foreground">
-              {list.length}
-            </span>
-          </div>
-          <div className="flex items-center gap-2">
-            {/* Export / Import dropdown */}
-            <div ref={exportImportRef} className="relative">
-              <button
-                type="button"
-                onClick={() => setExportImportOpen((o) => !o)}
-                className="flex items-center gap-2 rounded-xl border border-border bg-background px-3.5 py-2 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-              >
-                <Download className="size-3.5 stroke-[1.5]" />
-                Export / Import
-                <ChevronDown className={cn('size-3 stroke-2 transition-transform', exportImportOpen && 'rotate-180')} />
-              </button>
-              {exportImportOpen && (
-                <div className="absolute right-0 top-full mt-1.5 z-20 min-w-[200px] rounded-xl border border-border bg-surface shadow-lg overflow-hidden py-1">
-                  <button
-                    type="button"
-                    onClick={() => { setExportImportOpen(false); toast.success('Export CSV en cours…') }}
-                    className="flex w-full items-center gap-2.5 px-4 py-2.5 text-sm text-foreground hover:bg-muted transition-colors"
-                  >
-                    <Download className="size-4 stroke-[1.5] shrink-0" />
-                    Exporter en CSV
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => { setExportImportOpen(false); setImportModalOpen(true) }}
-                    className="flex w-full items-center gap-2.5 px-4 py-2.5 text-sm text-foreground hover:bg-muted transition-colors"
-                  >
-                    <Upload className="size-4 stroke-[1.5] shrink-0" />
-                    Importer des contacts
-                  </button>
-                </div>
-              )}
-            </div>
-
-            <button
-              type="button"
-              onClick={() => setAddOpen(true)}
-              className="flex items-center gap-2 rounded-xl bg-primary px-3.5 py-2 text-xs font-bold text-primary-foreground hover:bg-primary/90 transition-colors"
-            >
-              <Plus className="size-3.5 stroke-2" />
-              Ajouter un contact
-            </button>
-          </div>
-        </div>
-
-        {/* Toolbar */}
+        {/* Barre unique : search | filtres | export + [+] */}
         <div className="flex items-center gap-3 border-b border-border px-6 py-3 shrink-0">
           {/* Recherche */}
-          <div className="relative w-64 shrink-0">
+          <div className="relative w-56 shrink-0">
             <Search className="absolute left-3 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
             <input
               type="search"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Rechercher un contact…"
-              className="w-full rounded-xl border border-border bg-muted py-2 pl-9 pr-3 text-sm outline-none placeholder:text-muted-foreground focus:ring-1 focus:ring-ring/40"
+              className="w-full rounded-xl border border-border bg-muted py-2 pl-9 pr-3 text-xs outline-none placeholder:text-muted-foreground focus:ring-1 focus:ring-ring/40"
             />
           </div>
 
@@ -538,6 +485,47 @@ function ContactsContent() {
                 ))}
               </div>
             )}
+          </div>
+
+          <div className="ml-auto flex items-center gap-2 shrink-0">
+            <div className="h-5 w-px bg-border" />
+            {/* Export / Import */}
+            <div ref={exportImportRef} className="relative">
+              <button
+                type="button"
+                onClick={() => setExportImportOpen((o) => !o)}
+                className="flex items-center gap-1.5 rounded-xl border border-border bg-background px-3 py-1.5 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+              >
+                <Download className="size-3.5 stroke-[1.5]" />
+                Export / Import
+                <ChevronDown className={cn('size-3 stroke-2 transition-transform', exportImportOpen && 'rotate-180')} />
+              </button>
+              {exportImportOpen && (
+                <div className="absolute right-0 top-full mt-1.5 z-20 min-w-[200px] rounded-xl border border-border bg-surface shadow-lg overflow-hidden py-1">
+                  <button type="button"
+                    onClick={() => { setExportImportOpen(false); toast.success('Export CSV en cours…') }}
+                    className="flex w-full items-center gap-2.5 px-4 py-2.5 text-sm text-foreground hover:bg-muted transition-colors">
+                    <Download className="size-4 stroke-[1.5] shrink-0" />
+                    Exporter en CSV
+                  </button>
+                  <button type="button"
+                    onClick={() => { setExportImportOpen(false); setImportModalOpen(true) }}
+                    className="flex w-full items-center gap-2.5 px-4 py-2.5 text-sm text-foreground hover:bg-muted transition-colors">
+                    <Upload className="size-4 stroke-[1.5] shrink-0" />
+                    Importer des contacts
+                  </button>
+                </div>
+              )}
+            </div>
+            {/* + */}
+            <button
+              type="button"
+              onClick={() => setAddOpen(true)}
+              title="Ajouter un contact"
+              className="flex size-8 items-center justify-center rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
+            >
+              <Plus className="size-4 stroke-2" />
+            </button>
           </div>
         </div>
 
