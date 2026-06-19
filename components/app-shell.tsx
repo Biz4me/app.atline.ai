@@ -13,6 +13,7 @@ const SECTIONS_WITH_SIDEBAR = ['/home', '/contacts', '/formation', '/nova', '/ne
 export function AppShell({ children }: { children: ReactNode }) {
   const pathname = usePathname()
   const hasSidebar = SECTIONS_WITH_SIDEBAR.some(s => pathname.startsWith(s))
+  const atlasHidden = pathname === '/atlas' || pathname.startsWith('/atlas/')
   const [collapsed, setCollapsed] = useState(false)
   const [atlasCollapsed, setAtlasCollapsed] = useState(false)
 
@@ -47,7 +48,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           'app-shell pb-[110px] lg:pb-0 lg:max-w-none lg:mx-0 lg:pt-14',
           'transition-[padding-left,padding-right] duration-200 ease-out',
           !hasSidebar ? 'lg:pl-0' : collapsed ? 'lg:pl-14' : 'lg:pl-56',
-          atlasCollapsed ? 'lg:pr-0' : 'lg:pr-[360px]',
+          atlasHidden ? 'lg:pr-0' : atlasCollapsed ? 'lg:pr-14' : 'lg:pr-[360px]',
         )}
       >
         {children}

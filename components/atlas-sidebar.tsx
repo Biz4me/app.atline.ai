@@ -5,7 +5,7 @@ import { usePathname } from 'next/navigation'
 import { useRef, useState, useEffect } from 'react'
 import { cn } from '@/lib/utils'
 import {
-  ChevronLeft, ChevronRight, Sparkles, Mic,
+  ChevronLeft, ChevronRight, Sparkles, Mic, CalendarDays,
   Search, X, History,
 } from 'lucide-react'
 import { toast } from 'sonner'
@@ -77,28 +77,46 @@ export function AtlasSidebar({ collapsed, onToggle }: Props) {
       <aside
         className={cn(
           'hidden lg:flex flex-col fixed right-0 top-14 h-[calc(100dvh-3.5rem)] z-40',
-          'bg-background border-l border-border',
-          'transition-[width,opacity] duration-200 ease-out overflow-hidden',
-          isOpen ? 'w-[360px] opacity-100' : 'w-0 opacity-0 pointer-events-none',
+          'bg-background border-l border-border overflow-hidden',
+          'transition-[width] duration-200 ease-out',
+          isOpen ? 'w-[360px]' : 'w-14',
         )}
       >
         {/* Header */}
-        <div className="flex items-center shrink-0 h-12 px-4 border-b border-border">
+        <div className={cn(
+          'flex items-center shrink-0 h-12 border-b border-border',
+          isOpen ? 'px-4' : 'justify-center px-0',
+        )}>
           <button
             type="button"
             onClick={onToggle}
-            title="Réduire"
+            title={isOpen ? 'Réduire' : 'Développer'}
             className="flex size-7 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
           >
-            <ChevronRight className="size-4" />
+            {isOpen ? <ChevronRight className="size-4" /> : <ChevronLeft className="size-4" />}
           </button>
-          <div className="flex items-center gap-2 ml-2">
-            <Sparkles className="size-4 text-primary stroke-[1.5]" />
-            <span className="text-sm font-semibold text-foreground">Atlas</span>
-          </div>
+          {isOpen && (
+            <div className="flex items-center gap-2 ml-2">
+              <Sparkles className="size-4 text-primary stroke-[1.5]" />
+              <span className="text-sm font-semibold text-foreground">Atlas</span>
+            </div>
+          )}
         </div>
 
-        <div className="flex-1 overflow-y-auto px-[10px] py-3 flex flex-col gap-3">
+        {!isOpen && (
+          <nav className="flex flex-col gap-0.5 px-2 pt-3 overflow-x-hidden">
+            <button type="button" onClick={onToggle} title="Simulateur ARIA"
+              className="flex size-10 items-center justify-center rounded-xl mx-auto text-muted-foreground hover:bg-muted hover:text-foreground transition-colors">
+              <Mic className="size-[18px] stroke-[1.5]" />
+            </button>
+            <button type="button" onClick={onToggle} title="Prochains rendez-vous"
+              className="flex size-10 items-center justify-center rounded-xl mx-auto text-muted-foreground hover:bg-muted hover:text-foreground transition-colors">
+              <CalendarDays className="size-[18px] stroke-[1.5]" />
+            </button>
+          </nav>
+        )}
+
+        <div className={cn('flex-1 overflow-y-auto px-[10px] py-3 flex flex-col gap-3', !isOpen && 'hidden')}>
 
           {/* ── Card Simulateur ARIA ── */}
           <div className="rounded-xl border border-border bg-surface overflow-hidden">
@@ -225,14 +243,6 @@ export function AtlasSidebar({ collapsed, onToggle }: Props) {
         </div>
       </aside>
 
-      {/* Tab flottante quand collapsed */}
-      {!isOpen && !hiddenOnThisPage && (
-        <button type="button" onClick={onToggle} title="Ouvrir Atlas"
-          className="hidden lg:flex fixed right-0 top-1/2 -translate-y-1/2 z-40 flex-col items-center gap-1 rounded-l-xl border border-r-0 border-border bg-background px-1.5 py-3 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors shadow-sm">
-          <ChevronLeft className="size-3.5" />
-          <span className="text-[9px] font-bold tracking-wider [writing-mode:vertical-lr] rotate-180">ATLAS</span>
-        </button>
-      )}
     </>
   )
 }
