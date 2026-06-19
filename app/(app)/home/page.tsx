@@ -347,7 +347,7 @@ export default function HomePage() {
         {/* ── KPI Strip ── */}
         <div className="grid grid-cols-3 gap-3 mb-6">
           {[
-            { label: 'Contacts actifs',    value: '12', sub: '+2 cette semaine'  },
+            { label: 'Liste de noms',       value: '12', sub: '+2 cette semaine'  },
             { label: 'Score ARIA',         value: '82', sub: 'Moyenne 30 jours'  },
             { label: 'Partenaires actifs', value: '4',  sub: 'sur 7 partenaires' },
           ].map((kpi) => (
