@@ -310,7 +310,7 @@ export function AtlasSidebar({ collapsed, onToggle }: Props) {
           </button>
           {isOpen && (
             <span className="ml-2 text-sm font-bold text-foreground">
-              {isCrm ? 'CRM' : 'Espace'}
+              Espace
             </span>
           )}
         </div>
