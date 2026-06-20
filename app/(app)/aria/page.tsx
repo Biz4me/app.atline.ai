@@ -292,7 +292,8 @@ function SimulatorScreen({
         setSimState('ended')
       })
 
-      await room.connect(url, token, { audio: true, video: false })
+      await room.connect(url, token)
+      await room.localParticipant.setMicrophoneEnabled(true)
       setSimState('calling')
     } catch (e) {
       console.error('LiveKit connect error', e)
