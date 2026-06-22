@@ -6,7 +6,7 @@ import {
   Home, Mic, Calendar,
   BookOpen, Library, PenLine, Inbox, BarChart2, GitFork,
   ChevronLeft, ChevronRight,
-  Settings, User, TrendingUp,
+  Settings, User, TrendingUp, Wrench, Link2, Bot, FileText,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { LucideIcon } from 'lucide-react'
@@ -123,6 +123,16 @@ function getSidebarSection(pathname: string): SidebarSection | null {
       title: 'Réseau Atline',
       items: [
         { href: '/network', label: 'Mon réseau', icon: GitFork },
+      ],
+    }
+  }
+  if (pathname.startsWith('/toolbox')) {
+    return {
+      title: 'Boîte à outils',
+      items: [
+        { href: '/toolbox', label: 'Liens rapides', icon: Link2 },
+        { href: '/toolbox', label: 'Supports de vente', icon: FileText },
+        { href: '/toolbox', label: 'Bots prospection', icon: Bot },
       ],
     }
   }
