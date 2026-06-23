@@ -280,7 +280,7 @@ export default function HomePage() {
               {agenda.map((item) => (
                 <div key={item.time} className="flex items-center gap-3 px-4 py-3">
                   <span className="w-12 shrink-0 text-sm font-bold text-foreground tabular-nums">{item.time}</span>
-                  <span className={cn('rounded-full px-2.5 py-0.5 text-[11px] font-bold', item.stageColor)}>{item.stage}</span>
+                  <span className={cn('rounded-full px-2.5 py-0.5 text-xs font-bold', item.stageColor)}>{item.stage}</span>
                   <span className="text-sm text-foreground">{item.name}</span>
                 </div>
               ))}
@@ -289,7 +289,7 @@ export default function HomePage() {
 
           {/* Simulateur ARIA */}
           <section>
-            <p className="mb-3 px-0.5 text-[11px] font-extrabold uppercase tracking-widest text-primary">Simulateur ARIA</p>
+            <p className="mb-3 px-0.5 text-xs font-extrabold uppercase tracking-widest text-primary">Simulateur ARIA</p>
             <Card className="p-4 flex flex-col gap-4">
               <div className="flex flex-wrap gap-2">
                 {ariaPhases.map((phase) => (
@@ -315,7 +315,7 @@ export default function HomePage() {
               <div className="flex items-start gap-3 rounded-xl bg-muted/60 p-3">
                 <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-success text-white font-display text-base font-bold">82</span>
                 <div>
-                  <p className="text-[11px] text-muted-foreground uppercase tracking-widest mb-0.5">Dernière session</p>
+                  <p className="text-xs text-muted-foreground uppercase tracking-widest mb-0.5">Dernière session</p>
                   <p className="text-xs text-foreground leading-relaxed italic">« Bonne accroche — travaille ta relance sur l'objection prix. »</p>
                 </div>
               </div>
@@ -358,7 +358,7 @@ export default function HomePage() {
             <Card key={kpi.label} className="px-4 py-3">
               <p className="text-xs font-medium text-muted-foreground">{kpi.label}</p>
               <p className="text-xl font-bold text-foreground mt-1 tabular-nums">{kpi.value}</p>
-              <p className="text-[11px] text-muted-foreground mt-0.5">{kpi.sub}</p>
+              <p className="text-xs text-muted-foreground mt-0.5">{kpi.sub}</p>
             </Card>
           ))}
         </div>
@@ -458,14 +458,14 @@ export default function HomePage() {
               <div className="flex items-center justify-between px-5 py-3.5 border-b border-border">
                 <div>
                   <p className="text-sm font-bold text-foreground">Mon réseau bouge</p>
-                  <p className="text-[11px] text-muted-foreground mt-0.5">3 partenaires actifs cette semaine</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">3 partenaires actifs cette semaine</p>
                 </div>
                 <Link href="/network" className="text-xs font-medium text-muted-foreground hover:text-foreground transition-colors">Voir →</Link>
               </div>
               <div className="divide-y divide-border">
                 {(feedItems.filter((f) => f.kind === 'network') as FeedNetwork[]).map((item) => (
                   <div key={item.id} className="flex items-center gap-3 px-5 py-3.5 hover:bg-muted/20 transition-colors">
-                    <span className={cn('flex size-9 shrink-0 items-center justify-center rounded-full text-[11px] font-bold text-muted-foreground', item.avatarBg)}>
+                    <span className={cn('flex size-9 shrink-0 items-center justify-center rounded-full text-xs font-bold text-muted-foreground', item.avatarBg)}>
                       {item.initials}
                     </span>
                     <div className="flex-1 min-w-0">
@@ -473,7 +473,7 @@ export default function HomePage() {
                         <span className="font-bold">{item.name}</span>{' '}
                         <span className="text-muted-foreground">{item.label}</span>
                       </p>
-                      <p className="text-[11px] text-muted-foreground mt-0.5">{item.sub}</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">{item.sub}</p>
                     </div>
                     <Link
                       href={item.cta}
@@ -506,7 +506,7 @@ export default function HomePage() {
                     </div>
                     <div className="flex-1 min-w-0 border-l border-border pl-3">
                       <p className="text-xs font-medium text-foreground leading-tight">{r.title}</p>
-                      <p className="text-[11px] text-muted-foreground mt-0.5">{r.sub}</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">{r.sub}</p>
                     </div>
                   </div>
                 ))}
@@ -535,7 +535,7 @@ export default function HomePage() {
                   ].map((s) => (
                     <div key={s.label} className="rounded-xl bg-muted/60 py-2 px-3 text-center">
                       <p className="text-sm font-bold text-foreground">{s.n}</p>
-                      <p className="text-[11px] text-muted-foreground mt-0.5">{s.label}</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">{s.label}</p>
                     </div>
                   ))}
                 </div>

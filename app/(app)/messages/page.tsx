@@ -139,17 +139,17 @@ export default function MessagesPage() {
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between gap-2">
-                    <span className={cn('text-[15px]', conv.unread > 0 ? 'font-bold text-foreground' : 'font-semibold text-foreground')}>
+                    <span className={cn('text-lg', conv.unread > 0 ? 'font-bold text-foreground' : 'font-semibold text-foreground')}>
                       {conv.firstName} {conv.lastName}
                     </span>
-                    <span className="shrink-0 text-[11px] text-muted-foreground">{conv.time}</span>
+                    <span className="shrink-0 text-xs text-muted-foreground">{conv.time}</span>
                   </div>
                   <p className={cn('mt-0.5 truncate text-xs', conv.unread > 0 ? 'font-semibold text-foreground' : 'text-muted-foreground')}>
                     {conv.lastMessage}
                   </p>
                 </div>
                 {conv.unread > 0 && (
-                  <span className="ml-1 flex min-w-[20px] h-5 shrink-0 items-center justify-center rounded-full bg-primary px-1.5 text-[11px] font-bold text-primary-foreground">
+                  <span className="ml-1 flex min-w-[20px] h-5 shrink-0 items-center justify-center rounded-full bg-primary px-1.5 text-xs font-bold text-primary-foreground">
                     {conv.unread}
                   </span>
                 )}
@@ -186,7 +186,7 @@ export default function MessagesPage() {
             {active.messages.map((m, i) => (
               <div key={i} className={cn('flex', m.from === 'me' ? 'justify-end' : 'justify-start')}>
                 <div className={cn(
-                  'max-w-[75%] rounded-2xl px-4 py-3 text-[14px] leading-[1.55]',
+                  'max-w-[75%] rounded-2xl px-4 py-3 text-sm leading-[1.55]',
                   m.from === 'me'
                     ? 'rounded-br-md bg-primary text-primary-foreground'
                     : 'rounded-bl-md bg-muted text-foreground',
@@ -205,7 +205,7 @@ export default function MessagesPage() {
                 value={draft}
                 onChange={(e) => setDraft(e.target.value)}
                 placeholder={`Répondre à ${active.firstName}…`}
-                className="flex-1 resize-none bg-transparent text-[14px] leading-[1.4] text-foreground outline-none placeholder:text-muted-foreground"
+                className="flex-1 resize-none bg-transparent text-sm leading-[1.4] text-foreground outline-none placeholder:text-muted-foreground"
                 style={{ maxHeight: 120, paddingTop: 7, paddingBottom: 7 }}
               />
               <button

@@ -15,7 +15,7 @@ export function StagePill({ stage, className }: { stage: ContactStage; className
   return (
     <span
       className={cn(
-        'inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-medium',
+        'inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium',
         stageStyles[stage],
         className,
       )}
@@ -69,7 +69,7 @@ export function DiscBadge({ disc, className }: { disc: DiscType; className?: str
   return (
     <span
       className={cn(
-        'inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-bold',
+        'inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-bold',
         className,
       )}
       style={{ backgroundColor: `color-mix(in srgb, ${color} 14%, transparent)`, color }}

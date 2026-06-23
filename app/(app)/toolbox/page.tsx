@@ -283,7 +283,7 @@ function BotsSection() {
               <p className="text-xs text-muted-foreground">{bot.desc}</p>
             </div>
             <span className={cn(
-              'rounded-full px-2.5 py-1 text-[11px] font-bold',
+              'rounded-full px-2.5 py-1 text-xs font-bold',
               bot.active ? 'bg-success/15 text-success' : 'bg-muted text-muted-foreground'
             )}>
               {bot.active ? 'Actif' : 'Inactif'}
@@ -318,7 +318,7 @@ export default function ToolboxPage() {
       {/* ── DESKTOP ONLY ── */}
       <div className="hidden lg:block">
         <div className="px-8 pt-8 pb-8 max-w-5xl mx-auto">
-          <h1 className="font-display text-[28px] font-extrabold tracking-tight text-foreground mb-6">
+          <h1 className="font-display text-[32px] font-extrabold tracking-tight text-foreground mb-6">
             Boîte à outils
           </h1>
           <div className="grid grid-cols-2 gap-6 items-start">

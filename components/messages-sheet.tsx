@@ -102,9 +102,9 @@ export function MessagesSheet({ open, onClose }: MessagesSheetProps) {
           >
             <X className="size-[19px] stroke-[1.5]" />
           </button>
-          <h2 className="flex-1 font-display text-[15px] font-bold text-foreground">Messagerie</h2>
+          <h2 className="flex-1 font-display text-lg font-bold text-foreground">Messagerie</h2>
           {/* Unread total badge */}
-          <span className="flex min-w-[20px] h-5 items-center justify-center rounded-full bg-primary px-1.5 text-[11px] font-bold text-primary-foreground">
+          <span className="flex min-w-[20px] h-5 items-center justify-center rounded-full bg-primary px-1.5 text-xs font-bold text-primary-foreground">
             3
           </span>
         </div>
@@ -136,10 +136,10 @@ export function MessagesSheet({ open, onClose }: MessagesSheetProps) {
                 {/* Content */}
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between gap-2">
-                    <span className={cn('text-[15px]', conv.unread > 0 ? 'font-bold text-foreground' : 'font-semibold text-foreground')}>
+                    <span className={cn('text-lg', conv.unread > 0 ? 'font-bold text-foreground' : 'font-semibold text-foreground')}>
                       {conv.firstName} {conv.lastName}
                     </span>
-                    <span className="shrink-0 text-[11px] text-muted-foreground">{conv.time}</span>
+                    <span className="shrink-0 text-xs text-muted-foreground">{conv.time}</span>
                   </div>
                   <p className={cn('mt-0.5 truncate text-xs', conv.unread > 0 ? 'font-semibold text-foreground' : 'text-muted-foreground')}>
                     {conv.lastMessage}
@@ -148,7 +148,7 @@ export function MessagesSheet({ open, onClose }: MessagesSheetProps) {
 
                 {/* Unread badge */}
                 {conv.unread > 0 && (
-                  <span className="ml-1 flex min-w-[20px] h-5 shrink-0 items-center justify-center rounded-full bg-primary px-1.5 text-[11px] font-bold text-primary-foreground">
+                  <span className="ml-1 flex min-w-[20px] h-5 shrink-0 items-center justify-center rounded-full bg-primary px-1.5 text-xs font-bold text-primary-foreground">
                     {conv.unread}
                   </span>
                 )}

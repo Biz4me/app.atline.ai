@@ -65,7 +65,7 @@ export function NovaInbox() {
                       </p>
                     </div>
                     <span
-                      className={`rounded-full px-2.5 py-1 text-[11px] font-bold ${
+                      className={`rounded-full px-2.5 py-1 text-xs font-bold ${
                         high ? 'bg-primary/10 text-primary' : 'bg-muted text-muted-foreground'
                       }`}
                     >

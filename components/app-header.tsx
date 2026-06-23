@@ -37,7 +37,7 @@ export function AppHeader({
           <ChevronLeft className="size-5 stroke-[1.5]" />
         </button>
       )}
-      <h1 className="flex-1 truncate font-display text-[28px] font-bold leading-tight tracking-[-0.025em] text-foreground">
+      <h1 className="flex-1 truncate font-display text-[32px] font-bold leading-tight tracking-[-0.025em] text-foreground">
         {title}
       </h1>
       {showActions && (
@@ -84,7 +84,7 @@ export function AppHeader({
             className="relative flex size-9 items-center justify-center rounded-full text-fg-2 transition-colors active:bg-muted"
           >
             <MessageCircle className="size-5 stroke-[1.5]" />
-            <span className="absolute right-1 top-1 flex size-4 items-center justify-center rounded-full bg-primary text-[9px] font-bold text-primary-foreground ring-2 ring-background">2</span>
+            <span className="absolute right-1 top-1 flex size-4 items-center justify-center rounded-full bg-primary text-[10px] font-bold text-primary-foreground ring-2 ring-background">2</span>
           </Link>
           <Link href="/profile" aria-label="Mon profil">
             <DiscAvatar

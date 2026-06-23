@@ -39,14 +39,14 @@ export default function AuthPage() {
           height={56}
           className="rounded-[16px] shadow-md"
         />
-        <span className="font-display text-[22px] font-extrabold tracking-tight text-foreground">
+        <span className="font-display text-2xl font-extrabold tracking-tight text-foreground">
           atline
         </span>
       </div>
 
       {/* Card */}
       <div className="w-full max-w-[360px] rounded-3xl border border-border bg-surface p-6 shadow-card">
-        <h1 className="mb-6 font-display text-[22px] font-bold text-foreground">
+        <h1 className="mb-6 font-display text-2xl font-bold text-foreground">
           {isLogin ? 'Content de te revoir' : 'Rejoins Atline'}
         </h1>
 
@@ -55,7 +55,7 @@ export default function AuthPage() {
           {!isLogin && (
             <div className="grid grid-cols-2 gap-3">
               <div className="flex flex-col gap-1.5">
-                <label className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">
+                <label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
                   Prénom
                 </label>
                 <input
@@ -66,7 +66,7 @@ export default function AuthPage() {
                 />
               </div>
               <div className="flex flex-col gap-1.5">
-                <label className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">
+                <label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
                   Nom
                 </label>
                 <input
@@ -81,7 +81,7 @@ export default function AuthPage() {
 
           {/* Email */}
           <div className="flex flex-col gap-1.5">
-            <label className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">
+            <label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
               Email
             </label>
             <input
@@ -94,7 +94,7 @@ export default function AuthPage() {
 
           {/* Mot de passe */}
           <div className="flex flex-col gap-1.5">
-            <label className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">
+            <label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
               Mot de passe
             </label>
             <div className="relative">
@@ -117,7 +117,7 @@ export default function AuthPage() {
           {/* Confirmer le mot de passe (register only) */}
           {!isLogin && (
             <div className="flex flex-col gap-1.5">
-              <label className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">
+              <label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
                 Confirmer
               </label>
               <div className="relative">
@@ -141,7 +141,7 @@ export default function AuthPage() {
           {/* CTA principal */}
           <button
             type="submit"
-            className="mt-1 flex w-full items-center justify-center gap-2 rounded-2xl bg-primary py-3.5 text-[15px] font-bold text-primary-foreground shadow-md transition-transform active:scale-[0.98]"
+            className="mt-1 flex w-full items-center justify-center gap-2 rounded-2xl bg-primary py-3.5 text-lg font-bold text-primary-foreground shadow-md transition-transform active:scale-[0.98]"
           >
             {isLogin ? 'Se connecter' : 'Créer mon compte'}
             <ArrowRight className="size-4" />
@@ -170,7 +170,7 @@ export default function AuthPage() {
           <button
             type="button"
             onClick={() => router.push('/home')}
-            className="flex w-full items-center justify-center gap-2 rounded-2xl border border-border bg-background py-3.5 text-[15px] font-semibold text-foreground transition-colors active:bg-muted"
+            className="flex w-full items-center justify-center gap-2 rounded-2xl border border-border bg-background py-3.5 text-lg font-semibold text-foreground transition-colors active:bg-muted"
           >
             <Sparkles className="size-4 text-primary" />
             Compte démo
@@ -179,7 +179,7 @@ export default function AuthPage() {
           <button
             type="button"
             onClick={() => router.push('/home')}
-            className="flex w-full items-center justify-center gap-2 rounded-2xl border border-border bg-background py-3.5 text-[15px] font-semibold text-foreground transition-colors active:bg-muted"
+            className="flex w-full items-center justify-center gap-2 rounded-2xl border border-border bg-background py-3.5 text-lg font-semibold text-foreground transition-colors active:bg-muted"
           >
             Continuer sans compte
           </button>

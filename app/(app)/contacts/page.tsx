@@ -403,7 +403,7 @@ function ContactsContent() {
                 <Card key={kpi.label} className="px-4 py-3">
                   <p className="text-xs font-medium text-muted-foreground">{kpi.label}</p>
                   <p className="text-xl font-bold text-foreground mt-1 tabular-nums">{kpi.value}</p>
-                  <p className="text-[11px] text-muted-foreground mt-0.5">{kpi.sub}</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">{kpi.sub}</p>
                 </Card>
               ))}
             </div>
@@ -626,7 +626,7 @@ function ContactsContent() {
                       <td className="px-4 py-3.5">
                         {c.stade ? (
                           <span className={cn(
-                            'rounded-full px-2.5 py-0.5 text-[11px] font-medium',
+                            'rounded-full px-2.5 py-0.5 text-xs font-medium',
                             c.stade === 'invitation'   && 'bg-[#3b82f6]/10 text-[#3b82f6]',
                             c.stade === 'présentation' && 'bg-[#f59e0b]/10 text-[#f59e0b]',
                             c.stade === 'suivi'        && 'bg-[#dc2626]/10 text-[#dc2626]',
@@ -852,7 +852,7 @@ function ContactsContent() {
             {/* Format info */}
             <div className="mt-3 rounded-xl bg-muted px-4 py-3">
               <p className="text-xs font-medium text-muted-foreground mb-1.5">Colonnes attendues :</p>
-              <p className="font-mono text-[11px] text-muted-foreground leading-relaxed">
+              <p className="font-mono text-xs text-muted-foreground leading-relaxed">
                 prénom, nom, email, téléphone, ville, source, stage
               </p>
             </div>

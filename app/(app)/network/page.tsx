@@ -111,13 +111,13 @@ export default function NetworkPage() {
               <div className="relative overflow-hidden rounded-2xl border border-border bg-surface shadow-card">
                 <div className="absolute top-0 left-0 right-0 h-1 bg-amber-400" />
                 <div className="flex flex-col items-center gap-2 px-4 py-5">
-                  <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">
+                  <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
                     Commissions ce mois
                   </p>
                   <p className="font-display text-[44px] font-extrabold tabular-nums leading-none text-amber-500">
                     342,50 €
                   </p>
-                  <span className="inline-flex items-center gap-1.5 rounded-full bg-green-500/15 px-3 py-1 text-[11px] font-bold text-green-600">
+                  <span className="inline-flex items-center gap-1.5 rounded-full bg-green-500/15 px-3 py-1 text-xs font-bold text-green-600">
                     <BadgeCheck className="size-3.5" />
                     Licence active
                   </span>
@@ -128,7 +128,7 @@ export default function NetworkPage() {
                 {topStats.map(({ label, value, color }) => (
                   <div key={label} className="flex flex-col items-center gap-1 rounded-2xl border border-border bg-surface px-3 py-4 text-center shadow-card">
                     <span className="font-display text-2xl font-extrabold tabular-nums" style={{ color }}>{value}</span>
-                    <span className="text-[11px] text-muted-foreground">{label}</span>
+                    <span className="text-xs text-muted-foreground">{label}</span>
                   </div>
                 ))}
               </div>
@@ -147,15 +147,15 @@ export default function NetworkPage() {
               </div>
 
               <div>
-                <p className="mb-3 text-[11px] font-bold uppercase tracking-widest text-primary">Détail des commissions</p>
+                <p className="mb-3 text-xs font-bold uppercase tracking-widest text-primary">Détail des commissions</p>
                 <div className="overflow-hidden rounded-2xl border border-border bg-surface shadow-card divide-y divide-border">
                   {commGroups.map((g) => (
                     <div key={g.title}>
-                      <p className="px-4 pt-3 pb-1 text-[11px] font-bold uppercase tracking-widest text-primary">{g.title}</p>
+                      <p className="px-4 pt-3 pb-1 text-xs font-bold uppercase tracking-widest text-primary">{g.title}</p>
                       {g.rows.map((r) => (
                         <div key={r.name} className="flex items-center gap-3 px-4 py-2.5 last:pb-3">
                           <span className="flex-1 text-sm font-semibold text-foreground">{r.name}</span>
-                          <span className="font-display text-[15px] font-extrabold tabular-nums text-amber-500">
+                          <span className="font-display text-lg font-extrabold tabular-nums text-amber-500">
                             {euro(r.amount)}
                           </span>
                         </div>
@@ -169,7 +169,7 @@ export default function NetworkPage() {
             {/* ── Colonne droite : équipe + outils ── */}
             <div className="flex flex-col gap-6">
               <div>
-                <p className="mb-3 text-[11px] font-bold uppercase tracking-widest text-primary">Mon équipe</p>
+                <p className="mb-3 text-xs font-bold uppercase tracking-widest text-primary">Mon équipe</p>
                 <div className="flex flex-col gap-2.5">
                   {network.map((m) => (
                     <MemberRow key={m.id} member={m} />
@@ -203,7 +203,7 @@ export default function NetworkPage() {
               </div>
 
               <div>
-                <p className="mb-3 text-[11px] font-bold uppercase tracking-widest text-primary">Outils réseau</p>
+                <p className="mb-3 text-xs font-bold uppercase tracking-widest text-primary">Outils réseau</p>
                 <div className="overflow-hidden rounded-2xl border border-border bg-surface shadow-card divide-y divide-border">
                   {outils.map(({ icon: Icon, label, href }) => (
                     <button
@@ -244,7 +244,7 @@ function StatCard({
       {valueNode ?? (
         <span className="font-display text-2xl font-semibold leading-none text-foreground">{value}</span>
       )}
-      <span className="text-[11px] leading-tight text-muted-foreground">{label}</span>
+      <span className="text-xs leading-tight text-muted-foreground">{label}</span>
     </Card>
   )
 }
@@ -295,7 +295,7 @@ function MemberNode({ member }: { member: NetworkMember }) {
                       {child.firstName} {child.lastName}
                     </p>
                     {child.isAtlineLicensee && (
-                      <span className="inline-flex items-center gap-0.5 rounded-full bg-primary/10 px-1.5 py-0.5 text-[9px] font-bold text-primary">
+                      <span className="inline-flex items-center gap-0.5 rounded-full bg-primary/10 px-1.5 py-0.5 text-[10px] font-bold text-primary">
                         <BadgeCheck className="size-2.5" />
                         Licensee
                       </span>
@@ -334,7 +334,7 @@ function MemberRow({ member }: { member: NetworkMember }) {
         </p>
       </div>
       <span className={cn(
-        'rounded-full px-2.5 py-1 text-[11px] font-bold',
+        'rounded-full px-2.5 py-1 text-xs font-bold',
         isActive ? 'bg-green-500/15 text-green-600' : 'bg-muted text-muted-foreground'
       )}>
         {isActive ? 'Actif' : 'Inactif'}

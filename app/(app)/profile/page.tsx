@@ -60,17 +60,17 @@ export default function ProfilePage() {
             <Card className="flex flex-col items-center gap-1 p-3 text-center">
               <Flame className="size-5 text-primary" />
               <span className="font-display text-xl font-semibold">{currentUser.streak}</span>
-              <span className="text-[11px] text-muted-foreground">jours de série</span>
+              <span className="text-xs text-muted-foreground">jours de série</span>
             </Card>
             <Card className="flex flex-col items-center gap-1 p-3 text-center">
               <Trophy className="size-5 text-gold" />
               <span className="font-display text-xl font-semibold">Niv. {currentUser.level}</span>
-              <span className="text-[11px] text-muted-foreground">niveau</span>
+              <span className="text-xs text-muted-foreground">niveau</span>
             </Card>
             <Card className="flex flex-col items-center gap-1 p-3 text-center">
               <Users className="size-5 text-info" />
               <span className="font-display text-xl font-semibold">{currentUser.directReferrals}</span>
-              <span className="text-[11px] text-muted-foreground">filleuls</span>
+              <span className="text-xs text-muted-foreground">filleuls</span>
             </Card>
           </section>
 
@@ -106,7 +106,7 @@ export default function ProfilePage() {
                     {b.isAtline && <p className="text-xs text-muted-foreground">Activité principale</p>}
                   </div>
                   {b.id === activeBusiness.id && (
-                    <span className="rounded-full bg-success/15 px-2 py-0.5 text-[11px] font-bold text-success">
+                    <span className="rounded-full bg-success/15 px-2 py-0.5 text-xs font-bold text-success">
                       Active
                     </span>
                   )}
@@ -188,13 +188,13 @@ export default function ProfilePage() {
 
           {/* Mon activité */}
           <div>
-            <p className="mb-3 text-[11px] font-bold uppercase tracking-widest text-primary">Mon activité</p>
+            <p className="mb-3 text-xs font-bold uppercase tracking-widest text-primary">Mon activité</p>
             <div className="grid grid-cols-3 gap-2.5">
               {desktopStats.map(({ icon: Icon, value, label }) => (
                 <div key={label} className="flex flex-col items-center gap-1.5 rounded-2xl border border-border bg-surface px-3 py-4 text-center shadow-card">
                   <Icon className="size-4 stroke-[1.5] text-muted-foreground" />
                   <span className="font-display text-xl font-extrabold tabular-nums text-foreground">{value}</span>
-                  <span className="text-[11px] text-muted-foreground">{label}</span>
+                  <span className="text-xs text-muted-foreground">{label}</span>
                 </div>
               ))}
             </div>
@@ -202,7 +202,7 @@ export default function ProfilePage() {
 
           {/* Compte */}
           <div>
-            <p className="mb-3 text-[11px] font-bold uppercase tracking-widest text-primary">Compte</p>
+            <p className="mb-3 text-xs font-bold uppercase tracking-widest text-primary">Compte</p>
 
             <button
               type="button"
@@ -211,11 +211,11 @@ export default function ProfilePage() {
             >
               <DiscAvatar firstName={currentUser.firstName} lastName={currentUser.lastName} disc="I" size="md" />
               <div className="flex-1 min-w-0">
-                <p className="font-bold text-[15px] text-foreground">
+                <p className="font-bold text-lg text-foreground">
                   {currentUser.firstName} {currentUser.lastName}
                 </p>
                 <div className="mt-1 flex items-center gap-2">
-                  <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2.5 py-0.5 text-[11px] font-bold text-primary">
+                  <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-bold text-primary">
                     <Crown className="size-3" />
                     Pro
                   </span>

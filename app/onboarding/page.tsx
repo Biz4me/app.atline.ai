@@ -103,7 +103,7 @@ function NextBtn({ onClick, disabled, label = 'Suivant' }: {
 }) {
   return (
     <button type="button" onClick={onClick} disabled={disabled}
-      className="flex w-full items-center justify-center gap-2 rounded-2xl bg-primary py-4 text-[15px] font-bold text-primary-foreground shadow-md transition-all active:scale-[0.98] disabled:opacity-40">
+      className="flex w-full items-center justify-center gap-2 rounded-2xl bg-primary py-4 text-lg font-bold text-primary-foreground shadow-md transition-all active:scale-[0.98] disabled:opacity-40">
       {label}<ArrowRight className="size-4" />
     </button>
   )
@@ -135,7 +135,7 @@ function UrlInput({ label, value, onChange, placeholder }: {
 }) {
   return (
     <div className="flex flex-col gap-1.5">
-      <label className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">{label}</label>
+      <label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">{label}</label>
       <div className="flex items-center overflow-hidden rounded-xl border border-border bg-background focus-within:ring-2 focus-within:ring-primary/30">
         <span className="flex items-center pl-3 text-muted-foreground"><ExternalLink className="size-3.5" /></span>
         <input type="url" value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder}
@@ -222,8 +222,8 @@ function OnboardingContent() {
         {currentStep === 'splash' && (
           <div className="flex flex-1 flex-col items-center justify-center text-center">
             <div className="mb-6 flex size-[88px] items-center justify-center rounded-[28px] bg-primary font-display text-[42px] font-extrabold text-primary-foreground shadow-lg">A</div>
-            <h1 className="font-display text-[28px] font-extrabold leading-tight tracking-tight text-foreground">Bienvenue dans Atline</h1>
-            <p className="mt-2 text-[15px] text-muted-foreground">
+            <h1 className="font-display text-[32px] font-extrabold leading-tight tracking-tight text-foreground">Bienvenue dans Atline</h1>
+            <p className="mt-2 text-lg text-muted-foreground">
               {plan === 'licence' ? 'Configure ton activité et tes outils.' : 'Ton assistant IA pour le MLM.'}
             </p>
             <div className="mt-8 w-full max-w-sm space-y-3 text-left">
@@ -236,12 +236,12 @@ function OnboardingContent() {
                   <div className={cn('flex size-9 shrink-0 items-center justify-center rounded-xl', bg)}>
                     <Icon className={cn('size-4 stroke-[1.5]', color)} />
                   </div>
-                  <span className="text-[14px] font-semibold text-foreground">{label}</span>
+                  <span className="text-sm font-semibold text-foreground">{label}</span>
                 </div>
               ))}
             </div>
             <button type="button" onClick={goNext}
-              className="mt-8 flex w-full max-w-sm items-center justify-center gap-2 rounded-2xl bg-primary py-4 text-[15px] font-bold text-primary-foreground shadow-md transition-transform active:scale-[0.98]">
+              className="mt-8 flex w-full max-w-sm items-center justify-center gap-2 rounded-2xl bg-primary py-4 text-lg font-bold text-primary-foreground shadow-md transition-transform active:scale-[0.98]">
               Commencer<ArrowRight className="size-4" />
             </button>
           </div>
@@ -250,12 +250,12 @@ function OnboardingContent() {
         {/* ── atline_link (licence only) ── */}
         {currentStep === 'atline_link' && (
           <div className="flex flex-1 flex-col">
-            <h2 className="mb-1 mt-4 font-display text-[24px] font-extrabold text-foreground">Tes liens Atline</h2>
+            <h2 className="mb-1 mt-4 font-display text-2xl font-extrabold text-foreground">Tes liens Atline</h2>
             <p className="mb-6 text-sm text-muted-foreground">
               Ton identifiant Atline génère tes liens pour recruter de nouveaux licenciés et référer des clients.
             </p>
             <div className="flex flex-col gap-1.5">
-              <label className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">Ton identifiant</label>
+              <label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Ton identifiant</label>
               <div className="flex items-center overflow-hidden rounded-xl border border-border bg-background focus-within:ring-2 focus-within:ring-primary/30">
                 <span className="flex items-center pl-4 pr-2 text-muted-foreground"><AtSign className="size-4" /></span>
                 <input type="text" value={username} onChange={(e) => setUsername(e.target.value)}
@@ -279,7 +279,7 @@ function OnboardingContent() {
                     <GitFork className="size-4 stroke-[1.5] text-primary" />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">Lien licencié</p>
+                    <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Lien licencié</p>
                     <p className="mt-0.5 font-mono text-sm font-semibold text-foreground truncate">
                       atline.ai/<span className="text-primary">{usernameSlug}</span>
                     </p>
@@ -290,7 +290,7 @@ function OnboardingContent() {
                     <Users className="size-4 stroke-[1.5] text-green-600" />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">Lien client Atline</p>
+                    <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Lien client Atline</p>
                     <p className="mt-0.5 font-mono text-sm font-semibold text-foreground truncate">
                       atline.ai/<span className="text-green-600">{usernameSlug}</span>/client
                     </p>
@@ -315,7 +315,7 @@ function OnboardingContent() {
         {/* ── other_mlm (licence only) ── */}
         {currentStep === 'other_mlm' && (
           <div className="flex flex-1 flex-col">
-            <h2 className="mb-1 mt-4 font-display text-[24px] font-extrabold text-foreground">Un autre business MLM ?</h2>
+            <h2 className="mb-1 mt-4 font-display text-2xl font-extrabold text-foreground">Un autre business MLM ?</h2>
             <p className="mb-6 text-sm text-muted-foreground">
               En plus de ton activité Atline, développes-tu un autre réseau MLM (Herbalife, Amway…) ?
             </p>
@@ -346,7 +346,7 @@ function OnboardingContent() {
             {hasOtherMlm === true && (
               <div className="mt-4">
                 <div className="rounded-2xl border border-border bg-surface p-4 shadow-card">
-                  <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground mb-2">Cloisonnement des activités</p>
+                  <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground mb-2">Cloisonnement des activités</p>
                   <p className="text-xs text-muted-foreground leading-relaxed">
                     Tes deux activités seront entièrement séparées — contacts, commissions, réseau et historique. Tu pourras basculer entre elles depuis le sélecteur en haut de l'app.
                   </p>
@@ -363,7 +363,7 @@ function OnboardingContent() {
         {/* ── reseau ── */}
         {currentStep === 'reseau' && (
           <div className="flex flex-1 flex-col">
-            <h2 className="mb-1 mt-4 font-display text-[24px] font-extrabold text-foreground">
+            <h2 className="mb-1 mt-4 font-display text-2xl font-extrabold text-foreground">
               {plan === 'licence' ? 'Ton autre réseau MLM' : 'Ton réseau MLM'}
             </h2>
             <p className="mb-6 text-sm text-muted-foreground">Avec quelle marque travailles-tu ?</p>
@@ -393,7 +393,7 @@ function OnboardingContent() {
         {/* ── objectifs ── */}
         {currentStep === 'objectifs' && (
           <div className="flex flex-1 flex-col">
-            <h2 className="mb-1 mt-4 font-display text-[24px] font-extrabold text-foreground">Tes objectifs</h2>
+            <h2 className="mb-1 mt-4 font-display text-2xl font-extrabold text-foreground">Tes objectifs</h2>
             <p className="mb-6 text-sm text-muted-foreground">Atlas adapte ses recommandations. Sélectionne tout ce qui s'applique.</p>
             <div className="grid grid-cols-2 gap-2.5">
               {objectives.map(({ id, label, icon: Icon }) => {
@@ -421,7 +421,7 @@ function OnboardingContent() {
         {/* ── agents ── */}
         {currentStep === 'agents' && (
           <div className="flex flex-1 flex-col">
-            <h2 className="mb-1 mt-4 font-display text-[24px] font-extrabold text-foreground">3 agents IA travaillent pour toi</h2>
+            <h2 className="mb-1 mt-4 font-display text-2xl font-extrabold text-foreground">3 agents IA travaillent pour toi</h2>
             <p className="mb-6 text-sm text-muted-foreground">Ensemble, ils couvrent tout ton parcours.</p>
             <div className="flex flex-col gap-3">
               {agents.map(({ name, role, desc, color, bg }) => (
@@ -431,7 +431,7 @@ function OnboardingContent() {
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="font-bold text-foreground">{name}</p>
-                    <p className="text-[11px] font-semibold uppercase tracking-widest" style={{ color }}>{role}</p>
+                    <p className="text-xs font-semibold uppercase tracking-widest" style={{ color }}>{role}</p>
                     <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{desc}</p>
                   </div>
                 </div>
@@ -446,7 +446,7 @@ function OnboardingContent() {
         {/* ── messagerie ── */}
         {currentStep === 'messagerie' && (
           <div className="flex flex-1 flex-col">
-            <h2 className="mb-1 mt-4 font-display text-[24px] font-extrabold text-foreground">Connecte ta messagerie</h2>
+            <h2 className="mb-1 mt-4 font-display text-2xl font-extrabold text-foreground">Connecte ta messagerie</h2>
             <p className="mb-6 text-sm text-muted-foreground">Centralise tes conversations dans Atline.</p>
             {(() => {
               const wa = channels[0]; const Icon = wa.icon; const active = connectedChannels.includes(wa.id)
@@ -491,12 +491,12 @@ function OnboardingContent() {
         {/* ── atline_parrainage (forfait only) ── */}
         {currentStep === 'atline_parrainage' && (
           <div className="flex flex-1 flex-col">
-            <h2 className="mb-1 mt-4 font-display text-[24px] font-extrabold text-foreground">Ton lien de parrainage Atline</h2>
+            <h2 className="mb-1 mt-4 font-display text-2xl font-extrabold text-foreground">Ton lien de parrainage Atline</h2>
             <p className="mb-6 text-sm text-muted-foreground">
               Invite tes proches à utiliser l'app Atline. Ce lien est distinct de tes liens {networkName || 'MLM'}.
             </p>
             <div className="flex flex-col gap-1.5">
-              <label className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">Ton identifiant</label>
+              <label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Ton identifiant</label>
               <div className="flex items-center overflow-hidden rounded-xl border border-border bg-background focus-within:ring-2 focus-within:ring-primary/30">
                 <span className="flex items-center pl-4 pr-2 text-muted-foreground"><AtSign className="size-4" /></span>
                 <input type="text" value={username} onChange={(e) => setUsername(e.target.value)}
@@ -518,7 +518,7 @@ function OnboardingContent() {
                   <Link2 className="size-4 stroke-[1.5] text-primary" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">Ton lien parrainage</p>
+                  <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Ton lien parrainage</p>
                   <p className="mt-0.5 font-mono text-sm font-semibold text-foreground truncate">
                     atline.ai/<span className="text-primary">{usernameSlug}</span>
                   </p>
@@ -535,7 +535,7 @@ function OnboardingContent() {
         {/* ── mlm_links ── */}
         {currentStep === 'mlm_links' && (
           <div className="flex flex-1 flex-col">
-            <h2 className="mb-1 mt-4 font-display text-[24px] font-extrabold text-foreground">
+            <h2 className="mb-1 mt-4 font-display text-2xl font-extrabold text-foreground">
               Tes liens {networkName || 'MLM'}
             </h2>
             <p className="mb-5 text-sm text-muted-foreground">
@@ -548,7 +548,7 @@ function OnboardingContent() {
                 </div>
                 <div className="min-w-0">
                   <p className="text-xs font-bold text-foreground">Lien opportunité</p>
-                  <p className="text-[11px] text-muted-foreground leading-relaxed">Pour inviter quelqu'un à rejoindre ton réseau {networkName || 'MLM'} comme distributeur</p>
+                  <p className="text-xs text-muted-foreground leading-relaxed">Pour inviter quelqu'un à rejoindre ton réseau {networkName || 'MLM'} comme distributeur</p>
                 </div>
               </div>
               <div className="flex items-start gap-3 rounded-xl border border-border bg-surface p-3.5 shadow-card">
@@ -557,7 +557,7 @@ function OnboardingContent() {
                 </div>
                 <div className="min-w-0">
                   <p className="text-xs font-bold text-foreground">Lien client</p>
-                  <p className="text-[11px] text-muted-foreground leading-relaxed">Pour diriger quelqu'un vers ta boutique {networkName || 'MLM'} pour acheter les produits</p>
+                  <p className="text-xs text-muted-foreground leading-relaxed">Pour diriger quelqu'un vers ta boutique {networkName || 'MLM'} pour acheter les produits</p>
                 </div>
               </div>
             </div>
@@ -582,7 +582,7 @@ function OnboardingContent() {
         {/* ── contacts ── */}
         {currentStep === 'contacts' && (
           <div className="flex flex-1 flex-col">
-            <h2 className="mb-1 mt-4 font-display text-[24px] font-extrabold text-foreground">Tes premiers contacts</h2>
+            <h2 className="mb-1 mt-4 font-display text-2xl font-extrabold text-foreground">Tes premiers contacts</h2>
             <p className="mb-4 text-sm text-muted-foreground">
               Qui comptes-tu contacter en premier ?
             </p>
@@ -593,7 +593,7 @@ function OnboardingContent() {
               {contacts.map((c, i) => (
                 <div key={c.id} className="rounded-2xl border border-border bg-surface p-4 shadow-card">
                   <div className="mb-3 flex items-center justify-between">
-                    <span className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">Contact {i + 1}</span>
+                    <span className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Contact {i + 1}</span>
                     {contacts.length > 1 && (
                       <button type="button" onClick={() => removeContact(c.id)}
                         className="flex size-7 items-center justify-center rounded-full text-muted-foreground active:bg-muted">
@@ -616,7 +616,7 @@ function OnboardingContent() {
                     {(['hot', 'warm', 'cold'] as const).map((heat) => (
                       <button key={heat} type="button" onClick={() => updateContact(c.id, 'heat', heat)}
                         className={cn(
-                          'flex-1 rounded-xl border px-2 py-1.5 text-[11px] font-semibold transition-all',
+                          'flex-1 rounded-xl border px-2 py-1.5 text-xs font-semibold transition-all',
                           c.heat === heat ? heatConfig[heat].style : 'border-border bg-background text-muted-foreground'
                         )}>
                         {heatConfig[heat].label}
@@ -649,17 +649,17 @@ function OnboardingContent() {
         {/* ── profil ── */}
         {currentStep === 'profil' && (
           <div className="flex flex-1 flex-col">
-            <h2 className="mb-1 mt-4 font-display text-[24px] font-extrabold text-foreground">Dernière étape</h2>
+            <h2 className="mb-1 mt-4 font-display text-2xl font-extrabold text-foreground">Dernière étape</h2>
             <p className="mb-8 text-sm text-muted-foreground">Atlas a besoin de ton prénom pour personnaliser ton coaching.</p>
             <div className="flex flex-col gap-4">
               <div className="flex flex-col gap-1.5">
-                <label className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">Prénom</label>
+                <label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Prénom</label>
                 <input type="text" value={firstName} onChange={(e) => setFirstName(e.target.value)}
                   placeholder="Léa" autoComplete="given-name" autoFocus
                   className="rounded-xl border border-border bg-background px-4 py-3.5 text-sm text-foreground outline-none placeholder:text-muted-foreground focus:ring-2 focus:ring-primary/30" />
               </div>
               <div className="flex flex-col gap-1.5">
-                <label className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">Nom</label>
+                <label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Nom</label>
                 <input type="text" value={lastName} onChange={(e) => setLastName(e.target.value)}
                   placeholder="Moreau" autoComplete="family-name"
                   className="rounded-xl border border-border bg-background px-4 py-3.5 text-sm text-foreground outline-none placeholder:text-muted-foreground focus:ring-2 focus:ring-primary/30" />
@@ -678,7 +678,7 @@ function OnboardingContent() {
             </div>
             <div className="mt-auto pt-6">
               <button type="button" onClick={() => router.push('/home')}
-                className="flex w-full items-center justify-center gap-2 rounded-2xl bg-primary py-4 text-[15px] font-bold text-primary-foreground shadow-md transition-all active:scale-[0.98]">
+                className="flex w-full items-center justify-center gap-2 rounded-2xl bg-primary py-4 text-lg font-bold text-primary-foreground shadow-md transition-all active:scale-[0.98]">
                 {firstName ? `C'est parti, ${firstName}` : 'Commencer'}
                 <ArrowRight className="size-4" />
               </button>

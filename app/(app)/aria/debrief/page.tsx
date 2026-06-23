@@ -40,7 +40,7 @@ export default function DebriefPage() {
           <ChevronLeft className="size-4 stroke-[1.5]" />
         </button>
         <div className="flex-1 min-w-0">
-          <h1 className="truncate text-base font-bold text-foreground lg:text-[18px]">Débrief · Phase Invitation</h1>
+          <h1 className="truncate text-sm font-bold text-foreground lg:text-lg">Débrief · Phase Invitation</h1>
         </div>
       </header>
 
@@ -83,7 +83,7 @@ export default function DebriefPage() {
 
         {/* Points forts */}
         <div className="rounded-2xl border border-border bg-surface p-4">
-          <p className="mb-3 text-[11px] font-extrabold uppercase tracking-widest text-success">
+          <p className="mb-3 text-xs font-extrabold uppercase tracking-widest text-success">
             Points forts
           </p>
           <div className="flex flex-col gap-2.5">
@@ -98,7 +98,7 @@ export default function DebriefPage() {
 
         {/* À travailler */}
         <div className="rounded-2xl border border-border bg-surface p-4">
-          <p className="mb-3 text-[11px] font-extrabold uppercase tracking-widest text-primary">
+          <p className="mb-3 text-xs font-extrabold uppercase tracking-widest text-primary">
             À travailler
           </p>
           <div className="flex flex-col gap-2.5">

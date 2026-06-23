@@ -6,6 +6,15 @@ const nextConfig = {
   images: {
     unoptimized: true,
   },
+  distDir: process.env.NEXT_DIST_DIR || '.next',
+  async rewrites() {
+    return [
+      {
+        source: '/api/pages-visibility',
+        destination: 'http://127.0.0.1:3060/api/internal/pages-visibility',
+      },
+    ]
+  },
 }
 
 export default nextConfig

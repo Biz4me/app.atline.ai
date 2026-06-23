@@ -11,12 +11,14 @@ import {
 import { cn } from '@/lib/utils'
 import type { LucideIcon } from 'lucide-react'
 import { contacts } from '@/lib/data'
+import { usePageVisibility } from '@/components/page-visibility-context'
 
 interface SidebarItem {
   href: string
   label: string
   icon: LucideIcon
   color?: string
+  visKey?: string
 }
 
 interface SidebarSection {
@@ -47,7 +49,7 @@ function CrmSidebarContent({ collapsed }: { collapsed: boolean }) {
           <div key={s.id} className="relative flex size-6 items-center justify-center">
             <div className="size-2 rounded-full" style={{ backgroundColor: s.color }} />
             {s.count > 0 && (
-              <span className="absolute -right-1 -top-1 flex size-3.5 items-center justify-center rounded-full bg-muted text-[9px] font-bold text-foreground">
+              <span className="absolute -right-1 -top-1 flex size-3.5 items-center justify-center rounded-full bg-muted text-[10px] font-bold text-foreground">
                 {s.count}
               </span>
             )}
@@ -89,10 +91,10 @@ function getSidebarSection(pathname: string): SidebarSection | null {
     return {
       title: 'Mon parcours',
       items: [
-        { href: '/home',    label: 'Accueil',    icon: Home },
-        { href: '/aria',    label: 'Simulateur', icon: Mic,        color: '#14B8A6' },
-        { href: '/agenda',  label: 'Agenda',     icon: Calendar },
-        { href: '/rapport', label: 'Rapport',    icon: TrendingUp },
+        { href: '/home',    label: 'Accueil',    icon: Home,       visKey: 'home'    },
+        { href: '/aria',    label: 'Simulateur', icon: Mic,        color: '#14B8A6', visKey: 'aria'   },
+        { href: '/agenda',  label: 'Agenda',     icon: Calendar,                     visKey: 'agenda' },
+        { href: '/rapport', label: 'Rapport',    icon: TrendingUp                                     },
       ],
     }
   }
@@ -103,8 +105,8 @@ function getSidebarSection(pathname: string): SidebarSection | null {
     return {
       title: 'Formation',
       items: [
-        { href: '/formation',          label: 'Mes modules',  icon: BookOpen },
-        { href: '/formation/library',  label: 'Bibliothèque', icon: Library },
+        { href: '/formation',         label: 'Mes modules',  icon: BookOpen, visKey: 'formation' },
+        { href: '/formation/library', label: 'Bibliothèque', icon: Library,  visKey: 'formation' },
       ],
     }
   }
@@ -112,9 +114,9 @@ function getSidebarSection(pathname: string): SidebarSection | null {
     return {
       title: 'Nova — Contenu',
       items: [
-        { href: '/nova',        label: 'Accueil',    icon: BarChart2, color: '#8B5CF6' },
-        { href: '/nova/create', label: 'Créer',      icon: PenLine,   color: '#8B5CF6' },
-        { href: '/nova/inbox',  label: 'Inbox',      icon: Inbox,     color: '#8B5CF6' },
+        { href: '/nova',        label: 'Accueil', icon: BarChart2, color: '#8B5CF6', visKey: 'nova' },
+        { href: '/nova/create', label: 'Créer',   icon: PenLine,   color: '#8B5CF6', visKey: 'nova' },
+        { href: '/nova/inbox',  label: 'Inbox',   icon: Inbox,     color: '#8B5CF6', visKey: 'nova' },
       ],
     }
   }
@@ -122,7 +124,7 @@ function getSidebarSection(pathname: string): SidebarSection | null {
     return {
       title: 'Réseau Atline',
       items: [
-        { href: '/network', label: 'Mon réseau', icon: GitFork },
+        { href: '/network', label: 'Mon réseau', icon: GitFork, visKey: 'network' },
       ],
     }
   }
@@ -130,9 +132,9 @@ function getSidebarSection(pathname: string): SidebarSection | null {
     return {
       title: 'Boîte à outils',
       items: [
-        { href: '/toolbox', label: 'Liens rapides', icon: Link2 },
-        { href: '/toolbox', label: 'Supports de vente', icon: FileText },
-        { href: '/toolbox', label: 'Bots prospection', icon: Bot },
+        { href: '/toolbox', label: 'Liens rapides',     icon: Link2,     visKey: 'toolbox' },
+        { href: '/toolbox', label: 'Supports de vente', icon: FileText,  visKey: 'toolbox' },
+        { href: '/toolbox', label: 'Bots prospection',  icon: Bot,       visKey: 'toolbox' },
       ],
     }
   }
@@ -146,12 +148,15 @@ interface Props {
 
 export function DesktopSidebar({ collapsed, onToggle }: Props) {
   const pathname = usePathname()
+  const vis = usePageVisibility()
   const section = getSidebarSection(pathname)
 
   const isActive = (href: string) =>
     pathname === href || pathname.startsWith(href + '/')
 
   if (!section) return null
+
+  const visibleItems = section.items.filter(item => !item.visKey || vis[item.visKey] !== false)
 
   return (
     <aside
@@ -190,18 +195,22 @@ export function DesktopSidebar({ collapsed, onToggle }: Props) {
           <CrmSidebarContent collapsed={collapsed} />
         </div>
       ) : (
-        <nav className="flex flex-col gap-0.5 px-2 pt-3 flex-1 overflow-y-auto overflow-x-hidden">
-          {section.items.map((item) => (
-            <NavItem key={item.href} {...item} active={isActive(item.href)} collapsed={collapsed} />
+        <nav className="flex flex-col gap-0.5 px-4 pt-3 flex-1 overflow-y-auto overflow-x-hidden">
+          {visibleItems.map((item) => (
+            <NavItem key={item.href + item.label} {...item} active={isActive(item.href)} collapsed={collapsed} />
           ))}
         </nav>
       )}
 
-      {/* Bottom — settings + profil toujours accessibles */}
-      <div className="shrink-0 flex flex-col gap-0.5 px-2 pb-3 pt-1">
+      {/* Bottom — settings + profil conditionnels */}
+      <div className="shrink-0 flex flex-col gap-0.5 px-4 pb-3 pt-1">
         <div className="mx-1 mb-1 h-px bg-border" />
-        <NavItem href="/settings" label="Paramètres" icon={Settings} active={isActive('/settings')} collapsed={collapsed} />
-        <NavItem href="/profile"  label="Mon profil" icon={User}     active={isActive('/profile')}  collapsed={collapsed} />
+        {vis['settings'] !== false && (
+          <NavItem href="/settings" label="Paramètres" icon={Settings} active={isActive('/settings')} collapsed={collapsed} />
+        )}
+        {vis['profile'] !== false && (
+          <NavItem href="/profile" label="Mon profil" icon={User} active={isActive('/profile')} collapsed={collapsed} />
+        )}
       </div>
     </aside>
   )

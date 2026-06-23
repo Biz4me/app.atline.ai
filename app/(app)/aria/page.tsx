@@ -128,7 +128,7 @@ function SetupScreen({
               </span>
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-bold text-foreground">{selected.firstName} {selected.lastName}</p>
-                <span className={cn('text-[11px] font-bold', stagePillColors[selected.stage])}>
+                <span className={cn('text-xs font-bold', stagePillColors[selected.stage])}>
                   {stageLabel[selected.stage]}
                 </span>
               </div>
@@ -197,7 +197,7 @@ function SetupScreen({
 
         {!selected && (
           <div>
-            <p className="mb-3 text-[11px] font-extrabold uppercase tracking-widest text-primary">
+            <p className="mb-3 text-xs font-extrabold uppercase tracking-widest text-primary">
               Tes priorités du jour
             </p>
             <div className="flex flex-col gap-2">
@@ -215,7 +215,7 @@ function SetupScreen({
                     <p className="text-sm font-bold text-foreground">{c.firstName} {c.lastName}</p>
                     <p className="text-xs text-muted-foreground">{c.city}</p>
                   </div>
-                  <span className={cn('shrink-0 rounded-full px-2.5 py-0.5 text-[11px] font-bold', stagePillColors[c.stage])}>
+                  <span className={cn('shrink-0 rounded-full px-2.5 py-0.5 text-xs font-bold', stagePillColors[c.stage])}>
                     {stageLabel[c.stage]}
                   </span>
                 </button>
@@ -245,6 +245,8 @@ function SimulatorScreen({
   const [showEndModal, setShowEndModal] = useState(false)
   const [speaking, setSpeaking] = useState(false)
   const [connecting, setConnecting] = useState(false)
+  const [paused, setPaused] = useState(false)
+  const [micError, setMicError] = useState(false)
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const roomRef = useRef<Room | null>(null)
 
@@ -261,6 +263,15 @@ function SimulatorScreen({
 
   const startCall = async () => {
     setConnecting(true)
+    setMicError(false)
+    // Request mic permission immediately while still in user gesture context
+    try {
+      await navigator.mediaDevices.getUserMedia({ audio: true })
+    } catch (_) {
+      setMicError(true)
+      setConnecting(false)
+      return
+    }
     try {
       const res = await fetch('/api/livekit-token', {
         method: 'POST',
@@ -275,6 +286,13 @@ function SimulatorScreen({
       room.on(RoomEvent.TrackSubscribed, (track) => {
         if (track.kind === Track.Kind.Audio) {
           const el = track.attach()
+          el.setAttribute('playsinline', 'true')
+          // Route vers l'oreillette (mode appel) sur Android Chrome
+          if (typeof (el as any).setSinkId === 'function') {
+            ;(el as any).setSinkId('communications').catch(() => {
+              ;(el as any).setSinkId('').catch(() => {})
+            })
+          }
           el.play().catch(() => {})
           document.body.appendChild(el)
         }
@@ -289,17 +307,27 @@ function SimulatorScreen({
       })
 
       room.on(RoomEvent.Disconnected, () => {
+        setPaused(false)
         setSimState('ended')
       })
 
       await room.connect(url, token)
       await room.localParticipant.setMicrophoneEnabled(true)
+      setPaused(false)
       setSimState('calling')
     } catch (e) {
       console.error('LiveKit connect error', e)
     } finally {
       setConnecting(false)
     }
+  }
+
+  const togglePause = async () => {
+    const room = roomRef.current
+    if (!room) return
+    const next = !paused
+    await room.localParticipant.setMicrophoneEnabled(!next).catch(() => {})
+    setPaused(next)
   }
 
   const endCall = async () => {
@@ -338,7 +366,7 @@ function SimulatorScreen({
         {simState === 'calling' ? (
           <div className="flex items-center gap-1.5 rounded-full bg-white/10 px-2.5 py-1">
             <span className="size-2 animate-pulse rounded-full bg-red-500" />
-            <span className="text-[11px] font-bold text-white/80">REC {formatTime(seconds)}</span>
+            <span className="text-xs font-bold text-white/80">REC {formatTime(seconds)}</span>
           </div>
         ) : (
           <div className="size-9" />
@@ -376,7 +404,7 @@ function SimulatorScreen({
             {contact.firstName} {contact.lastName}
           </h2>
           <div className="mt-1.5 flex items-center justify-center gap-2">
-            <span className={cn('rounded-full px-2.5 py-0.5 text-[11px] font-bold', stagePillColors[contact.stage])}>
+            <span className={cn('rounded-full px-2.5 py-0.5 text-xs font-bold', stagePillColors[contact.stage])}>
               {stageLabel[contact.stage]}
             </span>
             <span className="text-xs text-white/50">Phase {phase}</span>
@@ -396,10 +424,10 @@ function SimulatorScreen({
       {/* MÉTHODE WORRE card */}
       <div className="mx-4 mt-6 rounded-2xl bg-white/6 border border-white/10 p-4">
         <div className="mb-3 flex items-center justify-between">
-          <p className="text-[11px] font-extrabold uppercase tracking-widest text-white/50">
+          <p className="text-xs font-extrabold uppercase tracking-widest text-white/50">
             Méthode Worre
           </p>
-          <button type="button" className="flex items-center gap-1 text-[11px] font-semibold text-primary">
+          <button type="button" className="flex items-center gap-1 text-xs font-semibold text-primary">
             Voir le détail <ChevronRight className="size-3" />
           </button>
         </div>
@@ -408,13 +436,21 @@ function SimulatorScreen({
             <div key={i} className="flex items-center gap-2.5">
               <span className={cn('size-2 shrink-0 rounded-full', step.dot)} />
               <span className="flex-1 text-xs font-semibold text-white/80">{step.label}</span>
-              <span className="text-[11px] text-white/40">{step.duration}</span>
+              <span className="text-xs text-white/40">{step.duration}</span>
             </div>
           ))}
         </div>
       </div>
 
       <div className="flex-1" />
+
+      {/* Mic error */}
+      {micError && (
+        <div className="mx-6 mb-4 rounded-xl bg-red-500/15 border border-red-500/30 px-4 py-3 text-center">
+          <p className="text-sm font-medium text-red-400">Microphone refusé</p>
+          <p className="mt-0.5 text-xs text-red-400/70">Autorise le micro dans Paramètres → Applications → Autorisations</p>
+        </div>
+      )}
 
       {/* Actions */}
       {simState === 'idle' && (
@@ -438,13 +474,22 @@ function SimulatorScreen({
 
       {simState === 'calling' && (
         <div className="flex items-center justify-center gap-6 pb-16">
-          <div className="size-14" />
+          <button
+            type="button"
+            onClick={togglePause}
+            className="flex size-14 items-center justify-center rounded-full bg-white/15 transition-colors active:bg-white/25"
+          >
+            {paused
+              ? <Phone className="size-6 stroke-[1.5] text-white" />
+              : <Pause className="size-6 stroke-[1.5] text-white" />
+            }
+          </button>
           <button
             type="button"
             onClick={() => setShowEndModal(true)}
-            className="flex size-16 items-center justify-center rounded-full bg-red-500 shadow-lg shadow-red-500/30 transition-transform active:scale-95"
+            className="flex size-20 items-center justify-center rounded-full bg-red-500 shadow-lg shadow-red-500/30 transition-transform active:scale-95"
           >
-            <PhoneOff className="size-6 stroke-[1.5] text-white" />
+            <PhoneOff className="size-8 stroke-[1.5] text-white" />
           </button>
         </div>
       )}

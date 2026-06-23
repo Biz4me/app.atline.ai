@@ -111,7 +111,7 @@ function AbonnementContent() {
                     <p className="font-display text-xl font-bold text-foreground">
                       {plan.price === 0 ? 'Gratuit' : `${plan.price}€`}
                     </p>
-                    {plan.price > 0 && <p className="text-[11px] text-muted-foreground">/mois</p>}
+                    {plan.price > 0 && <p className="text-xs text-muted-foreground">/mois</p>}
                   </div>
                 </div>
 
@@ -184,7 +184,7 @@ function AbonnementContent() {
                 <p className="text-xs text-muted-foreground">{inv.date}</p>
               </div>
               <div className="flex items-center gap-3">
-                <span className="rounded-full bg-success/15 px-2 py-0.5 text-[11px] font-bold text-success">
+                <span className="rounded-full bg-success/15 px-2 py-0.5 text-xs font-bold text-success">
                   {inv.status}
                 </span>
                 <span className="text-sm font-semibold text-foreground">{euro(inv.amount)}</span>

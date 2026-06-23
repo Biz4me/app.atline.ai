@@ -209,22 +209,22 @@ export default function CommunautePage() {
               <Card className="p-4 transition-colors active:bg-muted/50">
                 <div className="mb-2 flex items-center gap-2">
                   {thread.pinned && <Pin className="size-3 shrink-0 text-primary" />}
-                  <span className={cn('rounded-full px-2 py-0.5 text-[11px] font-bold', thread.categoryColor)}>
+                  <span className={cn('rounded-full px-2 py-0.5 text-xs font-bold', thread.categoryColor)}>
                     {thread.category}
                   </span>
                 </div>
-                <p className="mb-3 text-[15px] font-semibold leading-snug text-foreground">
+                <p className="mb-3 text-lg font-semibold leading-snug text-foreground">
                   {thread.title}
                 </p>
                 <div className="flex items-center gap-2">
-                  <span className={cn('flex size-7 shrink-0 items-center justify-center rounded-full text-[11px] font-bold text-white', thread.authorColor)}>
+                  <span className={cn('flex size-7 shrink-0 items-center justify-center rounded-full text-xs font-bold text-white', thread.authorColor)}>
                     {thread.authorInitials}
                   </span>
                   <span className="text-xs font-semibold text-foreground">{thread.author}</span>
                   <span className={cn('rounded-full px-2 py-0.5 text-[10px] font-bold', thread.companyColor)}>
                     {thread.company}
                   </span>
-                  <span className="ml-auto text-[11px] text-muted-foreground">{thread.time}</span>
+                  <span className="ml-auto text-xs text-muted-foreground">{thread.time}</span>
                 </div>
                 <div className="mt-3 flex items-center gap-4 border-t border-border pt-2.5">
                   <div className="flex items-center gap-1.5 text-xs text-muted-foreground">

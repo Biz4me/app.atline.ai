@@ -24,7 +24,7 @@ export default function NovaPage() {
         >
           <ChevronLeft className="size-5 stroke-[1.5]" />
         </button>
-        <h1 className="flex-1 font-display text-lg font-bold text-foreground lg:text-[22px]">Nova</h1>
+        <h1 className="flex-1 font-display text-lg font-bold text-foreground lg:text-2xl">Nova</h1>
         <button
           type="button"
           onClick={() => toast.info('Créer un post')}

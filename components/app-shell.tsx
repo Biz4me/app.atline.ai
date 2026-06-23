@@ -7,6 +7,7 @@ import { DesktopSidebar } from '@/components/desktop-sidebar'
 import { AtlasSidebar } from '@/components/atlas-sidebar'
 import { DesktopTopBar } from '@/components/desktop-top-bar'
 import { BottomNav } from '@/components/bottom-nav'
+import { PageVisibilityProvider } from '@/components/page-visibility-context'
 
 interface Props {
   children: ReactNode
@@ -46,7 +47,7 @@ export function AppShell({ children, initialCollapsed, initialAtlasCollapsed }: 
   }
 
   return (
-    <>
+    <PageVisibilityProvider>
       <DesktopTopBar />
       <DesktopSidebar collapsed={collapsed} onToggle={toggle} />
       <AtlasSidebar collapsed={atlasCollapsed} onToggle={toggleAtlas} />
@@ -61,6 +62,6 @@ export function AppShell({ children, initialCollapsed, initialAtlasCollapsed }: 
         {children}
         <BottomNav />
       </div>
-    </>
+    </PageVisibilityProvider>
   )
 }

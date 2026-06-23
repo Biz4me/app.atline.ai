@@ -4,14 +4,15 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useRef, useState } from 'react'
 import { cn } from '@/lib/utils'
-import { Compass, Users, User, GitFork, Sparkles, X, History, ArrowLeft, Mic, SendHorizontal } from 'lucide-react'
+import { Route, Users, User, GitFork, Sparkles, X, History, ArrowLeft, Mic, SendHorizontal } from 'lucide-react'
+import { usePageVisibility } from '@/components/page-visibility-context'
 
 /* ── Tabs ───────────────────────────────────────────────────── */
-const tabs = [
-  { href: '/home',    label: 'Parcours', icon: Compass },
-  { href: '/contacts',label: 'Contacts', icon: Users },
-  { href: '/network', label: 'Réseau',   icon: GitFork },
-  { href: '/profile', label: 'Moi',      icon: User },
+const ALL_TABS = [
+  { href: '/home',    label: 'Parcours', icon: Route, visKey: 'home',     side: 'left'  },
+  { href: '/contacts',label: 'Contacts', icon: Users,   visKey: 'contacts', side: 'left'  },
+  { href: '/network', label: 'Réseau',   icon: GitFork, visKey: 'network',  side: 'right' },
+  { href: '/profile', label: 'Moi',      icon: User,    visKey: 'profile',  side: 'right' },
 ]
 
 /* ── Data ───────────────────────────────────────────────────── */
@@ -47,6 +48,7 @@ const histSessions = [
 /* ── BottomNav ──────────────────────────────────────────────── */
 export function BottomNav() {
   const pathname = usePathname()
+  const vis = usePageVisibility()
   const [open, setOpen] = useState(false)
   const [histOpen, setHistOpen] = useState(false)
   const [msgs, setMsgs] = useState<Msg[]>([])
@@ -71,6 +73,10 @@ export function BottomNav() {
     setInput('')
     scrollToBottom()
   }
+
+  const leftTabs  = ALL_TABS.filter(t => t.side === 'left'  && vis[t.visKey] !== false)
+  const rightTabs = ALL_TABS.filter(t => t.side === 'right' && vis[t.visKey] !== false)
+  const showAtlas = vis['atlas'] !== false
 
   const openAtlas = () => { setOpen(true); setHistOpen(false) }
   const closeAtlas = () => setOpen(false)
@@ -113,10 +119,10 @@ export function BottomNav() {
                       A
                     </div>
                     <div>
-                      <p className="font-display text-[15px] font-bold leading-tight text-foreground">Atlas</p>
+                      <p className="font-display text-lg font-bold leading-tight text-foreground">Atlas</p>
                       <div className="flex items-center gap-1.5">
                         <span className="size-[7px] rounded-full bg-green-500" />
-                        <span className="text-[11px] font-semibold text-green-600">En ligne</span>
+                        <span className="text-xs font-semibold text-green-600">En ligne</span>
                       </div>
                     </div>
                   </div>
@@ -138,7 +144,7 @@ export function BottomNav() {
                   >
                     <ArrowLeft className="size-[19px] stroke-[1.5]" />
                   </button>
-                  <p className="flex-1 font-display text-[15px] font-bold text-foreground">Historique</p>
+                  <p className="flex-1 font-display text-lg font-bold text-foreground">Historique</p>
                 </>
               )}
             </div>
@@ -156,7 +162,7 @@ export function BottomNav() {
                     }}
                     className="flex items-center gap-3 rounded-2xl border border-border bg-surface p-3.5 text-left active:bg-muted"
                   >
-                    <span className="w-12 shrink-0 text-[11px] font-semibold text-muted-foreground">{s.date}</span>
+                    <span className="w-12 shrink-0 text-xs font-semibold text-muted-foreground">{s.date}</span>
                     <span className="flex-1 truncate text-sm text-foreground">{s.summary}</span>
                   </button>
                 ))}
@@ -196,7 +202,7 @@ export function BottomNav() {
                   <div key={i} className={cn('flex flex-col gap-2', m.from === 'user' ? 'items-end' : 'items-start')}>
                     <div
                       className={cn(
-                        'max-w-[82%] rounded-2xl px-4 py-3 text-[14px] leading-[1.5]',
+                        'max-w-[82%] rounded-2xl px-4 py-3 text-sm leading-[1.5]',
                         m.from === 'user'
                           ? 'rounded-br-md bg-primary text-primary-foreground'
                           : 'rounded-bl-md bg-muted text-foreground'
@@ -211,7 +217,7 @@ export function BottomNav() {
                             key={c}
                             type="button"
                             onClick={() => sendMsg(c)}
-                            className="rounded-full border border-primary/30 bg-primary/10 px-3.5 py-1.5 text-[13px] font-semibold text-primary active:bg-primary/20"
+                            className="rounded-full border border-primary/30 bg-primary/10 px-3.5 py-1.5 text-sm font-semibold text-primary active:bg-primary/20"
                           >
                             {c}
                           </button>
@@ -235,7 +241,7 @@ export function BottomNav() {
                     onChange={(e) => setInput(e.target.value)}
                     onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMsg(input) } }}
                     placeholder="Écris à Atlas…"
-                    className="flex-1 resize-none bg-transparent text-[14px] leading-[1.4] text-foreground outline-none placeholder:text-muted-foreground"
+                    className="flex-1 resize-none bg-transparent text-sm leading-[1.4] text-foreground outline-none placeholder:text-muted-foreground"
                     style={{ maxHeight: 110, paddingTop: 7, paddingBottom: 7 }}
                   />
                   <button
@@ -263,24 +269,30 @@ export function BottomNav() {
         className="lg:hidden fixed inset-x-0 bottom-0 z-40 mx-auto max-w-[480px] bg-surface/95 backdrop-blur-md shadow-[0_-1px_0_rgba(0,0,0,0.06)]"
         style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
       >
-        <div className="grid grid-cols-5 items-end px-2 pt-2 pb-2">
-          <NavItem tab={tabs[0]} active={isActive(tabs[0].href)} />
-          <NavItem tab={tabs[1]} active={isActive(tabs[1].href)} />
+        <div className="flex items-center justify-around px-2 pt-2 pb-2">
+          {/* Left tabs */}
+          {leftTabs.map(tab => (
+            <NavItem key={tab.href} tab={tab} active={isActive(tab.href)} />
+          ))}
 
-          {/* Atlas FAB */}
-          <div className="flex justify-center">
-            <button
-              type="button"
-              onClick={openAtlas}
-              aria-label="Ouvrir Atlas"
-              className="-translate-y-4 flex size-[58px] items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg shadow-primary/30 transition-transform active:scale-95"
-            >
-              <Sparkles className="size-6 stroke-[1.5]" />
-            </button>
-          </div>
+          {/* Atlas FAB — conditionnel */}
+          {showAtlas && (
+            <div className="flex justify-center">
+              <button
+                type="button"
+                onClick={openAtlas}
+                aria-label="Ouvrir Atlas"
+                className="-translate-y-4 flex size-[58px] items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg shadow-primary/30 transition-transform active:scale-95"
+              >
+                <Sparkles className="size-6 stroke-[1.5]" />
+              </button>
+            </div>
+          )}
 
-          <NavItem tab={tabs[2]} active={isActive(tabs[2].href)} />
-          <NavItem tab={tabs[3]} active={isActive(tabs[3].href)} />
+          {/* Right tabs */}
+          {rightTabs.map(tab => (
+            <NavItem key={tab.href} tab={tab} active={isActive(tab.href)} />
+          ))}
         </div>
       </nav>
     </>
@@ -293,12 +305,11 @@ function NavItem({ tab, active }: { tab: { href: string; label: string; icon: ty
     <Link
       href={tab.href}
       className={cn(
-        'flex flex-col items-center gap-1 py-1 text-[10px] font-semibold transition-colors',
+        'flex items-center justify-center p-2 transition-colors',
         active ? 'text-primary' : 'text-muted-foreground',
       )}
     >
-      <Icon className={cn('size-5 stroke-[1.5]', active && 'stroke-2')} />
-      {tab.label}
+      <Icon className={cn('size-6 stroke-[1.5]', active && 'stroke-2')} />
     </Link>
   )
 }

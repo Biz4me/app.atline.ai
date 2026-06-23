@@ -72,7 +72,7 @@ export default function AtlasPage() {
       {/* ── Rail gauche : historique sessions (desktop) ── */}
       <aside className="hidden lg:flex w-64 flex-col shrink-0 border-r border-border bg-surface">
         <div className="flex items-center justify-between px-4 py-4 shrink-0">
-          <span className="text-[13px] font-semibold text-muted-foreground">Conversations</span>
+          <span className="text-sm font-semibold text-muted-foreground">Conversations</span>
           <button
             type="button"
             onClick={newSession}
@@ -92,8 +92,8 @@ export default function AtlasPage() {
               }}
               className="flex flex-col items-start gap-0.5 rounded-xl px-3 py-2.5 text-left transition-colors hover:bg-muted"
             >
-              <span className="line-clamp-2 text-[13px] font-medium text-foreground leading-snug">{s.title}</span>
-              <span className="text-[11px] text-muted-foreground">{s.date}</span>
+              <span className="line-clamp-2 text-sm font-medium text-foreground leading-snug">{s.title}</span>
+              <span className="text-xs text-muted-foreground">{s.date}</span>
             </button>
           ))}
         </div>
@@ -108,10 +108,10 @@ export default function AtlasPage() {
             <Sparkles className="size-[18px] stroke-[1.5]" />
           </div>
           <div className="flex-1">
-            <p className="font-display text-[15px] font-bold text-foreground leading-tight">Atlas</p>
+            <p className="font-display text-lg font-bold text-foreground leading-tight">Atlas</p>
             <div className="flex items-center gap-1.5">
               <span className="size-[6px] rounded-full bg-green-500" />
-              <span className="text-[11px] font-semibold text-green-600">En ligne</span>
+              <span className="text-xs font-semibold text-green-600">En ligne</span>
             </div>
           </div>
           {/* Mobile : bouton historique */}
@@ -144,7 +144,7 @@ export default function AtlasPage() {
                 }}
                 className="flex items-center gap-3 rounded-xl border border-border bg-background p-3 text-left"
               >
-                <span className="w-12 shrink-0 text-[11px] font-semibold text-muted-foreground">{s.date}</span>
+                <span className="w-12 shrink-0 text-xs font-semibold text-muted-foreground">{s.date}</span>
                 <span className="flex-1 truncate text-sm text-foreground">{s.title}</span>
               </button>
             ))}
@@ -186,7 +186,7 @@ export default function AtlasPage() {
                 )}
                 <div
                   className={cn(
-                    'max-w-[75%] rounded-2xl px-4 py-3 text-[14px] leading-[1.55] whitespace-pre-line',
+                    'max-w-[75%] rounded-2xl px-4 py-3 text-sm leading-[1.55] whitespace-pre-line',
                     m.from === 'user'
                       ? 'rounded-br-md bg-primary text-primary-foreground'
                       : 'rounded-bl-md bg-muted text-foreground',
@@ -201,7 +201,7 @@ export default function AtlasPage() {
                         key={c}
                         type="button"
                         onClick={() => sendMsg(c)}
-                        className="rounded-full border border-primary/30 bg-primary/10 px-3.5 py-1.5 text-[13px] font-semibold text-primary hover:bg-primary/20 transition-colors"
+                        className="rounded-full border border-primary/30 bg-primary/10 px-3.5 py-1.5 text-sm font-semibold text-primary hover:bg-primary/20 transition-colors"
                       >
                         {c}
                       </button>
@@ -227,7 +227,7 @@ export default function AtlasPage() {
                 }
               }}
               placeholder="Écris à Atlas…"
-              className="flex-1 resize-none bg-transparent text-[14px] leading-[1.4] text-foreground outline-none placeholder:text-muted-foreground"
+              className="flex-1 resize-none bg-transparent text-sm leading-[1.4] text-foreground outline-none placeholder:text-muted-foreground"
               style={{ maxHeight: 120, paddingTop: 7, paddingBottom: 7 }}
             />
             <button type="button" className="mb-[7px] text-muted-foreground">

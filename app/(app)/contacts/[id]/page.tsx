@@ -141,7 +141,7 @@ function EditSheet({
   }
 
   const inputCls = 'w-full rounded-xl border border-border bg-background px-4 py-3 text-sm text-foreground outline-none focus:ring-2 focus:ring-ring/40 placeholder:text-muted-foreground'
-  const labelCls = 'mb-1.5 block text-[11px] font-bold uppercase tracking-widest text-muted-foreground'
+  const labelCls = 'mb-1.5 block text-xs font-bold uppercase tracking-widest text-muted-foreground'
 
   return (
     <div className="fixed inset-0 z-50 flex flex-col">
@@ -327,7 +327,7 @@ export default function ContactDetailPage({ params }: { params: Promise<{ id: st
                 {initials}
               </div>
               {contact.city && (
-                <div className="flex items-center gap-1 text-[11px] text-muted-foreground">
+                <div className="flex items-center gap-1 text-xs text-muted-foreground">
                   <MapPin className="size-3 stroke-[1.5]" />
                   {contact.city}
                 </div>
@@ -342,13 +342,13 @@ export default function ContactDetailPage({ params }: { params: Promise<{ id: st
                 if (tile.href) return (
                   <Link key={tile.label} href={tile.href} className={cls}>
                     <Icon className="size-4 stroke-[1.5] text-primary" />
-                    <span className="text-[11px] font-medium text-foreground">{tile.label}</span>
+                    <span className="text-xs font-medium text-foreground">{tile.label}</span>
                   </Link>
                 )
                 return (
                   <button key={tile.label} type="button" onClick={tile.action} className={cls}>
                     <Icon className="size-4 stroke-[1.5] text-primary" />
-                    <span className="text-[11px] font-medium text-foreground">{tile.label}</span>
+                    <span className="text-xs font-medium text-foreground">{tile.label}</span>
                   </button>
                 )
               })}
@@ -392,7 +392,7 @@ export default function ContactDetailPage({ params }: { params: Promise<{ id: st
                 )}
                 <div className="flex items-center gap-3 px-4 py-2.5">
                   <Clock className="size-3.5 shrink-0 stroke-[1.5] text-muted-foreground" />
-                  <span className="text-[11px] text-muted-foreground">
+                  <span className="text-xs text-muted-foreground">
                     Dernier · <span className="font-medium text-foreground">{contact.lastInteraction}</span>
                   </span>
                 </div>
@@ -412,12 +412,12 @@ export default function ContactDetailPage({ params }: { params: Promise<{ id: st
                       </span>
                       <div className="flex-1 min-w-0">
                         <p className="text-xs font-bold text-foreground">{personalityName[contact.disc]}</p>
-                        <p className="text-[11px] text-muted-foreground leading-relaxed">{personalityDesc[contact.disc]}</p>
+                        <p className="text-xs text-muted-foreground leading-relaxed">{personalityDesc[contact.disc]}</p>
                       </div>
                     </div>
                     <div className="rounded-xl bg-muted/50 px-3 py-2.5">
                       <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-1">Comment approcher</p>
-                      <p className="text-[11px] text-foreground leading-relaxed">{personalityApproach[contact.disc]}</p>
+                      <p className="text-xs text-foreground leading-relaxed">{personalityApproach[contact.disc]}</p>
                     </div>
                   </div>
                 ) : (
@@ -437,7 +437,7 @@ export default function ContactDetailPage({ params }: { params: Promise<{ id: st
               <div className="px-4 pb-5 flex flex-col gap-3">
                 <div>
                   <div className="flex items-center justify-between mb-1.5">
-                    <p className="text-[11px] text-muted-foreground">Score de chaleur</p>
+                    <p className="text-xs text-muted-foreground">Score de chaleur</p>
                     <p className="text-xs font-bold text-foreground">72 / 100</p>
                   </div>
                   <div className="h-1.5 rounded-full bg-muted overflow-hidden">
@@ -446,9 +446,9 @@ export default function ContactDetailPage({ params }: { params: Promise<{ id: st
                 </div>
                 <div className="flex flex-wrap gap-1.5">
                   {['Motivé', 'Réseau social', 'Parent'].map((tag) => (
-                    <span key={tag} className="rounded-lg bg-muted px-2 py-1 text-[11px] font-medium text-muted-foreground">{tag}</span>
+                    <span key={tag} className="rounded-lg bg-muted px-2 py-1 text-xs font-medium text-muted-foreground">{tag}</span>
                   ))}
-                  <button type="button" className="rounded-lg border border-dashed border-border px-2 py-1 text-[11px] font-medium text-muted-foreground hover:bg-muted transition-colors">
+                  <button type="button" className="rounded-lg border border-dashed border-border px-2 py-1 text-xs font-medium text-muted-foreground hover:bg-muted transition-colors">
                     + Tag
                   </button>
                 </div>
@@ -509,10 +509,10 @@ export default function ContactDetailPage({ params }: { params: Promise<{ id: st
                       <CalendarPlus className={cn('size-4 shrink-0 stroke-[1.5]', appt.done ? 'text-muted-foreground' : 'text-primary')} />
                       <div className="flex-1 min-w-0">
                         <p className={cn('text-sm font-medium', appt.done ? 'text-muted-foreground line-through' : 'text-foreground')}>{appt.title}</p>
-                        <p className="text-[11px] text-muted-foreground mt-0.5">{appt.date} · {appt.type}</p>
+                        <p className="text-xs text-muted-foreground mt-0.5">{appt.date} · {appt.type}</p>
                       </div>
                       {appt.outcome && (
-                        <span className="text-[11px] font-bold text-success">{appt.outcome}</span>
+                        <span className="text-xs font-bold text-success">{appt.outcome}</span>
                       )}
                     </div>
                   ))}
@@ -533,7 +533,7 @@ export default function ContactDetailPage({ params }: { params: Promise<{ id: st
                       <MessageSquare className="size-4 shrink-0 stroke-[1.5] text-muted-foreground mt-0.5" />
                       <div className="flex-1 min-w-0">
                         <p className="text-sm text-foreground leading-relaxed">{ev.label}</p>
-                        <p className="text-[11px] text-muted-foreground mt-0.5">{ev.date}</p>
+                        <p className="text-xs text-muted-foreground mt-0.5">{ev.date}</p>
                       </div>
                     </div>
                   ))
@@ -551,7 +551,7 @@ export default function ContactDetailPage({ params }: { params: Promise<{ id: st
                     <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-bold text-primary">A</span>
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium text-foreground">{session.title}</p>
-                      <p className="text-[11px] text-muted-foreground mt-0.5">{session.date}</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">{session.date}</p>
                     </div>
                     <ChevronRight className="size-4 shrink-0 text-muted-foreground" />
                   </div>
@@ -572,7 +572,7 @@ export default function ContactDetailPage({ params }: { params: Promise<{ id: st
                       <Mic className="size-4 shrink-0 stroke-[1.5] text-[#14B8A6]" />
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-medium text-foreground">Phase {sim.phase} · {sim.character}</p>
-                        <p className="text-[11px] text-muted-foreground mt-0.5">{sim.date}</p>
+                        <p className="text-xs text-muted-foreground mt-0.5">{sim.date}</p>
                       </div>
                       <span className="flex size-8 items-center justify-center rounded-full bg-success/10 text-xs font-bold text-success">{sim.score}</span>
                     </div>
@@ -595,7 +595,7 @@ export default function ContactDetailPage({ params }: { params: Promise<{ id: st
                       <div key={kpi.label} className="rounded-xl border border-border bg-background px-3 py-3 text-center">
                         <Icon className="size-4 text-muted-foreground mx-auto mb-1 stroke-[1.5]" />
                         <p className="text-sm font-bold text-foreground">{kpi.value}</p>
-                        <p className="text-[11px] text-muted-foreground">{kpi.label}</p>
+                        <p className="text-xs text-muted-foreground">{kpi.label}</p>
                       </div>
                     )
                   })}
@@ -672,7 +672,7 @@ export default function ContactDetailPage({ params }: { params: Promise<{ id: st
                         </div>
                         <div className="flex-1 pb-4 pt-1">
                           <p className="text-sm font-medium text-foreground">{ev.label}</p>
-                          <p className="text-[11px] text-muted-foreground mt-0.5">{ev.date}</p>
+                          <p className="text-xs text-muted-foreground mt-0.5">{ev.date}</p>
                         </div>
                       </li>
                     )

@@ -142,7 +142,7 @@ function CrmRailContent() {
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-xs font-medium text-foreground">{item.label}</p>
-                  <p className="text-[11px] text-muted-foreground">{item.sub}</p>
+                  <p className="text-xs text-muted-foreground">{item.sub}</p>
                 </div>
                 <ChevronRight className="size-3.5 text-muted-foreground/50 shrink-0" />
               </Link>
@@ -184,7 +184,7 @@ function CrmRailContent() {
                   <button key={c.id} type="button" onClick={() => selectContact(c)}
                     className="flex w-full items-center justify-between px-3 py-2 text-left hover:bg-muted transition-colors">
                     <span className="text-xs font-medium text-foreground">{c.name}</span>
-                    <span className="text-[11px] text-muted-foreground">{c.stage}</span>
+                    <span className="text-xs text-muted-foreground">{c.stage}</span>
                   </button>
                 ))}
               </div>
@@ -197,7 +197,7 @@ function CrmRailContent() {
               </span>
               <div className="flex-1 min-w-0">
                 <p className="text-xs font-medium text-foreground">{contact.name}</p>
-                <p className="text-[11px] text-muted-foreground">{contact.stage}</p>
+                <p className="text-xs text-muted-foreground">{contact.stage}</p>
               </div>
               <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-bold text-primary shrink-0">{contact.sim}</span>
             </div>
@@ -233,7 +233,7 @@ function CrmRailContent() {
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-xs font-medium text-foreground truncate">{s.label}</p>
-                  <p className="text-[11px] text-muted-foreground">{s.time}</p>
+                  <p className="text-xs text-muted-foreground">{s.time}</p>
                 </div>
                 {s.score && (
                   <span className="flex size-6 items-center justify-center rounded-md bg-[#22c55e]/10 text-[#22c55e] text-[10px] font-bold shrink-0">{s.score}</span>
@@ -394,7 +394,7 @@ export function AtlasSidebar({ collapsed, onToggle }: Props) {
                           <button key={c.id} type="button" onClick={() => selectContact(c)}
                             className="flex w-full items-center justify-between px-3 py-2 text-left hover:bg-muted transition-colors">
                             <span className="text-xs font-medium text-foreground">{c.name}</span>
-                            <span className="text-[11px] text-muted-foreground">{c.stage}</span>
+                            <span className="text-xs text-muted-foreground">{c.stage}</span>
                           </button>
                         ))}
                       </div>
@@ -409,7 +409,7 @@ export function AtlasSidebar({ collapsed, onToggle }: Props) {
                       </span>
                       <div className="flex-1 min-w-0">
                         <p className="text-xs font-medium text-foreground">{contact.name}</p>
-                        <p className="text-[11px] text-muted-foreground">{contact.stage}</p>
+                        <p className="text-xs text-muted-foreground">{contact.stage}</p>
                       </div>
                       <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-bold text-primary shrink-0">
                         {contact.sim}
@@ -435,7 +435,7 @@ export function AtlasSidebar({ collapsed, onToggle }: Props) {
                     <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-[#22c55e]/10 text-[#22c55e] text-xs font-bold">82</span>
                     <div className="min-w-0">
                       <p className="text-[10px] font-medium uppercase tracking-widest text-muted-foreground mb-0.5">Dernière · Sophie Laurent</p>
-                      <p className="text-[11px] text-foreground leading-relaxed italic">
+                      <p className="text-xs text-foreground leading-relaxed italic">
                         &laquo; Bonne accroche — travaille ta relance sur l&apos;objection prix. &raquo;
                       </p>
                     </div>
@@ -443,7 +443,7 @@ export function AtlasSidebar({ collapsed, onToggle }: Props) {
 
                   {/* Sessions précédentes */}
                   <button type="button" onClick={() => toast.info("Sessions précédentes")}
-                    className="flex w-full items-center gap-1.5 text-[11px] text-muted-foreground hover:text-foreground transition-colors">
+                    className="flex w-full items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors">
                     <History className="size-3.5 stroke-[1.5] shrink-0" />
                     <span className="flex-1 text-left">Mes sessions précédentes</span>
                     <ChevronRight className="size-3 shrink-0" />
@@ -468,7 +468,7 @@ export function AtlasSidebar({ collapsed, onToggle }: Props) {
                         </div>
                         <div className="flex-1 min-w-0">
                           <p className="text-xs font-medium text-foreground truncate">{s.label}</p>
-                          <p className="text-[11px] text-muted-foreground">{s.time}</p>
+                          <p className="text-xs text-muted-foreground">{s.time}</p>
                         </div>
                         {s.score && (
                           <span className="flex size-6 items-center justify-center rounded-md bg-[#22c55e]/10 text-[#22c55e] text-[10px] font-bold shrink-0">{s.score}</span>

@@ -159,7 +159,7 @@ export default function DiscQuizPage({
 
           {/* Titre */}
           <div className="text-center">
-            <h1 className={cn('font-display text-[28px] font-extrabold leading-tight', profile.textClass)}>
+            <h1 className={cn('font-display text-[32px] font-extrabold leading-tight', profile.textClass)}>
               {firstName} est {profile.name}
             </h1>
             <p className="mt-2 text-sm text-muted-foreground">{profile.desc}</p>
@@ -217,7 +217,7 @@ export default function DiscQuizPage({
           <ChevronLeft className="size-5 stroke-[1.5]" />
         </button>
         <div>
-          <h1 className="text-[15px] font-bold text-foreground">Quel est le profil de {firstName} ?</h1>
+          <h1 className="text-lg font-bold text-foreground">Quel est le profil de {firstName} ?</h1>
           <p className="text-xs text-muted-foreground">3 questions · 1 minute</p>
         </div>
       </header>

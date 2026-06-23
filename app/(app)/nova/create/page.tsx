@@ -175,7 +175,7 @@ export default function CreatePostPage() {
                         type="button"
                         onClick={() => setPlatform(p.id)}
                         className={cn(
-                          'flex flex-col items-center gap-1.5 rounded-xl border bg-surface py-3 text-[11px] font-semibold transition-colors',
+                          'flex flex-col items-center gap-1.5 rounded-xl border bg-surface py-3 text-xs font-semibold transition-colors',
                           active ? 'border-primary text-primary' : 'border-border text-fg-2',
                         )}
                       >
@@ -380,7 +380,7 @@ function ImportButton({ icon: Icon, label }: { icon: typeof ImageUp; label: stri
     <button
       type="button"
       onClick={() => toast(`${label} — bientôt disponible`)}
-      className="flex flex-col items-center gap-1.5 rounded-xl border border-border bg-surface py-4 text-[11px] font-semibold text-fg-2 transition-colors active:bg-muted"
+      className="flex flex-col items-center gap-1.5 rounded-xl border border-border bg-surface py-4 text-xs font-semibold text-fg-2 transition-colors active:bg-muted"
     >
       <Icon className="size-5 stroke-[1.5]" />
       {label}

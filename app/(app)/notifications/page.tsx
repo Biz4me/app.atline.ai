@@ -146,7 +146,7 @@ function NotifList({ unreadCount }: { unreadCount: number }) {
                 )}
               </div>
               <p className="mt-0.5 text-xs text-muted-foreground text-pretty line-clamp-2">{notif.body}</p>
-              <p className="mt-1 text-[11px] text-muted-foreground">{notif.time}</p>
+              <p className="mt-1 text-xs text-muted-foreground">{notif.time}</p>
             </div>
           </button>
         ))}

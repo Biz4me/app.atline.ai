@@ -70,7 +70,7 @@ export default function AgendaPage() {
         >
           <ChevronLeft className="size-5 stroke-[1.5]" />
         </button>
-        <h1 className="flex-1 font-display text-lg font-bold text-foreground lg:text-[22px]">Agenda</h1>
+        <h1 className="flex-1 font-display text-lg font-bold text-foreground lg:text-2xl">Agenda</h1>
       </header>
 
       {/* View tabs */}
@@ -108,7 +108,7 @@ function JourView() {
   return (
     <div className="flex flex-col gap-4">
       <div className="flex items-center">
-        <p className="flex-1 text-[15px] font-bold capitalize text-foreground">{DAY_LABEL}</p>
+        <p className="flex-1 text-lg font-bold capitalize text-foreground">{DAY_LABEL}</p>
         <button
           type="button"
           onClick={() => toast.info('Nouveau rendez-vous')}
@@ -138,9 +138,9 @@ function JourView() {
               onClick={() => toast.info(a.name)}
               className="flex w-full items-center gap-3.5 rounded-2xl border border-border bg-surface p-4 text-left shadow-card active:bg-muted"
             >
-              <span className="font-display text-[15px] font-bold tabular-nums text-foreground shrink-0">{a.time}</span>
+              <span className="font-display text-lg font-bold tabular-nums text-foreground shrink-0">{a.time}</span>
               <div className="flex flex-1 flex-col gap-1.5 min-w-0">
-                <span className={cn('self-start rounded-full px-2.5 py-0.5 text-[11px] font-bold', a.typeColor)}>
+                <span className={cn('self-start rounded-full px-2.5 py-0.5 text-xs font-bold', a.typeColor)}>
                   {a.type}
                 </span>
                 <div className="flex items-center gap-1.5 min-w-0">
@@ -171,7 +171,7 @@ function SemaineView() {
             <div key={d} className="flex flex-1 flex-col items-center gap-0.5">
               <span className="text-[10px] font-bold text-muted-foreground">{d}</span>
               <span className={cn(
-                'flex size-6 items-center justify-center rounded-full text-[13px] font-bold',
+                'flex size-6 items-center justify-center rounded-full text-sm font-bold',
                 isToday ? 'border-2 border-primary text-primary' : 'text-foreground'
               )}>
                 {dom}
@@ -186,7 +186,7 @@ function SemaineView() {
         {HOURS.map((h) => (
           <div key={h} className="flex border-t border-border first:border-t-0">
             <div className="flex w-10 shrink-0 items-start justify-end pr-2 pt-1 lg:w-14">
-              <span className="text-[9px] text-muted-foreground tabular-nums lg:text-[11px]">{h}h</span>
+              <span className="text-[10px] text-muted-foreground tabular-nums lg:text-xs">{h}h</span>
             </div>
             {DOW_FULL.map((_, di) => {
               const appt = appts.find((a) => a.dayIndex === di && a.hour === h)
@@ -201,7 +201,7 @@ function SemaineView() {
                   )}
                 >
                   {appt && (
-                    <span className={cn('w-full rounded px-1 py-0.5 text-[9px] font-bold leading-tight lg:text-[11px] lg:px-2 lg:py-1', appt.typeColor)}>
+                    <span className={cn('w-full rounded px-1 py-0.5 text-[10px] font-bold leading-tight lg:text-xs lg:px-2 lg:py-1', appt.typeColor)}>
                       <span className="block">{appt.name.split(' ')[0]}</span>
                       <span className="hidden lg:block font-normal opacity-80">{appt.time}</span>
                     </span>
@@ -222,7 +222,7 @@ function MoisView() {
 
   return (
     <div className="flex flex-col gap-3">
-      <p className="text-center text-[15px] font-bold capitalize text-foreground">{MONTH_LABEL}</p>
+      <p className="text-center text-lg font-bold capitalize text-foreground">{MONTH_LABEL}</p>
 
       {/* DOW header */}
       <div className="flex">
@@ -252,7 +252,7 @@ function MoisView() {
               {dom !== null && (
                 <>
                   <span className={cn(
-                    'flex size-7 items-center justify-center rounded-full text-[13px] font-semibold',
+                    'flex size-7 items-center justify-center rounded-full text-sm font-semibold',
                     isToday ? 'border-2 border-primary font-bold text-primary' : 'text-foreground'
                   )}>
                     {dom}

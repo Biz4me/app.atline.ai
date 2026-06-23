@@ -172,7 +172,7 @@
 
 @layer base {
   * {
-    @apply border-border outline-ring/40;
+    @apply border-border outline-none;
   }
   body {
     @apply bg-background text-foreground antialiased;
@@ -191,7 +191,7 @@
   }
   /* Eyebrow / section label */
   .eyebrow {
-    @apply text-[11px] font-bold uppercase tracking-[0.12em] text-muted-foreground;
+    @apply text-xs font-bold uppercase tracking-[0.12em] text-muted-foreground;
   }
   /* Money figures */
   .money {
@@ -242,3 +242,9 @@
   }
 }
 
+
+@media (min-width: 1024px) {
+  .text-sm {
+    font-size: 15px;
+  }
+}

@@ -93,7 +93,7 @@ export default function ConversationPage({ params }: { params: Promise<{ id: str
             <button
               type="button"
               onClick={(e) => { e.preventDefault(); setShowPlatformSheet(true) }}
-              className="flex items-center gap-1 text-[11px] text-muted-foreground"
+              className="flex items-center gap-1 text-xs text-muted-foreground"
             >
               <span>{currentPlatform.icon}</span>
               <span>via {currentPlatform.label}</span>
