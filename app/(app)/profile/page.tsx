@@ -41,6 +41,13 @@ export default function ProfilePage() {
       {/* ── MOBILE ONLY ── */}
       <div className="lg:hidden">
         <div className="space-y-5 px-4 pb-6 pt-4">
+          {/* Header row */}
+          <div className="flex items-center justify-end -mt-1 -mb-1">
+            <Link href="/settings" className="flex size-9 items-center justify-center rounded-full text-muted-foreground active:bg-muted transition-colors">
+              <Settings className="size-5 stroke-[1.5]" />
+            </Link>
+          </div>
+
           {/* Identity */}
           <section className="flex items-center gap-4">
             <DiscAvatar firstName={currentUser.firstName} lastName={currentUser.lastName} disc="I" size="xl" />
@@ -90,62 +97,48 @@ export default function ProfilePage() {
           </Card>
 
           {/* Businesses */}
-          <section>
-            <h2 className="mb-2 px-1 text-sm font-semibold text-muted-foreground">Mes activités</h2>
-            <Card className="divide-y divide-border p-0">
+          <Card className="p-0 overflow-hidden">
+            <div className="px-4 py-3.5 border-b border-border">
+              <p className="text-sm font-semibold text-foreground">Mes activités</p>
+            </div>
+            <div className="flex flex-wrap gap-2 px-4 py-3.5">
               {businesses.map((b) => (
-                <div key={b.id} className="flex items-center gap-3 px-4 py-3">
+                <div key={b.id} className="flex items-center gap-2.5 rounded-2xl border border-border bg-background px-3 py-2.5">
                   <span
-                    className="grid size-9 shrink-0 place-items-center rounded-xl text-sm font-bold text-white"
+                    className="grid size-7 shrink-0 place-items-center rounded-lg text-xs font-bold text-white"
                     style={{ backgroundColor: b.color }}
                   >
                     {b.initials}
                   </span>
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-semibold">{b.name}</p>
-                    {b.isAtline && <p className="text-xs text-muted-foreground">Activité principale</p>}
-                  </div>
-                  {b.id === activeBusiness.id && (
-                    <span className="rounded-full bg-success/15 px-2 py-0.5 text-xs font-bold text-success">
-                      Active
-                    </span>
-                  )}
+                  <p className="text-sm font-semibold text-foreground">{b.name}</p>
                 </div>
               ))}
-              <button className="flex w-full items-center gap-2 px-4 py-3 text-sm font-semibold text-primary">
-                <span className="grid size-9 place-items-center rounded-xl border border-dashed border-primary/40">+</span>
-                Ajouter une activité
-              </button>
-            </Card>
-          </section>
+            </div>
+          </Card>
 
-          {/* Quick access to AI */}
-          <Link href="/aria" className="block">
-            <Card className="flex items-center gap-3 p-4">
-              <span className="grid size-10 place-items-center rounded-full bg-primary/10">
-                <Sparkles className="size-5 text-primary" />
-              </span>
-              <div className="flex-1">
-                <p className="text-sm font-semibold">Entraînement ARIA</p>
-                <p className="text-xs text-muted-foreground">Simule tes conversations de vente</p>
+          {/* ARIA training counter */}
+          <Card className="p-0 overflow-hidden">
+              <div className="px-4 py-3.5 border-b border-border flex items-center gap-2.5">
+                <span className="grid size-8 shrink-0 place-items-center rounded-full bg-[#14B8A6]/10">
+                  <Mic className="size-4 text-[#14B8A6]" />
+                </span>
+                <p className="text-sm font-semibold text-foreground">Entraînement ARIA</p>
               </div>
-              <ChevronRight className="size-4 text-muted-foreground" />
-            </Card>
-          </Link>
-
-          {/* Boîte à outils */}
-          <Link href="/toolbox" className="block">
-            <Card className="flex items-center gap-3 p-4">
-              <span className="grid size-10 place-items-center rounded-full bg-muted">
-                <Wrench className="size-5 text-muted-foreground" />
-              </span>
-              <div className="flex-1">
-                <p className="text-sm font-semibold">Boîte à outils</p>
-                <p className="text-xs text-muted-foreground">Liens, supports de vente, bots</p>
+              <div className="grid grid-cols-3 gap-2 px-4 py-3.5">
+                <div className="flex flex-col items-center gap-0.5 rounded-xl bg-muted/50 px-2 py-2.5">
+                  <span className="text-lg font-bold text-foreground">8</span>
+                  <span className="text-xs text-muted-foreground text-center">sessions</span>
+                </div>
+                <div className="flex flex-col items-center gap-0.5 rounded-xl bg-muted/50 px-2 py-2.5">
+                  <span className="text-lg font-bold text-[#14B8A6]">82</span>
+                  <span className="text-xs text-muted-foreground text-center">score moyen</span>
+                </div>
+                <div className="flex flex-col items-center gap-0.5 rounded-xl bg-muted/50 px-2 py-2.5">
+                  <span className="text-lg font-bold text-foreground">3</span>
+                  <span className="text-xs text-muted-foreground text-center">cette semaine</span>
+                </div>
               </div>
-              <ChevronRight className="size-4 text-muted-foreground" />
-            </Card>
-          </Link>
+          </Card>
 
           {/* Settings list */}
           <section>
@@ -166,15 +159,6 @@ export default function ProfilePage() {
             </Card>
           </section>
 
-          <button className="flex w-full items-center justify-center gap-2 rounded-2xl border border-border py-3.5 text-sm font-semibold text-destructive">
-            <LogOut className="size-4" />
-            Se déconnecter
-          </button>
-
-          <div className="flex flex-col items-center gap-2 pt-2 text-center">
-            <Image src="/brand/atline-icon.png" alt="Atline" width={28} height={28} className="opacity-40" />
-            <p className="text-xs text-muted-foreground">Atline · version 1.0.0</p>
-          </div>
         </div>
       </div>
 

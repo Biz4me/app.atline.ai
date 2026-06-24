@@ -9,6 +9,7 @@ import Link from 'next/link'
 interface AppHeaderProps {
   title: string
   back?: boolean
+  secondary?: boolean
   showActions?: boolean
   showNova?: boolean
   showCreate?: boolean
@@ -17,6 +18,7 @@ interface AppHeaderProps {
 export function AppHeader({
   title,
   back = false,
+  secondary = false,
   showActions = true,
   showNova = false,
   showCreate = false,
@@ -37,7 +39,10 @@ export function AppHeader({
           <ChevronLeft className="size-5 stroke-[1.5]" />
         </button>
       )}
-      <h1 className="flex-1 truncate font-display text-[32px] font-bold leading-tight tracking-[-0.025em] text-foreground">
+      <h1 className={secondary
+        ? 'flex-1 truncate text-lg font-semibold text-foreground'
+        : 'flex-1 truncate font-display text-[32px] font-bold leading-tight tracking-[-0.025em] text-foreground'
+      }>
         {title}
       </h1>
       {showActions && (

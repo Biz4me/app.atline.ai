@@ -1,18 +1,22 @@
 'use client'
 
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
-import { useRef, useState } from 'react'
+import { usePathname, useRouter } from 'next/navigation'
+import React, { useRef, useState } from 'react'
 import { cn } from '@/lib/utils'
-import { Route, Users, User, GitFork, Sparkles, X, History, ArrowLeft, Mic, SendHorizontal } from 'lucide-react'
+import { Route, Users, User, GitFork, Sparkles, X, History, ArrowLeft, Mic, SendHorizontal, MoreHorizontal, CreditCard } from 'lucide-react'
 import { usePageVisibility } from '@/components/page-visibility-context'
 
 /* ── Tabs ───────────────────────────────────────────────────── */
 const ALL_TABS = [
-  { href: '/home',    label: 'Parcours', icon: Route, visKey: 'home',     side: 'left'  },
-  { href: '/contacts',label: 'Contacts', icon: Users,   visKey: 'contacts', side: 'left'  },
-  { href: '/network', label: 'Réseau',   icon: GitFork, visKey: 'network',  side: 'right' },
-  { href: '/profile', label: 'Moi',      icon: User,    visKey: 'profile',  side: 'right' },
+  { href: '/home',     label: 'Parcours', icon: Route,   visKey: 'home',     side: 'left'  },
+  { href: '/contacts', label: 'Contacts', icon: Users,   visKey: 'contacts', side: 'left'  },
+  { href: '/network',  label: 'Réseau',   icon: GitFork, visKey: 'network',  side: 'right' },
+]
+
+const MORE_ITEMS = [
+  { href: '/profile',     label: 'Profil',      icon: User,       visKey: 'profile'     },
+  { href: '/mon-abonnement', label: 'Abonnement', icon: CreditCard, visKey: 'abonnement' },
 ]
 
 /* ── Data ───────────────────────────────────────────────────── */
@@ -48,15 +52,28 @@ const histSessions = [
 /* ── BottomNav ──────────────────────────────────────────────── */
 export function BottomNav() {
   const pathname = usePathname()
+  const router = useRouter()
   const vis = usePageVisibility()
   const [open, setOpen] = useState(false)
   const [histOpen, setHistOpen] = useState(false)
+  const [moreOpen, setMoreOpen] = useState(false)
   const [msgs, setMsgs] = useState<Msg[]>([])
   const [input, setInput] = useState('')
   const scrollRef = useRef<HTMLDivElement>(null)
+  const navRef = useRef<HTMLElement>(null)
+  const [navW, setNavW] = useState(480)
 
   const isActive = (href: string) =>
     pathname === href || pathname.startsWith(href + '/')
+
+  React.useEffect(() => {
+    const el = navRef.current
+    if (!el) return
+    setNavW(el.offsetWidth)
+    const ro = new ResizeObserver(() => setNavW(el.offsetWidth))
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [])
 
   const scrollToBottom = () => {
     setTimeout(() => scrollRef.current?.scrollTo({ top: 999999, behavior: 'smooth' }), 50)
@@ -77,6 +94,7 @@ export function BottomNav() {
   const leftTabs  = ALL_TABS.filter(t => t.side === 'left'  && vis[t.visKey] !== false)
   const rightTabs = ALL_TABS.filter(t => t.side === 'right' && vis[t.visKey] !== false)
   const showAtlas = vis['atlas'] !== false
+  const visibleMoreItems = MORE_ITEMS
 
   const openAtlas = () => { setOpen(true); setHistOpen(false) }
   const closeAtlas = () => setOpen(false)
@@ -264,35 +282,117 @@ export function BottomNav() {
         </>
       )}
 
-      {/* ── Nav bar ── */}
-      <nav
-        className="lg:hidden fixed inset-x-0 bottom-0 z-40 mx-auto max-w-[480px] bg-surface/95 backdrop-blur-md shadow-[0_-1px_0_rgba(0,0,0,0.06)]"
-        style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
+      {/* ── More sheet backdrop ── */}
+      {moreOpen && (
+        <div className="fixed inset-x-0 top-0 z-[44] bg-black/40 transition-opacity duration-300" style={{ bottom: '60px' }} onClick={() => setMoreOpen(false)} />
+      )}
+
+      {/* ── More sheet — slide from bottom ── */}
+      <div
+        className={cn(
+          'lg:hidden fixed inset-x-0 z-[45] mx-auto max-w-[480px] bg-surface/95 backdrop-blur-md shadow-[0_-1px_0_rgba(0,0,0,0.06)] transition-transform duration-300 ease-out',
+          moreOpen ? 'translate-y-0' : 'translate-y-full'
+        )}
+        style={{ bottom: '60px' }}
       >
-        <div className="flex items-center justify-around px-2 pt-2 pb-2">
+        <div className="divide-y divide-border">
+          {visibleMoreItems.map((item) => {
+            const Icon = item.icon
+            return (
+              <button
+                key={item.href}
+                type="button"
+                onClick={() => { setMoreOpen(false); router.push(item.href) }}
+                className="flex h-[52px] w-full items-center gap-4 px-6 active:bg-muted transition-colors"
+              >
+                <Icon className="size-6 text-muted-foreground stroke-[1.5]" />
+                <span className="text-sm font-medium text-foreground">{item.label}</span>
+              </button>
+            )
+          })}
+        </div>
+      </div>
+
+      {/* ── Nav bar ── */}
+      {/* Atlas FAB — z-[48] au-dessus de la nav z-[47] */}
+      {showAtlas && (
+        <div
+          className="lg:hidden fixed bottom-0 left-1/2 -translate-x-1/2 z-[48] mx-auto"
+          style={{ bottom: 'calc(11px + env(safe-area-inset-bottom))' }}
+        >
+          <button
+            type="button"
+            onClick={openAtlas}
+            aria-label="Ouvrir Atlas"
+            className="flex size-[58px] items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg shadow-primary/30 transition-transform active:scale-95"
+          >
+            <Sparkles className="size-6 stroke-[1.5]" />
+          </button>
+        </div>
+      )}
+
+      <nav
+        ref={navRef}
+        className="lg:hidden fixed inset-x-0 bottom-0 z-[47] mx-auto max-w-[480px] bg-surface/95 backdrop-blur-md"
+      >
+        {/* Arc border SVG */}
+        {(() => {
+          const W = navW
+          const cx = W / 2
+          const cy = 20 // FAB center from nav top (60 - 11bottom - 29radius)
+          const R = 33  // FAB radius 29 + 4px gap
+          const dx = Math.sqrt(Math.max(0, R * R - cy * cy))
+          const x1 = (cx - dx).toFixed(1)
+          const x2 = (cx + dx).toFixed(1)
+          return (
+            <svg
+              className="absolute top-0 left-0 pointer-events-none"
+              width={W}
+              height={1}
+              style={{ overflow: 'visible' }}
+              aria-hidden="true"
+            >
+              {/* Remplissage dôme */}
+              <path
+                d={`M ${x1} 0 A ${R} ${R} 0 0 1 ${x2} 0 L ${x1} 0 Z`}
+                fill="rgba(255,255,255,0.95)"
+                stroke="none"
+              />
+              {/* Bordure avec arc */}
+              <path
+                d={`M 0 0 L ${x1} 0 A ${R} ${R} 0 0 1 ${x2} 0 L ${W} 0`}
+                stroke="rgba(0,0,0,0.08)"
+                strokeWidth="1"
+                fill="none"
+              />
+            </svg>
+          )
+        })()}
+        <div className="flex h-[60px] items-center justify-around px-2">
           {/* Left tabs */}
           {leftTabs.map(tab => (
-            <NavItem key={tab.href} tab={tab} active={isActive(tab.href)} />
+            <NavItem key={tab.href} tab={tab} active={!moreOpen && isActive(tab.href)} />
           ))}
 
-          {/* Atlas FAB — conditionnel */}
-          {showAtlas && (
-            <div className="flex justify-center">
-              <button
-                type="button"
-                onClick={openAtlas}
-                aria-label="Ouvrir Atlas"
-                className="-translate-y-4 flex size-[58px] items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg shadow-primary/30 transition-transform active:scale-95"
-              >
-                <Sparkles className="size-6 stroke-[1.5]" />
-              </button>
-            </div>
-          )}
+          {/* Atlas FAB placeholder — keeps spacing */}
+          {showAtlas && <div className="size-[58px]" />}
 
           {/* Right tabs */}
           {rightTabs.map(tab => (
-            <NavItem key={tab.href} tab={tab} active={isActive(tab.href)} />
+            <NavItem key={tab.href} tab={tab} active={!moreOpen && isActive(tab.href)} />
           ))}
+
+          {/* More button */}
+          <button
+            type="button"
+            onClick={() => setMoreOpen(v => !v)}
+            className={cn(
+              'flex items-center justify-center p-2 transition-colors',
+              moreOpen ? 'text-primary' : 'text-muted-foreground'
+            )}
+          >
+            <MoreHorizontal className={cn('size-6 stroke-[1.5]', moreOpen && 'stroke-2')} />
+          </button>
         </div>
       </nav>
     </>

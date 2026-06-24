@@ -9,6 +9,12 @@ const cabinetGroteskHref =
   'https://api.fontshare.com/v2/css?f[]=cabinet-grotesk@800,700,600&display=swap'
 
 export const metadata: Metadata = {
+  formatDetection: {
+    telephone: false,
+    date: false,
+    address: false,
+    email: false,
+  },
   title: 'Atline — Ton coach MLM',
   description:
     'Atline accompagne les distributeurs MLM : contacts, contenu Nova, réseau et coaching Atlas. App mobile française.',

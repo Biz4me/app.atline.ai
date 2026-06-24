@@ -53,7 +53,7 @@ export function AppShell({ children, initialCollapsed, initialAtlasCollapsed }: 
       <AtlasSidebar collapsed={atlasCollapsed} onToggle={toggleAtlas} />
       <div
         className={cn(
-          'app-shell pb-[110px] lg:pb-0 lg:max-w-none lg:mx-0 lg:pt-14',
+          'app-shell pb-[60px] lg:pb-0 lg:max-w-none lg:mx-0 lg:pt-14',
           'transition-[padding-left,padding-right] duration-200 ease-out',
           collapsed ? 'lg:pl-14' : 'lg:pl-56',
           atlasHidden ? 'lg:pr-0' : atlasCollapsed ? 'lg:pr-14' : 'lg:pr-[360px]',

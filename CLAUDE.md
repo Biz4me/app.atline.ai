@@ -117,10 +117,26 @@ pm2 restart atline-app
 
 ---
 
+## BottomNav mobile — architecture z-index
+
+- Nav bar : `fixed inset-x-0 bottom-0 z-[47]` `h-[60px]` `bg-surface/95 backdrop-blur-md`
+- FAB Atlas : `fixed bottom-0 z-[48]` `bottom: calc(11px + env(safe-area-inset-bottom))` `size-[58px]`
+- Arc SVG : `absolute top-0 left-0 overflow-visible pointer-events-none` — courbe R=33 sur le FAB avec dôme rempli
+- More sheet : `fixed inset-x-0 z-[45]` `bottom: 60px` `duration-300` — slide depuis bottom
+- More backdrop : `fixed inset-x-0 top-0 z-[44] bg-black/40` `bottom: 60px`
+- Atlas overlay : backdrop `z-[49]` + panel `z-[50]`
+- `MORE_ITEMS` : Profil `/profile` + Abonnement `/mon-abonnement`
+- AppShell : `pb-[60px]` sur mobile
+
+---
+
 ## Business Switcher mobile
 
 - Trigger : avatar seul `size-10`
 - Ouvert : row horizontale d'avatars + noms (`text-xs`)
+- Animation ouverture : wrapper `fixed` + `clip-path: inset(0 0 0 0)` + inner `translateY(-100%→0)` `duration-300` — glisse depuis header sans le traverser
+- Fermeture : `setDropVisible(false)` + `setTimeout 300ms` → démontage
+- Backdrop : `createPortal → document.body` `z-[59]` `bg-black/40`, `top: dropTop + offsetHeight`
 - Bouton `+` : slide-in pleine page depuis la droite (createPortal → document.body, z-[200])
 - Page Nouvelle activité : 3 sections card (Activité / Structure initiale / Base de contacts)
 - Date : custom button + `showPicker()` sur input caché
@@ -155,8 +171,17 @@ text: 'Pour l\'instant'              // crash
 ```
 home/ · atlas/ · contacts/ · network/ · messages/ · agenda/
 aria/ · nova/ · formation/ · communaute/ · notifications/
-profile/ · settings/ · abonnement/ · toolbox/
+profile/ · settings/ · settings/[section]/ · abonnement/ · mon-abonnement/ · toolbox/
 ```
+
+---
+
+## Settings mobile
+
+- Page principale `/settings` : overlay `z-[60]` `animate-slide-in-right`, header "Paramètres" + bouton "Terminé"
+- Sous-pages `/settings/[section]` : overlay `z-[70]` `animate-slide-in-right`, titre centré + ChevronLeft retour
+- `animate-slide-in-right` défini dans `globals.css`
+- `/mon-abonnement` : résumé abonnement accessible depuis le menu Plus — sans carte plan actuel, sans paiement/historique/résiliation, titre sans flèche retour
 
 ---
 

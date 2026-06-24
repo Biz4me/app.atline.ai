@@ -1,7 +1,8 @@
 'use client'
 
-import { useRef, useState, useEffect } from 'react'
+import { useRef, useState, useEffect, useLayoutEffect } from 'react'
 import { createPortal } from 'react-dom'
+import { useRouter } from 'next/navigation'
 import { Check, ChevronDown, Plus, X, Users, GitFork, UserCheck, Calendar } from 'lucide-react'
 import { useBusiness } from '@/components/business-provider'
 import {
@@ -26,10 +27,15 @@ interface Props {
 
 export function BusinessSwitcher({ collapsed, variant = 'sheet', fullWidth = false }: Props) {
   const { current, all, setCurrent, addBusiness } = useBusiness()
+  const router = useRouter()
   const [open, setOpen] = useState(false)
+  const [dropMounted, setDropMounted] = useState(false)
+  const [dropVisible, setDropVisible] = useState(false)
   const [addMode, setAddMode] = useState(false)
   const [newName, setNewName] = useState('')
   const [dropTop, setDropTop] = useState(0)
+  const [dropBottom, setDropBottom] = useState(0)
+  const dropRef = useRef<HTMLDivElement>(null)
 
   // Add page state
   const [addPageMounted, setAddPageMounted] = useState(false)
@@ -61,12 +67,35 @@ export function BusinessSwitcher({ collapsed, variant = 'sheet', fullWidth = fal
   }, [variant])
 
   function openDropdown() {
-    if (fullWidth && ref.current) {
-      const rect = ref.current.getBoundingClientRect()
-      setDropTop(rect.bottom + 4)
+    if (fullWidth) {
+      if (open) {
+        // close with animation
+        setDropVisible(false)
+        setTimeout(() => { setDropMounted(false); setOpen(false) }, 300)
+      } else {
+        if (ref.current) {
+          const rect = ref.current.getBoundingClientRect()
+          setDropTop(rect.bottom)
+        }
+        setOpen(true)
+        setDropMounted(true)
+        requestAnimationFrame(() => setDropVisible(true))
+      }
+    } else {
+      setOpen(v => !v)
     }
-    setOpen(v => !v)
   }
+
+  function closeDropdown() {
+    setDropVisible(false)
+    setTimeout(() => { setDropMounted(false); setOpen(false) }, 300)
+  }
+
+  useLayoutEffect(() => {
+    if (dropMounted && dropRef.current) {
+      setDropBottom(dropTop + dropRef.current.offsetHeight)
+    }
+  }, [dropMounted, dropTop])
 
   useEffect(() => {
     if (addMode && inputRef.current) {
@@ -211,7 +240,7 @@ export function BusinessSwitcher({ collapsed, variant = 'sheet', fullWidth = fal
               ) : (
                 <button
                   type="button"
-                  onClick={() => setAddMode(true)}
+                  onClick={() => { setOpen(false); router.push('/activities/new') }}
                   className="flex w-full items-center justify-center py-2 text-primary/60 hover:text-primary transition-colors"
                 >
                   <Plus className="size-4" />
@@ -221,17 +250,30 @@ export function BusinessSwitcher({ collapsed, variant = 'sheet', fullWidth = fal
           )}
 
           {/* Mobile rangée horizontale */}
-          {fullWidth && open && (
+          {fullWidth && dropMounted && typeof window !== 'undefined' && createPortal(
             <div
-              className="fixed left-0 right-0 bg-background border-b border-border z-[60] px-4 py-3"
-              style={{ top: dropTop }}
+              className="fixed inset-x-0 bottom-0 z-[59] bg-black/40 transition-opacity duration-300"
+              style={{ top: dropBottom, opacity: dropVisible ? 1 : 0 }}
+              onClick={closeDropdown}
+            />,
+            document.body
+          )}
+          {fullWidth && dropMounted && (
+            <div
+              className="fixed left-0 right-0 z-[60]"
+              style={{ top: dropTop, clipPath: 'inset(0 0 0 0)' }}
+            >
+            <div
+              ref={dropRef}
+              className="bg-background border-b border-border px-4 py-3 transition-transform duration-300 ease-out"
+              style={{ transform: dropVisible ? 'translateY(0)' : 'translateY(-100%)' }}
             >
               <div className="flex items-start gap-5">
                 {all.map((b) => (
                   <button
                     key={b.id}
                     type="button"
-                    onClick={() => { setCurrent(b); setOpen(false) }}
+                    onClick={() => { setCurrent(b); closeDropdown() }}
                     className="flex flex-col items-center gap-1.5"
                   >
                     <span
@@ -256,6 +298,7 @@ export function BusinessSwitcher({ collapsed, variant = 'sheet', fullWidth = fal
                 </button>
               </div>
             </div>
+            </div>
           )}
         </div>
 
@@ -269,14 +312,15 @@ export function BusinessSwitcher({ collapsed, variant = 'sheet', fullWidth = fal
             style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
           >
             {/* Header fixe */}
-            <div className="flex items-center px-2 h-14 shrink-0">
+            <div className="relative flex items-center justify-center px-2 h-14 shrink-0">
               <button
                 type="button"
                 onClick={closeAddPage}
-                className="flex size-9 items-center justify-center rounded-full text-foreground active:bg-muted"
+                className="absolute left-2 flex size-9 items-center justify-center rounded-full text-foreground active:bg-muted"
               >
                 <X className="size-5" />
               </button>
+              <p className="text-sm font-semibold text-foreground">Nouvelle activité</p>
             </div>
 
             {/* Contenu scrollable */}
@@ -345,20 +389,20 @@ export function BusinessSwitcher({ collapsed, variant = 'sheet', fullWidth = fal
                     <p className="text-sm font-semibold text-foreground">Structure initiale</p>
                     <span className="text-xs text-muted-foreground">— optionnel</span>
                   </div>
-                  <div className="grid grid-cols-3 divide-x divide-border">
+                  <div className="grid grid-cols-3 gap-2 px-4 py-3.5">
                     {[
                       { line1: 'Partenaires', line2: 'directs',      value: nbDirect,  set: setNbDirect  },
                       { line1: 'Organisation', line2: 'totale',       value: nbTotal,   set: setNbTotal   },
                       { line1: 'Clients',      line2: 'directs',      value: nbClients, set: setNbClients },
                     ].map(({ line1, line2, value, set }) => (
-                      <div key={line1} className="flex flex-col items-center gap-2 px-2 py-5">
+                      <div key={line1} className="flex flex-col items-center gap-0.5 rounded-xl bg-muted/50 px-2 py-2.5">
                         <input
                           type="number"
                           min="0"
                           value={value}
                           onChange={e => set(e.target.value)}
                           placeholder="0"
-                          className="w-full bg-transparent text-center text-2xl font-bold text-foreground outline-none placeholder:text-muted-foreground/40 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none [-moz-appearance:textfield]"
+                          className="w-full bg-transparent text-center text-lg font-bold text-foreground outline-none placeholder:text-muted-foreground/40 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none [-moz-appearance:textfield]"
                         />
                         <p className="text-xs text-muted-foreground text-center leading-tight">{line1}<br/>{line2}</p>
                       </div>
