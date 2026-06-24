@@ -51,10 +51,10 @@ export default function FormationPage() {
           {/* Progression globale */}
           <Card className="p-4">
             <div className="mb-2 flex items-center justify-between">
-              <p className="text-sm font-semibold text-foreground">
+              <p className="text-xs text-muted-foreground">
                 {doneCount}/{modules.length} modules complétés
               </p>
-              <span className="text-sm font-bold text-primary">{totalPct}%</span>
+              <span className="text-2xl font-bold text-primary">{totalPct}%</span>
             </div>
             <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
               <div
@@ -99,7 +99,7 @@ export default function FormationPage() {
                             <CheckCircle2 className="size-5 stroke-2 text-white" />
                           ) : (
                             <span className={cn(
-                              'text-sm font-bold',
+                              'text-base font-bold',
                               inProgress ? 'text-white' : 'text-muted-foreground'
                             )}>
                               {mod.position + 1}
