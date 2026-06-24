@@ -26,12 +26,23 @@ export const authOptions: NextAuthOptions = {
     }),
   ],
   callbacks: {
-    async jwt({ token, user }) {
-      if (user) token.id = user.id
+    async jwt({ token, user, trigger }) {
+      if (user) {
+        token.id = user.id
+        const dbUser = await db.user.findUnique({ where: { id: user.id }, select: { onboardingCompleted: true } })
+        token.onboardingCompleted = dbUser?.onboardingCompleted ?? false
+      }
+      if (trigger === 'update') {
+        const dbUser = await db.user.findUnique({ where: { id: token.id as string }, select: { onboardingCompleted: true } })
+        token.onboardingCompleted = dbUser?.onboardingCompleted ?? false
+      }
       return token
     },
     async session({ session, token }) {
-      if (token && session.user) session.user.id = token.id as string
+      if (token && session.user) {
+        session.user.id = token.id as string
+        session.user.onboardingCompleted = token.onboardingCompleted as boolean
+      }
       return session
     },
   },
