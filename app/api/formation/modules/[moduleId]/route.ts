@@ -3,9 +3,10 @@ import { db } from '@/lib/db'
 
 const DEMO_USER_ID = 'demo'
 
-export async function GET(_req: Request, { params }: { params: { moduleId: string } }) {
+export async function GET(_req: Request, props: { params: Promise<{ moduleId: string }> }) {
+  const { moduleId } = await props.params
   const mod = await db.lmsModule.findUnique({
-    where: { id: params.moduleId },
+    where: { id: moduleId },
     include: {
       course: { select: { _count: { select: { modules: true } } } },
       _count: { select: { lessons: true } },
