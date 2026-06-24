@@ -19,6 +19,7 @@ import Link from 'next/link'
 import { useState, useEffect, useCallback } from 'react'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
+import { contacts } from '@/lib/data'
 
 // ── Données mobiles (inchangées) ─────────────────────────────────────────────
 

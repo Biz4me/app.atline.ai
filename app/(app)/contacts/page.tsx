@@ -17,6 +17,7 @@ import { AddContactSheet } from '@/components/add-contact-sheet'
 import { Card } from '@/components/card'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
+import { contacts } from '@/lib/data'
 
 type Segment = 'tous' | 'prospects' | 'clients' | 'partenaires'
 type SortKey = 'name' | 'stade' | 'stage' | 'city' | 'lastInteraction'

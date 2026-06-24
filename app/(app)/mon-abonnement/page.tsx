@@ -3,7 +3,7 @@
 import { AppHeader } from '@/components/app-header'
 import { Card, SectionTitle } from '@/components/card'
 import { Check, Crown, ChevronRight, Calendar, CreditCard } from 'lucide-react'
-import { euro } from '@/lib/data'
+import { euro, contacts, posts } from '@/lib/data'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
 

@@ -6,7 +6,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { NovaCalendar } from '@/components/nova/nova-calendar'
 import { NovaInbox } from '@/components/nova/nova-inbox'
 import { NovaPillars } from '@/components/nova/nova-pillars'
-import { inboxMessages } from '@/lib/data'
+import { inboxMessages, pillars } from '@/lib/data'
 import { toast } from 'sonner'
 
 export default function NovaPage() {

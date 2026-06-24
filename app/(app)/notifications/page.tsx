@@ -5,6 +5,7 @@ import { Card } from '@/components/card'
 import { DiscAvatar } from '@/components/disc-avatar'
 import { Bell, UserPlus, MessageCircle, TrendingUp, Award, Mic, CheckCircle2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { contacts } from '@/lib/data'
 
 type Notif = {
   id: string

@@ -24,7 +24,7 @@ import {
 import { TopBar } from '@/components/top-bar'
 import { Card } from '@/components/card'
 import { DiscAvatar } from '@/components/disc-avatar'
-import { businesses, networkStats, euro } from '@/lib/data'
+import { currentUser, businesses, networkStats, euro } from '@/lib/data'
 import { useBusiness } from '@/components/business-provider'
 import { toast } from 'sonner'
 
