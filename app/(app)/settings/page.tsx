@@ -8,6 +8,7 @@ import {
   CreditCard, HelpCircle, MessageSquare, LogOut, ChevronRight, ChevronLeft,
 } from 'lucide-react'
 import { toast } from 'sonner'
+import { signOut } from 'next-auth/react'
 
 const COMPTE = [
   { icon: Settings,  label: 'Préférences',                   href: '/settings/preferences'  },
@@ -96,7 +97,7 @@ export default function SettingsPage() {
           <Card className="p-0">
             <button
               type="button"
-              onClick={() => toast.error('Déconnexion')}
+              onClick={() => signOut({ callbackUrl: '/auth' })}
               className="flex w-full items-center gap-3.5 px-4 py-4 text-left transition-colors active:bg-muted"
             >
               <LogOut className="size-5 shrink-0 text-destructive stroke-[1.5]" />
