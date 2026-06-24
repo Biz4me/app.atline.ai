@@ -4,14 +4,15 @@ import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import React, { useRef, useState } from 'react'
 import { cn } from '@/lib/utils'
-import { Route, Users, User, GitFork, Sparkles, X, History, ArrowLeft, Mic, SendHorizontal, MoreHorizontal, CreditCard } from 'lucide-react'
+import { Route, Users, User, GitFork, Sparkles, X, History, ArrowLeft, Mic, SendHorizontal, MoreHorizontal, CreditCard, GraduationCap } from 'lucide-react'
 import { usePageVisibility } from '@/components/page-visibility-context'
 
 /* ── Tabs ───────────────────────────────────────────────────── */
 const ALL_TABS = [
   { href: '/home',     label: 'Parcours', icon: Route,   visKey: 'home',     side: 'left'  },
   { href: '/contacts', label: 'Contacts', icon: Users,   visKey: 'contacts', side: 'left'  },
-  { href: '/network',  label: 'Réseau',   icon: GitFork, visKey: 'network',  side: 'right' },
+  { href: '/network',   label: 'Réseau',    icon: GitFork,  visKey: 'network',   side: 'right' },
+  { href: '/formation', label: 'Formation', icon: GraduationCap, visKey: 'formation', side: 'right' },
 ]
 
 const MORE_ITEMS = [
