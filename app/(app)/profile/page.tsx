@@ -24,7 +24,7 @@ import {
 import { TopBar } from '@/components/top-bar'
 import { Card } from '@/components/card'
 import { DiscAvatar } from '@/components/disc-avatar'
-import { currentUser, businesses, networkStats, euro } from '@/lib/data'
+import { businesses, networkStats, euro } from '@/lib/data'
 import { useBusiness } from '@/components/business-provider'
 import { toast } from 'sonner'
 
@@ -37,6 +37,18 @@ const desktopStats = [
 export default function ProfilePage() {
   const { current: activeBusiness } = useBusiness()
   const [moduleDone, setModuleDone] = useState<boolean[]>(Array(11).fill(false))
+  const [me, setMe] = useState<{ firstName: string; lastName: string; plan: string; level: number } | null>(null)
+
+  useEffect(() => {
+    fetch('/api/me').then(r => r.json()).then(data => {
+      if (data?.firstName) setMe(data)
+    }).catch(() => {})
+  }, [])
+
+  const firstName = me?.firstName ?? '...'
+  const lastName = me?.lastName ?? ''
+  const planLabel = me?.plan === 'LEADER' ? 'Leader' : me?.plan === 'PRO' ? 'Pro' : me?.plan === 'DISTRIBUTEUR' ? 'Distributeur' : '...'
+  const userLevel = me?.level ?? 1
 
   useEffect(() => {
     fetch('/api/formation/modules').then(r => r.json()).then((course) => {
@@ -63,10 +75,10 @@ export default function ProfilePage() {
 
           {/* Identity */}
           <section className="flex items-center gap-4">
-            <DiscAvatar firstName={currentUser.firstName} lastName={currentUser.lastName} disc="I" size="xl" />
+            <DiscAvatar firstName={firstName} lastName={lastName} disc="I" size="xl" />
             <div className="min-w-0">
               <h1 className="font-display text-2xl font-semibold leading-tight">
-                {currentUser.firstName} {currentUser.lastName}
+                {firstName} {lastName}
               </h1>
               <div className="mt-1 inline-flex items-center gap-1.5 rounded-full bg-primary/10 px-2.5 py-1 text-xs font-bold text-primary">
                 <Crown className="size-3.5" />
@@ -84,7 +96,7 @@ export default function ProfilePage() {
             </Card>
             <Card className="flex flex-col items-center gap-1 p-3 text-center">
               <Trophy className="size-5 text-gold" />
-              <span className="font-display text-xl font-semibold">Niv. {currentUser.level}</span>
+              <span className="font-display text-xl font-semibold">Niv. {userLevel}</span>
               <span className="text-xs text-muted-foreground">niveau</span>
             </Card>
             <Card className="flex flex-col items-center gap-1 p-3 text-center">
@@ -214,10 +226,10 @@ export default function ProfilePage() {
               onClick={() => toast.info('Mon profil — bientôt')}
               className="flex w-full items-center gap-3 rounded-2xl border border-border bg-surface p-4 text-left shadow-card transition-colors active:bg-muted"
             >
-              <DiscAvatar firstName={currentUser.firstName} lastName={currentUser.lastName} disc="I" size="md" />
+              <DiscAvatar firstName={firstName} lastName={lastName} disc="I" size="md" />
               <div className="flex-1 min-w-0">
                 <p className="font-bold text-lg text-foreground">
-                  {currentUser.firstName} {currentUser.lastName}
+                  {firstName} {lastName}
                 </p>
                 <div className="mt-1 flex items-center gap-2">
                   <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-bold text-primary">

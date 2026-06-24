@@ -1,12 +1,15 @@
 import { NextResponse } from 'next/server'
 import { db } from '@/lib/db'
-
-const DEMO_USER_ID = 'c7a0c77a-0881-4361-91aa-75cc7076b8aa'
-
+import { getServerSession } from 'next-auth'
+import { authOptions } from '@/lib/auth'
 export async function GET(
   _req: Request,
   props: { params: Promise<{ moduleId: string; lessonId: string }> }
 ) {
+  const session = await getServerSession(authOptions)
+  if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const userId = session.user.id
+
   const { moduleId, lessonId } = await props.params
 
   const [lesson, mod, allLessons, progress] = await Promise.all([
@@ -36,7 +39,7 @@ export async function GET(
       select: { id: true, position: true, kind: true, title: true },
     }),
     db.userLessonProgress.findUnique({
-      where: { userId_lessonId: { userId: DEMO_USER_ID, lessonId } },
+      where: { userId_lessonId: { userId: userId, lessonId } },
       select: { done: true },
     }),
   ])

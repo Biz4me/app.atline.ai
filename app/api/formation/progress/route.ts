@@ -1,12 +1,14 @@
 import { NextResponse } from 'next/server'
 import { db } from '@/lib/db'
-
-// TODO: remplacer DEMO_USER_ID par getServerSession une fois l'auth configurée
-const DEMO_USER_ID = 'c7a0c77a-0881-4361-91aa-75cc7076b8aa'
-
+import { getServerSession } from 'next-auth'
+import { authOptions } from '@/lib/auth'
 export async function GET() {
+  const session = await getServerSession(authOptions)
+  if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const userId = session.user.id
+
   const progress = await db.userLessonProgress.findMany({
-    where: { userId: DEMO_USER_ID },
+    where: { userId: userId },
     select: { lessonId: true, done: true, completedAt: true },
   })
   return NextResponse.json(progress)
@@ -15,8 +17,8 @@ export async function GET() {
 export async function POST(req: Request) {
   const { lessonId, done } = await req.json()
   const result = await db.userLessonProgress.upsert({
-    where: { userId_lessonId: { userId: DEMO_USER_ID, lessonId } },
-    create: { userId: DEMO_USER_ID, lessonId, done, completedAt: done ? new Date() : null },
+    where: { userId_lessonId: { userId: userId, lessonId } },
+    create: { userId: userId, lessonId, done, completedAt: done ? new Date() : null },
     update: { done, completedAt: done ? new Date() : null },
   })
   return NextResponse.json(result)

@@ -1,9 +1,12 @@
 import { NextResponse } from 'next/server'
 import { db } from '@/lib/db'
-
-const DEMO_USER_ID = 'c7a0c77a-0881-4361-91aa-75cc7076b8aa'
-
+import { getServerSession } from 'next-auth'
+import { authOptions } from '@/lib/auth'
 export async function GET() {
+  const session = await getServerSession(authOptions)
+  if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const userId = session.user.id
+
   const course = await db.lmsCourse.findFirst({
     include: {
       modules: {
@@ -22,11 +25,11 @@ export async function GET() {
 
   const [lessonProgress, quizAttempts] = await Promise.all([
     db.userLessonProgress.findMany({
-      where: { userId: DEMO_USER_ID, lessonId: { in: lessonIds } },
+      where: { userId: userId, lessonId: { in: lessonIds } },
       select: { lessonId: true, done: true },
     }),
     db.userQuizAttempt.findMany({
-      where: { userId: DEMO_USER_ID, lessonId: { in: lessonIds }, passed: true },
+      where: { userId: userId, lessonId: { in: lessonIds }, passed: true },
       select: { lessonId: true },
     }),
   ])
