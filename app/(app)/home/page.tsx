@@ -12,49 +12,25 @@ import {
   Search,
   Users,
   Check,
+  Loader2,
+  RefreshCw,
 } from 'lucide-react'
 import Link from 'next/link'
-import { useState } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
 
 // ── Données mobiles (inchangées) ─────────────────────────────────────────────
 
-const dailyTasks = [
-  {
-    id: 't1',
-    icon: Flame,
-    iconBg: 'bg-muted',
-    iconColor: 'text-muted-foreground',
-    label: 'Relancer 3 prospects chauds',
-    cta: '/contacts',
-    ctaLabel: 'Préparer',
-    ctaPrimary: true,
-    done: false,
-  },
-  {
-    id: 't2',
-    icon: PhoneCall,
-    iconBg: 'bg-muted',
-    iconColor: 'text-muted-foreground',
-    label: 'Appeler Sophie pour son closing',
-    cta: '/aria',
-    ctaLabel: 'Script',
-    ctaPrimary: false,
-    done: false,
-  },
-  {
-    id: 't3',
-    icon: BookOpen,
-    iconBg: 'bg-muted',
-    iconColor: 'text-muted-foreground',
-    label: 'Module 3 — Formation',
-    cta: '/formation/m3',
-    ctaLabel: 'Reprendre',
-    ctaPrimary: false,
-    done: true,
-  },
-]
+type DailyTask = {
+  id: string
+  title: string
+  subtitle: string | null
+  icon: string
+  color: string
+  cta: string
+  done: boolean
+}
 
 const agenda = [
   { time: '14:00', stage: 'Closing', stageColor: 'bg-red-100 text-red-600', name: 'Sophie Laurent', href: '/contacts/c1' },
@@ -213,9 +189,41 @@ export default function HomePage() {
   const [ariaPhase, setAriaPhase] = useState('Invitation')
   const [ariaSearch, setAriaSearch] = useState('')
 
-  // Tasks checkables
-  const [checkedTasks, setCheckedTasks] = useState<Set<string>>(new Set(['t3']))
-  const allDone = checkedTasks.size >= dailyTasks.length
+  // Plan du jour
+  const [plan, setPlan] = useState<{ id: string; tasks: DailyTask[] } | null>(null)
+  const [planLoading, setPlanLoading] = useState(true)
+  const [generating, setGenerating] = useState(false)
+
+  const fetchPlan = useCallback(async () => {
+    setPlanLoading(true)
+    try {
+      const res = await fetch('/api/daily-plan/today')
+      const data = await res.json()
+      setPlan(data.plan ?? null)
+    } catch {}
+    setPlanLoading(false)
+  }, [])
+
+  useEffect(() => { fetchPlan() }, [fetchPlan])
+
+  const generatePlan = async () => {
+    setGenerating(true)
+    try {
+      const res = await fetch('/api/daily-plan/generate', { method: 'POST' })
+      const data = await res.json()
+      if (data.plan) setPlan(data.plan)
+    } catch {}
+    setGenerating(false)
+  }
+
+  const toggleTask = async (taskId: string, done: boolean) => {
+    setPlan(prev => prev ? { ...prev, tasks: prev.tasks.map(t => t.id === taskId ? { ...t, done } : t) } : prev)
+    await fetch(`/api/daily-plan/tasks/${taskId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ done }),
+    }).catch(() => {})
+  }
 
   return (
     <>
@@ -233,24 +241,50 @@ export default function HomePage() {
           <Card className="p-0 overflow-hidden">
             <div className="flex items-center gap-2.5 px-4 py-3 border-b border-border">
               <span className="flex size-6 items-center justify-center rounded-full bg-primary text-primary-foreground font-display text-xs font-bold">A</span>
-              <span className="text-sm font-bold text-foreground">Plan du jour</span>
+              <span className="flex-1 text-sm font-bold text-foreground">Plan du jour</span>
+              <button type="button" onClick={generatePlan} disabled={generating}
+                className="flex size-7 items-center justify-center rounded-full text-muted-foreground hover:text-foreground transition-colors disabled:opacity-40">
+                {generating ? <Loader2 className="size-3.5 animate-spin" /> : <RefreshCw className="size-3.5" />}
+              </button>
             </div>
-            <div className="divide-y divide-border">
-              {dailyTasks.map((task) => {
-                const Icon = task.icon
-                return (
-                  <Link key={task.id} href={task.cta} className="flex items-center gap-3 px-4 py-3.5 transition-colors active:bg-muted hover:bg-muted/40">
-                    <span className={cn('flex size-9 shrink-0 items-center justify-center rounded-xl', task.iconBg)}>
-                      <Icon className={cn('size-4 stroke-[1.5]', task.iconColor)} />
-                    </span>
-                    <span className="flex-1 text-sm font-medium text-foreground leading-snug">{task.label}</span>
-                    <span className={cn('shrink-0 rounded-xl px-3.5 py-1.5 text-xs font-bold transition-colors', task.ctaPrimary ? 'bg-primary text-primary-foreground' : 'border border-border bg-surface text-foreground')}>
-                      {task.ctaLabel}
-                    </span>
-                  </Link>
-                )
-              })}
-            </div>
+            {planLoading ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="size-5 animate-spin text-muted-foreground" />
+              </div>
+            ) : !plan ? (
+              <div className="flex flex-col items-center gap-3 py-6 px-4 text-center">
+                <p className="text-sm text-muted-foreground">Atlas va te préparer ton plan du jour.</p>
+                <button type="button" onClick={generatePlan} disabled={generating}
+                  className="flex items-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-bold text-primary-foreground disabled:opacity-60">
+                  {generating ? <Loader2 className="size-4 animate-spin" /> : null}
+                  {generating ? "Génération..." : "Générer mon plan"}
+                </button>
+              </div>
+            ) : (
+              <div className="divide-y divide-border">
+                {plan.tasks.map((task) => (
+                  <div key={task.id} className="flex items-center gap-3 px-4 py-3.5">
+                    <button type="button" onClick={() => toggleTask(task.id, !task.done)}
+                      className={cn(
+                        "flex size-6 shrink-0 items-center justify-center rounded-full border-2 transition-colors",
+                        task.done ? "border-primary bg-primary" : "border-border bg-transparent"
+                      )}>
+                      {task.done && <Check className="size-3.5 stroke-[2.5] text-primary-foreground" />}
+                    </button>
+                    <div className="flex-1 min-w-0">
+                      <p className={cn("text-sm font-medium leading-snug", task.done ? "line-through text-muted-foreground" : "text-foreground")}>
+                        {task.title}
+                      </p>
+                      {task.subtitle && <p className="text-xs text-muted-foreground mt-0.5">{task.subtitle}</p>}
+                    </div>
+                    <Link href={task.cta}
+                      className="shrink-0 rounded-xl border border-border bg-surface px-3.5 py-1.5 text-xs font-bold text-foreground transition-colors active:bg-muted">
+                      Aller
+                    </Link>
+                  </div>
+                ))}
+              </div>
+            )}
           </Card>
 
           {/* Rapport Atlas */}
