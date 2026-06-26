@@ -3,6 +3,7 @@ import { Analytics } from '@vercel/analytics/next'
 import { Toaster } from '@/components/ui/sonner'
 import { ThemeProvider } from '@/components/theme-provider'
 import './globals.css'
+import { SessionProvider } from '@/components/session-provider'
 
 // Cabinet Grotesk via Fontshare CDN (display font — titres, KPIs)
 const cabinetGroteskHref =
@@ -51,7 +52,9 @@ export default function RootLayout({
       </head>
       <body className="font-sans antialiased">
         <ThemeProvider attribute="class" defaultTheme="light" disableTransitionOnChange>
+          <SessionProvider>
           {children}
+          </SessionProvider>
           <Toaster position="top-center" />
           {process.env.NODE_ENV === 'production' && <Analytics />}
         </ThemeProvider>

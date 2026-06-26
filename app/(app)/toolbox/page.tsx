@@ -109,7 +109,7 @@ function fileColor(file: File): string {
   return 'text-muted-foreground'
 }
 
-// ── Supports section avec upload ─────────────────────────────────────────────
+// ── Mobile Supports section avec upload ───────────────────────────────────────
 function MobileSupports() {
   const [supports, setSupports] = useState<Support[]>(defaultSupports)
   const [uploading, setUploading] = useState(false)
@@ -141,7 +141,7 @@ function MobileSupports() {
   }
 
   return (
-    <section id="supports">
+    <section>
       <SectionTitle>Supports de vente</SectionTitle>
       <Card className="divide-y divide-border p-0">
         {supports.map((s) => (
@@ -236,7 +236,7 @@ function DesktopSupports() {
 
 function QuickLinksSection() {
   return (
-    <section id="liens-rapides">
+    <section>
       <SectionTitle>Liens rapides</SectionTitle>
       <div className="flex flex-col gap-2">
         {quickLinks.map((link) => {
@@ -270,7 +270,7 @@ function QuickLinksSection() {
 
 function BotsSection() {
   return (
-    <section id="bots">
+    <section>
       <SectionTitle>Bot de prospection</SectionTitle>
       <div className="flex flex-col gap-2">
         {botLinks.map((bot) => (

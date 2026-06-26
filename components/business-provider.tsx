@@ -1,7 +1,6 @@
 'use client'
 
-import { createContext, useContext, useState, type ReactNode } from 'react'
-import { businesses as staticBusinesses } from '@/lib/data'
+import { createContext, useContext, useState, useEffect, type ReactNode } from 'react'
 import type { Business } from '@/lib/types'
 
 interface BusinessCtx {
@@ -9,29 +8,39 @@ interface BusinessCtx {
   all: Business[]
   setCurrent: (b: Business) => void
   addBusiness: (name: string) => void
+  refresh: () => void
 }
 
 const Ctx = createContext<BusinessCtx | null>(null)
 
-const COLORS = ['#3b82f6', '#22c55e', '#f59e0b', '#ec4899', '#8b5cf6', '#06b6d4', '#ef4444']
+const ATLINE_BIZ: Business = { id: 'atline', name: 'Atline', initials: 'A', color: '#F97316', isAtline: true }
 
 export function BusinessProvider({ children }: { children: ReactNode }) {
-  const [all, setAll] = useState<Business[]>(staticBusinesses)
-  const [current, setCurrent] = useState<Business>(staticBusinesses[0])
+  const [all, setAll] = useState<Business[]>([ATLINE_BIZ])
+  const [current, setCurrent] = useState<Business>(ATLINE_BIZ)
+
+  async function refresh() {
+    try {
+      const res = await fetch('/api/businesses')
+      if (!res.ok) return
+      const data: Business[] = await res.json()
+      const list = [ATLINE_BIZ, ...data]
+      setAll(list)
+      // Mettre l'actif en courant
+      const active = data.find((b: any) => b.isActive)
+      if (active) setCurrent(active)
+      else if (data.length > 0) setCurrent(data[0])
+    } catch {}
+  }
+
+  useEffect(() => { refresh() }, [])
 
   function addBusiness(name: string) {
-    const words = name.trim().split(' ')
-    const initials = words.length >= 2
-      ? (words[0][0] + words[1][0]).toUpperCase()
-      : name.slice(0, 2).toUpperCase()
-    const color = COLORS[all.length % COLORS.length]
-    const b: Business = { id: `biz-${Date.now()}`, name: name.trim(), initials, color }
-    setAll(prev => [...prev, b])
-    setCurrent(b)
+    refresh()
   }
 
   return (
-    <Ctx.Provider value={{ current, all, setCurrent, addBusiness }}>
+    <Ctx.Provider value={{ current, all, setCurrent, addBusiness, refresh }}>
       {children}
     </Ctx.Provider>
   )

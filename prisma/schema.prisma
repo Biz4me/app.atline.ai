@@ -1,0 +1,1845 @@
+// ============================================================
+// Atline — schema.prisma
+// Généré depuis database-schema.md (source de vérité)
+// Provider : PostgreSQL (Hetzner VPS 178.105.219.148)
+// ============================================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================================
+// §1 — UTILISATEUR & PROFIL
+// ============================================================
+
+model User {
+  id               String         @id @default(cuid())
+  username         String         @unique
+  email            String         @unique
+  emailVerified    DateTime?
+  passwordHash     String?
+  firstName        String
+  lastName         String
+  phone            String?
+  phone2           String?
+  gender           String?
+  address          String?
+  address2         String?
+  postal           String?
+  city             String?
+  country          String         @default("France")
+  photoUrl         String?
+  plan             Plan           @default(DISTRIBUTEUR)
+  planBillingCycle BillingCycle   @default(MONTHLY)
+  planStartedAt    DateTime?
+  planExpiresAt    DateTime?
+  trialEndsAt      DateTime?
+  stripeCustomerId String?        @unique
+  kind             UserKind       @default(LICENSEE)
+  role             UserRole       @default(USER)
+  status           UserStatus     @default(ACTIVE)
+  lastLoginAt      DateTime?
+  level            Int            @default(1)
+  locale           String         @default("fr")
+  lat              Float?
+  lng              Float?
+  bio              String?
+  birthDate        DateTime?
+  hubVisible       Boolean        @default(false)
+  onboardingCompleted Boolean     @default(false)
+  onboardingStep   Int            @default(0)
+  onboardingFlow   OnboardingFlow?
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+
+  // Auth
+  preferences              UserPreferences?
+  accounts                 Account[]
+  sessions                 Session[]
+  passwordResetTokens      PasswordResetToken[]
+  emailVerificationTokens  EmailVerificationToken[]
+
+  // Abonnement & parrainage
+  subscription             StripeSubscription?
+  userReferralsGiven       UserReferral[]       @relation("UserReferralGiver")
+  userReferralsReceived    UserReferral[]       @relation("UserReferralReceiver")
+  supportTickets           SupportTicket[]
+  ticketMessages           TicketMessage[]
+
+  // MLM & CRM
+  mlmBusinesses            UserMlmBusiness[]
+  contacts                 Contact[]
+  importBatches            ContactImportBatch[]
+
+  // Agenda
+  appointments             Appointment[]
+  calComConnection         CalComConnection?
+
+  // Atlas
+  atlasConversations       AtlasConversation[]
+  dailyPlans               DailyPlan[]
+  atlasReports             AtlasReport[]
+
+  // LMS
+  lmsProgress              UserLmsProgress[]
+  lessonProgress           UserLessonProgress[]
+  quizAttempts             UserQuizAttempt[]
+  certificates             Certificate[]
+
+  // Bibliothèque
+  bookInteractions         UserBookInteraction[]
+
+  // ARIA
+  simSessions              SimSession[]
+
+  // Nova
+  contentPillars           ContentPillar[]
+  contentPosts             ContentPost[]
+  contentIdeas             ContentIdea[]
+  socialAccounts           SocialAccount[]
+  socialInboxItems         SocialInboxItem[]
+
+  // Forum
+  forumThreads             ForumThread[]
+  forumPosts               ForumPost[]
+  forumPostLikes           ForumPostLike[]
+  forumSaved               ForumSaved[]
+  forumReports             ForumReport[]
+  contentReports           ContentReport[]
+
+  // Réseau Atline
+  atlineReferralsGiven     AtlineReferral[]     @relation("AtlineReferralReferrer")
+  atlineReferralsReceived  AtlineReferral[]     @relation("AtlineReferralReferred")
+  placements               Placement[]          @relation("PlacementFilleul")
+  placementsRequested      Placement[]          @relation("PlacementRequestedBy")
+  placementsTargeted       Placement[]          @relation("PlacementTargetParent")
+  placementsExecuted       Placement[]          @relation("PlacementPlacedBy")
+  commissions              AtlineCommission[]   @relation("CommissionReceiver")
+  commissionsSource        AtlineCommission[]   @relation("CommissionSource")
+  license                  AtlineLicense?
+  licenseeProducts         LicenseeProductCatalog[]
+  appClients               AppClient[]
+
+  // Boîte à outils & messagerie
+  toolboxLinks             ToolboxLink[]
+  toolboxSupports          ToolboxSupport[]
+  conversations            Conversation[]
+  prospectBots             ProspectBot[]
+
+  // Notifications
+  notifications            Notification[]
+  pushTokens               PushToken[]
+
+  // Événements
+  mlmEventsRequested       MlmEvent[]           @relation("EventRequestedBy")
+  mlmEventsValidated       MlmEvent[]           @relation("EventValidatedBy")
+  eventRegistrations       EventRegistration[]
+
+  // IA — consommation
+  aiUsageLogs              AiUsageLog[]
+  telegramLink             TelegramLink?
+  aiUsageMonthly           AiUsageMonthly[]
+}
+
+model UserPreferences {
+  id              String  @id @default(cuid())
+  userId          String  @unique
+  user            User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  emailNotif      Boolean @default(true)
+  weeklyDigest    Boolean @default(true)
+  mentions        Boolean @default(false)
+  theme           String  @default("dark")
+  activeCompanyId String?
+}
+
+enum Plan {
+  DISTRIBUTEUR
+  PRO
+  LEADER
+}
+
+enum BillingCycle {
+  MONTHLY
+  ANNUAL
+}
+
+enum UserRole {
+  USER
+  ADMIN
+}
+
+enum UserStatus {
+  ACTIVE
+  PAUSED
+  INACTIVE
+}
+
+enum OnboardingFlow {
+  STANDARD
+  LICENCE_ONLY
+  LICENCE_WITH_MLM
+}
+
+enum UserKind {
+  LICENSEE  // distributeur licencié Atline — accès réseau complet + vente
+  CLIENT    // client converti depuis AppClient — accès limité + parrainage simple
+}
+
+// ============================================================
+// §2 — AUTH (NextAuth)
+// ============================================================
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expires      DateTime
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+model PasswordResetToken {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  token     String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+}
+
+model EmailVerificationToken {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  token     String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+}
+
+// ============================================================
+// §3 — ABONNEMENTS STRIPE
+// ============================================================
+
+model StripeSubscription {
+  id                 String    @id @default(cuid())
+  userId             String    @unique
+  user               User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  stripeSubId        String    @unique
+  stripePriceId      String
+  status             SubStatus
+  currentPeriodStart DateTime
+  currentPeriodEnd   DateTime
+  cancelAtPeriodEnd  Boolean   @default(false)
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+}
+
+model StripeEvent {
+  id        String   @id
+  type      String
+  processed Boolean  @default(false)
+  payload   Json
+  createdAt DateTime @default(now())
+}
+
+enum SubStatus {
+  TRIALING
+  ACTIVE
+  PAST_DUE
+  CANCELED
+  UNPAID
+}
+
+// ============================================================
+// §3b — PARRAINAGE ABONNÉS SIMPLES
+// ============================================================
+
+model ReferralConfig {
+  id                     String   @id @default(cuid())
+  active                 Boolean  @default(true)
+  category  String   @default("coaching")
+  referrerRewardMonths   Int      @default(1)
+  referredDiscountPct    Int      @default(50)
+  referredDiscountMonths Int      @default(1)
+  updatedAt              DateTime @updatedAt
+  updatedById            String?
+}
+
+model UserReferral {
+  id             String               @id @default(cuid())
+  referrerId     String
+  referrer       User                 @relation("UserReferralGiver", fields: [referrerId], references: [id])
+  referredId     String
+  referred       User                 @relation("UserReferralReceiver", fields: [referredId], references: [id])
+  rewardSnapshot Json?
+  rewardStatus   ReferralRewardStatus @default(PENDING)
+  paidAt         DateTime?
+  createdAt      DateTime             @default(now())
+
+  @@unique([referrerId, referredId])
+}
+
+enum ReferralRewardStatus {
+  PENDING
+  EARNED
+  PAID
+  CANCELLED
+}
+
+// ============================================================
+// §3c — SUPPORT
+// ============================================================
+
+model SupportTicket {
+  id        String         @id @default(cuid())
+  userId    String
+  user      User           @relation(fields: [userId], references: [id])
+  subject   String
+  priority  TicketPriority @default(NORMAL)
+  status    TicketStatus   @default(OPEN)
+  messages  TicketMessage[]
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
+}
+
+model TicketMessage {
+  id        String        @id @default(cuid())
+  ticketId  String
+  ticket    SupportTicket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  authorId  String
+  author    User          @relation(fields: [authorId], references: [id])
+  content   String
+  createdAt DateTime      @default(now())
+}
+
+enum TicketPriority {
+  LOW
+  NORMAL
+  HIGH
+  URGENT
+}
+
+enum TicketStatus {
+  OPEN
+  IN_PROGRESS
+  RESOLVED
+  CLOSED
+}
+
+// ============================================================
+// §4 — ENTREPRISES MLM DE L'UTILISATEUR
+// ============================================================
+
+model UserMlmBusiness {
+  id            String   @id @default(cuid())
+  userId        String
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  mlmName       String
+  mlmSlug       String
+  role          String
+  rank          String?
+  goal          String?
+  color         String
+  initials      String
+  active        Boolean  @default(true)
+  category  String   @default("coaching")
+  position      Int
+  createdAt     DateTime @default(now())
+
+  contacts           Contact[]
+  contentPillars     ContentPillar[]
+  contentPosts       ContentPost[]
+  contentIdeas       ContentIdea[]
+  socialAccounts     SocialAccount[]
+  socialInboxItems   SocialInboxItem[]
+  toolboxLinks       ToolboxLink[]
+  toolboxSupports    ToolboxSupport[]
+  prospectBots       ProspectBot[]
+  conversations      Conversation[]
+  appointments       Appointment[]
+  dailyPlans         DailyPlan[]
+  atlasReports       AtlasReport[]
+  atlasConversations AtlasConversation[]
+  importBatches      ContactImportBatch[]
+
+  @@unique([userId, mlmSlug])
+}
+
+model MlmCatalog {
+  id      String  @id @default(cuid())
+  name    String  @unique
+  slug    String  @unique
+  country String  @default("FR")
+  active  Boolean @default(true)
+  category  String   @default("coaching")
+}
+
+// ============================================================
+// §5 — CRM — CONTACTS
+// ============================================================
+
+model Contact {
+  id            String          @id @default(cuid())
+  userId        String
+  user          User            @relation(fields: [userId], references: [id])
+  mlmBusinessId String
+  mlmBusiness   UserMlmBusiness @relation(fields: [mlmBusinessId], references: [id])
+  kind          ContactKind
+  name          String
+  initials      String?
+  accent        String?
+  email         String?
+  phone         String?
+  address       String?
+  address2      String?
+  postal        String?
+  city          String?
+  country       String?
+  source        ContactSource?
+  isPersonal    Boolean         @default(false)
+  personality   PersonalityType?
+  prospectStage ProspectStage?
+  clientStage   ClientStage?
+  partnerStage  PartnerStage?
+  score         Int?
+  tags          String[]
+  lastContact   DateTime?
+  note          String?
+  lat           Float?
+  lng           Float?
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+
+  partnerExtra       PartnerExtra?
+  clientExtra        ClientExtra?
+  atlasConversations AtlasConversation[]
+  appointments       Appointment[]
+  conversation       Conversation?
+}
+
+model PartnerExtra {
+  id          String        @id @default(cuid())
+  contactId   String        @unique
+  contact     Contact       @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  team        Int?
+  volume      Float?
+  onAtline    Boolean       @default(false)
+  appReferral Boolean       @default(false)
+  scoreAtline Int?
+  simSessions Int           @default(0)
+  courseDone  Int           @default(0)
+  prospects   Int           @default(0)
+  lastSeen    DateTime?
+  status      PartnerStatus @default(VEILLE)
+}
+
+model ClientExtra {
+  id          String   @id @default(cuid())
+  contactId   String   @unique
+  contact     Contact  @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  panier      Float?
+  frequency   String?
+  lastBuy     DateTime?
+  reassortDue Boolean  @default(false)
+}
+
+model ContactImportBatch {
+  id            String          @id @default(cuid())
+  userId        String
+  user          User            @relation(fields: [userId], references: [id])
+  mlmBusinessId String
+  mlmBusiness   UserMlmBusiness @relation(fields: [mlmBusinessId], references: [id])
+  fileName      String
+  totalRows     Int
+  imported      Int             @default(0)
+  errors        Int             @default(0)
+  errorLog      Json?
+  status        ImportStatus    @default(PENDING)
+  createdAt     DateTime        @default(now())
+  completedAt   DateTime?
+}
+
+enum ContactKind {
+  PROSPECT
+  CLIENT
+  PARTENAIRE
+}
+
+enum ContactSource {
+  INSTAGRAM
+  LINKEDIN
+  FACEBOOK
+  TIKTOK
+  MANUEL
+  BOT_WHATSAPP
+  BOT_TELEGRAM
+  IMPORT
+  RDV_INBOUND
+}
+
+enum PersonalityType {
+  ROUGE
+  VERT
+  BLEU
+  JAUNE
+}
+
+enum ProspectStage {
+  NOUVEAU
+  CONTACTE
+  QUALIFIE
+  CHAUD
+}
+
+enum ClientStage {
+  C_NOUVEAU
+  C_PREMIERE
+  C_REGULIER
+  C_AMBASSADEUR
+}
+
+enum PartnerStage {
+  INTEGRATION
+  FORMATION
+  ACTIF
+  LEADER
+}
+
+enum PartnerStatus {
+  MOTEUR
+  ENROUTE
+  VEILLE
+  HORSATLINE
+}
+
+enum ImportStatus {
+  PENDING
+  PROCESSING
+  DONE
+  FAILED
+}
+
+// ============================================================
+// §6 — AGENDA & RENDEZ-VOUS
+// ============================================================
+
+model Appointment {
+  id               String              @id @default(cuid())
+  userId           String
+  user             User                @relation(fields: [userId], references: [id])
+  mlmBusinessId    String?
+  mlmBusiness      UserMlmBusiness?    @relation(fields: [mlmBusinessId], references: [id])
+  contactId        String?
+  contact          Contact?            @relation(fields: [contactId], references: [id])
+  title            String
+  description      String?
+  startAt          DateTime
+  endAt            DateTime?
+  color            String?
+  type             AppointmentType     @default(AUTRE)
+  done             Boolean             @default(false)
+  outcome          AppointmentOutcome?
+  outcomeNote      String?
+  atlasDebriefId   String?
+  atlasDebrief     AtlasConversation?  @relation(fields: [atlasDebriefId], references: [id])
+  calComEventId    String?             @unique
+  calComBookingUrl String?
+  linkedMlmEventId String?
+  createdAt        DateTime            @default(now())
+  updatedAt        DateTime            @updatedAt
+}
+
+model CalComConnection {
+  id           String   @id @default(cuid())
+  userId       String   @unique
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  calComUserId String
+  bookingUrl   String
+  connected    Boolean  @default(false)
+  connectedAt  DateTime?
+  updatedAt    DateTime @updatedAt
+}
+
+enum AppointmentType {
+  CALL
+  VISIO
+  PRESENTIEL
+  WEBINAIRE
+  FORMATION
+  AUTRE
+}
+
+enum AppointmentOutcome {
+  POSITIF
+  NEUTRE
+  NEGATIF
+  NO_SHOW
+}
+
+// ============================================================
+// §7 — ATLAS — CHAT, PLAN DU JOUR & RAPPORTS IA
+// ============================================================
+
+model AtlasConversation {
+  id            String           @id @default(cuid())
+  userId        String
+  user          User             @relation(fields: [userId], references: [id])
+  mlmBusinessId String?
+  mlmBusiness   UserMlmBusiness? @relation(fields: [mlmBusinessId], references: [id])
+  contactId     String?
+  contact       Contact?         @relation(fields: [contactId], references: [id])
+  title         String?
+  context       String?          // "parcours" | "contact" | "reseau" | "messagerie"
+  summary       String?          // résumé auto-généré pour l'historique
+  messages      AtlasMessage[]
+  appointments  Appointment[]
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+}
+
+model AtlasMessage {
+  id             String            @id @default(cuid())
+  conversationId String
+  conversation   AtlasConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  role           AtlasRole
+  content        String
+  qdrantChunks   String[]
+  createdAt      DateTime          @default(now())
+}
+
+enum AtlasRole {
+  USER
+  ASSISTANT
+}
+
+model DailyPlan {
+  id            String          @id @default(cuid())
+  userId        String
+  user          User            @relation(fields: [userId], references: [id])
+  mlmBusinessId String
+  mlmBusiness   UserMlmBusiness @relation(fields: [mlmBusinessId], references: [id])
+  date          DateTime        @db.Date
+  generatedAt   DateTime        @default(now())
+  tasks         DailyTask[]
+
+  @@unique([userId, mlmBusinessId, date])
+}
+
+model DailyTask {
+  id                  String    @id @default(cuid())
+  planId              String
+  plan                DailyPlan @relation(fields: [planId], references: [id], onDelete: Cascade)
+  title               String
+  subtitle            String?
+  icon                String
+  color               String
+  cta                 String
+  position            Int
+  done                Boolean   @default(false)
+  doneAt              DateTime?
+  linkedContactId     String?
+  linkedModuleId      String?
+  linkedAppointmentId String?
+  linkedMlmEventId    String?
+  linkedSimPhase      String?
+  linkedPostId        String?
+  linkedReportId      String?
+  linkedBookId        String?
+  linkedBotConvId     String?
+}
+
+model AtlasReport {
+  id            String          @id @default(cuid())
+  userId        String
+  user          User            @relation(fields: [userId], references: [id])
+  mlmBusinessId String
+  mlmBusiness   UserMlmBusiness @relation(fields: [mlmBusinessId], references: [id])
+  type          ReportType
+  periodStart   DateTime
+  periodEnd     DateTime
+  content       String
+  highlights    Json?
+  read          Boolean         @default(false)
+  readAt        DateTime?
+  createdAt     DateTime        @default(now())
+}
+
+enum ReportType {
+  WEEKLY
+  MONTHLY
+}
+
+// ============================================================
+// §8 — FORMATIONS LMS
+// ============================================================
+
+model LmsCourse {
+  id          String      @id @default(cuid())
+  position    Int         @default(0)
+  title       String
+  description String?
+  coverColor  String?
+  published   Boolean     @default(false)
+  aiGenerated Boolean     @default(false)
+  modules     LmsModule[]
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+}
+
+model LmsModule {
+  id          String             @id @default(cuid())
+  courseId    String
+  course      LmsCourse          @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  position    Int                @default(0)
+  title       String
+  description String?
+  published   Boolean            @default(false)
+  aiGenerated Boolean            @default(false)
+  lessons     LmsLesson[]
+  resources   LmsResource[]
+  progress    UserLmsProgress[]
+  certificates Certificate[]
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+
+  @@unique([courseId, position])
+}
+
+model LmsLesson {
+  id            String               @id @default(cuid())
+  moduleId      String
+  module        LmsModule            @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+  position      Int
+  kind          LessonKind
+  type          LessonType?
+  title         String
+  content       Json?
+  durationMin   Int?
+  summary       String?
+  passThreshold Int?
+  intro         String?
+  aiGenerated   Boolean              @default(false)
+  published     Boolean              @default(false)
+  questions     LmsQuestion[]
+  lessonProgress UserLessonProgress[]
+  quizAttempts  UserQuizAttempt[]
+
+  @@unique([moduleId, position])
+}
+
+model LmsQuestion {
+  id             String    @id @default(cuid())
+  lessonId       String
+  lesson         LmsLesson @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  position       Int
+  format         String
+  type           QuizType
+  question       String
+  options        String[]
+  correctAnswer  Int?
+  correctAnswers Int[]
+  correctBool    Boolean?
+  correctOrder   Int[]
+  lessonRef      String?
+
+  @@unique([lessonId, position])
+}
+
+model LmsResource {
+  id        String     @id @default(cuid())
+  moduleId  String?
+  module    LmsModule? @relation(fields: [moduleId], references: [id])
+  title     String
+  category  ResourceCat
+  format    String
+  meta      String?
+  icon      String
+  color     String
+  locked    Boolean    @default(false)
+  fileUrl   String?
+  createdAt DateTime   @default(now())
+}
+
+model UserLmsProgress {
+  id          String       @id @default(cuid())
+  userId      String
+  user        User         @relation(fields: [userId], references: [id])
+  moduleId    String
+  module      LmsModule    @relation(fields: [moduleId], references: [id])
+  pct         Int          @default(0)
+  status      ModuleStatus
+  startedAt   DateTime?
+  completedAt DateTime?
+
+  @@unique([userId, moduleId])
+}
+
+model UserLessonProgress {
+  id          String    @id @default(cuid())
+  userId      String
+  user        User      @relation(fields: [userId], references: [id])
+  lessonId    String
+  lesson      LmsLesson @relation(fields: [lessonId], references: [id])
+  done        Boolean   @default(false)
+  current     Boolean   @default(false)
+  completedAt DateTime?
+
+  @@unique([userId, lessonId])
+}
+
+model UserQuizAttempt {
+  id          String    @id @default(cuid())
+  userId      String
+  user        User      @relation(fields: [userId], references: [id])
+  lessonId    String
+  lesson      LmsLesson @relation(fields: [lessonId], references: [id])
+  score       Int
+  passed      Boolean
+  answers     Json
+  attemptedAt DateTime  @default(now())
+}
+
+model Certificate {
+  id       String    @id @default(cuid())
+  userId   String
+  user     User      @relation(fields: [userId], references: [id])
+  moduleId String
+  module   LmsModule @relation(fields: [moduleId], references: [id])
+  earnedAt DateTime  @default(now())
+
+  @@unique([userId, moduleId])
+}
+
+enum LessonKind {
+  LESSON
+  QUIZ
+}
+
+enum LessonType {
+  VIDEO
+  LECTURE
+  AUDIO
+}
+
+enum QuizType {
+  SINGLE
+  TRUEFALSE
+  MULTI
+  ORDER
+  SCENARIO
+}
+
+enum ResourceCat {
+  SCRIPT
+  FICHE
+  MODELE
+  REPLAY
+}
+
+enum ModuleStatus {
+  LOCKED
+  CURRENT
+  DONE
+}
+
+// ============================================================
+// §9 — BIBLIOTHÈQUE — LIVRES MLM
+// ============================================================
+
+model MlmBook {
+  id               String       @id @default(cuid())
+  rang             Int          @unique
+  priority         BookPriority
+  auteur           String
+  titreFR          String
+  titreEN          String?
+  theme            String
+  dispoFR          Boolean      @default(true)
+  format           String
+  note             Int
+  amazonUrl        String?
+  audibleUrl       String?
+  ragStatus        RagStatus    @default(A_INDEXER)
+  ragIndexedAt     DateTime?
+  qdrantCollection String?
+  interactions     UserBookInteraction[]
+}
+
+model UserBookInteraction {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  bookId    String
+  book      MlmBook  @relation(fields: [bookId], references: [id])
+  saved     Boolean  @default(false)
+  read      Boolean  @default(false)
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, bookId])
+}
+
+enum BookPriority {
+  ESSENTIEL
+  COMPLEMENTAIRE
+}
+
+enum RagStatus {
+  A_INDEXER
+  EN_COURS
+  INDEXE
+}
+
+// ============================================================
+// §10 — ARIA — SIMULATEUR D'ENTRAÎNEMENT
+// ============================================================
+
+model SimSession {
+  id                String       @id @default(cuid())
+  userId            String
+  user              User         @relation(fields: [userId], references: [id])
+  phase             SimPhase
+  characterId       String
+  difficulty        SimDiff
+  knowledgeLevel    SimKnowledge @default(JAMAIS_FAIT)
+  pipelineContactId String?
+  score             Int?
+  feedback          String?
+  messages          SimMessage[]
+  startedAt         DateTime     @default(now())
+  completedAt       DateTime?
+}
+
+model SimMessage {
+  id        String     @id @default(cuid())
+  sessionId String
+  session   SimSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  role      SimRole
+  content   String
+  createdAt DateTime   @default(now())
+}
+
+enum SimPhase {
+  INVITATION
+  SUIVI
+  DEMARRAGE
+  COACHING
+}
+
+enum SimDiff {
+  FACILE
+  MOYEN
+  DIFFICILE
+  PRO
+}
+
+enum SimKnowledge {
+  JAMAIS_FAIT
+  A_UN_AVIS
+  DEJA_FAIT_MLM
+}
+
+enum SimRole {
+  USER
+  ARIA
+}
+
+// ============================================================
+// §11 — NOVA — CONTENU & RÉSEAUX SOCIAUX
+// ============================================================
+
+model ContentPillar {
+  id            String          @id @default(cuid())
+  userId        String
+  user          User            @relation(fields: [userId], references: [id])
+  mlmBusinessId String
+  mlmBusiness   UserMlmBusiness @relation(fields: [mlmBusinessId], references: [id])
+  label         String
+  description   String?
+  color         String?
+  position      Int
+  createdAt     DateTime        @default(now())
+  posts         ContentPost[]
+  ideas         ContentIdea[]
+
+  @@unique([userId, mlmBusinessId, label])
+}
+
+model ContentPost {
+  id            String          @id @default(cuid())
+  userId        String
+  user          User            @relation(fields: [userId], references: [id])
+  mlmBusinessId String
+  mlmBusiness   UserMlmBusiness @relation(fields: [mlmBusinessId], references: [id])
+  pillarId      String?
+  pillar        ContentPillar?  @relation(fields: [pillarId], references: [id])
+  platform      SocialPlatform
+  caption       String
+  mediaUrl      String?
+  status        PostStatus
+  scheduledAt   DateTime?
+  publishedAt   DateTime?
+  externalId    String?
+  format        String?
+  novaGenerated Boolean         @default(false)
+  analytics     PostAnalytics?
+  reports       ContentReport[]
+  createdAt     DateTime        @default(now())
+}
+
+model PostAnalytics {
+  id        String      @id @default(cuid())
+  postId    String      @unique
+  post      ContentPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+  views     Int         @default(0)
+  likes     Int         @default(0)
+  comments  Int         @default(0)
+  shares    Int         @default(0)
+  reach     Int         @default(0)
+  clicks    Int         @default(0)
+  fetchedAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+}
+
+model ContentIdea {
+  id            String          @id @default(cuid())
+  userId        String
+  user          User            @relation(fields: [userId], references: [id])
+  mlmBusinessId String
+  mlmBusiness   UserMlmBusiness @relation(fields: [mlmBusinessId], references: [id])
+  pillarId      String?
+  pillar        ContentPillar?  @relation(fields: [pillarId], references: [id])
+  title         String
+  platform      SocialPlatform?
+  format        String?
+  angle         String?
+  novaGenerated Boolean         @default(false)
+  used          Boolean         @default(false)
+  createdAt     DateTime        @default(now())
+}
+
+model SocialAccount {
+  id            String           @id @default(cuid())
+  userId        String
+  user          User             @relation(fields: [userId], references: [id])
+  mlmBusinessId String?
+  mlmBusiness   UserMlmBusiness? @relation(fields: [mlmBusinessId], references: [id])
+  platform      SocialPlatform
+  handle        String?
+  connected     Boolean          @default(false)
+  accessToken   String?
+  refreshToken  String?
+  expiresAt     DateTime?
+
+  @@unique([userId, platform])
+}
+
+model SocialInboxItem {
+  id             String          @id @default(cuid())
+  userId         String
+  user           User            @relation(fields: [userId], references: [id])
+  mlmBusinessId  String
+  mlmBusiness    UserMlmBusiness @relation(fields: [mlmBusinessId], references: [id])
+  platform       SocialPlatform
+  senderName     String
+  kind           InboxKind
+  receivedAt     DateTime
+  unread         Boolean         @default(true)
+  status         InboxStatus     @default(NOUVEAU)
+  context        String?
+  intent         String?
+  score          ProspectScore?
+  message        String
+  novaSuggestion String?
+  addedToCrmId   String?
+  done           Boolean         @default(false)
+  createdAt      DateTime        @default(now())
+}
+
+enum SocialPlatform {
+  INSTAGRAM
+  LINKEDIN
+  FACEBOOK
+  TIKTOK
+  YOUTUBE
+  TWITTER
+}
+
+enum PostStatus {
+  BROUILLON
+  PLANIFIE
+  PUBLIE
+  ARCHIVE
+}
+
+enum InboxKind {
+  DM
+  COMMENTAIRE
+  MESSAGE
+}
+
+enum InboxStatus {
+  NOUVEAU
+  PROSPECT
+  PARTENAIRE
+}
+
+enum ProspectScore {
+  CHAUD
+  TIEDE
+  FROID
+}
+
+// ============================================================
+// §12 — FORUM / COMMUNAUTÉ
+// ============================================================
+
+model ForumSpace {
+  id      String      @id @default(cuid())
+  type    SpaceType
+  mlmSlug String?
+  threads ForumThread[]
+}
+
+model ForumCategory {
+  id          String      @id @default(cuid())
+  spaceType   SpaceType
+  slug        String
+  label       String
+  icon        String
+  color       String
+  description String?
+  position    Int
+  threads     ForumThread[]
+
+  @@unique([spaceType, slug])
+}
+
+model ForumThread {
+  id             String        @id @default(cuid())
+  spaceId        String
+  space          ForumSpace    @relation(fields: [spaceId], references: [id])
+  categoryId     String
+  category       ForumCategory @relation(fields: [categoryId], references: [id])
+  authorId       String
+  author         User          @relation(fields: [authorId], references: [id])
+  mlmCompanyName String?
+  title          String
+  excerpt        String?
+  pinned         Boolean       @default(false)
+  closed         Boolean       @default(false)
+  replies        Int           @default(0)
+  likes          Int           @default(0)
+  views          Int           @default(0)
+  lastActivityAt DateTime      @default(now())
+  createdAt      DateTime      @default(now())
+  posts          ForumPost[]
+  saved          ForumSaved[]
+  reports        ForumReport[]
+}
+
+model ForumPost {
+  id        String      @id @default(cuid())
+  threadId  String
+  thread    ForumThread @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  authorId  String
+  author    User        @relation(fields: [authorId], references: [id])
+  content   String
+  likes     Int         @default(0)
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+  postLikes ForumPostLike[]
+  reports   ForumReport[]
+}
+
+model ForumPostLike {
+  id     String    @id @default(cuid())
+  postId String
+  post   ForumPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+  userId String
+  user   User      @relation(fields: [userId], references: [id])
+
+  @@unique([postId, userId])
+}
+
+model ForumSaved {
+  id       String      @id @default(cuid())
+  userId   String
+  user     User        @relation(fields: [userId], references: [id])
+  threadId String
+  thread   ForumThread @relation(fields: [threadId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, threadId])
+}
+
+model ForumReport {
+  id         String       @id @default(cuid())
+  reporterId String
+  reporter   User         @relation(fields: [reporterId], references: [id])
+  threadId   String?
+  thread     ForumThread? @relation(fields: [threadId], references: [id])
+  postId     String?
+  post       ForumPost?   @relation(fields: [postId], references: [id])
+  reason     String
+  status     ReportStatus @default(PENDING)
+  createdAt  DateTime     @default(now())
+}
+
+model ContentReport {
+  id         String       @id @default(cuid())
+  reporterId String
+  reporter   User         @relation(fields: [reporterId], references: [id])
+  postId     String
+  post       ContentPost  @relation(fields: [postId], references: [id])
+  reason     String
+  status     ReportStatus @default(PENDING)
+  createdAt  DateTime     @default(now())
+}
+
+enum SpaceType {
+  GENERAL
+  COMPANY
+}
+
+enum ReportStatus {
+  PENDING
+  REVIEWED
+  DISMISSED
+}
+
+// ============================================================
+// §13 — RÉSEAU ATLINE — MLM INTERNE
+// ============================================================
+
+model AtlineReferral {
+  id         String   @id @default(cuid())
+  referrerId String
+  referrer   User     @relation("AtlineReferralReferrer", fields: [referrerId], references: [id])
+  referredId String
+  referred   User     @relation("AtlineReferralReferred", fields: [referredId], references: [id])
+  level      Int
+  createdAt  DateTime @default(now())
+
+  @@unique([referrerId, referredId])
+}
+
+model Placement {
+  id             String          @id @default(cuid())
+  filleulId      String
+  filleul        User            @relation("PlacementFilleul",      fields: [filleulId],      references: [id])
+  requestedById  String
+  requestedBy    User            @relation("PlacementRequestedBy",  fields: [requestedById],  references: [id])
+  targetParentId String
+  targetParent   User            @relation("PlacementTargetParent", fields: [targetParentId], references: [id])
+  status         PlacementStatus @default(PENDING)
+  expiresAt      DateTime
+  placedById     String?
+  placedBy       User?           @relation("PlacementPlacedBy",     fields: [placedById],     references: [id])
+  placedAt       DateTime?
+  method         PlacementMethod?
+  createdAt      DateTime        @default(now())
+}
+
+model AtlineCommission {
+  id                  String           @id @default(cuid())
+  userId              String
+  user                User             @relation("CommissionReceiver", fields: [userId],       references: [id])
+  productId           String
+  product             AtlineProduct    @relation(fields: [productId], references: [id])
+  sourceUserId        String?
+  sourceUser          User?            @relation("CommissionSource",   fields: [sourceUserId], references: [id])
+  sourceClientId      String?
+  sourceClient        AppClient?       @relation(fields: [sourceClientId], references: [id])
+  type                CommissionType
+  level               Int
+  rate                Float
+  amount              Float
+  month               DateTime         @db.Date
+  // Éligibilité par palier de plan — règle métier : receiver.planTier >= source.planTier
+  status              CommissionStatus @default(ELIGIBLE)
+  blockedReason       String?          // renseigné si status = BLOCKED (ex: "plan_tier_insuffisant")
+  receiverPlanAtTime  Plan             // plan du licencié au moment de la commission
+  sourcePlanAtTime    Plan?            // plan de la source (filleul) au moment de la commission
+  paidAt              DateTime?
+  createdAt           DateTime         @default(now())
+}
+
+enum CommissionStatus {
+  ELIGIBLE   // commission créée et éligible — sera versée
+  PAID       // versée
+  BLOCKED    // bloquée — plan du licencié inférieur au plan de la source
+  CANCELLED  // annulée (remboursement, résiliation dans la période)
+}
+
+model CommissionConfig {
+  id             String   @id @default(cuid())
+  residualN1Rate Float    @default(0.15)
+  residualN2Rate Float    @default(0.10)
+  fastStartRate  Float    @default(0.02)
+  fastStartDays  Int      @default(30)
+  retentionRate  Float    @default(0.05)
+  retentionMin   Int      @default(3)
+  retentionPct   Int      @default(80)
+  updatedAt      DateTime @updatedAt
+  updatedById    String?
+}
+
+model AtlineLicense {
+  id          String   @id @default(cuid())
+  userId      String   @unique
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  active      Boolean  @default(true)
+  category  String   @default("coaching")
+  activatedAt DateTime @default(now())
+  expiresAt   DateTime?
+}
+
+enum PlacementStatus {
+  PENDING
+  ACCEPTED
+  REFUSED
+  EXPIRED
+}
+
+enum PlacementMethod {
+  MANUAL
+  AUTO
+}
+
+enum CommissionType {
+  RESIDUAL
+  FAST_START
+  RETENTION
+  LEADERSHIP
+}
+
+// ============================================================
+// §13b — PRODUITS DIGITAUX ATLINE
+// ============================================================
+
+model AtlineProduct {
+  id             String         @id @default(cuid())
+  name           String
+  slug           String         @unique
+  description    String?
+  type           ProductType
+  priceMonthly   Float
+  commissionRate Float          @default(0.15)
+  appStoreUrl    String?
+  playStoreUrl   String?
+  status         ProductStatus  @default(PRECREATION)
+  createdAt      DateTime       @default(now())
+  commissions    AtlineCommission[]
+  catalogEntries LicenseeProductCatalog[]
+  appClients     AppClient[]
+}
+
+model LicenseeProductCatalog {
+  id         String        @id @default(cuid())
+  licenseeId String
+  licensee   User          @relation(fields: [licenseeId], references: [id])
+  productId  String
+  product    AtlineProduct @relation(fields: [productId], references: [id])
+  active     Boolean       @default(true)
+  category  String   @default("coaching")
+  grantedAt  DateTime      @default(now())
+
+  @@unique([licenseeId, productId])
+}
+
+model AppClient {
+  id                 String        @id @default(cuid())
+  email              String        @unique
+  firstName          String
+  lastName           String
+  phone              String?
+  locale             String        @default("fr")
+  country            String        @default("France")
+  productId          String
+  product            AtlineProduct @relation(fields: [productId], references: [id])
+  licenceeId         String
+  licencee           User          @relation(fields: [licenceeId], references: [id])
+  referrerId         String?
+  referrer           AppClient?    @relation("AppClientReferral", fields: [referrerId], references: [id])
+  referredClients    AppClient[]   @relation("AppClientReferral")
+  stripeCustomerId   String?       @unique
+  subscriptionStatus SubStatus     @default(TRIALING)
+  convertedToUserId  String?       @unique
+  convertedAt        DateTime?
+  createdAt          DateTime      @default(now())
+  updatedAt          DateTime      @updatedAt
+  commissions        AtlineCommission[]
+}
+
+enum ProductType {
+  SAAS
+  DIGITAL_APP
+}
+
+enum ProductStatus {
+  PRECREATION
+  ACTIVE
+  ARCHIVED
+}
+
+// ============================================================
+// §14 — BOÎTE À OUTILS
+// ============================================================
+
+model ToolboxLink {
+  id            String          @id @default(cuid())
+  userId        String
+  user          User            @relation(fields: [userId], references: [id])
+  mlmBusinessId String
+  mlmBusiness   UserMlmBusiness @relation(fields: [mlmBusinessId], references: [id])
+  linkType      ToolLinkType
+  url           String?
+  updatedAt     DateTime        @updatedAt
+
+  @@unique([userId, mlmBusinessId, linkType])
+}
+
+model ToolboxSupport {
+  id            String          @id @default(cuid())
+  userId        String
+  user          User            @relation(fields: [userId], references: [id])
+  mlmBusinessId String
+  mlmBusiness   UserMlmBusiness @relation(fields: [mlmBusinessId], references: [id])
+  bucket        SupportBucket
+  title         String
+  description   String?
+  fileUrl       String
+  format        String
+  createdAt     DateTime        @default(now())
+}
+
+enum ToolLinkType {
+  BOUTIQUE
+  PARRAINAGE
+  RDV
+  WHATSAPP
+  WHATSAPP_GROUP
+  ZOOM
+  INSTAGRAM
+  FACEBOOK
+  TIKTOK
+}
+
+enum SupportBucket {
+  PRESENTER
+  FORMER
+  VENDRE
+}
+
+// ============================================================
+// §15 — MESSAGERIE UNIFIÉE
+// ============================================================
+
+model Conversation {
+  id            String          @id @default(cuid())
+  userId        String
+  user          User            @relation(fields: [userId], references: [id])
+  mlmBusinessId String
+  mlmBusiness   UserMlmBusiness @relation(fields: [mlmBusinessId], references: [id])
+  contactId     String          @unique
+  contact       Contact         @relation(fields: [contactId], references: [id])
+  unreadCount   Int             @default(0)
+  lastMessageAt DateTime?
+  createdAt     DateTime        @default(now())
+  messages      DirectMessage[]
+
+  @@unique([userId, contactId])
+}
+
+model DirectMessage {
+  id               String       @id @default(cuid())
+  conversationId   String
+  conversation     Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  role             ConvRole
+  content          String
+  channel          MsgChannel   @default(IN_APP)
+  atlasSuggestion  String?
+  createdAt        DateTime     @default(now())
+}
+
+enum ConvRole {
+  USER
+  CONTACT
+}
+
+enum MsgChannel {
+  IN_APP
+  WHATSAPP
+  TELEGRAM
+  INSTAGRAM
+  LINKEDIN
+  FACEBOOK
+  EMAIL
+}
+
+// ============================================================
+// §16 — BOT PROSPECT
+// ============================================================
+
+model ProspectBot {
+  id              String          @id @default(cuid())
+  userId          String
+  user            User            @relation(fields: [userId], references: [id])
+  canal           BotCanal
+  tokenUnique     String          @unique
+  mlmBusinessId   String
+  mlmBusiness     UserMlmBusiness @relation(fields: [mlmBusinessId], references: [id])
+  active          Boolean         @default(true)
+  category  String   @default("coaching")
+  botName         String?
+  createdAt       DateTime        @default(now())
+  conversations   BotConversation[]
+  landingSessions BotLandingSession[]
+
+  @@unique([userId, canal])
+}
+
+model BotLandingSession {
+  id           String       @id @default(cuid())
+  botId        String
+  bot          ProspectBot  @relation(fields: [botId], references: [id])
+  sessionKey   String       @unique
+  canal        BotCanal
+  expiresAt    DateTime
+  resolved     Boolean      @default(false)
+  createdAt    DateTime     @default(now())
+  conversation BotConversation?
+}
+
+model BotConversation {
+  id               String             @id @default(cuid())
+  botId            String
+  bot              ProspectBot        @relation(fields: [botId], references: [id])
+  externalId       String?
+  landingSessionId String?            @unique
+  landingSession   BotLandingSession? @relation(fields: [landingSessionId], references: [id])
+  prospectName     String?
+  prospectPhone    String?
+  score            ProspectScore?
+  status           BotConvStatus      @default(ACTIVE)
+  addedToCrmId     String?
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime           @updatedAt
+  messages         BotMessage[]
+
+  @@unique([botId, externalId])
+}
+
+model BotMessage {
+  id        String          @id @default(cuid())
+  convId    String
+  conv      BotConversation @relation(fields: [convId], references: [id], onDelete: Cascade)
+  role      BotMsgRole
+  content   String
+  createdAt DateTime        @default(now())
+}
+
+enum BotCanal {
+  WHATSAPP
+  TELEGRAM
+}
+
+enum BotConvStatus {
+  ACTIVE
+  TAKEN_OVER
+  CONVERTED
+  CLOSED
+}
+
+enum BotMsgRole {
+  PROSPECT
+  BOT
+}
+
+// ============================================================
+// §17 — NOTIFICATIONS & PUSH
+// ============================================================
+
+model Notification {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  icon      String
+  color     String
+  text      String
+  go        String
+  unread    Boolean   @default(true)
+  seenAt    DateTime?
+  readAt    DateTime?
+  createdAt DateTime  @default(now())
+}
+
+model PushToken {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  token     String   @unique
+  platform  String
+  active    Boolean  @default(true)
+  category  String   @default("coaching")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// ============================================================
+// §18 — BLOG & HERMES (ADMIN)
+// ============================================================
+
+model ArticleRegistry {
+  id            String        @id @default(cuid())
+  titre         String
+  sujet         String
+  agent         BlogAgent
+  statut        ArticleStatus @default(PLANNED)
+  qdrantSources String[]
+  ghostId       String?
+  ghostUrl      String?
+  publishedAt   DateTime?
+  needsUpdate   Boolean       @default(false)
+  lastCheckedAt DateTime?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+}
+
+enum BlogAgent {
+  ATLAS
+  NOVA
+  HYBRID
+}
+
+enum ArticleStatus {
+  PLANNED
+  GENERATING
+  REVIEW
+  PUBLISHED
+  OUTDATED
+}
+
+// ============================================================
+// §18b — ÉVÉNEMENTS COMMUNAUTAIRES MLM
+// ============================================================
+
+model MlmEvent {
+  id                 String      @id @default(cuid())
+  requestedById      String
+  requestedBy        User        @relation("EventRequestedBy", fields: [requestedById], references: [id])
+  mlmSlug            String
+  type               EventType
+  title              String
+  description        String?
+  startAt            DateTime
+  endAt              DateTime?
+  location           String?
+  lat                Float?
+  lng                Float?
+  onlineUrl          String?
+  maxAttendees       Int?
+  registrationUrl    String?
+  highlightedByAtlas Boolean     @default(false)
+  atlineOnly         Boolean     @default(false)
+  status             EventStatus @default(PENDING)
+  validatedById      String?
+  validatedBy        User?       @relation("EventValidatedBy", fields: [validatedById], references: [id])
+  validatedAt        DateTime?
+  createdAt          DateTime    @default(now())
+  updatedAt          DateTime    @updatedAt
+  registrations      EventRegistration[]
+}
+
+model EventRegistration {
+  id              String   @id @default(cuid())
+  eventId         String
+  event           MlmEvent @relation(fields: [eventId], references: [id])
+  userId          String
+  user            User     @relation(fields: [userId], references: [id])
+  addedToCalendar Boolean  @default(false)
+  createdAt       DateTime @default(now())
+
+  @@unique([eventId, userId])
+}
+
+enum EventType {
+  CONFERENCE
+  HOTEL_MEETING
+  WEBINAIRE
+  FORMATION
+  CONVENTION
+  AUTRE
+}
+
+enum EventStatus {
+  PENDING
+  PUBLISHED
+  CANCELLED
+}
+
+// ============================================================
+// §19 — CONFIGURATION & CONSOMMATION IA (ADMIN)
+// ============================================================
+
+model AtlasMantras {
+  id        String   @id @default(cuid())
+  content   String
+  active    Boolean  @default(true)
+  category  String   @default("coaching")
+  position  Int
+  createdAt DateTime @default(now())
+}
+
+model AgentConfig {
+  id        String   @id @default(cuid())
+  agent     String
+  key       String
+  value     String
+  updatedAt DateTime @updatedAt
+
+  @@unique([agent, key])
+}
+
+model TelegramLink {
+  id             String   @id @default(cuid())
+  telegramChatId String   @unique
+  userId         String   @unique
+  user           User     @relation(fields: [userId], references: [id])
+  linkedAt       DateTime @default(now())
+  linkCode       String?
+}
+
+model AiProviderConfig {
+  id          String   @id @default(cuid())
+  role        AiRole
+  provider    String
+  model       String
+  priority    Int      @default(1)
+  active      Boolean  @default(true)
+  category  String   @default("coaching")
+  maxTokens   Int?
+  temperature Float?
+  extraParams Json?
+  updatedAt   DateTime @updatedAt
+  updatedById String?
+
+  @@unique([role, priority])
+}
+
+model AiUsageLog {
+  id           String   @id @default(cuid())
+  userId       String?
+  user         User?    @relation(fields: [userId], references: [id])
+  agent        AiAgent
+  provider     String
+  model        String
+  inputTokens  Int
+  outputTokens Int
+  costUsd      Float?
+  langfuseId   String?
+  createdAt    DateTime @default(now())
+}
+
+model AiUsageMonthly {
+  id           String   @id @default(cuid())
+  userId       String
+  user         User     @relation(fields: [userId], references: [id])
+  agent        AiAgent
+  month        DateTime @db.Date
+  inputTokens  Int      @default(0)
+  outputTokens Int      @default(0)
+  totalCostUsd Float    @default(0)
+
+  @@unique([userId, agent, month])
+}
+
+model AiQuotaConfig {
+  id            String   @id @default(cuid())
+  plan          Plan
+  agent         AiAgent
+  monthlyTokens Int?
+  hardLimit     Boolean  @default(false)
+  updatedAt     DateTime @updatedAt
+  updatedById   String?
+
+  @@unique([plan, agent])
+}
+
+enum AiRole {
+  ATLAS_LLM
+  NOVA_LLM
+  ARIA_LLM
+  EMBEDDING
+  RERANKING
+}
+
+enum AiAgent {
+  ATLAS
+  NOVA
+  ARIA
+}
+
+model RagConfig {
+  key       String   @id
+  value     String
+  updatedAt DateTime @updatedAt
+}
+
+model RagTag {
+  id        Int      @id @default(autoincrement())
+  name      String   @unique
+  active    Boolean  @default(true)
+  category  String   @default("coaching")
+  createdAt DateTime @default(now())
+}
+
+// Bibliothèque audio — plusieurs versions par entité (leçon ou livre)
+model AudioAsset {
+  id        String   @id @default(cuid())
+  kind      String   // "lesson" | "book"
+  entityId  String   // lessonId ou slug source_file
+  source    String   // "generated" | "uploaded"
+  filePath  String   // chemin absolu sur le VPS
+  sizeBytes Int?
+  model     String?  // modèle LLM utilisé pour la réécriture
+  voiceId   String?  // voice ID Cartesia utilisé
+  label       String?  // label libre (ex: "Marc v2")
+  isActive    Boolean  @default(false) // version jouée par défaut dans l'admin
+  isPublished Boolean  @default(false) // visible dans l'app utilisateur
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([kind, entityId])
+  @@index([kind, isPublished]) // lecture rapide côté app
+}
