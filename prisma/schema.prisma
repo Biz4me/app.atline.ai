@@ -49,11 +49,16 @@ model User {
   lat              Float?
   lng              Float?
   bio              String?
+  socials          Json?
+  coaching         Json?
   birthDate        DateTime?
   hubVisible       Boolean        @default(false)
   onboardingCompleted Boolean     @default(false)
   onboardingStep   Int            @default(0)
   onboardingFlow   OnboardingFlow?
+  personality      PersonalityType?
+  profession       String?
+  education        String?
   createdAt        DateTime       @default(now())
   updatedAt        DateTime       @updatedAt
 
@@ -370,6 +375,8 @@ model UserMlmBusiness {
   role          String
   rank          String?
   goal          String?
+  objectif      Json?
+  produit       String?
   color         String
   initials      String
   active        Boolean  @default(true)
@@ -417,10 +424,14 @@ model Contact {
   mlmBusiness   UserMlmBusiness @relation(fields: [mlmBusinessId], references: [id])
   kind          ContactKind
   name          String
+  firstName     String?
+  lastName      String?
+  gender        String?
   initials      String?
   accent        String?
   email         String?
   phone         String?
+  phone2        String?
   address       String?
   address2      String?
   postal        String?
@@ -428,11 +439,16 @@ model Contact {
   country       String?
   source        ContactSource?
   isPersonal    Boolean         @default(false)
+  convertedUserId String?
   personality   PersonalityType?
+  market        MarketTemp?
+  profession    String?
+  education     String?
   prospectStage ProspectStage?
   clientStage   ClientStage?
   partnerStage  PartnerStage?
   score         Int?
+  exposures     Int             @default(0)
   tags          String[]
   lastContact   DateTime?
   note          String?
@@ -446,6 +462,23 @@ model Contact {
   atlasConversations AtlasConversation[]
   appointments       Appointment[]
   conversation       Conversation?
+  interactions       Interaction[]
+}
+
+// Journal des actions CRM (appel/sms/email/…) — fondation des actions, nourrit exposures + lastContact + historique
+model Interaction {
+  id        String          @id @default(cuid())
+  contactId String
+  contact   Contact         @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  userId    String
+  type      InteractionType
+  direction String          @default("OUT") // OUT = sortant, IN = entrant
+  outcome   String? // POSITIF · NEUTRE · NEGATIF · SANS_REPONSE
+  body      String? // texte du message / note
+  isExposure Boolean        @default(true) // compte comme une exposition Worre
+  createdAt DateTime        @default(now())
+
+  @@index([contactId])
 }
 
 model PartnerExtra {
@@ -506,6 +539,12 @@ enum ContactSource {
   BOT_TELEGRAM
   IMPORT
   RDV_INBOUND
+  FAMILLE
+  REFERE
+  CONNAISSANCE
+  CAMPAGNE_EMAIL
+  PAGE_CAPTURE
+  EVENEMENT
 }
 
 enum PersonalityType {
@@ -515,11 +554,18 @@ enum PersonalityType {
   JAUNE
 }
 
+enum MarketTemp {
+  CHAUD
+  TIEDE
+  FROID
+}
+
 enum ProspectStage {
   NOUVEAU
-  CONTACTE
-  QUALIFIE
-  CHAUD
+  INVITATION
+  PRESENTATION
+  SUIVI
+  CLOSING
 }
 
 enum ClientStage {
@@ -530,10 +576,24 @@ enum ClientStage {
 }
 
 enum PartnerStage {
-  INTEGRATION
+  DEMARRAGE
   FORMATION
   ACTIF
   LEADER
+}
+
+enum InteractionType {
+  APPEL
+  SMS
+  EMAIL
+  WHATSAPP
+  DM
+  VOCAL
+  RDV
+  RELANCE
+  PARTAGE
+  NOTE
+  AUTRE
 }
 
 enum PartnerStatus {
@@ -588,6 +648,20 @@ model CalComConnection {
   bookingUrl   String
   connected    Boolean  @default(false)
   connectedAt  DateTime?
+  updatedAt    DateTime @updatedAt
+}
+
+// Connexion calendrier Google (flux OAuth dédié, séparé du login) — Phase 2 agenda
+model CalendarConnection {
+  id           String   @id @default(cuid())
+  userId       String   @unique
+  provider     String   @default("google")
+  email        String?
+  accessToken  String
+  refreshToken String?
+  expiresAt    DateTime
+  scope        String?
+  createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 }
 
@@ -1842,4 +1916,19 @@ model AudioAsset {
 
   @@index([kind, entityId])
   @@index([kind, isPublished]) // lecture rapide côté app
+}
+
+// Relance programmée (« Atlas n'oublie pas ») — déclenchée par n8n à dueAt
+model Relance {
+  id        String    @id @default(cuid())
+  userId    String
+  contactId String
+  channel   String    @default("email") // whatsapp | sms | email
+  dueAt     DateTime
+  status    String    @default("PENDING") // PENDING | SENT | CANCELLED
+  message   String?
+  createdAt DateTime  @default(now())
+  sentAt    DateTime?
+
+  @@index([status, dueAt])
 }

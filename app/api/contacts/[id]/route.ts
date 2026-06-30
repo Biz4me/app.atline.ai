@@ -6,16 +6,39 @@ import { db } from '@/lib/db'
 function toStage(c: { kind: string; prospectStage: string | null; clientStage: string | null; partnerStage: string | null }) {
   if (c.kind === 'CLIENT') return 'client'
   if (c.kind === 'PARTENAIRE') return 'partenaire'
-  if (c.prospectStage === 'CHAUD') return 'chaud'
-  if (c.prospectStage === 'QUALIFIE' || c.prospectStage === 'CONTACTE') return 'prospect'
+  if (c.prospectStage === 'CLOSING') return 'closing'
+  if (c.prospectStage === 'INVITATION' || c.prospectStage === 'PRESENTATION' || c.prospectStage === 'SUIVI') return 'prospect'
   return 'nouveau'
 }
 
-export async function GET(_: Request, { params }: { params: { id: string } }) {
+// Score d'opportunité DYNAMIQUE (calculé, jamais saisi) : stage + fraîcheur + température
+function computeScore(c: {
+  kind: string; prospectStage: string | null; partnerStage: string | null
+  market: string | null; lastContact: Date | null
+}): number {
+  let base = 15
+  if (c.kind === 'PARTENAIRE') {
+    base = ({ DEMARRAGE: 55, FORMATION: 70, ACTIF: 85, LEADER: 95 } as Record<string, number>)[c.partnerStage ?? ''] ?? 55
+  } else if (c.kind === 'CLIENT') {
+    base = 55
+  } else {
+    base = ({ NOUVEAU: 15, INVITATION: 30, PRESENTATION: 50, SUIVI: 65, CLOSING: 80 } as Record<string, number>)[c.prospectStage ?? ''] ?? 15
+  }
+  let fresh = 0
+  if (c.lastContact) {
+    const days = (Date.now() - new Date(c.lastContact).getTime()) / 86_400_000
+    fresh = days < 7 ? 0 : days < 14 ? -5 : days < 30 ? -15 : -25
+  }
+  const temp = c.market === 'CHAUD' ? 5 : c.market === 'FROID' ? -5 : 0
+  return Math.max(0, Math.min(100, Math.round(base + fresh + temp)))
+}
+
+export async function GET(_: Request, ctx: { params: Promise<{ id: string }> }) {
   const session = await getServerSession(authOptions)
   if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const c = await db.contact.findFirst({ where: { id: params.id, userId: session.user.id } })
+  const { id } = await ctx.params
+  const c = await db.contact.findFirst({ where: { id, userId: session.user.id } })
   if (!c) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
   return NextResponse.json({
@@ -30,8 +53,22 @@ export async function GET(_: Request, { params }: { params: { id: string } }) {
     phone: c.phone ?? '',
     email: c.email ?? '',
     address: c.address ?? '',
+    firstName: c.firstName ?? '',
+    lastName: c.lastName ?? '',
+    gender: c.gender ?? '',
+    profession: c.profession ?? '',
+    education: c.education ?? '',
+    phone2: c.phone2 ?? '',
+    address2: c.address2 ?? '',
+    postal: c.postal ?? '',
+    country: c.country ?? '',
+    convertedUserId: c.convertedUserId ?? null,
     personality: c.personality ?? null,
-    score: c.score ?? null,
+    market: c.market ?? null,
+    prospectStage: c.prospectStage ?? null,
+    partnerStage: c.partnerStage ?? null,
+    score: computeScore(c),
+    exposures: c.exposures,
     lastContact: c.lastContact?.toISOString() ?? null,
     note: c.note ?? '',
     tags: c.tags,
@@ -40,55 +77,93 @@ export async function GET(_: Request, { params }: { params: { id: string } }) {
   })
 }
 
-export async function PATCH(req: Request, { params }: { params: { id: string } }) {
+export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }> }) {
   const session = await getServerSession(authOptions)
   if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const existing = await db.contact.findFirst({ where: { id: params.id, userId: session.user.id } })
+  const { id } = await ctx.params
+  const existing = await db.contact.findFirst({ where: { id, userId: session.user.id } })
   if (!existing) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
   const body = await req.json()
-  const { name, phone, email, city, address, note, stage, personality, score, lastContact, tags } = body
+  const { name, firstName, lastName, gender, profession, education, phone, phone2, email, address, address2, postal, city, country, note, stage, market, prospectStage, partnerStage, convert, personality, score, lastContact, tags } = body
+
+  // Synchroniser name si prénom/nom changent (aligné profil)
+  const nameUpdate: Record<string, string> = {}
+  if (firstName !== undefined || lastName !== undefined) {
+    const f = (firstName !== undefined ? firstName : existing.firstName) ?? ''
+    const l = (lastName !== undefined ? lastName : existing.lastName) ?? ''
+    const composed = `${f} ${l}`.trim()
+    if (composed) nameUpdate.name = composed
+  } else if (name !== undefined) {
+    nameUpdate.name = name
+  }
 
   let kindUpdate: any = {}
   if (stage !== undefined) {
     if (stage === 'client') {
       kindUpdate = { kind: 'CLIENT', prospectStage: null, clientStage: existing.clientStage ?? 'C_NOUVEAU', partnerStage: null }
     } else if (stage === 'partenaire') {
-      kindUpdate = { kind: 'PARTENAIRE', prospectStage: null, clientStage: null, partnerStage: existing.partnerStage ?? 'INTEGRATION' }
+      kindUpdate = { kind: 'PARTENAIRE', prospectStage: null, clientStage: null, partnerStage: existing.partnerStage ?? 'DEMARRAGE' }
     } else {
-      const ps = stage === 'chaud' ? 'CHAUD' : stage === 'prospect' ? 'QUALIFIE' : 'NOUVEAU'
+      const ps = stage === 'closing' ? 'CLOSING' : stage === 'prospect' ? 'SUIVI' : 'NOUVEAU'
       kindUpdate = { kind: 'PROSPECT', prospectStage: ps, clientStage: null, partnerStage: null }
     }
   }
 
+  // Pipeline explicite (nouveau modèle) : conversions + stages directs
+  let pipelineUpdate: any = {}
+  if (convert === 'client') {
+    pipelineUpdate = { kind: 'CLIENT', prospectStage: null, partnerStage: null }
+  } else if (convert === 'partenaire') {
+    pipelineUpdate = { kind: 'PARTENAIRE', prospectStage: null, partnerStage: existing.partnerStage ?? 'DEMARRAGE' }
+  } else if (convert === 'prospect') {
+    pipelineUpdate = { kind: 'PROSPECT', prospectStage: existing.prospectStage ?? 'NOUVEAU', partnerStage: null }
+  } else if (prospectStage !== undefined) {
+    pipelineUpdate = { kind: 'PROSPECT', prospectStage, clientStage: null, partnerStage: null }
+  } else if (partnerStage !== undefined) {
+    pipelineUpdate = { kind: 'PARTENAIRE', partnerStage }
+  }
+
   const updated = await db.contact.update({
-    where: { id: params.id },
+    where: { id },
     data: {
-      ...(name !== undefined && { name }),
+      ...nameUpdate,
+      ...(firstName !== undefined && { firstName: firstName || null }),
+      ...(lastName !== undefined && { lastName: lastName || null }),
+      ...(gender !== undefined && { gender: gender || null }),
+      ...(profession !== undefined && { profession: profession || null }),
+      ...(education !== undefined && { education: education || null }),
       ...(phone !== undefined && { phone }),
+      ...(phone2 !== undefined && { phone2: phone2 || null }),
       ...(email !== undefined && { email }),
-      ...(city !== undefined && { city }),
       ...(address !== undefined && { address }),
+      ...(address2 !== undefined && { address2: address2 || null }),
+      ...(postal !== undefined && { postal: postal || null }),
+      ...(city !== undefined && { city }),
+      ...(country !== undefined && { country: country || null }),
       ...(note !== undefined && { note }),
+      ...(market !== undefined && { market: market || null }),
       ...(personality !== undefined && { personality }),
       ...(score !== undefined && { score }),
       ...(lastContact !== undefined && { lastContact: lastContact ? new Date(lastContact) : null }),
       ...(tags !== undefined && { tags }),
       ...kindUpdate,
+      ...pipelineUpdate,
     },
   })
 
   return NextResponse.json({ id: updated.id })
 }
 
-export async function DELETE(_: Request, { params }: { params: { id: string } }) {
+export async function DELETE(_: Request, ctx: { params: Promise<{ id: string }> }) {
   const session = await getServerSession(authOptions)
   if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const existing = await db.contact.findFirst({ where: { id: params.id, userId: session.user.id } })
+  const { id } = await ctx.params
+  const existing = await db.contact.findFirst({ where: { id, userId: session.user.id } })
   if (!existing) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
-  await db.contact.delete({ where: { id: params.id } })
+  await db.contact.delete({ where: { id } })
   return NextResponse.json({ ok: true })
 }
