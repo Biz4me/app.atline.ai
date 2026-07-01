@@ -18,7 +18,7 @@ const DRAFT_KEY = 'profile_draft_v1' // état en cours (saisie + rubrique ouvert
 const normGender = (g: string) => (g === 'Homme' ? 'M' : g === 'Femme' ? 'F' : g === 'Autre' || g === 'Neutre' ? 'N' : g)
 
 const inputCls =
-  'w-full rounded-xl border border-border bg-background px-4 py-3 text-lg text-foreground outline-none placeholder:text-muted-foreground focus:border-muted-foreground/40'
+  'w-full rounded-xl border border-border bg-background px-4 py-[7px] text-lg text-foreground outline-none placeholder:text-muted-foreground focus:border-muted-foreground/40'
 
 type Social = { key: string; label: string; color: string; placeholder: string }
 // 5 principaux visibles + 4 optionnels repliés (le 0/9 décourageait)
@@ -60,8 +60,8 @@ function Collapsible({ icon: Icon, title, filled, total, open, onToggle, onSave,
   return (
     <Card className="overflow-hidden p-0">
       <button type="button" onClick={onToggle} className={`flex w-full items-center gap-2.5 px-4 py-3.5 ${open ? 'border-b border-border' : ''}`}>
-        <span className="grid size-8 shrink-0 place-items-center rounded-full bg-primary/10">
-          <Icon className="size-4 text-primary" />
+        <span className="grid size-8 shrink-0 place-items-center rounded-full bg-muted">
+          <Icon className="size-4 text-muted-foreground" />
         </span>
         <p className="flex-1 text-left text-lg font-semibold text-foreground">{title}</p>
         {done ? (
@@ -276,6 +276,8 @@ export default function ProfileEditPage() {
             </div>
           </div>
 
+          {/* Cartes du profil — espacement resserré comme Formation (gap-2) */}
+          <div className="flex flex-col gap-2">
           {/* 1 — Identité (état civil + contact) */}
           <Collapsible icon={UserIcon} title="Identité" filled={sec.identite} total={tot.identite} open={!!open.identite} onToggle={() => toggle('identite')} onSave={save} saving={saving}>
             <div className="grid grid-cols-2 gap-3">
@@ -354,6 +356,7 @@ export default function ProfileEditPage() {
             </div>
             <input className={inputCls} value={form.country} onChange={(e) => set('country', e.target.value)} placeholder="Pays" />
           </Collapsible>
+          </div>
 
           {/* Zone danger — séparée et discrète */}
           <div className="mt-4 flex justify-center border-t border-border pt-5">

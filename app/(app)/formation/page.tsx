@@ -46,21 +46,13 @@ export default function FormationPage() {
           {/* Titre géré par la top-bar centrée */}
           <SectionTabs items={FORMATION_TABS} />
 
-          {/* Progression globale */}
-          <Card className="p-4">
-            <div className="mb-2 flex items-center justify-between">
-              <p className="text-base text-muted-foreground">
-                {doneCount}/{modules.length} modules complétés
-              </p>
-              <span className="text-2xl font-bold text-primary">{totalPct}%</span>
+          {/* Progression globale — alignée sur la barre du profil (bande nue, % orange inline) */}
+          <div className="px-1">
+            <p className="mb-1.5 text-base font-semibold text-foreground">{doneCount}/{modules.length} modules complétés · <span className="text-primary">{totalPct}%</span></p>
+            <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
+              <div className="h-full rounded-full bg-primary transition-all duration-500" style={{ width: `${totalPct}%` }} />
             </div>
-            <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
-              <div
-                className="h-full rounded-full bg-primary transition-all duration-500"
-                style={{ width: `${totalPct}%` }}
-              />
-            </div>
-          </Card>
+          </div>
 
           {/* Skeleton pendant le chargement */}
           {!course && (
