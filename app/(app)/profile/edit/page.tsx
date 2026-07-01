@@ -83,6 +83,20 @@ function Collapsible({ icon: Icon, title, filled, total, open, onToggle, onSave,
   )
 }
 
+// Zone de texte qui grandit avec le contenu → pas de barre de scroll
+function AutoTextarea({ value, onChange, placeholder, className }: { value: string; onChange: (v: string) => void; placeholder: string; className: string }) {
+  const ref = useRef<HTMLTextAreaElement>(null)
+  useEffect(() => {
+    const el = ref.current
+    if (!el) return
+    el.style.height = 'auto'
+    el.style.height = el.scrollHeight + 'px'
+  }, [value])
+  return (
+    <textarea ref={ref} rows={1} value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} className={className} />
+  )
+}
+
 export default function ProfileEditPage() {
   const router = useRouter()
   const [form, setForm] = useState<Form>(EMPTY)
@@ -278,10 +292,8 @@ export default function ProfileEditPage() {
           <div className="flex flex-col gap-2">
           {/* 1 — Identité (état civil + contact) */}
           <Collapsible icon={UserIcon} title="Identité" filled={sec.identite} total={tot.identite} open={!!open.identite} onToggle={() => toggle('identite')} onSave={save} saving={saving}>
-            <div className="grid grid-cols-2 gap-3">
-              <input className={inputCls} value={form.firstName} onChange={(e) => set('firstName', e.target.value)} placeholder="Prénom" />
-              <input className={inputCls} value={form.lastName} onChange={(e) => set('lastName', e.target.value)} placeholder="Nom" />
-            </div>
+            <input className={inputCls} value={form.firstName} onChange={(e) => set('firstName', e.target.value)} placeholder="Prénom" />
+            <input className={inputCls} value={form.lastName} onChange={(e) => set('lastName', e.target.value)} placeholder="Nom" />
             <SelectMenu className={inputCls} placeholder="Genre" value={form.gender} onChange={(v) => set('gender', v)} options={[{ value: 'M', label: 'Homme' }, { value: 'F', label: 'Femme' }, { value: 'N', label: 'Neutre' }]} />
             <input className={inputCls} type="text" placeholder="Date de naissance" value={form.birthDate} onChange={(e) => set('birthDate', e.target.value)} onFocus={(e) => (e.target.type = 'date')} onBlur={(e) => { if (!e.target.value) e.target.type = 'text' }} />
             <input className={inputCls} type="tel" value={form.phone} onChange={(e) => set('phone', e.target.value)} placeholder="Téléphone" />
@@ -290,7 +302,7 @@ export default function ProfileEditPage() {
 
           {/* 2 — Qui tu es (personnalité — sert le ton des agents) */}
           <Collapsible icon={Sparkles} title="Qui tu es" filled={sec.quitues} total={tot.quitues} open={!!open.quitues} onToggle={() => toggle('quitues')} onSave={save} saving={saving}>
-            <textarea className={`${inputCls} min-h-[88px] resize-none`} value={form.bio} onChange={(e) => set('bio', e.target.value)} placeholder="Bio — quelques mots sur toi…" />
+            <AutoTextarea className={`${inputCls} min-h-[88px] resize-none overflow-hidden`} value={form.bio} onChange={(v) => set('bio', v)} placeholder="Bio — quelques mots sur toi…" />
             {form.personality ? (
               <div className="flex items-center justify-between rounded-xl border border-border bg-background px-4 py-3">
                 <div className="flex items-center gap-2.5">
@@ -314,8 +326,8 @@ export default function ProfileEditPage() {
 
           {/* 3 — Ton activité & coaching (contexte MLM pour Atlas) */}
           <Collapsible icon={Target} title="Ton activité & coaching" filled={sec.coaching} total={tot.coaching} open={!!open.coaching} onToggle={() => toggle('coaching')} onSave={save} saving={saving}>
-            <textarea className={`${inputCls} min-h-[72px] resize-none`} value={form.coaching.why ?? ''} onChange={(e) => setCoaching('why', e.target.value)} placeholder="Ton pourquoi (revenus, liberté, famille…)" />
-            <textarea className={`${inputCls} min-h-[72px] resize-none`} value={form.coaching.background ?? ''} onChange={(e) => setCoaching('background', e.target.value)} placeholder="Ton parcours (métier, expériences, forces)" />
+            <AutoTextarea className={`${inputCls} min-h-[72px] resize-none overflow-hidden`} value={form.coaching.why ?? ''} onChange={(v) => setCoaching('why', v)} placeholder="Ton pourquoi (revenus, liberté, famille…)" />
+            <AutoTextarea className={`${inputCls} min-h-[72px] resize-none overflow-hidden`} value={form.coaching.background ?? ''} onChange={(v) => setCoaching('background', v)} placeholder="Ton parcours (métier, expériences, forces)" />
             <input className={inputCls} value={form.profession} onChange={(e) => set('profession', e.target.value)} placeholder="Profession" />
             <SelectMenu className={inputCls} placeholder="Niveau d'études" value={form.education} onChange={(v) => set('education', v)} options={EDUCATIONS.map((o) => ({ value: o, label: o }))} />
             <input className={inputCls} value={form.coaching.audience ?? ''} onChange={(e) => setCoaching('audience', e.target.value)} placeholder="Ton audience cible (jeunes mamans, sportifs…)" />

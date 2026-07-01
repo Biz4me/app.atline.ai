@@ -1,13 +1,14 @@
 'use client'
 
-import { useRef, useState } from 'react'
+import { useRef, useState, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { ChevronDown } from 'lucide-react'
 
 export type SelectOption = { value: string; label: string }
 
-// Déroulant custom (même esprit que l'onboarding) : panneau blanc arrondi flottant,
-// qui se retourne vers le haut s'il manque de place en bas, hauteur plafonnée + scroll.
+// Déroulant custom (même esprit que l'onboarding) : panneau blanc arrondi flottant
+// qui COUVRE le champ (carte de base invisible), se retourne vers le haut si besoin,
+// hauteur plafonnée, et se ferme au scroll (sinon il se détache du champ).
 export function SelectMenu({
   value,
   onChange,
@@ -32,21 +33,29 @@ export function SelectMenu({
     const r = el.getBoundingClientRect()
     const margin = 14
     const cap = 320 // ~6 choix visibles puis scroll
-    // Le panneau COUVRE le déclencheur (comme l'onboarding) : ancré sur son bord haut (vers le bas) ou bas (vers le haut)
     const spaceBelow = window.innerHeight - r.top - margin
     const spaceAbove = r.bottom - margin
     const up = spaceBelow < Math.min(cap, 240) && spaceAbove > spaceBelow
     const maxH = Math.round(Math.min(cap, up ? spaceAbove : spaceBelow))
+    // Recouvre le champ de 2px (même rayon rounded-xl) → la carte de base ne dépasse jamais
     setPos({
-      left: r.left,
-      width: r.width,
-      top: up ? undefined : Math.round(r.top),
-      bottom: up ? Math.round(window.innerHeight - r.bottom) : undefined,
+      left: Math.round(r.left) - 2,
+      width: Math.round(r.width) + 4,
+      top: up ? undefined : Math.round(r.top) - 2,
+      bottom: up ? Math.round(window.innerHeight - r.bottom) - 2 : undefined,
       maxH,
       up,
     })
     setOpen(true)
   }
+
+  // Fermeture au scroll (panneau fixed → sinon il reste figé pendant que la page bouge)
+  useEffect(() => {
+    if (!open) return
+    const close = () => setOpen(false)
+    window.addEventListener('scroll', close, true)
+    return () => window.removeEventListener('scroll', close, true)
+  }, [open])
 
   return (
     <>
@@ -59,7 +68,7 @@ export function SelectMenu({
         <>
           <div className="fixed inset-0 z-[998]" onClick={() => setOpen(false)} />
           <div
-            className="fixed z-[999] overflow-y-auto rounded-2xl border border-[#e2e2e8] bg-white py-1 shadow-[0_16px_44px_rgba(0,0,0,.16)] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+            className="fixed z-[999] overflow-y-auto rounded-xl border border-[#e2e2e8] bg-white py-1 shadow-[0_16px_44px_rgba(0,0,0,.16)] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
             style={{ left: pos.left, width: pos.width, maxHeight: pos.maxH, ...(pos.up ? { bottom: pos.bottom } : { top: pos.top }) }}
           >
             {options.map((o) => (
@@ -67,7 +76,7 @@ export function SelectMenu({
                 key={o.value}
                 type="button"
                 onClick={() => { onChange(o.value); setOpen(false) }}
-                className={`block w-full px-[18px] py-3 text-left text-sm active:bg-muted ${o.value === value ? 'font-semibold text-foreground' : 'text-[#2b2d33]'}`}
+                className={`block w-full px-[18px] py-3 text-left text-lg active:bg-muted ${o.value === value ? 'font-semibold text-foreground' : 'text-[#2b2d33]'}`}
               >
                 {o.label}
               </button>
