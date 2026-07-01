@@ -43,7 +43,7 @@ export default function AuthPage() {
         setLoading(false)
         return
       }
-      router.push('/atlas')
+      router.push('/welcome')
     } else {
       if (password !== confirm) {
         setError('Les mots de passe ne correspondent pas')
@@ -79,9 +79,9 @@ export default function AuthPage() {
       redirect: false,
     })
     if (res?.error) {
-      router.push('/atlas')
+      router.push('/welcome')
     } else {
-      router.push('/atlas')
+      router.push('/welcome')
     }
   }
 
@@ -224,7 +224,7 @@ export default function AuthPage() {
 
         <button
           type="button"
-          onClick={() => signIn('google', { callbackUrl: '/onboarding' })}
+          onClick={() => signIn('google', { callbackUrl: '/welcome' })}
           disabled={loading}
           className="mb-3 flex w-full items-center justify-center gap-3 rounded-2xl border border-border bg-background py-3.5 text-base font-semibold text-foreground transition-colors active:bg-muted disabled:opacity-60"
         >
