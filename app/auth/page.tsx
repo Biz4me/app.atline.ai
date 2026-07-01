@@ -1,12 +1,19 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 import { signIn } from 'next-auth/react'
-import { Eye, EyeOff, Sparkles, ArrowRight, Loader2 } from 'lucide-react'
+import { Eye, EyeOff, Sparkles, ArrowRight, Loader2, Check, X, RefreshCw } from 'lucide-react'
 
 type Mode = 'login' | 'register'
+type UStatus = 'idle' | 'checking' | 'ok' | 'taken' | 'invalid'
+
+const UNAME_FORMAT = /^[a-z0-9._]{3,20}$/
+
+// Capitale initiale, gère composés / tirets / apostrophes : "haure-pallesi" → "Haure-Pallesi"
+const titleCase = (s: string) =>
+  s.trim().toLowerCase().replace(/(^|[\s\-'])([a-zà-ÿ])/g, (_, sep: string, ch: string) => sep + ch.toUpperCase())
 
 export default function AuthPage() {
   const router = useRouter()
@@ -36,7 +43,7 @@ export default function AuthPage() {
         setLoading(false)
         return
       }
-      router.push('/home')
+      router.push('/atlas')
     } else {
       if (password !== confirm) {
         setError('Les mots de passe ne correspondent pas')
@@ -72,9 +79,9 @@ export default function AuthPage() {
       redirect: false,
     })
     if (res?.error) {
-      router.push('/home')
+      router.push('/atlas')
     } else {
-      router.push('/home')
+      router.push('/atlas')
     }
   }
 
@@ -114,6 +121,7 @@ export default function AuthPage() {
                   autoComplete="given-name"
                   value={firstName}
                   onChange={e => setFirstName(e.target.value)}
+                  onBlur={() => setFirstName(titleCase(firstName))}
                   required
                   className="rounded-xl border border-border bg-background px-4 py-3 text-sm text-foreground outline-none placeholder:text-muted-foreground focus:ring-2 focus:ring-primary/30"
                 />
@@ -126,6 +134,7 @@ export default function AuthPage() {
                   autoComplete="family-name"
                   value={lastName}
                   onChange={e => setLastName(e.target.value)}
+                  onBlur={() => setLastName(titleCase(lastName))}
                   required
                   className="rounded-xl border border-border bg-background px-4 py-3 text-sm text-foreground outline-none placeholder:text-muted-foreground focus:ring-2 focus:ring-primary/30"
                 />
@@ -134,13 +143,15 @@ export default function AuthPage() {
           )}
 
           <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Email</label>
+            <label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
+              {isLogin ? 'Email ou identifiant' : 'Email'}
+            </label>
             <input
-              type="email"
-              placeholder="toi@exemple.com"
-              autoComplete="email"
+              type={isLogin ? 'text' : 'email'}
+              placeholder={isLogin ? 'email ou @pseudo' : 'toi@exemple.com'}
+              autoComplete={isLogin ? 'username' : 'email'}
               value={email}
-              onChange={e => setEmail(e.target.value)}
+              onChange={e => setEmail(e.target.value.toLowerCase())}
               required
               className="rounded-xl border border-border bg-background px-4 py-3 text-sm text-foreground outline-none placeholder:text-muted-foreground focus:ring-2 focus:ring-primary/30"
             />
@@ -210,6 +221,21 @@ export default function AuthPage() {
           <span className="text-xs font-semibold text-muted-foreground">ou</span>
           <div className="h-px flex-1 bg-border" />
         </div>
+
+        <button
+          type="button"
+          onClick={() => signIn('google', { callbackUrl: '/onboarding' })}
+          disabled={loading}
+          className="mb-3 flex w-full items-center justify-center gap-3 rounded-2xl border border-border bg-background py-3.5 text-base font-semibold text-foreground transition-colors active:bg-muted disabled:opacity-60"
+        >
+          <svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true">
+            <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z" />
+            <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z" />
+            <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z" />
+            <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z" />
+          </svg>
+          Continuer avec Google
+        </button>
 
         {isLogin ? (
           <button

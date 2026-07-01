@@ -93,7 +93,7 @@ export default function CreatePostPage() {
     <div className="flex min-h-dvh flex-col">
       {/* Header + progress */}
       <header
-        className="sticky top-0 z-30 border-b border-border bg-background/90 px-4 py-3 backdrop-blur"
+        className="sticky top-0 z-30 bg-background/90 px-4 py-3 backdrop-blur"
         style={{ paddingTop: 'max(0.75rem, env(safe-area-inset-top))' }}
       >
         <div className="flex items-center gap-3">

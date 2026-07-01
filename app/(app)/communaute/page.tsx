@@ -259,10 +259,9 @@ export default function CommunautePage() {
 
   return (
     <>
-      {/* ── MOBILE ONLY ── */}
+      {/* ── MOBILE ONLY ── (titre + navigation gérés par la top-bar / tiroir) */}
       <div className="lg:hidden">
-        <AppHeader title="Communauté" back showActions={false} />
-        <div className="px-4 pt-4 pb-8">
+        <div className="px-4 pt-3 pb-8">
           <Content />
         </div>
       </div>

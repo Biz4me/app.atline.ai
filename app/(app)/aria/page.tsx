@@ -13,14 +13,14 @@ type SimState = 'idle' | 'calling' | 'ended'
 const phases: Phase[] = ['Invitation', 'Suivi', 'Démarrage', 'Coaching']
 
 const priorityContacts = [
-  { id: 'c1', firstName: 'Sophie', lastName: 'Laurent', city: 'Lyon', stage: 'chaud' as const },
-  { id: 'c5', firstName: 'Karim', lastName: 'Benali', city: 'Marseille', stage: 'chaud' as const },
+  { id: 'c1', firstName: 'Sophie', lastName: 'Laurent', city: 'Lyon', stage: 'closing' as const },
+  { id: 'c5', firstName: 'Karim', lastName: 'Benali', city: 'Marseille', stage: 'closing' as const },
   { id: 'c2', firstName: 'Marc', lastName: 'Dubois', city: 'Paris', stage: 'prospect' as const },
   { id: 'c3', firstName: 'Thomas', lastName: 'Petit', city: 'Toulouse', stage: 'prospect' as const },
 ]
 
 const stagePillColors: Record<string, string> = {
-  chaud: 'bg-red-100 text-red-600',
+  closing: 'bg-red-100 text-red-600',
   prospect: 'bg-amber-100 text-amber-600',
   client: 'bg-green-100 text-green-700',
   partenaire: 'bg-blue-100 text-blue-700',
@@ -28,7 +28,7 @@ const stagePillColors: Record<string, string> = {
 }
 
 const stageLabel: Record<string, string> = {
-  chaud: 'Chaud',
+  closing: 'Closing',
   prospect: 'Qualifié',
   client: 'Client',
   partenaire: 'Partenaire',
@@ -36,7 +36,7 @@ const stageLabel: Record<string, string> = {
 }
 
 const stageAvatarBg: Record<string, string> = {
-  chaud: 'bg-red-500',
+  closing: 'bg-red-500',
   prospect: 'bg-amber-500',
   client: 'bg-green-500',
   partenaire: 'bg-blue-500',
@@ -75,8 +75,7 @@ function SetupScreen({
   return (
     <div className="flex min-h-dvh flex-col bg-background">
       <header
-        className="sticky top-0 z-30 flex items-center gap-3 border-b border-border bg-background/90 px-4 py-3 backdrop-blur lg:px-8"
-        style={{ paddingTop: 'max(0.75rem, env(safe-area-inset-top))' }}
+        className="sticky top-0 z-30 flex items-center gap-3 bg-background/90 px-4 pt-[max(0.75rem,env(safe-area-inset-top))] pb-3 backdrop-blur lg:px-6 lg:py-0 lg:h-[68px]"
       >
         <button
           type="button"
@@ -85,7 +84,13 @@ function SetupScreen({
         >
           <ChevronLeft className="size-5 stroke-[1.5]" />
         </button>
-        <h1 className="flex-1 font-display text-lg font-bold text-foreground">Simulation ARIA</h1>
+        <span
+          className="hidden lg:flex size-9 shrink-0 items-center justify-center rounded-[11px] text-white shadow-sm"
+          style={{ backgroundColor: '#14B8A6' }}
+        >
+          <Mic className="size-[18px] stroke-[1.5]" />
+        </span>
+        <h1 className="flex-1 font-display text-lg font-bold text-foreground lg:text-2xl">Aria</h1>
       </header>
 
       <div className="flex flex-col gap-6 px-4 pt-5 pb-10 lg:px-8 lg:max-w-2xl lg:mx-auto">
@@ -508,7 +513,7 @@ function SimulatorScreen({
               <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-primary font-display text-sm font-bold text-white">
                 A
               </span>
-              <span className="flex-1 text-sm text-white/70">Score ARIA estimé</span>
+              <span className="flex-1 text-sm text-white/70">Score Aria estimé</span>
               <span className="font-display text-lg font-bold text-primary">78 / 100</span>
             </div>
 

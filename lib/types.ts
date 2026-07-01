@@ -6,7 +6,7 @@ export type DiscType = 'D' | 'I' | 'S' | 'C'
 
 export type ContactStage =
   | 'nouveau'
-  | 'chaud'
+  | 'closing'
   | 'prospect'
   | 'client'
   | 'partenaire'

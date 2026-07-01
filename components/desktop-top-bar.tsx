@@ -2,23 +2,15 @@
 
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { Route, ContactRound, SquarePen, BookOpen, MessageSquare, Calendar, Sparkles, Grid3X3, Moon, Sun, Wrench, X } from 'lucide-react'
+import { MessageSquare, Calendar, Grid3X3, Moon, Sun, Wrench, X } from 'lucide-react'
 import { useTheme } from 'next-themes'
 import { useEffect, useRef, useState } from 'react'
 import { cn } from '@/lib/utils'
 import { BusinessSwitcher } from '@/components/business-switcher'
 import { usePageVisibility } from '@/components/page-visibility-context'
+import { getPageTitle } from '@/components/desktop-sidebar'
 
-const ALL_NAV_TABS = [
-  { href: '/home',      icon: Route,        label: 'Parcours',  visKey: 'home'      },
-  { href: '/contacts',  icon: ContactRound, label: 'CRM',       visKey: 'contacts'  },
-  { href: '/nova',      icon: SquarePen,    label: 'Contenu',   visKey: 'nova'      },
-  { href: '/formation', icon: BookOpen,     label: 'Formation', visKey: 'formation' },
-]
-
-const QUICK_MENU = [
-  { href: '/toolbox', icon: Wrench, label: 'Boîte à outils', desc: 'Liens, supports, bots', visKey: 'toolbox' },
-]
+const QUICK_MENU: { href: string; icon: typeof Wrench; label: string; desc: string; visKey: string }[] = []
 
 export function DesktopTopBar() {
   const pathname = usePathname()
@@ -28,8 +20,8 @@ export function DesktopTopBar() {
   const menuRef = useRef<HTMLDivElement>(null)
   const vis = usePageVisibility()
 
-  const NAV_TABS = ALL_NAV_TABS.filter(t => vis[t.visKey] !== false)
   const visibleQuickMenu = QUICK_MENU.filter(t => vis[t.visKey] !== false)
+  const sectionTitle = getPageTitle(pathname)
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {
@@ -42,33 +34,17 @@ export function DesktopTopBar() {
   }, [menuOpen])
 
   return (
-    <header className="hidden lg:flex fixed top-0 left-0 right-0 h-14 z-50 items-center border-b border-border bg-background/95 backdrop-blur px-4">
-      {/* Left */}
-      <div className="w-60 flex-shrink-0">
+    <header className="hidden lg:flex fixed top-0 left-0 right-0 h-14 z-50 items-center border-b border-border bg-background/95 backdrop-blur pr-4">
+      {/* Left — avatar aligné avec le rail (zone 64px) */}
+      <div className="w-[256px] flex-shrink-0">
         <BusinessSwitcher variant="popover" />
       </div>
 
-      {/* Center — section tabs */}
-      <div className="flex flex-1 h-full items-stretch justify-center">
-        {NAV_TABS.map(({ href, icon: Icon, label }) => {
-          const active = pathname === href || pathname.startsWith(href + '/')
-          return (
-            <Link
-              key={href}
-              href={href}
-              title={label}
-              className={cn(
-                'relative flex items-center justify-center px-5 transition-colors',
-                active ? 'text-primary' : 'text-muted-foreground hover:text-foreground'
-              )}
-            >
-              <Icon className={cn('size-[26px]', active ? 'stroke-[2]' : 'stroke-[1.5]')} />
-              {active && (
-                <span className="absolute bottom-0 left-1/2 -translate-x-1/2 w-10 h-[3px] bg-primary" />
-              )}
-            </Link>
-          )
-        })}
+      {/* Center — titre de section (orientation) */}
+      <div className="flex flex-1 items-center justify-center">
+        {sectionTitle && (
+          <span className="text-sm font-medium text-foreground">{sectionTitle}</span>
+        )}
       </div>
 
       {/* Right — utilities */}
@@ -147,19 +123,6 @@ export function DesktopTopBar() {
             className="flex size-10 items-center justify-center rounded-full text-muted-foreground hover:bg-muted transition-colors"
           >
             <Calendar className="size-[26px] stroke-[1.5]" />
-          </Link>
-        )}
-        {vis['atlas'] !== false && (
-          <Link
-            href="/atlas"
-            className={cn(
-              'flex size-10 items-center justify-center rounded-full transition-colors',
-              pathname.startsWith('/atlas')
-                ? 'bg-primary text-primary-foreground'
-                : 'text-primary hover:bg-accent'
-            )}
-          >
-            <Sparkles className="size-[26px] stroke-[1.5]" />
           </Link>
         )}
       </div>

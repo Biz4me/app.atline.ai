@@ -3,7 +3,7 @@
 import { AppHeader } from '@/components/app-header'
 import { Card, SectionTitle } from '@/components/card'
 import { Check, Crown, ChevronRight, Calendar, CreditCard } from 'lucide-react'
-import { euro, contacts, posts } from '@/lib/data'
+import { euro } from '@/lib/data'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
 
@@ -20,7 +20,7 @@ const plans = [
       'Réseau N1 uniquement',
       'Formation de base',
     ],
-    locked: ['ARIA simulation', 'Atlas IA coaching', 'Réseau N2+', 'Bot WhatsApp'],
+    locked: ['Aria simulation', 'Atlas IA coaching', 'Réseau N2+', 'Bot WhatsApp'],
   },
   {
     id: 'pro',
@@ -34,7 +34,7 @@ const plans = [
       'Nova illimité + scheduling',
       'Réseau N1 + N2',
       'Formation complète',
-      'ARIA simulation',
+      'Aria simulation',
       'Atlas IA coaching',
       'Boîte à outils complète',
     ],

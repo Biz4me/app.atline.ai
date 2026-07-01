@@ -80,7 +80,7 @@ export default function ConversationPage({ params }: { params: Promise<{ id: str
   return (
     <div className="flex h-[100dvh] flex-col bg-background">
       {/* Header */}
-      <header className="flex items-center gap-3 border-b border-border bg-surface/95 px-4 py-3 backdrop-blur"
+      <header className="flex items-center gap-3 bg-surface/95 px-4 py-3 backdrop-blur"
         style={{ paddingTop: 'max(0.75rem, env(safe-area-inset-top))' }}
       >
         <button type="button" onClick={() => router.back()} className="-ml-1 flex size-9 items-center justify-center rounded-full text-fg-2 active:bg-muted lg:hidden">

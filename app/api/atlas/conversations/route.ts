@@ -1,23 +1,20 @@
-import { NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
+import { NextRequest, NextResponse } from 'next/server'
+import { getToken } from 'next-auth/jwt'
 import { db } from '@/lib/db'
 
-export async function GET() {
-  const session = await getServerSession(authOptions)
-  if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+export const runtime = 'nodejs'
+export const dynamic = 'force-dynamic'
 
-  const conversations = await db.atlasConversation.findMany({
-    where: { userId: session.user.id },
+export async function GET(req: NextRequest) {
+  const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET })
+  const userId = token?.id as string | undefined
+  if (!userId) return NextResponse.json({ error: 'non authentifié' }, { status: 401 })
+
+  const convs = await db.atlasConversation.findMany({
+    where: { userId },
     orderBy: { updatedAt: 'desc' },
-    take: 20,
-    select: {
-      id: true,
-      title: true,
-      updatedAt: true,
-      _count: { select: { messages: true } },
-    },
+    select: { id: true, title: true, updatedAt: true },
+    take: 100,
   })
-
-  return NextResponse.json(conversations)
+  return NextResponse.json(convs)
 }

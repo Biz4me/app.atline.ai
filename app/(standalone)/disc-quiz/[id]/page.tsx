@@ -7,10 +7,12 @@ import { ChevronLeft, Lightbulb, RotateCcw, Check } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
 
-/* ── DISC data ───────────────────────────────────────────────── */
-type DiscKey = 'D' | 'I' | 'S' | 'C'
+/* ── Les 4 Couleurs de personnalité (système Tom "Big Al" Schreiter) ──
+   ⚠️ Mapping Big Al, PAS le DISC standard :
+   Rouge = fonceur · Bleu = festif/social · Jaune = aidant · Vert = analytique */
+type ColorKey = 'rouge' | 'bleu' | 'jaune' | 'vert'
 
-const discProfiles: Record<DiscKey, {
+const colorProfiles: Record<ColorKey, {
   name: string
   color: string
   bgClass: string
@@ -18,96 +20,96 @@ const discProfiles: Record<DiscKey, {
   desc: string
   tips: string[]
 }> = {
-  D: {
+  rouge: {
     name: 'Rouge',
-    color: '#DC2626',
+    color: '#EF4444',
     bgClass: 'bg-red-500',
     textClass: 'text-red-500',
-    desc: 'Direct, orienté résultats — va droit au but.',
+    desc: 'Fonceur, orienté résultats — veut gagner et diriger.',
     tips: [
-      'Va droit au but, propose des défis concrets.',
-      'Montre les résultats et les gains rapides.',
-      'Laisse-lui le contrôle et la décision.',
+      'Va droit au but, parle résultats, revenus, chiffres.',
+      "Lance-lui un défi, montre l'opportunité de diriger.",
+      'Respecte son temps, laisse-lui la décision.',
     ],
   },
-  I: {
-    name: 'Jaune',
-    color: '#F59E0B',
-    bgClass: 'bg-amber-400',
-    textClass: 'text-amber-500',
-    desc: 'Sociable, enthousiaste — guidé par l\'émotion.',
-    tips: [
-      'Sois enthousiaste et partage la vision.',
-      'Raconte des success stories inspirantes.',
-      'Crée une connexion émotionnelle forte.',
-    ],
-  },
-  S: {
-    name: 'Vert',
-    color: '#22C55E',
-    bgClass: 'bg-green-500',
-    textClass: 'text-green-600',
-    desc: 'Stable, relationnel — mise sur la confiance.',
-    tips: [
-      'Prends le temps de créer la confiance.',
-      'Sois constant, rassurant et patient.',
-      'Implique sa famille ou ses proches.',
-    ],
-  },
-  C: {
+  bleu: {
     name: 'Bleu',
     color: '#3B82F6',
     bgClass: 'bg-blue-500',
     textClass: 'text-blue-500',
-    desc: 'Analytique, prudent — veut des preuves.',
+    desc: "Festif, sociable — cherche le fun, les gens, l'aventure.",
     tips: [
-      'Apporte des chiffres, preuves et témoignages.',
-      'Laisse-lui le temps d\'analyser.',
-      'Anticipe ses questions détaillées.',
+      "Mets de l'énergie, parle aventure, voyages, récompenses.",
+      "Insiste sur l'ambiance et les rencontres.",
+      'Reste sur la grande vision, évite les détails.',
+    ],
+  },
+  jaune: {
+    name: 'Jaune',
+    color: '#F4B342',
+    bgClass: 'bg-amber-400',
+    textClass: 'text-amber-500',
+    desc: 'Aidant, relationnel — veut aider les autres, sans pression.',
+    tips: [
+      'Sois chaleureux, montre comment ça aide les gens.',
+      'Écoute, rassure — zéro pression.',
+      'Implique sa famille, laisse-lui le temps.',
+    ],
+  },
+  vert: {
+    name: 'Vert',
+    color: '#22C55E',
+    bgClass: 'bg-green-500',
+    textClass: 'text-green-600',
+    desc: 'Analytique, prudent — veut des faits et des preuves.',
+    tips: [
+      'Apporte chiffres, preuves, documentation.',
+      'Détaille comment ça marche, anticipe ses questions.',
+      "Laisse-lui le temps d'analyser — pas de hype.",
     ],
   },
 }
 
-/* ── Questions ───────────────────────────────────────────────── */
+/* ── Questions (observation du contact, 4 options → 4 couleurs) ── */
 const questions: {
   label: string
-  options: { text: string; disc: DiscKey }[]
+  options: { text: string; color: ColorKey }[]
 }[] = [
   {
     label: 'Quand tu lui parles, il préfère :',
     options: [
-      { text: 'Aller droit au but — résultats concrets', disc: 'D' },
-      { text: 'Prendre le temps, créer la confiance', disc: 'S' },
-      { text: 'Avoir des chiffres et des preuves', disc: 'C' },
-      { text: 'Partager l\'enthousiasme, parler de vision', disc: 'I' },
+      { text: 'Aller droit au but — résultats et chiffres', color: 'rouge' },
+      { text: "De l'énergie, des histoires, de l'enthousiasme", color: 'bleu' },
+      { text: "De la chaleur, qu'on soigne la relation", color: 'jaune' },
+      { text: 'Des faits, des preuves, des détails', color: 'vert' },
     ],
   },
   {
     label: 'Face à une décision, il :',
     options: [
-      { text: 'Décide vite et assume', disc: 'D' },
-      { text: 'Consulte les autres avant', disc: 'S' },
-      { text: 'Analyse longuement', disc: 'C' },
-      { text: 'Se laisse porter par l\'émotion', disc: 'I' },
+      { text: 'Décide vite et assume', color: 'rouge' },
+      { text: "Se laisse porter par l'enthousiasme", color: 'bleu' },
+      { text: 'Hésite, pense aux autres, déteste être poussé', color: 'jaune' },
+      { text: 'Analyse longuement avant de trancher', color: 'vert' },
     ],
   },
   {
-    label: 'Ce qui le freine le plus :',
+    label: 'Ce qui le fait vibrer :',
     options: [
-      { text: 'La lenteur et le flou', disc: 'D' },
-      { text: 'Le conflit et la pression', disc: 'S' },
-      { text: 'Le manque d\'info', disc: 'C' },
-      { text: 'La routine et l\'ennui', disc: 'I' },
+      { text: 'Gagner, diriger, la reconnaissance', color: 'rouge' },
+      { text: "S'amuser, rencontrer du monde, l'aventure", color: 'bleu' },
+      { text: 'Aider les autres, se sentir utile', color: 'jaune' },
+      { text: "Comprendre, être sûr de son choix", color: 'vert' },
     ],
   },
 ]
 
-function computeDisc(answers: (DiscKey | null)[]): DiscKey {
-  const counts: Record<DiscKey, number> = { D: 0, I: 0, S: 0, C: 0 }
+function computeColor(answers: (ColorKey | null)[]): ColorKey {
+  const counts: Record<ColorKey, number> = { rouge: 0, bleu: 0, jaune: 0, vert: 0 }
   for (const a of answers) {
     if (a) counts[a]++
   }
-  return (Object.entries(counts).sort((a, b) => b[1] - a[1])[0][0]) as DiscKey
+  return (Object.entries(counts).sort((a, b) => b[1] - a[1])[0][0]) as ColorKey
 }
 
 /* ── Page ─────────────────────────────────────────────────────── */
@@ -120,35 +122,34 @@ export default function DiscQuizPage({
   const router = useRouter()
   const contact = contacts.find((c) => c.id === id)
 
-  const [answers, setAnswers] = useState<(DiscKey | null)[]>([null, null, null])
-  const [result, setResult] = useState<DiscKey | null>(null)
+  const [answers, setAnswers] = useState<(ColorKey | null)[]>([null, null, null])
+  const [result, setResult] = useState<ColorKey | null>(null)
 
   const firstName = contact?.firstName ?? 'Ce contact'
   const initials = contact ? `${contact.firstName[0]}${contact.lastName[0]}` : '?'
 
   const allAnswered = answers.every((a) => a !== null)
 
-  const handleAnswer = (qIdx: number, disc: DiscKey) => {
+  const handleAnswer = (qIdx: number, color: ColorKey) => {
     setAnswers((prev) => {
       const next = [...prev]
-      next[qIdx] = disc
+      next[qIdx] = color
       return next
     })
   }
 
   const handleSubmit = () => {
-    const disc = computeDisc(answers)
-    setResult(disc)
+    setResult(computeColor(answers))
   }
 
   const handleSave = () => {
-    toast.success(`Profil ${discProfiles[result!].name} enregistré pour ${firstName}`)
+    toast.success(`Profil ${colorProfiles[result!].name} enregistré pour ${firstName}`)
     router.back()
   }
 
   /* ── Result screen ── */
   if (result) {
-    const profile = discProfiles[result]
+    const profile = colorProfiles[result]
     return (
       <div className="flex min-h-dvh flex-col bg-background">
         <div className="flex flex-col items-center gap-5 px-4 pt-12 pb-10 flex-1">
@@ -206,7 +207,7 @@ export default function DiscQuizPage({
     <div className="flex min-h-dvh flex-col bg-background">
       {/* Header */}
       <header
-        className="sticky top-0 z-30 flex items-start gap-3 border-b border-border bg-background/90 px-4 py-3 backdrop-blur"
+        className="sticky top-0 z-30 flex items-start gap-3 bg-background/90 px-4 py-3 backdrop-blur"
         style={{ paddingTop: 'max(0.75rem, env(safe-area-inset-top))' }}
       >
         <button
@@ -217,7 +218,7 @@ export default function DiscQuizPage({
           <ChevronLeft className="size-5 stroke-[1.5]" />
         </button>
         <div>
-          <h1 className="text-lg font-bold text-foreground">Quel est le profil de {firstName} ?</h1>
+          <h1 className="text-lg font-bold text-foreground">Quelle est la couleur de {firstName} ?</h1>
           <p className="text-xs text-muted-foreground">3 questions · 1 minute</p>
         </div>
       </header>
@@ -229,12 +230,12 @@ export default function DiscQuizPage({
             <p className="mb-3 text-sm font-bold text-foreground">{q.label}</p>
             <div className="flex flex-col gap-2">
               {q.options.map((opt) => {
-                const selected = answers[qIdx] === opt.disc
+                const selected = answers[qIdx] === opt.color
                 return (
                   <button
-                    key={opt.disc}
+                    key={opt.color}
                     type="button"
-                    onClick={() => handleAnswer(qIdx, opt.disc)}
+                    onClick={() => handleAnswer(qIdx, opt.color)}
                     className={cn(
                       'flex items-center gap-3 rounded-2xl border px-4 py-3.5 text-left transition-all',
                       selected
@@ -273,7 +274,7 @@ export default function DiscQuizPage({
                 : 'bg-muted text-muted-foreground cursor-not-allowed'
             )}
           >
-            {allAnswered ? 'Voir son profil →' : 'Réponds aux 3 questions'}
+            {allAnswered ? 'Voir sa couleur →' : 'Réponds aux 3 questions'}
           </button>
         </div>
       </div>

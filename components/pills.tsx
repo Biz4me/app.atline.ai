@@ -5,7 +5,7 @@ import { Camera, Briefcase, Globe, MessageCircle } from 'lucide-react'
 
 const stageStyles: Record<ContactStage, string> = {
   nouveau:    'bg-muted text-muted-foreground',
-  chaud:      'bg-[#dc2626]/10 text-[#dc2626]',
+  closing:    'bg-[#dc2626]/10 text-[#dc2626]',
   prospect:   'bg-info/10 text-info',
   client:     'bg-success/10 text-success',
   partenaire: 'bg-[#14B8A6]/10 text-[#14B8A6]',

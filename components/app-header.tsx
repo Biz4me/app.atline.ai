@@ -26,7 +26,7 @@ export function AppHeader({
   const router = useRouter()
   return (
     <header
-      className="sticky top-0 z-30 flex items-center gap-3 border-b border-border bg-background/90 px-4 py-3 backdrop-blur lg:hidden"
+      className="sticky top-0 z-30 flex items-center gap-3 bg-background/90 px-4 py-3 backdrop-blur lg:hidden"
       style={{ paddingTop: 'max(0.75rem, env(safe-area-inset-top))' }}
     >
       {back && (
@@ -91,7 +91,7 @@ export function AppHeader({
             <MessageCircle className="size-5 stroke-[1.5]" />
             <span className="absolute right-1 top-1 flex size-4 items-center justify-center rounded-full bg-primary text-[10px] font-bold text-primary-foreground ring-2 ring-background">2</span>
           </Link>
-          <Link href="/profile" aria-label="Mon profil">
+          <Link href="/profile/edit" aria-label="Mon profil">
             <DiscAvatar
               firstName={currentUser.firstName}
               lastName={currentUser.lastName}

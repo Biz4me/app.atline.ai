@@ -1,0 +1,398 @@
+'use client'
+
+import { useEffect, useState } from 'react'
+import { useRouter } from 'next/navigation'
+import { X, ChevronDown, Check, Loader2, User as UserIcon, MapPin, Sparkles, Target, Camera, Trash2, Share2 } from 'lucide-react'
+import { signOut } from 'next-auth/react'
+import { Card } from '@/components/card'
+import { SelectMenu } from '@/components/select-menu'
+import { PersonalityQuiz } from '@/components/personality-quiz'
+import { toast } from 'sonner'
+
+const PERSONALITY_COLORS: Record<string, string> = { ROUGE: '#EF4444', VERT: '#22C55E', BLEU: '#3B82F6', JAUNE: '#F4B342' }
+const PERSONALITY_LABELS: Record<string, string> = { ROUGE: 'Rouge', VERT: 'Vert', BLEU: 'Bleu', JAUNE: 'Jaune' }
+
+const EDUCATIONS = ['Primaire et secondaire', 'Supérieur court (Bac+2/3)', 'Supérieur long (Bac+5 et +)']
+const DRAFT_KEY = 'profile_draft_v1' // état en cours (saisie + rubrique ouverte), restauré au refresh (sessionStorage)
+// Harmonise le genre sur M/F/N (rattrape les anciennes valeurs Homme/Femme/Autre)
+const normGender = (g: string) => (g === 'Homme' ? 'M' : g === 'Femme' ? 'F' : g === 'Autre' || g === 'Neutre' ? 'N' : g)
+
+const inputCls =
+  'w-full rounded-xl border border-border bg-background px-4 py-3 text-lg text-foreground outline-none placeholder:text-muted-foreground focus:border-muted-foreground/40'
+
+const SOCIALS: { key: string; label: string; color: string; placeholder: string }[] = [
+  { key: 'facebook',  label: 'Facebook',  color: '#1877F2', placeholder: 'facebook.com/ton-profil' },
+  { key: 'instagram', label: 'Instagram', color: '#E4405F', placeholder: '@ton_pseudo' },
+  { key: 'linkedin',  label: 'LinkedIn',  color: '#0A66C2', placeholder: 'linkedin.com/in/…' },
+  { key: 'tiktok',    label: 'TikTok',    color: '#111111', placeholder: '@ton_pseudo' },
+  { key: 'youtube',   label: 'YouTube',   color: '#FF0000', placeholder: 'ta chaîne' },
+  { key: 'snapchat',  label: 'Snapchat',  color: '#FBC02D', placeholder: 'ton pseudo' },
+  { key: 'telegram',  label: 'Telegram',  color: '#26A5E4', placeholder: '@ton_pseudo' },
+  { key: 'whatsapp',  label: 'WhatsApp',  color: '#25D366', placeholder: 'ton numéro' },
+  { key: 'x',         label: 'X',         color: '#111111', placeholder: '@ton_pseudo' },
+]
+
+type Form = {
+  firstName: string; lastName: string; username: string; email: string
+  gender: string; profession: string; education: string; phone: string; phone2: string; photoUrl: string
+  address: string; address2: string; postal: string; city: string; country: string
+  bio: string; birthDate: string; personality: string; locale: string
+  socials: Record<string, string>
+  coaching: Record<string, string>
+}
+
+const EMPTY: Form = {
+  firstName: '', lastName: '', username: '', email: '',
+  gender: '', profession: '', education: '', phone: '', phone2: '', photoUrl: '',
+  address: '', address2: '', postal: '', city: '', country: '',
+  bio: '', birthDate: '', personality: '', locale: 'fr',
+  socials: {},
+  coaching: {},
+}
+
+// Rubrique pliante : l'en-tête (icône + titre + chevron) ouvre/ferme le contenu
+function Collapsible({ icon: Icon, title, filled, total, open, onToggle, onSave, saving, children }: { icon: typeof UserIcon; title: string; filled: number; total: number; open: boolean; onToggle: () => void; onSave: () => void; saving: boolean; children: React.ReactNode }) {
+  const done = total > 0 && filled >= total
+  return (
+    <Card className="overflow-hidden p-0">
+      <button type="button" onClick={onToggle} className={`flex w-full items-center gap-2.5 px-4 py-3.5 ${open ? 'border-b border-border' : ''}`}>
+        <span className="grid size-8 shrink-0 place-items-center rounded-full bg-primary/10">
+          <Icon className="size-4 text-primary" />
+        </span>
+        <p className="flex-1 text-left text-lg font-semibold text-foreground">{title}</p>
+        {done ? (
+          <span className="grid size-5 shrink-0 place-items-center rounded-full bg-[#22C55E] text-white"><Check className="size-3.5" /></span>
+        ) : (
+          <span className="shrink-0 text-base font-semibold text-muted-foreground">{filled}/{total}</span>
+        )}
+        <ChevronDown className={`size-4 shrink-0 text-muted-foreground transition-transform ${open ? 'rotate-180' : ''}`} />
+      </button>
+      {open && (
+        <div className="space-y-4 p-4">
+          {children}
+          <div className="flex justify-end pt-1">
+            <button type="button" onClick={onSave} disabled={saving} className="flex items-center justify-center gap-1.5 rounded-xl bg-primary px-5 py-2.5 text-base font-bold text-primary-foreground shadow-sm transition-transform active:scale-[0.97] disabled:opacity-60">
+              {saving ? <Loader2 className="size-4 animate-spin" /> : <><Check className="size-4" />Enregistrer</>}
+            </button>
+          </div>
+        </div>
+      )}
+    </Card>
+  )
+}
+
+export default function ProfileEditPage() {
+  const router = useRouter()
+  const [form, setForm] = useState<Form>(EMPTY)
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
+  const [quizOpen, setQuizOpen] = useState(false)
+  const [confirmDelete, setConfirmDelete] = useState(false)
+  const [deleting, setDeleting] = useState(false)
+  // Rubriques pliantes — toutes fermées à l'arrivée (l'état réel est restauré au refresh)
+  const [open, setOpen] = useState<Record<string, boolean>>({})
+  // Accordéon exclusif : ouvrir une rubrique ferme les autres
+  const toggle = (k: string) => setOpen((o) => ({ [k]: !o[k] }))
+  // Fermer (croix) → revenir en arrière en redéployant le menu « Plus » (drapeau lu par le TopBar)
+  const closeToMenu = () => {
+    try { sessionStorage.setItem('reopen_plus', '1') } catch { /* ignore */ }
+    router.back()
+  }
+
+  useEffect(() => {
+    // Restaure l'état en cours (saisie + rubrique ouverte) → survit au rafraîchissement
+    try {
+      const raw = sessionStorage.getItem(DRAFT_KEY)
+      if (raw) {
+        const d = JSON.parse(raw)
+        if (d && d.form) { setForm(d.form); if (d.open && typeof d.open === 'object') setOpen(d.open); setLoading(false); return }
+      }
+    } catch { /* ignore */ }
+    let active = true
+    fetch('/api/me')
+      .then((r) => (r.ok ? r.json() : null))
+      .then((u) => {
+        if (!active || !u) { if (active) setLoading(false); return }
+        setForm({
+          firstName: u.firstName ?? '', lastName: u.lastName ?? '', username: u.username ?? '', email: u.email ?? '',
+          gender: normGender(u.gender ?? ''), profession: u.profession ?? '', education: u.education ?? '', phone: u.phone ?? '', phone2: u.phone2 ?? '', photoUrl: u.photoUrl ?? '',
+          address: u.address ?? '', address2: u.address2 ?? '', postal: u.postal ?? '', city: u.city ?? '', country: u.country ?? '',
+          bio: u.bio ?? '', birthDate: u.birthDate ? String(u.birthDate).slice(0, 10) : '',
+          personality: u.personality ?? '', locale: u.locale ?? 'fr',
+          socials: (u.socials && typeof u.socials === 'object' && !Array.isArray(u.socials)) ? u.socials : {},
+          coaching: (u.coaching && typeof u.coaching === 'object' && !Array.isArray(u.coaching)) ? u.coaching : {},
+        })
+        setLoading(false)
+      })
+      .catch(() => { if (active) setLoading(false) })
+    return () => { active = false }
+  }, [])
+
+  // Persiste l'état (saisie + rubrique ouverte) à chaque changement → retrouvé tel quel au refresh
+  useEffect(() => {
+    if (loading) return
+    try { sessionStorage.setItem(DRAFT_KEY, JSON.stringify({ form, open })) } catch { /* ignore */ }
+  }, [form, open, loading])
+
+  const set = (k: keyof Form, v: string) => setForm((f) => ({ ...f, [k]: v }))
+  const setSocial = (k: string, v: string) => setForm((f) => ({ ...f, socials: { ...f.socials, [k]: v } }))
+  const setCoaching = (k: string, v: string) => setForm((f) => ({ ...f, coaching: { ...f.coaching, [k]: v } }))
+
+  // Avatar : redimensionne côté navigateur (carré 256px JPEG) puis stocke en data URL
+  function handlePhoto(file: File) {
+    const reader = new FileReader()
+    reader.onload = () => {
+      const img = new window.Image()
+      img.onload = () => {
+        const size = 256
+        const canvas = document.createElement('canvas')
+        canvas.width = size
+        canvas.height = size
+        const ctx = canvas.getContext('2d')
+        if (!ctx) return
+        const min = Math.min(img.width, img.height)
+        ctx.drawImage(img, (img.width - min) / 2, (img.height - min) / 2, min, min, 0, 0, size, size)
+        set('photoUrl', canvas.toDataURL('image/jpeg', 0.85))
+      }
+      img.src = reader.result as string
+    }
+    reader.readAsDataURL(file)
+  }
+
+  async function save() {
+    setSaving(true)
+    try {
+      const res = await fetch('/api/me', {
+        method: 'PATCH',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify(form),
+      })
+      if (res.ok) toast.success('Profil enregistré')
+      else toast.error('Échec de l’enregistrement')
+    } catch {
+      toast.error('Erreur réseau')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  async function doDelete() {
+    setDeleting(true)
+    try {
+      const res = await fetch('/api/me', { method: 'DELETE' })
+      if (res.ok) { await signOut({ callbackUrl: '/auth' }) }
+      else { toast.error('Suppression impossible'); setDeleting(false) }
+    } catch {
+      toast.error('Erreur réseau')
+      setDeleting(false)
+    }
+  }
+
+  // Résultat du test couleur → enregistré immédiatement (Atlas s'en sert)
+  async function savePersonality(color: string) {
+    set('personality', color)
+    try {
+      await fetch('/api/me', { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ personality: color }) })
+      toast.success('Couleur enregistrée')
+    } catch {
+      toast.error('Erreur réseau')
+    }
+  }
+
+  const initials = `${form.firstName[0] ?? ''}${form.lastName[0] ?? ''}`.toUpperCase()
+  const pColor = form.personality ? PERSONALITY_COLORS[form.personality] : '#e5e7eb'
+
+  // Complétion « connaissance Atlas » : champs à forte valeur pour le coaching
+  const atlasFields = [form.personality, form.coaching.why, form.coaching.background, form.coaching.passions, form.coaching.audience, form.coaching.availability, form.coaching.level]
+  const atlasFilled = atlasFields.filter((v) => v && String(v).trim()).length
+  const atlasPct = Math.round((atlasFilled / atlasFields.length) * 100)
+
+  // Remplissage par rubrique (compteur / coche sur les cartes)
+  const nf = (vals: (string | undefined)[]) => vals.filter((v) => v && String(v).trim()).length
+  const sec = {
+    identite: nf([form.firstName, form.lastName, form.gender, form.profession, form.education, form.phone, form.phone2]),
+    adresse: nf([form.address, form.address2, form.postal, form.city, form.country]),
+    perso: nf([form.bio, form.birthDate, form.personality, form.locale]),
+    socials: Object.values(form.socials).filter((v) => v && String(v).trim()).length,
+    coaching: nf([form.coaching.why, form.coaching.background, form.coaching.passions, form.coaching.audience, form.coaching.availability, form.coaching.level]),
+  }
+  const tot = { identite: 7, adresse: 5, perso: 4, socials: SOCIALS.length, coaching: 6 }
+
+  return (
+    <div className="mx-auto w-full max-w-2xl">
+      {/* Header retour */}
+      <div className="sticky top-0 z-10 flex items-center justify-between bg-background px-2 py-3">
+        <h1 className="pl-2 font-display text-lg font-semibold">{`${form.firstName} ${form.lastName}`.trim() || 'Mon profil'}</h1>
+        <button type="button" onClick={closeToMenu} aria-label="Fermer" className="flex size-9 items-center justify-center rounded-full text-muted-foreground active:bg-muted">
+          <X className="size-5" />
+        </button>
+      </div>
+
+      {loading ? (
+        <div className="flex min-h-[60vh] items-center justify-center">
+          <Loader2 className="size-6 animate-spin text-muted-foreground" />
+        </div>
+      ) : (
+        <div className="space-y-5 px-4 pb-10 pt-4">
+          {/* Avatar uploadable + username */}
+          <div className="flex items-center gap-4">
+            <label className="relative cursor-pointer">
+              <input
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={(e) => { const f = e.target.files?.[0]; if (f) handlePhoto(f); e.target.value = '' }}
+              />
+              {form.photoUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={form.photoUrl} alt="" className="size-20 shrink-0 rounded-full object-cover" />
+              ) : (
+                <div
+                  className="grid size-20 shrink-0 place-items-center rounded-full text-2xl font-extrabold leading-none"
+                  style={{ backgroundColor: pColor, color: form.personality ? '#fff' : '#6b7280' }}
+                >
+                  {initials || '?'}
+                </div>
+              )}
+              <span className="absolute -bottom-0.5 -right-0.5 grid size-7 place-items-center rounded-full bg-primary text-primary-foreground ring-2 ring-surface">
+                <Camera className="size-3.5" />
+              </span>
+            </label>
+            <div className="min-w-0">
+              {form.username && <p className="truncate text-base font-medium text-muted-foreground">@{form.username}</p>}
+            </div>
+          </div>
+
+          {/* Complétion du profil — bandeau fin, sans carte */}
+          <div className="px-1">
+            <p className="mb-1.5 text-base font-semibold text-foreground">Profil complété à <span className="text-primary">{atlasPct}%</span></p>
+            <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
+              <div className="h-full rounded-full bg-primary transition-all" style={{ width: `${atlasPct}%` }} />
+            </div>
+          </div>
+
+          {/* Identité */}
+          <Collapsible icon={UserIcon} title="Identité" filled={sec.identite} total={tot.identite} open={!!open.identite} onToggle={() => toggle('identite')} onSave={save} saving={saving}>
+            <div className="grid grid-cols-2 gap-3">
+              <input className={inputCls} value={form.firstName} onChange={(e) => set('firstName', e.target.value)} placeholder="Prénom" />
+              <input className={inputCls} value={form.lastName} onChange={(e) => set('lastName', e.target.value)} placeholder="Nom" />
+            </div>
+            <SelectMenu className={inputCls} placeholder="Genre" value={form.gender} onChange={(v) => set('gender', v)} options={[{ value: 'M', label: 'Homme' }, { value: 'F', label: 'Femme' }, { value: 'N', label: 'Neutre' }]} />
+            <input className={inputCls} value={form.profession} onChange={(e) => set('profession', e.target.value)} placeholder="Profession" />
+            <SelectMenu className={inputCls} placeholder="Niveau d'études" value={form.education} onChange={(v) => set('education', v)} options={EDUCATIONS.map((o) => ({ value: o, label: o }))} />
+            <input className={inputCls} type="tel" value={form.phone} onChange={(e) => set('phone', e.target.value)} placeholder="Téléphone" />
+            <input className={inputCls} type="tel" value={form.phone2} onChange={(e) => set('phone2', e.target.value)} placeholder="Téléphone secondaire" />
+          </Collapsible>
+
+          {/* Adresse */}
+          <Collapsible icon={MapPin} title="Adresse" filled={sec.adresse} total={tot.adresse} open={!!open.adresse} onToggle={() => toggle('adresse')} onSave={save} saving={saving}>
+            <input className={inputCls} value={form.address} onChange={(e) => set('address', e.target.value)} placeholder="Adresse" />
+            <input className={inputCls} value={form.address2} onChange={(e) => set('address2', e.target.value)} placeholder="Complément (bâtiment, étage…)" />
+            <div className="grid grid-cols-[1fr_2fr] gap-3">
+              <input className={inputCls} value={form.postal} onChange={(e) => set('postal', e.target.value)} placeholder="Code postal" />
+              <input className={inputCls} value={form.city} onChange={(e) => set('city', e.target.value)} placeholder="Ville" />
+            </div>
+            <input className={inputCls} value={form.country} onChange={(e) => set('country', e.target.value)} placeholder="Pays" />
+          </Collapsible>
+
+          {/* Profil perso */}
+          <Collapsible icon={Sparkles} title="Profil perso" filled={sec.perso} total={tot.perso} open={!!open.perso} onToggle={() => toggle('perso')} onSave={save} saving={saving}>
+            <textarea className={`${inputCls} min-h-[88px] resize-none`} value={form.bio} onChange={(e) => set('bio', e.target.value)} placeholder="Bio — quelques mots sur toi…" />
+            <input className={inputCls} type="text" placeholder="Date de naissance" value={form.birthDate} onChange={(e) => set('birthDate', e.target.value)} onFocus={(e) => (e.target.type = 'date')} onBlur={(e) => { if (!e.target.value) e.target.type = 'text' }} />
+            {form.personality ? (
+              <div className="flex items-center justify-between rounded-xl border border-border bg-background px-4 py-3">
+                <div className="flex items-center gap-2.5">
+                  <span className="size-6 rounded-full" style={{ backgroundColor: PERSONALITY_COLORS[form.personality] }} />
+                  <span className="text-lg font-medium text-foreground">{PERSONALITY_LABELS[form.personality]}</span>
+                </div>
+                <button type="button" onClick={() => setQuizOpen(true)} className="text-base font-semibold text-primary">Refaire le test</button>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setQuizOpen(true)}
+                className="flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-primary/40 bg-primary/5 px-4 py-3 text-base font-semibold text-primary"
+              >
+                <Sparkles className="size-4" />
+                Découvre ta couleur (test)
+              </button>
+            )}
+            <SelectMenu className={inputCls} placeholder="Langue" value={form.locale} onChange={(v) => set('locale', v)} options={[{ value: 'fr', label: 'Français' }, { value: 'en', label: 'English' }]} />
+          </Collapsible>
+
+          {/* Réseaux sociaux */}
+          <Collapsible icon={Share2} title="Réseaux sociaux" filled={sec.socials} total={tot.socials} open={!!open.socials} onToggle={() => toggle('socials')} onSave={save} saving={saving}>
+            {SOCIALS.map((s) => (
+              <div key={s.key} className="flex items-center gap-2.5">
+                <span className="size-2.5 shrink-0 rounded-full" style={{ backgroundColor: s.color }} />
+                <span className="w-[92px] shrink-0 text-base text-muted-foreground">{s.label}</span>
+                <input
+                  className={`${inputCls} min-w-0 flex-1`}
+                  value={form.socials[s.key] ?? ''}
+                  onChange={(e) => setSocial(s.key, e.target.value)}
+                  placeholder={s.placeholder}
+                />
+              </div>
+            ))}
+          </Collapsible>
+
+          {/* Pour mieux te coacher (Atlas) */}
+          <Collapsible icon={Target} title="Pour mieux te coacher" filled={sec.coaching} total={tot.coaching} open={!!open.coaching} onToggle={() => toggle('coaching')} onSave={save} saving={saving}>
+            <textarea className={`${inputCls} min-h-[72px] resize-none`} value={form.coaching.why ?? ''} onChange={(e) => setCoaching('why', e.target.value)} placeholder="Ton pourquoi (revenus, liberté, famille…)" />
+            <textarea className={`${inputCls} min-h-[72px] resize-none`} value={form.coaching.background ?? ''} onChange={(e) => setCoaching('background', e.target.value)} placeholder="Ton parcours (métier, expériences, forces)" />
+            <input className={inputCls} value={form.coaching.passions ?? ''} onChange={(e) => setCoaching('passions', e.target.value)} placeholder="Tes passions (sport, gaming, voyages…)" />
+            <input className={inputCls} value={form.coaching.audience ?? ''} onChange={(e) => setCoaching('audience', e.target.value)} placeholder="Ton audience cible (jeunes mamans, sportifs…)" />
+            <SelectMenu className={inputCls} placeholder="Ta disponibilité" value={form.coaching.availability ?? ''} onChange={(v) => setCoaching('availability', v)} options={[{ value: 'Temps plein', label: 'Temps plein' }, { value: 'Temps partiel', label: 'Temps partiel' }, { value: 'Quelques heures / semaine', label: 'Quelques heures / semaine' }, { value: 'Soirs & week-ends', label: 'Soirs & week-ends' }]} />
+            <SelectMenu className={inputCls} placeholder="Ton niveau en MLM" value={form.coaching.level ?? ''} onChange={(v) => setCoaching('level', v)} options={[{ value: 'Débutant', label: 'Débutant' }, { value: 'Intermédiaire', label: 'Intermédiaire' }, { value: 'Confirmé', label: 'Confirmé' }, { value: 'Expert', label: 'Expert' }]} />
+          </Collapsible>
+
+          {/* Zone danger — séparée et discrète */}
+          <div className="mt-4 flex justify-center border-t border-border pt-5">
+            <button
+              type="button"
+              onClick={() => setConfirmDelete(true)}
+              className="flex items-center justify-center gap-1.5 text-base font-medium text-muted-foreground transition-colors active:text-destructive"
+            >
+              <Trash2 className="size-3.5" /> Supprimer mon compte
+            </button>
+          </div>
+        </div>
+      )}
+
+
+      {quizOpen && (
+        <PersonalityQuiz
+          onClose={() => setQuizOpen(false)}
+          onResult={(c) => { savePersonality(c); setQuizOpen(false) }}
+        />
+      )}
+
+      {confirmDelete && (
+        <div className="fixed inset-0 z-[90] flex items-end justify-center bg-black/50 p-4" onClick={() => !deleting && setConfirmDelete(false)}>
+          <div className="w-full max-w-sm rounded-2xl bg-surface p-5 shadow-xl" onClick={(e) => e.stopPropagation()}>
+            <div className="flex flex-col items-center text-center">
+              <span className="grid size-12 place-items-center rounded-full bg-destructive/10">
+                <Trash2 className="size-6 text-destructive" />
+              </span>
+              <h2 className="mt-3 font-display text-lg font-semibold text-foreground">Supprimer ton compte ?</h2>
+              <p className="mt-1.5 text-base text-muted-foreground">Cette action est définitive. Toutes tes données (contacts, activités, parrainage…) seront effacées et irrécupérables.</p>
+            </div>
+            <div className="mt-5 flex flex-col gap-2">
+              <button
+                type="button"
+                onClick={doDelete}
+                disabled={deleting}
+                className="flex w-full items-center justify-center gap-2 rounded-2xl bg-destructive py-3 text-base font-bold text-white transition-transform active:scale-[0.98] disabled:opacity-60"
+              >
+                {deleting ? <Loader2 className="size-5 animate-spin" /> : 'Supprimer définitivement'}
+              </button>
+              <button type="button" onClick={() => setConfirmDelete(false)} disabled={deleting} className="w-full py-2.5 text-base font-medium text-muted-foreground">
+                Annuler
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}

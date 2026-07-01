@@ -1,0 +1,85 @@
+'use client'
+
+import { useRef, useEffect } from 'react'
+import { Paperclip, Mic, SendHorizontal } from 'lucide-react'
+
+// Composeur unique de l'app (mobile) — flottant fixe en bas, agent-aware.
+// Source de vérité UI : la page Atlas le câble au chat ; le shell le câble au relais Atlas.
+// Aujourd'hui pilote Atlas ; passer `agentLabel`/`accent` d'un autre agent le jour où
+// Aria/Nova ont un backend conversationnel → zéro réécriture.
+type Props = {
+  value: string
+  onChange: (v: string) => void
+  onSubmit: () => void
+  onAttach?: () => void
+  agentLabel?: string
+  accent?: string
+  disabled?: boolean
+  autoFocus?: boolean
+  children?: React.ReactNode // ex. input fichier caché
+}
+
+export function AppComposer({
+  value, onChange, onSubmit, onAttach, agentLabel = 'Atlas', accent, disabled, autoFocus, children,
+}: Props) {
+  const taRef = useRef<HTMLTextAreaElement>(null)
+
+  // Grandit avec le contenu (jusqu'à 120px puis scroll)
+  useEffect(() => {
+    const el = taRef.current
+    if (!el) return
+    el.style.height = 'auto'
+    el.style.height = Math.min(el.scrollHeight, 120) + 'px'
+  }, [value])
+
+  useEffect(() => { if (autoFocus) taRef.current?.focus() }, [autoFocus])
+
+  return (
+    <div
+      className="lg:hidden fixed inset-x-0 z-[48] px-4"
+      style={{ bottom: 'max(20px, env(safe-area-inset-bottom))' }}
+    >
+      <div className="mx-auto flex max-w-md items-end gap-2 rounded-[26px] border border-border bg-surface/95 px-3 py-1.5 shadow-[0_6px_24px_rgba(0,0,0,.12)] backdrop-blur-md">
+        {onAttach && (
+          <button
+            type="button"
+            onClick={onAttach}
+            title="Joindre un fichier"
+            className="flex size-9 shrink-0 items-center justify-center rounded-full text-muted-foreground active:bg-muted transition-colors"
+          >
+            <Paperclip className="size-5 stroke-[1.5]" />
+          </button>
+        )}
+        <textarea
+          ref={taRef}
+          rows={1}
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); onSubmit() }
+          }}
+          placeholder={`Écris à ${agentLabel}…`}
+          className="flex-1 resize-none overflow-y-auto no-scrollbar bg-transparent text-lg leading-[1.4] text-foreground outline-none placeholder:text-muted-foreground lg:text-sm"
+          style={{ maxHeight: 120, paddingTop: 7, paddingBottom: 7 }}
+        />
+        <button
+          type="button"
+          className="flex size-9 shrink-0 items-center justify-center rounded-full text-muted-foreground active:bg-muted transition-colors"
+          title="Dicter"
+        >
+          <Mic className="size-5 stroke-[1.5]" />
+        </button>
+        <button
+          type="button"
+          onClick={onSubmit}
+          disabled={disabled || !value.trim()}
+          className="flex size-9 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-sm active:opacity-90 transition-opacity disabled:opacity-40"
+          style={accent ? { background: accent } : undefined}
+        >
+          <SendHorizontal className="size-[17px] stroke-[1.5]" />
+        </button>
+      </div>
+      {children}
+    </div>
+  )
+}

@@ -1,7 +1,6 @@
 'use client'
 
 import { useState } from 'react'
-import { useRouter } from 'next/navigation'
 import { ChevronLeft, MessageSquare, Phone, Camera, Globe, Send } from 'lucide-react'
 import { DiscAvatar } from '@/components/disc-avatar'
 import { cn } from '@/lib/utils'
@@ -84,8 +83,8 @@ const conversations = [
 ]
 
 export default function MessagesPage() {
-  const router = useRouter()
-  const [activeId, setActiveId] = useState<string | null>('c1')
+  // null = on atterrit sur la LISTE (+ segment Échanges). Le split desktop montre l'empty state.
+  const [activeId, setActiveId] = useState<string | null>(null)
   const [draft, setDraft] = useState('')
 
   const active = conversations.find((c) => c.id === activeId)
@@ -99,19 +98,12 @@ export default function MessagesPage() {
         'w-full lg:w-72 xl:w-80 shrink-0',
         activeId ? 'hidden lg:flex' : 'flex',
       )}>
-        {/* Header */}
+        {/* Header — desktop uniquement (mobile : titre via la top-bar centrée) */}
         <header
-          className="sticky top-0 z-30 flex items-center gap-3 border-b border-border bg-background/90 px-4 py-3 backdrop-blur"
+          className="sticky top-0 z-30 hidden lg:flex items-center gap-3 bg-background/90 px-4 py-3 backdrop-blur"
           style={{ paddingTop: 'max(0.75rem, env(safe-area-inset-top))' }}
         >
-          <button
-            type="button"
-            onClick={() => router.back()}
-            className="-ml-1 flex size-9 items-center justify-center rounded-full text-muted-foreground active:bg-muted lg:hidden"
-          >
-            <ChevronLeft className="size-5 stroke-[1.5]" />
-          </button>
-          <h1 className="flex-1 font-display text-lg font-bold text-foreground">Messagerie</h1>
+          <h1 className="flex-1 font-display text-lg font-bold text-foreground">Échanges</h1>
         </header>
 
         {/* List */}

@@ -8,8 +8,20 @@ import {
   ChevronLeft, ChevronRight, Sparkles, Mic,
   Search, X, History, Calendar,
   Plus, Zap, Brain, ListPlus, Check, RefreshCw,
+  MessageSquare, Users, SquarePen,
 } from 'lucide-react'
+import type { LucideIcon } from 'lucide-react'
 import { toast } from 'sonner'
+
+// Agents — axe permanent du rail droit (même trio que la bottom nav mobile)
+const AGENTS: { href: string; label: string; icon: LucideIcon; color: string }[] = [
+  { href: '/atlas', label: 'Atlas', icon: Sparkles,  color: '#F97316' },
+  { href: '/aria',  label: 'Aria',  icon: Mic,       color: '#14B8A6' },
+  { href: '/nova',  label: 'Nova',  icon: SquarePen, color: '#8B5CF6' },
+]
+
+// On y est déjà « dans » l'agent (ou la messagerie) → rail réduit aux 3 agents, sans contextuel
+const COLLAPSED_ONLY = ['/atlas', '/aria', '/nova', '/messages']
 
 const DISC_SCENARIOS = [
   {
@@ -85,6 +97,50 @@ interface Props {
   onToggle: () => void
 }
 
+const HOME_MESSAGES = [
+  { id: 'm1', initials: 'SL', name: 'Sophie Laurent', preview: "Ok je regarde ça ce soir !", time: '14:32', unread: true },
+  { id: 'm2', initials: 'TH', name: 'Thomas Renard', preview: "Merci pour le script, ça a marché", time: 'Hier', unread: true },
+  { id: 'm3', initials: 'AM', name: 'Alex Martin', preview: "Tu peux m'appeler ?", time: 'Hier', unread: false },
+]
+
+function HomeRailContent() {
+  return (
+    <div className="flex-1 overflow-y-auto px-[10px] py-3 flex flex-col gap-3">
+
+      {/* Card Messages */}
+      <div className="rounded-xl border border-border bg-surface overflow-hidden">
+        <div className="flex items-center justify-between px-4 py-3 border-b border-border">
+          <div className="flex items-center gap-2">
+            <MessageSquare className="size-4 stroke-[1.5] text-muted-foreground" />
+            <p className="text-sm font-bold text-foreground">Messages</p>
+          </div>
+          <Link href="/messages" className="text-xs font-medium text-muted-foreground hover:text-foreground transition-colors">Tout voir →</Link>
+        </div>
+        <div className="flex flex-col gap-0.5 p-2">
+          {HOME_MESSAGES.map((m) => (
+            <Link key={m.id} href="/messages" className="flex items-center gap-3 rounded-xl px-3 py-2.5 hover:bg-muted transition-colors">
+              <div className="relative shrink-0">
+                <span className="flex size-8 items-center justify-center rounded-full bg-muted text-xs font-bold text-foreground">
+                  {m.initials}
+                </span>
+                {m.unread && (
+                  <span className="absolute -top-0.5 -right-0.5 size-2 rounded-full bg-primary" />
+                )}
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-xs font-semibold text-foreground">{m.name}</p>
+                <p className="text-xs text-muted-foreground truncate">{m.preview}</p>
+              </div>
+              <span className="text-[10px] text-muted-foreground shrink-0">{m.time}</span>
+            </Link>
+          ))}
+        </div>
+      </div>
+
+    </div>
+  )
+}
+
 const FORMATION_CRM = [
   { icon: Brain,    label: 'Repère les couleurs', sub: 'Profils DISC', href: '/formation' },
   { icon: Zap,      label: 'Brise-glace',          sub: 'Module 2',    href: '/formation' },
@@ -151,10 +207,10 @@ function CrmRailContent() {
         </div>
       </div>
 
-      {/* ── Card 2 : Simulateur ARIA ── */}
+      {/* ── Card 2 : Simulateur Aria ── */}
       <div className="rounded-xl border border-border bg-surface overflow-hidden">
         <div className="flex items-center justify-between px-4 py-3 border-b border-border">
-          <p className="text-sm font-bold text-foreground">Simulateur ARIA</p>
+          <p className="text-sm font-bold text-foreground">Simulateur Aria</p>
           <Link href="/aria" className="text-xs font-medium text-muted-foreground hover:text-foreground transition-colors">Voir tout →</Link>
         </div>
         <div className="p-4 flex flex-col gap-3">
@@ -250,8 +306,10 @@ function CrmRailContent() {
 
 export function AtlasSidebar({ collapsed, onToggle }: Props) {
   const pathname = usePathname()
-  const hiddenOnThisPage = pathname === '/atlas' || pathname.startsWith('/atlas/')
+  // Pages où l'on est déjà dans un agent / une messagerie : rail réduit aux agents, pas de contextuel
+  const forceCollapsed = COLLAPSED_ONLY.some((p) => pathname === p || pathname.startsWith(p + '/'))
   const isCrm = pathname.startsWith('/contacts')
+  const isHome = pathname === '/home' || pathname === '/'
 
   const [search, setSearch] = useState('')
   const [open, setOpen] = useState(false)
@@ -281,83 +339,101 @@ export function AtlasSidebar({ collapsed, onToggle }: Props) {
     setSearch('')
   }
 
-  if (hiddenOnThisPage) return null
-
-  const isOpen = !collapsed
+  const isOpen = !collapsed && !forceCollapsed
 
   return (
     <>
+      {/* Toggle fixe sur le trait vertical — masqué sur les pages réduites aux agents */}
+      {!forceCollapsed && (
+        <button
+          type="button"
+          onClick={onToggle}
+          title={isOpen ? 'Réduire' : 'Développer'}
+          style={{
+            right: isOpen ? '348px' : '52px',
+            top: '78px',
+          }}
+          className="hidden lg:flex fixed z-50 size-6 items-center justify-center rounded-full border border-border bg-background text-muted-foreground shadow-sm hover:bg-muted hover:text-foreground transition-[right] duration-200 ease-out"
+        >
+          {isOpen ? <ChevronRight className="size-3.5" /> : <ChevronLeft className="size-3.5" />}
+        </button>
+      )}
+
       <aside
         className={cn(
           'hidden lg:flex flex-col fixed right-0 top-14 h-[calc(100dvh-3.5rem)] z-40',
           'bg-background border-l border-border overflow-hidden',
           'transition-[width] duration-200 ease-out',
-          isOpen ? 'w-[360px]' : 'w-14',
+          isOpen ? 'w-[360px]' : 'w-16',
         )}
       >
-        {/* Header */}
-        <div className={cn(
-          'flex items-center shrink-0 h-12 border-b border-border',
-          isOpen ? 'px-4' : 'justify-center px-0',
-        )}>
-          <button
-            type="button"
-            onClick={onToggle}
-            title={isOpen ? 'Réduire' : 'Développer'}
-            className="flex size-7 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
-          >
-            {isOpen ? <ChevronRight className="size-4" /> : <ChevronLeft className="size-4" />}
-          </button>
-          {isOpen && (
-            <span className="ml-2 text-sm font-bold text-foreground">
-              Espace
-            </span>
-          )}
-        </div>
+        {/* Header agents — axe permanent, indépendant du contenu contextuel */}
+        {isOpen && (
+          <div className="shrink-0 px-3 pt-3 pb-2">
+            <div className="grid grid-cols-3 gap-2">
+              {AGENTS.map((agent) => {
+                const Icon = agent.icon
+                const active = pathname === agent.href || pathname.startsWith(agent.href + '/')
+                return (
+                  <Link
+                    key={agent.href}
+                    href={agent.href}
+                    className={cn(
+                      'flex flex-col items-center gap-1.5 rounded-xl py-2 transition-colors',
+                      active ? 'bg-muted' : 'hover:bg-muted'
+                    )}
+                  >
+                    <span
+                      className="flex size-8 items-center justify-center rounded-full"
+                      style={{ backgroundColor: agent.color + '18' }}
+                    >
+                      <Icon className="size-[18px] stroke-[1.5]" style={{ color: agent.color }} />
+                    </span>
+                    <span className="text-xs font-semibold text-foreground">{agent.label}</span>
+                  </Link>
+                )
+              })}
+            </div>
+          </div>
+        )}
 
-        {/* Collapsed icons */}
+        {/* Collapsed — les 3 agents, toujours visibles.
+            Contrat d'alignement : pt-3 + h-11 = centre du 1er item à 90px (même rythme que le rail gauche
+            et la sidebar 2). Hauteur fixe → centre indépendant de la taille de l'icône.
+            w-10 + items-end pr-4 = icône centrée à 36px du bord (axe du sparkle header). */}
         {!isOpen && (
-          <nav className="flex flex-col gap-0.5 px-2 pt-3 overflow-x-hidden">
-            {isCrm ? (
-              <>
-                <button type="button" onClick={onToggle} title="Repère les couleurs"
-                  className="flex size-10 items-center justify-center rounded-xl mx-auto text-muted-foreground hover:bg-muted hover:text-foreground transition-colors">
-                  <Brain className="size-[18px] stroke-[1.5]" />
-                </button>
-                <button type="button" onClick={onToggle} title="Brise-glace du jour"
-                  className="flex size-10 items-center justify-center rounded-xl mx-auto text-muted-foreground hover:bg-muted hover:text-foreground transition-colors">
-                  <Zap className="size-[18px] stroke-[1.5]" />
-                </button>
-                <button type="button" onClick={onToggle} title="Alimente ta liste"
-                  className="flex size-10 items-center justify-center rounded-xl mx-auto text-muted-foreground hover:bg-muted hover:text-foreground transition-colors">
-                  <ListPlus className="size-[18px] stroke-[1.5]" />
-                </button>
-              </>
-            ) : (
-              <>
-                <button type="button" onClick={onToggle} title="Simulateur ARIA"
-                  className="flex size-10 items-center justify-center rounded-xl mx-auto hover:bg-muted transition-colors">
-                  <Mic className="size-[18px] stroke-[1.5]" style={{ color: '#14B8A6' }} />
-                </button>
-                <button type="button" onClick={onToggle} title="Prochains rendez-vous"
-                  className="flex size-10 items-center justify-center rounded-xl mx-auto text-muted-foreground hover:bg-muted hover:text-foreground transition-colors">
-                  <Calendar className="size-[18px] stroke-[1.5]" />
-                </button>
-              </>
-            )}
+          <nav className="flex flex-col items-end gap-0.5 pt-3 pr-4 overflow-x-hidden">
+            {AGENTS.map((agent) => {
+              const Icon = agent.icon
+              const active = pathname === agent.href || pathname.startsWith(agent.href + '/')
+              return (
+                <Link
+                  key={agent.href}
+                  href={agent.href}
+                  title={agent.label}
+                  className={cn(
+                    'flex h-11 w-10 items-center justify-center rounded-xl transition-colors',
+                    active ? 'bg-muted' : 'hover:bg-muted'
+                  )}
+                >
+                  <Icon className="size-5 stroke-[1.5]" style={{ color: agent.color }} />
+                </Link>
+              )
+            })}
           </nav>
         )}
 
         {/* Content */}
         {isOpen && (
-          isCrm ? <CrmRailContent /> : (
+          isCrm ? <CrmRailContent /> :
+          isHome ? <HomeRailContent /> : (
             <div className="flex-1 overflow-y-auto px-[10px] py-3 flex flex-col gap-3">
 
-              {/* ── Card Simulateur ARIA ── */}
+              {/* ── Card Simulateur Aria ── */}
               <div className="rounded-xl border border-border bg-surface overflow-hidden">
                 <div className="flex items-center justify-between px-4 py-3 border-b border-border">
                   <div className="flex items-center gap-1.5">
-                    <p className="text-sm font-bold text-foreground">Simulateur ARIA</p>
+                    <p className="text-sm font-bold text-foreground">Simulateur Aria</p>
                   </div>
                   <Link href="/aria" className="text-xs font-medium text-muted-foreground hover:text-foreground transition-colors">Voir tout →</Link>
                 </div>

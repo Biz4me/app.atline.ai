@@ -35,8 +35,11 @@ export function BusinessProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => { refresh() }, [])
 
-  function addBusiness(name: string) {
-    refresh()
+  async function addBusiness(name: string) {
+    try {
+      await fetch('/api/businesses', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ name }) })
+    } catch {}
+    await refresh()
   }
 
   return (

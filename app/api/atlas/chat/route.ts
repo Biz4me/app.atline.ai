@@ -1,94 +1,130 @@
-import { NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
+import { NextRequest, NextResponse } from 'next/server'
+import { getToken } from 'next-auth/jwt'
 import { db } from '@/lib/db'
 
-const AI_SERVICE = 'http://localhost:8100'
+export const runtime = 'nodejs'
+export const dynamic = 'force-dynamic'
 
-export async function POST(req: Request) {
-  const session = await getServerSession(authOptions)
-  if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  const userId = session.user.id
+// Cerveau Atlas : FastAPI atline-ai-service, même serveur Hetzner (RAG Qdrant + Mem0 + Opus).
+const ATLAS_URL = process.env.ATLAS_URL || 'http://127.0.0.1:8100'
 
-  const { query, conversationHistory, conversationId } = await req.json()
-  if (!query?.trim()) return NextResponse.json({ error: 'Query required' }, { status: 400 })
+export async function POST(req: NextRequest) {
+  // user_id réel depuis la session NextAuth — jamais fourni par le client.
+  const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET })
+  const userId = token?.id as string | undefined
+  if (!userId) return NextResponse.json({ error: 'non authentifié' }, { status: 401 })
 
-  // Contexte utilisateur minimal
-  const [user, business] = await Promise.all([
-    db.user.findUnique({ where: { id: userId }, select: { firstName: true, lastName: true, plan: true } }),
-    db.userMlmBusiness.findFirst({ where: { userId, active: true }, select: { mlmName: true, role: true, goal: true } }),
-  ])
-
-  const payload = {
-    query,
-    user_id: userId,
-    mlm_actif: business?.mlmName ?? '',
-    distributeur: {
-      prenom: user?.firstName ?? '',
-      nom: user?.lastName ?? '',
-      role: business?.role ?? '',
-      objectif: business?.goal ?? '',
-    },
-    conversation_history: conversationHistory ?? [],
+  let body: { query?: string; conversationId?: string; mlm_actif?: string }
+  try {
+    body = await req.json()
+  } catch {
+    return NextResponse.json({ error: 'bad json' }, { status: 400 })
   }
+  const query = (body.query ?? '').trim()
+  if (!query) return NextResponse.json({ error: 'query vide' }, { status: 400 })
 
-  // Persist user message
-  let convId = conversationId
-  if (!convId) {
-    const conv = await db.atlasConversation.create({
-      data: { userId, mlmBusinessId: null, title: query.slice(0, 60) },
+  // Résoudre / créer la conversation (propriété vérifiée)
+  let conversationId = body.conversationId
+  if (conversationId) {
+    const owned = await db.atlasConversation.findFirst({
+      where: { id: conversationId, userId },
+      select: { id: true },
     })
-    convId = conv.id
+    if (!owned) conversationId = undefined
   }
+  if (!conversationId) {
+    const conv = await db.atlasConversation.create({
+      data: { userId, title: query.slice(0, 60), context: 'parcours' },
+      select: { id: true },
+    })
+    conversationId = conv.id
+  }
+  const cid = conversationId
+
+  // Historique DB (avant d'ajouter le message courant) → contexte conversationnel
+  const prior = await db.atlasMessage.findMany({
+    where: { conversationId: cid },
+    orderBy: { createdAt: 'asc' },
+    select: { role: true, content: true },
+  })
+  const conversation_history = prior.map((m) => ({
+    role: m.role === 'USER' ? 'user' : 'assistant',
+    content: m.content,
+  }))
+
+  // Sauver le message utilisateur
   await db.atlasMessage.create({
-    data: { conversationId: convId, role: 'USER', content: query, qdrantChunks: [] },
+    data: { conversationId: cid, role: 'USER', content: query, qdrantChunks: [] },
   })
 
-  // Stream from FastAPI
-  const upstream = await fetch(`${AI_SERVICE}/api/atlas/chat`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload),
-  })
-
-  if (!upstream.ok) {
-    return NextResponse.json({ error: 'AI service unavailable' }, { status: 502 })
+  // Appel FastAPI
+  let resp: Response
+  try {
+    resp = await fetch(`${ATLAS_URL}/api/atlas/chat`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        query,
+        user_id: userId,
+        mlm_actif: body.mlm_actif ?? 'Atline',
+        conversation_history,
+      }),
+    })
+  } catch {
+    return NextResponse.json({ error: 'Atlas indisponible' }, { status: 502 })
+  }
+  if (!resp.ok || !resp.body) {
+    return NextResponse.json({ error: 'Atlas indisponible' }, { status: 502 })
   }
 
-  // Collect full response to persist, stream to client
-  const encoder = new TextEncoder()
-  let fullText = ''
+  // tee : une branche pour le client, une branche consommée côté serveur.
+  // La sauvegarde ne dépend PAS du client → si l'utilisateur quitte en plein streaming,
+  // la réponse d'Atlas est quand même persistée (le fetch FastAPI continue côté serveur).
+  const [toClient, toSave] = resp.body.tee()
 
-  const stream = new ReadableStream({
-    async start(controller) {
-      // Send conversationId first so client can track it
-      controller.enqueue(encoder.encode(`data: ${JSON.stringify({ convId })}\n\n`))
-
-      const reader = upstream.body!.getReader()
-      const decoder = new TextDecoder()
-      while (true) {
+  void (async () => {
+    const decoder = new TextDecoder()
+    let raw = ''
+    const reader = toSave.getReader()
+    try {
+      for (;;) {
         const { done, value } = await reader.read()
         if (done) break
-        const chunk = decoder.decode(value, { stream: true })
-        fullText += chunk
-        controller.enqueue(encoder.encode(`data: ${JSON.stringify({ text: chunk })}\n\n`))
+        raw += decoder.decode(value, { stream: true })
       }
-      controller.enqueue(encoder.encode('data: [DONE]\n\n'))
-      controller.close()
+    } catch {
+      /* flux interrompu : on sauvegarde ce qu'on a */
+    }
+    let full = ''
+    for (const line of raw.split('\n')) {
+      if (!line.startsWith('data: ')) continue
+      const p = line.slice(6).trim()
+      if (!p || p === '[DONE]') continue
+      try {
+        const d = JSON.parse(p)
+        if (d.text) full += d.text
+      } catch {
+        /* ligne SSE partielle, ignorée */
+      }
+    }
+    try {
+      if (full) {
+        await db.atlasMessage.create({
+          data: { conversationId: cid, role: 'ASSISTANT', content: full, qdrantChunks: [] },
+        })
+      }
+      await db.atlasConversation.update({ where: { id: cid }, data: { updatedAt: new Date() } })
+    } catch {
+      /* persistance best-effort */
+    }
+  })()
 
-      // Persist atlas response
-      await db.atlasMessage.create({
-        data: { conversationId: convId, role: 'ASSISTANT', content: fullText, qdrantChunks: [] },
-      }).catch(() => {})
-    },
-  })
-
-  return new Response(stream, {
+  return new Response(toClient, {
     headers: {
       'Content-Type': 'text/event-stream',
       'Cache-Control': 'no-cache',
-      'Connection': 'keep-alive',
-      'X-Conv-Id': convId,
+      'X-Accel-Buffering': 'no',
+      'X-Conversation-Id': cid,
     },
   })
 }

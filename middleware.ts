@@ -9,6 +9,8 @@ export async function middleware(req: NextRequest) {
     pathname.startsWith('/auth') ||
     pathname.startsWith('/api/auth') ||
     pathname.startsWith('/api/') ||
+    pathname.startsWith('/r/') ||
+    pathname.startsWith('/rdv/') ||
     pathname.startsWith('/_next') ||
     pathname.startsWith('/brand') ||
     pathname.match(/\.(png|jpg|svg|ico|webp)$/)
@@ -23,10 +25,12 @@ export async function middleware(req: NextRequest) {
     return NextResponse.redirect(new URL('/auth', req.url))
   }
 
-  // Authentifié sans onboarding → onboarding
-  if (!token.onboardingCompleted && pathname !== '/onboarding') {
-    return NextResponse.redirect(new URL('/onboarding', req.url))
-  }
+  // Gate onboarding DÉSACTIVÉ temporairement : il bouclait (JWT périmé onboardingCompleted=false
+  // alors que la base = true → /onboarding rebondit vers /home → middleware re-redirige → page blanche).
+  // L'entrée vers /onboarding pour les nouveaux comptes sera rebranchée proprement (sans boucle) ensuite.
+  // if (!token.onboardingCompleted && pathname !== '/onboarding') {
+  //   return NextResponse.redirect(new URL('/onboarding', req.url))
+  // }
 
   return NextResponse.next()
 }

@@ -12,9 +12,9 @@ import { signOut } from 'next-auth/react'
 
 const COMPTE = [
   { icon: Settings,  label: 'Préférences',                   href: '/settings/preferences'  },
-  { icon: User,      label: 'Profil',                        href: '/settings/profil'       },
+  { icon: User,      label: 'Profil',                        href: '/profile/edit'          },
   { icon: Bell,      label: 'Notifications',                 href: '/settings/notifications'},
-  { icon: Briefcase, label: 'Activité MLM',                  href: '/settings/activite-mlm' },
+  { icon: Briefcase, label: 'Activité MLM',                  href: '/activities'            },
   { icon: Link2,     label: 'Comptes liés',                  href: '/settings/comptes-lies' },
   { icon: Users,     label: 'Parrainage',                    href: '/settings/parrainage'   },
   { icon: Lock,      label: 'Paramètres de confidentialité', href: '/settings/confidentialite' },
@@ -37,7 +37,7 @@ export default function SettingsPage() {
       >
         {/* Header */}
         <div
-          className="sticky top-0 z-10 flex items-center justify-between border-b border-border bg-background/90 px-4 py-3 backdrop-blur"
+          className="sticky top-0 z-10 flex items-center justify-between bg-background/90 px-4 py-3 backdrop-blur"
           style={{ paddingTop: 'max(0.75rem, env(safe-area-inset-top))' }}
         >
           <div className="size-9" />
@@ -45,7 +45,7 @@ export default function SettingsPage() {
           <button
             type="button"
             onClick={() => router.back()}
-            className="px-1 py-2 text-sm font-semibold text-primary active:opacity-70"
+            className="px-1 py-2 text-base font-semibold text-primary active:opacity-70"
           >
             Terminé
           </button>
@@ -55,12 +55,12 @@ export default function SettingsPage() {
 
           {/* Compte */}
           <section>
-            <h2 className="mb-2 px-1 text-sm font-semibold text-muted-foreground">Compte</h2>
+            <h2 className="mb-2 px-1 text-base font-semibold text-muted-foreground">Compte</h2>
             <Card className="divide-y divide-border p-0">
               {COMPTE.map(({ icon: Icon, label, href }) => (
                 <Link key={label} href={href} className="flex w-full items-center gap-3.5 px-4 py-4 transition-colors active:bg-muted">
                   <Icon className="size-5 shrink-0 text-muted-foreground stroke-[1.5]" />
-                  <span className="flex-1 text-sm font-medium text-foreground">{label}</span>
+                  <span className="flex-1 text-lg font-medium text-foreground">{label}</span>
                   <ChevronRight className="size-4 text-muted-foreground" />
                 </Link>
               ))}
@@ -69,11 +69,11 @@ export default function SettingsPage() {
 
           {/* Abonnement */}
           <section>
-            <h2 className="mb-2 px-1 text-sm font-semibold text-muted-foreground">Abonnement</h2>
+            <h2 className="mb-2 px-1 text-base font-semibold text-muted-foreground">Abonnement</h2>
             <Card className="p-0">
               <Link href="/abonnement?from=settings" className="flex w-full items-center gap-3.5 px-4 py-4 transition-colors active:bg-muted">
                 <CreditCard className="size-5 shrink-0 text-muted-foreground stroke-[1.5]" />
-                <span className="flex-1 text-sm font-medium text-foreground">Choisir un abonnement</span>
+                <span className="flex-1 text-lg font-medium text-foreground">Choisir un abonnement</span>
                 <ChevronRight className="size-4 text-muted-foreground" />
               </Link>
             </Card>
@@ -81,12 +81,12 @@ export default function SettingsPage() {
 
           {/* Assistance */}
           <section>
-            <h2 className="mb-2 px-1 text-sm font-semibold text-muted-foreground">Assistance</h2>
+            <h2 className="mb-2 px-1 text-base font-semibold text-muted-foreground">Assistance</h2>
             <Card className="divide-y divide-border p-0">
               {ASSISTANCE.map(({ icon: Icon, label, href }) => (
                 <Link key={label} href={href} className="flex w-full items-center gap-3.5 px-4 py-4 transition-colors active:bg-muted">
                   <Icon className="size-5 shrink-0 text-muted-foreground stroke-[1.5]" />
-                  <span className="flex-1 text-sm font-medium text-foreground">{label}</span>
+                  <span className="flex-1 text-lg font-medium text-foreground">{label}</span>
                   <ChevronRight className="size-4 text-muted-foreground" />
                 </Link>
               ))}
@@ -101,7 +101,7 @@ export default function SettingsPage() {
               className="flex w-full items-center gap-3.5 px-4 py-4 text-left transition-colors active:bg-muted"
             >
               <LogOut className="size-5 shrink-0 text-destructive stroke-[1.5]" />
-              <span className="flex-1 text-sm font-medium text-destructive">Déconnexion</span>
+              <span className="flex-1 text-lg font-medium text-destructive">Déconnexion</span>
             </button>
           </Card>
 

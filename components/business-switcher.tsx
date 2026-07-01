@@ -1,10 +1,12 @@
 'use client'
 
-import { useRef, useState, useEffect, useLayoutEffect } from 'react'
+import { useRef, useState, useEffect, useLayoutEffect, type CSSProperties } from 'react'
 import { createPortal } from 'react-dom'
 import { useRouter } from 'next/navigation'
-import { Check, ChevronDown, Plus, X, Users, GitFork, UserCheck, Calendar } from 'lucide-react'
+import { Check, ChevronDown, Plus, X, Users, GitFork, UserCheck, Calendar, Briefcase } from 'lucide-react'
 import { useBusiness } from '@/components/business-provider'
+import { useOverlay } from '@/components/overlay-provider'
+import type { Business } from '@/lib/types'
 import {
   Sheet,
   SheetContent,
@@ -27,6 +29,7 @@ interface Props {
 
 export function BusinessSwitcher({ collapsed, variant = 'sheet', fullWidth = false }: Props) {
   const { current, all, setCurrent, addBusiness } = useBusiness()
+  const { openId, setOpenId } = useOverlay()
   const router = useRouter()
   const [open, setOpen] = useState(false)
   const [dropMounted, setDropMounted] = useState(false)
@@ -54,7 +57,8 @@ export function BusinessSwitcher({ collapsed, variant = 'sheet', fullWidth = fal
   const dateRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
-    if (variant !== 'popover') return
+    // Mobile (fullWidth) : fermeture gérée par le backdrop + l'OverlayProvider
+    if (variant !== 'popover' || fullWidth) return
     function handleClick(e: MouseEvent) {
       if (ref.current && !ref.current.contains(e.target as Node)) {
         setOpen(false)
@@ -64,7 +68,16 @@ export function BusinessSwitcher({ collapsed, variant = 'sheet', fullWidth = fal
     }
     document.addEventListener('mousedown', handleClick)
     return () => document.removeEventListener('mousedown', handleClick)
-  }, [variant])
+  }, [variant, fullWidth])
+
+  // Un autre overlay s'ouvre → fermeture INSTANTANÉE du switcher (mobile)
+  useEffect(() => {
+    if (openId && openId !== 'switcher' && dropMounted) {
+      setDropVisible(false)
+      setDropMounted(false)
+      setOpen(false)
+    }
+  }, [openId, dropMounted])
 
   function openDropdown() {
     if (fullWidth) {
@@ -77,6 +90,7 @@ export function BusinessSwitcher({ collapsed, variant = 'sheet', fullWidth = fal
           const rect = ref.current.getBoundingClientRect()
           setDropTop(rect.bottom)
         }
+        setOpenId('switcher')
         setOpen(true)
         setDropMounted(true)
         requestAnimationFrame(() => setDropVisible(true))
@@ -89,6 +103,21 @@ export function BusinessSwitcher({ collapsed, variant = 'sheet', fullWidth = fal
   function closeDropdown() {
     setDropVisible(false)
     setTimeout(() => { setDropMounted(false); setOpen(false) }, 300)
+    setOpenId(null)
+  }
+
+  async function persistActive(id: string) {
+    try { await fetch('/api/businesses/active', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ id }) }) } catch {}
+  }
+  function selectBusiness(b: Business) {
+    setCurrent(b)
+    if (b.id && b.id !== 'atline') persistActive(b.id)
+  }
+  async function gerer(b: Business) {
+    setCurrent(b)
+    if (b.id && b.id !== 'atline') await persistActive(b.id)
+    closeDropdown()
+    router.push('/activities')
   }
 
   useLayoutEffect(() => {
@@ -148,29 +177,27 @@ export function BusinessSwitcher({ collapsed, variant = 'sheet', fullWidth = fal
       title={current.name}
     >
       <span
-        className="flex size-9 items-center justify-center rounded-full text-[13px] font-bold text-white"
+        className="flex size-9 items-center justify-center rounded-full text-white"
         style={{ backgroundColor: current.color }}
       >
-        {current.initials}
+        <Briefcase className="size-4" />
       </span>
     </button>
   ) : (
     <button
       type="button"
       onClick={openDropdown}
-      className={cn(
-        'inline-flex items-center gap-2 rounded-lg px-2 py-1.5 text-sm font-bold transition-colors hover:bg-muted outline-none',
-        open && 'bg-muted',
-      )}
+      className="flex items-center gap-2 pr-2 text-sm font-bold transition-colors outline-none"
     >
+      {/* ml-5 → centre l'avatar sur l'axe du rail (x=32) sans gros vide avant le nom */}
       <span
-        className="flex size-6 items-center justify-center rounded-full text-[11px] font-bold text-white shrink-0"
+        className="ml-5 flex size-6 shrink-0 items-center justify-center rounded-full text-white"
         style={{ backgroundColor: current.color }}
       >
-        {current.initials}
+        <Briefcase className="size-4" />
       </span>
-      {current.name}
-      <ChevronDown className={cn('size-3.5 text-muted-foreground transition-transform', open && 'rotate-180')} />
+      <span className="truncate">{current.name}</span>
+      <ChevronDown className={cn('size-3.5 shrink-0 text-muted-foreground transition-transform', open && 'rotate-180')} />
     </button>
   )
 
@@ -178,10 +205,10 @@ export function BusinessSwitcher({ collapsed, variant = 'sheet', fullWidth = fal
   const mobileTrigger = (
     <button type="button" onClick={openDropdown} className="outline-none">
       <span
-        className="flex size-10 items-center justify-center rounded-full text-[13px] font-bold text-white"
+        className="flex size-10 items-center justify-center rounded-full text-white"
         style={{ backgroundColor: current.color }}
       >
-        {current.initials}
+        <Briefcase className="size-5" />
       </span>
     </button>
   )
@@ -190,13 +217,22 @@ export function BusinessSwitcher({ collapsed, variant = 'sheet', fullWidth = fal
   if (variant === 'popover') {
     return (
       <>
+        {/* Desktop backdrop — voile sombre, HORS du ref pour que le clic-extérieur ferme */}
+        {/* h-[100dvh] car le header (backdrop-blur) est le bloc conteneur des fixed → bottom-0 collapse */}
+        {!fullWidth && open && (
+          <div
+            className="fixed inset-x-0 top-14 h-[100dvh] z-[59] bg-black/40 animate-in fade-in-0 duration-200"
+            onClick={() => setOpen(false)}
+          />
+        )}
+
         <div ref={ref} className="relative">
           {fullWidth ? mobileTrigger : desktopTrigger}
 
           {/* Desktop dropdown */}
           {!fullWidth && open && (
             <div
-              className="fixed left-0 w-56 rounded-b-xl shadow-lg border-b border-border bg-background z-[60] overflow-hidden py-1"
+              className="fixed left-0 w-[256px] rounded-b-xl shadow-lg border-b border-border bg-background z-[60] overflow-hidden py-1"
               style={{ top: '3.5rem' }}
             >
               {all.map((b) => (
@@ -204,13 +240,13 @@ export function BusinessSwitcher({ collapsed, variant = 'sheet', fullWidth = fal
                   key={b.id}
                   type="button"
                   onClick={() => { setCurrent(b); setOpen(false) }}
-                  className="flex w-full items-center gap-2.5 pl-6 pr-3 py-2"
+                  className="flex w-full items-center gap-2 pl-5 pr-3 py-2"
                 >
                   <span
-                    className="flex size-6 shrink-0 items-center justify-center rounded-full text-[10px] font-bold text-white"
+                    className="flex size-6 shrink-0 items-center justify-center rounded-full text-white"
                     style={{ backgroundColor: b.color }}
                   >
-                    {b.initials}
+                    <Briefcase className="size-4" />
                   </span>
                   <div className="flex-1 min-w-0 text-left">
                     <p className="text-sm font-medium text-foreground truncate">{b.name}</p>
@@ -218,7 +254,7 @@ export function BusinessSwitcher({ collapsed, variant = 'sheet', fullWidth = fal
                 </button>
               ))}
               {addMode ? (
-                <div className="flex items-center gap-2 pl-[58px] pr-3 py-2">
+                <div className="flex items-center gap-2 pl-[52px] pr-3 py-2">
                   <input
                     ref={inputRef}
                     type="text"
@@ -268,33 +304,44 @@ export function BusinessSwitcher({ collapsed, variant = 'sheet', fullWidth = fal
               className="bg-background border-b border-border px-4 py-3 transition-transform duration-300 ease-out"
               style={{ transform: dropVisible ? 'translateY(0)' : 'translateY(-100%)' }}
             >
-              <div className="flex items-start gap-5">
-                {all.map((b) => (
-                  <button
-                    key={b.id}
-                    type="button"
-                    onClick={() => { setCurrent(b); closeDropdown() }}
-                    className="flex flex-col items-center gap-1.5"
-                  >
-                    <span
-                      className={cn(
-                        'flex size-10 items-center justify-center rounded-full text-[13px] font-bold text-white transition-all',
-                        current.id === b.id && 'ring-2 ring-primary ring-offset-2 ring-offset-background',
+              <div className="flex flex-col gap-1">
+                {all.map((b) => {
+                  const isActive = current.id === b.id
+                  return (
+                    <div key={b.id} className="flex items-center gap-3 rounded-xl py-1.5">
+                      <button
+                        type="button"
+                        onClick={() => selectBusiness(b)}
+                        className="flex min-w-0 flex-1 items-center gap-3 text-left"
+                      >
+                        <span
+                          className={cn(
+                            'flex size-10 shrink-0 items-center justify-center rounded-full text-white transition-all',
+                            isActive && 'ring-2 ring-offset-2 ring-offset-background',
+                          )}
+                          style={{ backgroundColor: b.color, ...(isActive && { ['--tw-ring-color']: b.color }) } as CSSProperties}
+                        >
+                          <Briefcase className="size-5" />
+                        </span>
+                        <span className="truncate text-sm font-medium text-foreground">{b.name}</span>
+                      </button>
+                      {!b.isAtline && (
+                        <button
+                          type="button"
+                          onClick={() => gerer(b)}
+                          className="shrink-0 rounded-full border border-border px-3.5 py-1.5 text-xs font-semibold text-foreground active:bg-muted"
+                        >
+                          Gérer
+                        </button>
                       )}
-                      style={{ backgroundColor: b.color }}
-                    >
-                      {b.initials}
-                    </span>
-                    <span className="text-xs font-medium text-foreground text-center max-w-[56px] truncate">
-                      {b.name}
-                    </span>
-                  </button>
-                ))}
-                <button type="button" onClick={openAddPage} className="flex flex-col items-center gap-1.5">
-                  <span className="flex size-10 items-center justify-center rounded-full border-2 border-dashed border-border text-muted-foreground">
-                    <Plus className="size-4" />
+                    </div>
+                  )
+                })}
+                <button type="button" onClick={openAddPage} className="flex items-center gap-3 rounded-xl py-1.5 text-left">
+                  <span className="flex size-10 shrink-0 items-center justify-center rounded-full border-2 border-dashed border-border text-muted-foreground">
+                    <Plus className="size-5" />
                   </span>
-                  <span className="text-xs font-medium text-muted-foreground">Ajouter</span>
+                  <span className="text-sm font-medium text-muted-foreground">Ajouter une activité</span>
                 </button>
               </div>
             </div>
@@ -451,10 +498,10 @@ export function BusinessSwitcher({ collapsed, variant = 'sheet', fullWidth = fal
                             )}
                           >
                             <span
-                              className="flex size-8 shrink-0 items-center justify-center rounded-full text-[11px] font-bold text-white"
+                              className="flex size-8 shrink-0 items-center justify-center rounded-full text-white"
                               style={{ backgroundColor: b.color }}
                             >
-                              {b.initials}
+                              <Briefcase className="size-4" />
                             </span>
                             <span className="flex-1 text-sm font-medium text-foreground">{b.name}</span>
                             <span className={cn(
@@ -511,10 +558,10 @@ export function BusinessSwitcher({ collapsed, variant = 'sheet', fullWidth = fal
                 )}
               >
                 <span
-                  className="flex size-9 items-center justify-center rounded-full text-sm font-bold text-white"
+                  className="flex size-9 items-center justify-center rounded-full text-white"
                   style={{ backgroundColor: b.color }}
                 >
-                  {b.initials}
+                  <Briefcase className="size-4" />
                 </span>
                 <span className="flex-1">
                   <span className="block text-sm font-bold text-foreground">{b.name}</span>

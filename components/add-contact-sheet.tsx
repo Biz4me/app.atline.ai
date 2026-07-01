@@ -14,7 +14,7 @@ import { cn } from '@/lib/utils'
 
 const stages = [
   { id: 'nouveau', label: 'Nouveau' },
-  { id: 'chaud', label: 'Chaud' },
+  { id: 'closing', label: 'Closing' },
   { id: 'prospect', label: 'Qualifié' },
   { id: 'client', label: 'Client' },
   { id: 'partenaire', label: 'Partenaire' },

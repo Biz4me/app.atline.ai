@@ -33,7 +33,7 @@ export function euro(amount: number): string {
 
 export const stageLabels: Record<string, string> = {
   nouveau: 'Nouveau',
-  chaud: 'Chaud',
+  closing: 'Closing',
   prospect: 'Prospect',
   client: 'Client',
   partenaire: 'Partenaire',
@@ -66,7 +66,7 @@ export const contacts: Contact[] = [
     id: 'c1',
     firstName: 'Thomas',
     lastName: 'Bernard',
-    stage: 'chaud',
+    stage: 'closing',
     stade: 'suivi',
     disc: 'D',
     source: 'Instagram',
@@ -176,7 +176,7 @@ export const contacts: Contact[] = [
     id: 'c7',
     firstName: 'Nadia',
     lastName: 'Benali',
-    stage: 'chaud',
+    stage: 'closing',
     stade: 'présentation',
     disc: 'I',
     source: 'WhatsApp',
@@ -224,7 +224,7 @@ export const contacts: Contact[] = [
     id: 'c10',
     firstName: 'Julie',
     lastName: 'Martin',
-    stage: 'chaud',
+    stage: 'closing',
     disc: 'I',
     source: 'Facebook',
     lastInteraction: 'Il y a 6 h',
@@ -454,7 +454,7 @@ export const planLabels: Record<string, string> = {
   leader: 'Leader',
 }
 
-// --- ARIA personas -------------------------------------------------------
+// --- Aria personas -------------------------------------------------------
 export const ariaPersonas = [
   { id: 'sceptique', label: 'Le sceptique', desc: 'Doute de tout, teste ta conviction' },
   { id: 'occupe', label: 'L’occupé', desc: 'Pas le temps, va droit au but' },

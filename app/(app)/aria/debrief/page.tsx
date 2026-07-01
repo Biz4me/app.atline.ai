@@ -22,7 +22,7 @@ export default function DebriefPage() {
     <div className="flex min-h-dvh flex-col bg-background">
       {/* Header */}
       <header
-        className="sticky top-0 z-30 flex items-center gap-3 border-b border-border bg-background/90 px-4 py-3 backdrop-blur lg:px-8"
+        className="sticky top-0 z-30 flex items-center gap-3 bg-background/90 px-4 py-3 backdrop-blur lg:px-8"
         style={{ paddingTop: 'max(0.75rem, env(safe-area-inset-top))' }}
       >
         <button

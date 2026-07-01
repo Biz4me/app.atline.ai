@@ -1,5 +1,6 @@
 import { redirect } from 'next/navigation'
 
 export default function RootPage() {
-  redirect('/auth')
+  // Entrée de l'app = Atlas (le middleware renvoie les non-authentifiés vers /auth)
+  redirect('/atlas')
 }

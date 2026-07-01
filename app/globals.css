@@ -179,7 +179,7 @@
     font-feature-settings: 'ss01';
   }
   html {
-    @apply font-sans;
+    @apply font-sans bg-background;
     -webkit-tap-highlight-color: transparent;
   }
 }
@@ -254,16 +254,11 @@
   to   { transform: translateX(0); }
 }
 .animate-slide-in-right {
-  animation: slide-in-right 0.3s ease-out;
+  animation: slide-in-right 0.25s ease-out;
 }
 
-/* Hide all scrollbars on mobile */
-@media (max-width: 1023px) {
-  *::-webkit-scrollbar {
-    display: none;
-  }
-  * {
-    -ms-overflow-style: none;
-    scrollbar-width: none;
-  }
+/* Indicateur de frappe Atlas — 3 points en cascade */
+@keyframes atlas-typing {
+  0%, 60%, 100% { opacity: 0.25; transform: translateY(0); }
+  30%          { opacity: 1;    transform: translateY(-3px); }
 }

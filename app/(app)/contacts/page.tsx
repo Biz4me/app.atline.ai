@@ -1,17 +1,16 @@
 'use client'
 
-import { useMemo, useState, useRef, useEffect, useCallback } from 'react'
+import { useMemo, useState, useRef, useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { TopBar } from '@/components/top-bar'
 import { useBusiness } from '@/components/business-provider'
 import { DiscAvatar } from '@/components/disc-avatar'
 import { StagePill } from '@/components/pills'
-import type { Contact, ContactStage } from '@/lib/types'
+import type { ContactStage, ContactPipelineStage, DiscType } from '@/lib/types'
 import {
   Search, Plus, UserRound, ChevronDown, Check,
   Mic, Sparkles, Trash2, ArrowUpDown, ArrowUp, ArrowDown,
-  Download, Upload, FileUp, X,
+  Download, Upload, FileUp, X, Loader2,
 } from 'lucide-react'
 import { AddContactSheet } from '@/components/add-contact-sheet'
 import { Card } from '@/components/card'
@@ -23,8 +22,8 @@ type SortKey = 'name' | 'stade' | 'stage' | 'city' | 'lastInteraction'
 type SortDir = 'asc' | 'desc'
 
 const segmentConfig: Record<Segment, { label: string; stages: ContactStage[] }> = {
-  tous:        { label: 'Tous',        stages: ['nouveau', 'chaud', 'prospect', 'client', 'partenaire'] },
-  prospects:   { label: 'Prospects',   stages: ['nouveau', 'chaud', 'prospect'] },
+  tous:        { label: 'Tous',        stages: ['nouveau', 'closing', 'prospect', 'client', 'partenaire'] },
+  prospects:   { label: 'Prospects',   stages: ['nouveau', 'closing', 'prospect'] },
   clients:     { label: 'Clients',     stages: ['client']                        },
   partenaires: { label: 'Partenaires', stages: ['partenaire']                   },
 }
@@ -33,7 +32,7 @@ const stageFilters: Record<Segment, { id: string; label: string; stages?: Contac
   tous:        [{ id: 'tous', label: 'Tous' }],
   prospects: [
     { id: 'tous',     label: 'Tous' },
-    { id: 'chaud',    label: 'Chaud',    stages: ['chaud']    },
+    { id: 'closing',  label: 'Closing',  stages: ['closing']  },
     { id: 'qualifie', label: 'Qualifié', stages: ['prospect'] },
     { id: 'nouveau',  label: 'Nouveau',  stages: ['nouveau']  },
   ],
@@ -59,6 +58,50 @@ const discHex: Record<string, string> = {
   I: '#f59e0b',
   S: '#22c55e',
   C: '#3b82f6',
+}
+
+/* ── Adaptateur API → forme UI ───────────────────────────────── */
+// personality (4 couleurs Big Al) → lettre dont discColors donne la bonne teinte d'avatar
+const PERSONALITY_DISC: Record<string, DiscType> = { ROUGE: 'D', JAUNE: 'I', VERT: 'S', BLEU: 'C' }
+
+type ApiContact = {
+  id: string; name: string; stage: ContactStage; source: string
+  city: string; phone: string; email: string; personality: string | null
+  lastContact: string | null; businessId: string
+}
+type UiContact = {
+  id: string; firstName: string; lastName: string
+  stage: ContactStage; stade?: ContactPipelineStage; disc: DiscType | null
+  source: string; lastInteraction: string; city: string
+  phone: string; email: string; businessId: string
+}
+
+function relTime(iso: string | null): string {
+  if (!iso) return '—'
+  const diff = Date.now() - new Date(iso).getTime()
+  const h = 3600000, d = 86400000
+  if (diff < h) return "À l'instant"
+  if (diff < d) return `Il y a ${Math.floor(diff / h)} h`
+  if (diff < 7 * d) return `Il y a ${Math.floor(diff / d)} j`
+  return new Date(iso).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })
+}
+
+function adaptContact(c: ApiContact): UiContact {
+  const parts = (c.name ?? '').trim().split(/\s+/)
+  return {
+    id: c.id,
+    firstName: parts[0] ?? c.name ?? '',
+    lastName: parts.slice(1).join(' '),
+    stage: c.stage,
+    stade: undefined,
+    disc: c.personality ? (PERSONALITY_DISC[c.personality] ?? null) : null,
+    source: c.source ?? 'manuel',
+    lastInteraction: relTime(c.lastContact),
+    city: c.city ?? '',
+    phone: c.phone ?? '',
+    email: c.email ?? '',
+    businessId: c.businessId,
+  }
 }
 
 /* ── Icône de tri ────────────────────────────────────────────── */
@@ -173,37 +216,8 @@ function ThFilter({
 function ContactsContent() {
   const { current } = useBusiness()
   const router = useRouter()
-  const [apiContacts, setApiContacts] = useState<Contact[]>([])
-
-  const fetchContacts = useCallback(async () => {
-    try {
-      const res = await fetch('/api/contacts' + (current?.id && current.id !== 'atline' ? '?businessId=' + current.id : ''))
-      if (!res.ok) return
-      const data = await res.json()
-      setApiContacts(data.map((c: any) => {
-        const parts = (c.name ?? '').split(' ')
-        return {
-          id: c.id,
-          firstName: parts[0] ?? '',
-          lastName: parts.slice(1).join(' ') ?? '',
-          stage: c.stage ?? 'nouveau',
-          stade: undefined,
-          disc: null,
-          source: c.source ?? 'manuel',
-          lastInteraction: c.lastContact ?? c.createdAt ?? '',
-          phone: c.phone ?? '',
-          email: c.email ?? '',
-          city: c.city ?? '',
-          inCrm: false,
-          businessId: c.businessId ?? '',
-          notes: c.note ?? '',
-          timeline: [],
-        }
-      }))
-    } catch {}
-  }, [current?.id])
-
-  useEffect(() => { fetchContacts() }, [fetchContacts])
+  const [rows, setRows]               = useState<UiContact[]>([])
+  const [loading, setLoading]         = useState(true)
   const [segment, setSegment]         = useState<Segment>('tous')
   const [stageFilter, setStageFilter] = useState('tous')
   const [query, setQuery]             = useState('')
@@ -216,6 +230,10 @@ function ContactsContent() {
   const exportImportRef = useRef<HTMLDivElement>(null)
   const [importModalOpen, setImportModalOpen] = useState(false)
   const [importFile, setImportFile] = useState<File | null>(null)
+  const [importText, setImportText] = useState('')
+  const [importCandidates, setImportCandidates] = useState<{ firstName: string; lastName: string; phone: string; email: string; duplicate: boolean; selected: boolean }[] | null>(null)
+  const [importBusy, setImportBusy] = useState(false)
+  const [reloadTick, setReloadTick] = useState(0)
   const [stadeColFilter, setStadeColFilter] = useState('all')
   const [stadeColOpen, setStadeColOpen] = useState(false)
   const stadeColRef = useRef<HTMLDivElement>(null)
@@ -239,6 +257,26 @@ function ContactsContent() {
     return () => document.removeEventListener('mousedown', handleClick)
   }, [])
 
+  // Chargement des contacts réels (business actif côté serveur)
+  useEffect(() => {
+    let cancelled = false
+    setLoading(true)
+    fetch('/api/contacts')
+      .then((r) => (r.ok ? r.json() : []))
+      .then((data: ApiContact[]) => {
+        if (!cancelled) setRows(Array.isArray(data) ? data.map(adaptContact) : [])
+      })
+      .catch(() => { if (!cancelled) setRows([]) })
+      .finally(() => { if (!cancelled) setLoading(false) })
+    return () => { cancelled = true }
+  }, [reloadTick])
+
+  // Handoff depuis le composeur Atlas : un fichier déposé → ouvre l'import pré-rempli
+  useEffect(() => {
+    const t = sessionStorage.getItem('atline_import_text')
+    if (t) { sessionStorage.removeItem('atline_import_text'); setImportText(t); setImportModalOpen(true) }
+  }, [])
+
   const handleSegmentChange = (seg: Segment) => {
     setSegment(seg)
     setStageFilter('tous')
@@ -258,8 +296,7 @@ function ContactsContent() {
     const filterDef    = stageFilters[segment].find((f) => f.id === stageFilter)
     const activeStages = filterDef?.stages ?? segStages
 
-    let result = apiContacts
-      .filter((_c) => true) // already filtered server-side by business
+    let result = rows
       .filter((c) => activeStages.includes(c.stage))
       .filter((c) => stadeColFilter === 'all' || c.stade === stadeColFilter)
       .filter((c) => tempColFilter === 'all' || c.stage === tempColFilter)
@@ -284,7 +321,7 @@ function ContactsContent() {
     }
 
     return result
-  }, [segment, stageFilter, query, current.id, sortKey, sortDir, stadeColFilter, tempColFilter])
+  }, [rows, segment, stageFilter, query, sortKey, sortDir, stadeColFilter, tempColFilter])
 
   const totalPages = Math.max(1, Math.ceil(list.length / pageSize))
   const safePage   = Math.min(page, totalPages - 1)
@@ -295,25 +332,63 @@ function ContactsContent() {
   const filters = stageFilters[segment]
   const thProps = { current: sortKey, dir: sortDir, onSort: toggleSort }
 
+  function resetImport() { setImportModalOpen(false); setImportText(''); setImportCandidates(null); setImportFile(null) }
+  function readCsvFile(file: File) {
+    setImportFile(file)
+    const reader = new FileReader()
+    reader.onload = () => setImportText(String(reader.result ?? ''))
+    reader.readAsText(file)
+  }
+  async function analyzeImport() {
+    const text = importText.trim()
+    if (!text) { toast.error('Colle une liste ou un CSV'); return }
+    setImportBusy(true)
+    try {
+      const res = await fetch('/api/contacts/import/extract', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text }) })
+      if (!res.ok) { toast.error("Échec de l'analyse"); return }
+      const d = await res.json()
+      const list = (d.contacts ?? []).map((c: { firstName: string; lastName: string; phone: string; email: string; duplicate: boolean }) => ({ ...c, selected: !c.duplicate }))
+      if (list.length === 0) toast.error('Aucun contact détecté')
+      setImportCandidates(list)
+    } finally { setImportBusy(false) }
+  }
+  async function commitImport() {
+    const sel = (importCandidates ?? []).filter((c) => c.selected)
+    if (sel.length === 0) { toast.error('Sélectionne au moins un contact'); return }
+    setImportBusy(true)
+    try {
+      const res = await fetch('/api/contacts/import/commit', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ contacts: sel }) })
+      if (!res.ok) { toast.error("Échec de l'import"); return }
+      const d = await res.json()
+      toast.success(`${d.created} contact${d.created > 1 ? 's' : ''} importé${d.created > 1 ? 's' : ''}`)
+      resetImport(); setReloadTick((t) => t + 1)
+    } finally { setImportBusy(false) }
+  }
+
   return (
     <>
       {/* ══ MOBILE ══════════════════════════════════════════════ */}
       <div className="lg:hidden">
-        <TopBar />
-
         <div className="flex flex-col gap-4 px-4 pt-5">
-          {/* Titre + bouton + */}
-          <div className="flex items-center justify-between">
-            <h1 className="font-display text-[32px] font-extrabold leading-tight tracking-[-0.025em] text-foreground">
-              Mes contacts
-            </h1>
-            <button
-              type="button"
-              onClick={() => setAddOpen(true)}
-              className="flex size-10 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-lg shadow-primary/30 active:scale-95 transition-transform"
-            >
-              <Plus className="size-5 stroke-2" />
-            </button>
+          {/* Actions (titre géré par la top-bar centrée) */}
+          <div className="flex items-center justify-end">
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setImportModalOpen(true)}
+                title="Importer des contacts"
+                className="flex size-10 items-center justify-center rounded-xl border border-border bg-surface text-muted-foreground active:scale-95 transition-transform"
+              >
+                <Upload className="size-5 stroke-[1.5]" />
+              </button>
+              <button
+                type="button"
+                onClick={() => setAddOpen(true)}
+                className="flex size-10 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-lg shadow-primary/30 active:scale-95 transition-transform"
+              >
+                <Plus className="size-5 stroke-2" />
+              </button>
+            </div>
           </div>
 
           {/* Recherche */}
@@ -369,7 +444,7 @@ function ContactsContent() {
           )}
 
           {/* Liste */}
-          {list.length === 0 ? (
+          {!loading && list.length === 0 ? (
             <div className="flex flex-col items-center gap-3 rounded-2xl border border-dashed border-border bg-surface px-6 py-12 text-center">
               <p className="text-sm text-muted-foreground">Aucun contact ici</p>
               <button
@@ -420,14 +495,14 @@ function ContactsContent() {
 
         {/* KPI Strip — même pattern que Home */}
         {(() => {
-          const all    = apiContacts
-          const chauds = all.filter((c) => c.stage === 'chaud').length
+          const all    = rows
+          const closings = all.filter((c) => c.stage === 'closing').length
           const nouveaux = all.filter((c) => c.stage === 'nouveau').length
           return (
             <div className="grid grid-cols-3 gap-3 shrink-0">
               {[
                 { label: 'Total contacts',    value: String(all.length), sub: 'dans ma liste'    },
-                { label: 'Contacts chauds',   value: String(chauds),     sub: 'à relancer'       },
+                { label: 'En closing',        value: String(closings),   sub: 'à relancer'       },
                 { label: 'Sans qualification', value: String(nouveaux),  sub: 'à qualifier'      },
               ].map((kpi) => (
                 <Card key={kpi.label} className="px-4 py-3">
@@ -564,7 +639,7 @@ function ContactsContent() {
 
           {/* Table — scroll sans barre visible */}
           <div className="flex-1 overflow-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-            {list.length === 0 ? (
+            {!loading && list.length === 0 ? (
               <div className="flex flex-col items-center gap-3 py-20 text-center">
                 <div className="flex size-12 items-center justify-center rounded-2xl bg-muted">
                   <UserRound className="size-6 stroke-[1.5] text-muted-foreground" />
@@ -605,7 +680,7 @@ function ContactsContent() {
                       options={[
                         { id: 'all', label: 'Tous' },
                         { id: 'nouveau', label: 'Nouveau' },
-                        { id: 'chaud', label: 'Chaud' },
+                        { id: 'closing', label: 'Closing' },
                         { id: 'prospect', label: 'Qualifié' },
                         { id: 'client', label: 'Client' },
                         { id: 'partenaire', label: 'Partenaire' },
@@ -697,7 +772,7 @@ function ContactsContent() {
                           </Link>
                           <Link
                             href={`/aria?contact=${c.id}`}
-                            title="Simuler avec ARIA"
+                            title="Simuler avec Aria"
                             className="flex size-8 items-center justify-center rounded-lg text-muted-foreground hover:text-[#14B8A6] hover:bg-[#14B8A6]/10 transition-colors"
                           >
                             <Mic className="size-4 stroke-[1.5]" />
@@ -823,92 +898,64 @@ function ContactsContent() {
         </div>{/* fin card principale */}
       </div>
 
-      <AddContactSheet open={addOpen} onOpenChange={setAddOpen} onAdded={fetchContacts} />
+      <AddContactSheet open={addOpen} onOpenChange={setAddOpen} />
 
       {/* ══ MODALE IMPORT ════════════════════════════════════════ */}
       {importModalOpen && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
-          onClick={() => setImportModalOpen(false)}
-        >
-          <div
-            className="relative w-full max-w-md rounded-2xl border border-border bg-surface p-6 shadow-2xl"
-            onClick={(e) => e.stopPropagation()}
-          >
-            {/* Header */}
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm" onClick={resetImport}>
+          <div className="relative flex max-h-[88dvh] w-full max-w-md flex-col rounded-2xl border border-border bg-surface p-6 shadow-2xl" onClick={(e) => e.stopPropagation()}>
             <div className="mb-4 flex items-center justify-between">
               <div>
                 <h2 className="text-sm font-bold text-foreground">Importer des contacts</h2>
-                <p className="text-xs text-muted-foreground mt-0.5">Fichier CSV, encodage UTF-8</p>
+                <p className="mt-0.5 text-xs text-muted-foreground">Atlas extrait et dédoublonne — colle une liste ou un CSV</p>
               </div>
-              <button
-                type="button"
-                onClick={() => { setImportModalOpen(false); setImportFile(null) }}
-                className="flex size-8 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted transition-colors"
-              >
-                <X className="size-4 stroke-2" />
-              </button>
+              <button type="button" onClick={resetImport} className="flex size-8 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted"><X className="size-4 stroke-2" /></button>
             </div>
 
-            {/* Drop zone */}
-            <label className="block cursor-pointer">
-              <input
-                type="file"
-                accept=".csv"
-                className="sr-only"
-                onChange={(e) => setImportFile(e.target.files?.[0] ?? null)}
-              />
-              <div className={cn(
-                'flex flex-col items-center gap-3 rounded-xl border-2 border-dashed py-10 transition-colors',
-                importFile ? 'border-primary/50 bg-primary/5' : 'border-border bg-muted/40 hover:border-primary/30'
-              )}>
-                <div className="flex size-10 items-center justify-center rounded-xl bg-muted">
-                  <FileUp className="size-5 stroke-[1.5] text-muted-foreground" />
+            {importCandidates === null ? (
+              <>
+                <textarea value={importText} onChange={(e) => setImportText(e.target.value)} rows={6}
+                  placeholder="Colle ta liste : noms, téléphones, emails… (ou le contenu d'un CSV)"
+                  className="w-full resize-none rounded-xl border border-border bg-background px-4 py-3 text-sm text-foreground outline-none placeholder:text-muted-foreground" />
+                <label className="mt-2 inline-flex cursor-pointer items-center gap-1.5 text-xs font-medium text-primary">
+                  <input type="file" accept=".csv,.txt" className="sr-only" onChange={(e) => { const f = e.target.files?.[0]; if (f) readCsvFile(f) }} />
+                  <FileUp className="size-3.5" /> …ou charger un fichier CSV / TXT
+                </label>
+                <div className="mt-4 flex gap-2.5">
+                  <button type="button" onClick={resetImport} className="flex-1 rounded-xl border border-border py-2.5 text-sm font-medium text-muted-foreground hover:bg-muted">Annuler</button>
+                  <button type="button" disabled={importBusy || !importText.trim()} onClick={analyzeImport}
+                    className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-primary py-2.5 text-sm font-bold text-primary-foreground disabled:opacity-40">
+                    {importBusy ? <Loader2 className="size-4 animate-spin" /> : <Sparkles className="size-4" />} Analyser avec Atlas
+                  </button>
                 </div>
-                {importFile ? (
-                  <div className="text-center">
-                    <p className="text-sm font-medium text-foreground">{importFile.name}</p>
-                    <p className="text-xs text-muted-foreground">{(importFile.size / 1024).toFixed(1)} Ko</p>
-                  </div>
-                ) : (
-                  <div className="text-center">
-                    <p className="text-sm font-medium text-foreground">Glisser un fichier ou cliquer</p>
-                    <p className="text-xs text-muted-foreground">Format CSV requis</p>
-                  </div>
-                )}
-              </div>
-            </label>
-
-            {/* Format info */}
-            <div className="mt-3 rounded-xl bg-muted px-4 py-3">
-              <p className="text-xs font-medium text-muted-foreground mb-1.5">Colonnes attendues :</p>
-              <p className="font-mono text-xs text-muted-foreground leading-relaxed">
-                prénom, nom, email, téléphone, ville, source, stage
-              </p>
-            </div>
-
-            {/* Actions */}
-            <div className="mt-4 flex gap-2.5">
-              <button
-                type="button"
-                onClick={() => { setImportModalOpen(false); setImportFile(null) }}
-                className="flex-1 rounded-xl border border-border py-2.5 text-sm font-medium text-muted-foreground hover:bg-muted transition-colors"
-              >
-                Annuler
-              </button>
-              <button
-                type="button"
-                disabled={!importFile}
-                onClick={() => {
-                  setImportModalOpen(false)
-                  setImportFile(null)
-                  toast.success("Import lancé — les contacts seront ajoutés sous peu.")
-                }}
-                className="flex-1 rounded-xl bg-primary py-2.5 text-sm font-bold text-primary-foreground disabled:opacity-40 hover:bg-primary/90 transition-colors"
-              >
-                Importer
-              </button>
-            </div>
+              </>
+            ) : (
+              <>
+                <div className="mb-2 flex items-center justify-between text-xs text-muted-foreground">
+                  <span><span className="font-bold text-foreground">{importCandidates.filter((c) => c.selected).length}</span> sélectionné(s)</span>
+                  <span>{importCandidates.filter((c) => c.duplicate).length} doublon(s) détecté(s)</span>
+                </div>
+                <div className="-mx-1 flex-1 space-y-1.5 overflow-y-auto px-1">
+                  {importCandidates.map((c, i) => (
+                    <button type="button" key={i} onClick={() => setImportCandidates((list) => (list ?? []).map((x, j) => (j === i ? { ...x, selected: !x.selected } : x)))}
+                      className={cn('flex w-full items-center gap-3 rounded-xl border px-3 py-2.5 text-left', c.selected ? 'border-primary/40 bg-primary/5' : 'border-border bg-background')}>
+                      <span className={cn('flex size-5 shrink-0 items-center justify-center rounded-md border', c.selected ? 'border-primary bg-primary text-primary-foreground' : 'border-border')}>{c.selected && <Check className="size-3.5" />}</span>
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-medium text-foreground">{`${c.firstName} ${c.lastName}`.trim() || 'Sans nom'}{c.duplicate && <span className="ml-2 rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-bold text-amber-700">doublon</span>}</p>
+                        <p className="truncate text-xs text-muted-foreground">{[c.phone, c.email].filter(Boolean).join(' · ') || '—'}</p>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+                <div className="mt-4 flex gap-2.5">
+                  <button type="button" onClick={() => setImportCandidates(null)} className="flex-1 rounded-xl border border-border py-2.5 text-sm font-medium text-muted-foreground hover:bg-muted">Retour</button>
+                  <button type="button" disabled={importBusy} onClick={commitImport}
+                    className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-primary py-2.5 text-sm font-bold text-primary-foreground disabled:opacity-40">
+                    {importBusy && <Loader2 className="size-4 animate-spin" />} Importer {importCandidates.filter((c) => c.selected).length}
+                  </button>
+                </div>
+              </>
+            )}
           </div>
         </div>
       )}

@@ -6,8 +6,8 @@ import { db } from '@/lib/db'
 function toStage(c: { kind: string; prospectStage: string | null; clientStage: string | null; partnerStage: string | null }) {
   if (c.kind === 'CLIENT') return 'client'
   if (c.kind === 'PARTENAIRE') return 'partenaire'
-  if (c.prospectStage === 'CHAUD') return 'chaud'
-  if (c.prospectStage === 'QUALIFIE' || c.prospectStage === 'CONTACTE') return 'prospect'
+  if (c.prospectStage === 'CLOSING') return 'closing'
+  if (c.prospectStage === 'INVITATION' || c.prospectStage === 'PRESENTATION' || c.prospectStage === 'SUIVI') return 'prospect'
   return 'nouveau'
 }
 
@@ -69,9 +69,13 @@ export async function POST(req: Request) {
   if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const body = await req.json()
-  const { name, phone, email, city, source, stage, kind, note, businessId } = body
+  const { name, firstName, lastName, gender, profession, education, phone, phone2, email, address, address2, postal, city, country, source, stage, kind, note, businessId } = body
 
-  if (!name?.trim()) return NextResponse.json({ error: 'name required' }, { status: 400 })
+  // Nom : composé du prénom+nom si fournis (aligné profil), sinon le name brut
+  const composedName = (firstName || lastName)
+    ? `${(firstName ?? '').trim()} ${(lastName ?? '').trim()}`.trim()
+    : (name ?? '').trim()
+  if (!composedName) return NextResponse.json({ error: 'name required' }, { status: 400 })
 
   const business = businessId
     ? await db.userMlmBusiness.findFirst({ where: { id: businessId, userId: session.user.id } })
@@ -86,15 +90,15 @@ export async function POST(req: Request) {
 
   const s = stage ?? 'nouveau'
   if (s === 'client') { dbKind = 'CLIENT'; clientStage = 'C_NOUVEAU' }
-  else if (s === 'partenaire') { dbKind = 'PARTENAIRE'; partnerStage = 'INTEGRATION' }
+  else if (s === 'partenaire') { dbKind = 'PARTENAIRE'; partnerStage = 'DEMARRAGE' }
   else {
     dbKind = 'PROSPECT'
-    if (s === 'chaud') prospectStage = 'CHAUD'
-    else if (s === 'prospect') prospectStage = 'QUALIFIE'
+    if (s === 'closing') prospectStage = 'CLOSING'
+    else if (s === 'prospect') prospectStage = 'SUIVI'
     else prospectStage = 'NOUVEAU'
   }
 
-  const initials = name.split(' ').map((w: string) => w[0]).join('').slice(0, 2).toUpperCase()
+  const initials = composedName.split(' ').map((w: string) => w[0]).join('').slice(0, 2).toUpperCase()
   const accents = ['#F97316','#14B8A6','#8B5CF6','#3B82F6','#22C55E','#EF4444']
   const accent = accents[Math.floor(Math.random() * accents.length)]
 
@@ -102,12 +106,22 @@ export async function POST(req: Request) {
     data: {
       userId: session.user.id,
       mlmBusinessId: business.id,
-      name: name.trim(),
+      name: composedName,
+      firstName: firstName?.trim() || null,
+      lastName: lastName?.trim() || null,
+      gender: gender?.trim() || null,
+      profession: profession?.trim() || null,
+      education: education?.trim() || null,
       initials,
       accent,
       phone: phone ?? null,
+      phone2: phone2 ?? null,
       email: email ?? null,
+      address: address ?? null,
+      address2: address2 ?? null,
+      postal: postal ?? null,
       city: city ?? null,
+      country: country ?? null,
       source: source?.toUpperCase() ?? 'MANUEL',
       kind: dbKind as any,
       prospectStage: prospectStage as any,

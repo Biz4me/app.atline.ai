@@ -1,11 +1,11 @@
 'use client'
 
+import { useState } from 'react'
 import { AppHeader } from '@/components/app-header'
 import { Card } from '@/components/card'
 import { DiscAvatar } from '@/components/disc-avatar'
 import { Bell, UserPlus, MessageCircle, TrendingUp, Award, Mic, CheckCircle2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { contacts } from '@/lib/data'
 
 type Notif = {
   id: string
@@ -72,7 +72,7 @@ const notifications: Notif[] = [
   {
     id: 'n6',
     type: 'aria',
-    title: 'ARIA · Entraînement disponible',
+    title: 'Aria · Entraînement disponible',
     body: "Tu n'as pas simulé d'appel depuis 3 jours. Prépare ta prochaine conversation.",
     time: 'Il y a 2 j',
     read: true,
@@ -100,23 +100,39 @@ const notifications: Notif[] = [
   },
 ]
 
-function NotifList({ unreadCount }: { unreadCount: number }) {
+function NotifList() {
+  const [items, setItems] = useState<Notif[]>(notifications)
+  const [showAll, setShowAll] = useState(false)
+  const unread = items.filter((n) => !n.read)
+  const list = showAll ? items : unread
+
+  const markAll = () => setItems((xs) => xs.map((n) => ({ ...n, read: true })))
+  const markOne = (id: string) => setItems((xs) => xs.map((n) => (n.id === id ? { ...n, read: true } : n)))
+
   return (
     <div className="flex flex-col gap-4">
-      {unreadCount > 0 && (
-        <div className="flex items-center justify-between">
-          <p className="text-sm font-semibold text-foreground">{unreadCount} non lues</p>
-          <button type="button" className="text-xs font-semibold text-primary">
-            Tout marquer comme lu
-          </button>
+      <div className="flex items-center justify-between gap-2">
+        <p className="text-sm font-semibold text-foreground">
+          {showAll ? `${items.length} notification${items.length > 1 ? 's' : ''}` : `${unread.length} non lue${unread.length > 1 ? 's' : ''}`}
+        </p>
+        <div className="flex items-center gap-3">
+          {unread.length > 0 && <button type="button" onClick={markAll} className="text-xs font-semibold text-primary">Tout marquer comme lu</button>}
+          <button type="button" onClick={() => setShowAll((v) => !v)} className="text-xs font-semibold text-muted-foreground">{showAll ? 'Non lues' : 'Historique'}</button>
         </div>
-      )}
+      </div>
 
+      {list.length === 0 ? (
+        <div className="flex flex-col items-center gap-2 rounded-2xl border border-border bg-surface px-4 py-10 text-center">
+          <CheckCircle2 className="size-8 text-success" />
+          <p className="text-sm text-muted-foreground">Tu es à jour — aucune notification non lue.</p>
+        </div>
+      ) : (
       <Card className="divide-y divide-border p-0">
-        {notifications.map((notif) => (
+        {list.map((notif) => (
           <button
             key={notif.id}
             type="button"
+            onClick={() => markOne(notif.id)}
             className={cn(
               'flex w-full items-start gap-3 px-4 py-3.5 text-left transition-colors active:bg-muted',
               !notif.read && 'bg-primary/[0.03]'
@@ -152,12 +168,18 @@ function NotifList({ unreadCount }: { unreadCount: number }) {
           </button>
         ))}
       </Card>
+      )}
     </div>
   )
 }
 
-export default function NotificationsPage() {
-  const unreadCount = notifications.filter((n) => !n.read).length
+export default function NotificationsPage() { return <NotificationsView /> }
+
+export function NotificationsView({ embedded = false, onClose }: { embedded?: boolean; onClose?: () => void }) {
+  // Mode panneau (overlay topbar) — pas de header : la topbar reste visible au-dessus
+  if (embedded) {
+    return <div className="px-4 pt-4 pb-6"><NotifList /></div>
+  }
 
   return (
     <>
@@ -165,14 +187,14 @@ export default function NotificationsPage() {
       <div className="lg:hidden">
         <AppHeader title="Notifications" back showActions={false} />
         <div className="px-4 pt-4 pb-8">
-          <NotifList unreadCount={unreadCount} />
+          <NotifList />
         </div>
       </div>
 
       {/* ── DESKTOP ONLY ── */}
       <div className="hidden lg:block">
         <div className="px-8 pt-8 pb-8 max-w-2xl mx-auto">
-          <NotifList unreadCount={unreadCount} />
+          <NotifList />
         </div>
       </div>
     </>
