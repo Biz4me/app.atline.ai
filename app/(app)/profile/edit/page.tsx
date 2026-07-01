@@ -1,8 +1,8 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
-import { X, ChevronDown, Check, Loader2, User as UserIcon, MapPin, Sparkles, Target, Camera, Trash2, Share2 } from 'lucide-react'
+import { ChevronLeft, ChevronDown, Check, Loader2, User as UserIcon, MapPin, Sparkles, Target, Camera, Trash2, Share2 } from 'lucide-react'
 import { signOut } from 'next-auth/react'
 import { Card } from '@/components/card'
 import { SelectMenu } from '@/components/select-menu'
@@ -18,7 +18,7 @@ const DRAFT_KEY = 'profile_draft_v1' // état en cours (saisie + rubrique ouvert
 const normGender = (g: string) => (g === 'Homme' ? 'M' : g === 'Femme' ? 'F' : g === 'Autre' || g === 'Neutre' ? 'N' : g)
 
 const inputCls =
-  'w-full rounded-xl border border-border bg-background px-4 py-[7px] text-lg text-foreground outline-none placeholder:text-muted-foreground focus:border-muted-foreground/40'
+  'w-full rounded-xl border border-border bg-background px-4 py-[7px] text-lg text-foreground outline-none placeholder:text-muted-foreground'
 
 type Social = { key: string; label: string; color: string; placeholder: string }
 // 5 principaux visibles + 4 optionnels repliés (le 0/9 décourageait)
@@ -110,11 +110,6 @@ export default function ProfileEditPage() {
   const [open, setOpen] = useState<Record<string, boolean>>({})
   // Accordéon exclusif : ouvrir une rubrique ferme les autres
   const toggle = (k: string) => setOpen((o) => ({ [k]: !o[k] }))
-  // Fermer (croix) → revenir en arrière en redéployant le menu « Plus » (drapeau lu par le TopBar)
-  const closeToMenu = () => {
-    try { sessionStorage.setItem('reopen_plus', '1') } catch { /* ignore */ }
-    router.back()
-  }
 
   useEffect(() => {
     // Restaure l'état en cours (saisie + rubrique ouverte) → survit au rafraîchissement
@@ -237,12 +232,12 @@ export default function ProfileEditPage() {
 
   return (
     <div className="mx-auto w-full max-w-2xl">
-      {/* Header retour */}
-      <div className="sticky top-0 z-10 flex items-center justify-between bg-background px-2 py-3">
-        <h1 className="pl-2 font-display text-lg font-semibold">{`${form.firstName} ${form.lastName}`.trim() || 'Mon profil'}</h1>
-        <button type="button" onClick={closeToMenu} aria-label="Fermer" className="flex size-9 items-center justify-center rounded-full text-muted-foreground active:bg-muted">
-          <X className="size-5" />
+      {/* Header — titre centré + flèche retour (comme les pages du hub compte) */}
+      <div className="sticky top-0 z-10 relative flex items-center justify-center bg-background/90 px-4 py-3 backdrop-blur" style={{ paddingTop: 'max(0.75rem, env(safe-area-inset-top))' }}>
+        <button type="button" onClick={() => router.back()} aria-label="Retour" className="absolute left-2 flex size-9 items-center justify-center rounded-full text-foreground active:bg-muted">
+          <ChevronLeft className="size-5 stroke-[1.5]" />
         </button>
+        <h1 className="text-lg font-semibold text-foreground">Profil</h1>
       </div>
 
       {loading ? (
@@ -360,11 +355,9 @@ export default function ProfileEditPage() {
           <Collapsible icon={MapPin} title="Adresse" filled={sec.adresse} total={tot.adresse} open={!!open.adresse} onToggle={() => toggle('adresse')} onSave={save} saving={saving}>
             <input className={inputCls} value={form.address} onChange={(e) => set('address', e.target.value)} placeholder="Adresse" />
             <input className={inputCls} value={form.address2} onChange={(e) => set('address2', e.target.value)} placeholder="Complément (bâtiment, étage…)" />
-            <div className="grid grid-cols-[1fr_2fr] gap-3">
-              <input className={inputCls} value={form.postal} onChange={(e) => set('postal', e.target.value)} placeholder="Code postal" />
-              <input className={inputCls} value={form.city} onChange={(e) => set('city', e.target.value)} placeholder="Ville" />
-            </div>
-            <input className={inputCls} value={form.country} onChange={(e) => set('country', e.target.value)} placeholder="Pays" />
+            <input className={inputCls} value={form.postal} onChange={(e) => set('postal', e.target.value)} placeholder="Code postal" />
+            <input className={inputCls} value={form.city} onChange={(e) => set('city', e.target.value)} placeholder="Ville" />
+            <SelectMenu className={inputCls} placeholder="Pays" value={form.country} onChange={(v) => set('country', v)} options={[{ value: 'France', label: 'France' }, { value: 'Espagne', label: 'Espagne' }, { value: 'Allemagne', label: 'Allemagne' }, { value: 'Italie', label: 'Italie' }]} />
           </Collapsible>
           </div>
 
