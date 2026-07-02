@@ -35,6 +35,14 @@ function TypingDots() {
   )
 }
 
+// Au rechargement d'une conversation, certains messages « utilisateur » sont des prompts internes
+// (cadre de session, contexte du plan) envoyés au LLM avec un libellé propre. On restitue ce libellé.
+const displayUserText = (content: string): string => {
+  if (content.startsWith('[SESSION_POURQUOI]')) return 'Je veux travailler mon pourquoi avec toi'
+  if (content.startsWith('Voici mes priorités') || content.startsWith('Avant de courir après les contacts') || content.startsWith("Je n'ai aucune priorité")) return 'Mon plan du jour'
+  return content
+}
+
 const suggestions = [
   'Comment relancer un prospect tiède ?',
   'Prépare mon prochain closing',
@@ -133,7 +141,7 @@ export default function AtlasPage() {
           setMsgs(
             (d.messages ?? []).map((m: { role: string; content: string }) => ({
               from: m.role === 'USER' ? 'user' : 'atlas',
-              text: m.content,
+              text: m.role === 'USER' ? displayUserText(m.content) : m.content,
             })),
           )
           scrollToBottom()
