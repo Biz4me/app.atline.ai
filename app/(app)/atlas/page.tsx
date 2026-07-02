@@ -274,6 +274,18 @@ export default function AtlasPage() {
     atBottomRef.current = true
     scrollToBottom()
 
+    // Machine à écrire — même rythme que l'onboarding (22ms/car), indépendant de l'arrivée des tokens
+    let full = ''
+    let shown = 0
+    let streamDone = false
+    let resolveDone: () => void = () => {}
+    const donePromise = new Promise<void>((res) => { resolveDone = res })
+    const tick = () => {
+      if (shown < full.length) { shown++; setLastAtlas(full.slice(0, shown)); autoScroll(); setTimeout(tick, 22) }
+      else if (!streamDone) setTimeout(tick, 40)
+      else { setStreaming(false); resolveDone() }
+    }
+
     try {
       const resp = await fetch('/api/atlas/chat', {
         method: 'POST',
@@ -296,7 +308,7 @@ export default function AtlasPage() {
       const reader = resp.body.getReader()
       const decoder = new TextDecoder()
       let buffer = ''
-      let acc = ''
+      setTimeout(tick, 120)
 
       while (true) {
         const { done, value } = await reader.read()
@@ -310,20 +322,19 @@ export default function AtlasPage() {
           if (payload === '[DONE]') continue
           try {
             const data = JSON.parse(payload)
-            if (data.text) {
-              acc += data.text
-              setLastAtlas(acc)
-              autoScroll()
-            }
+            if (data.text) full += data.text
           } catch {
             /* ligne SSE incomplète, ignorée */
           }
         }
       }
-      if (!acc) setLastAtlas("Je n'ai pas de réponse pour l'instant. Reformule ta question ?")
+      if (!full) full = "Je n'ai pas de réponse pour l'instant. Reformule ta question ?"
+      streamDone = true
+      await donePromise
     } catch {
       setLastAtlas("Désolé, je n'ai pas pu répondre à l'instant. Réessaie dans un moment.")
-    } finally {
+      streamDone = true
+      resolveDone()
       setStreaming(false)
     }
   }
@@ -376,12 +387,25 @@ export default function AtlasPage() {
   // Sélection d'un rond : retire les choix, renvoie le choix en bulle, et branche (machine à états du flux).
   const handleChoice = (item: PlanItem, value: string, label: string, idx: number) => {
     setMsgs((prev) => [...prev.map((m, j) => (j === idx ? { ...m, choices: undefined } : m)), { from: 'user', text: label }])
+    // Nouvelle info donnée par l'utilisateur → Atlas demande s'il l'enregistre, le fait, puis confirme.
     if (value.startsWith('know:')) {
       const market = value.slice(5)
-      fetch(`/api/contacts/${item.contactId}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ market }) }).catch(() => {})
-      const ack = market === 'CHAUD' ? 'Parfait, un proche — on peut être direct et sincère.' : market === 'FROID' ? 'Ok, on se connaît peu — on reste léger, zéro pression.' : 'Noté.'
-      setMsgs((prev) => [...prev, { from: 'atlas', text: ack }])
-      setTimeout(() => askChannel({ ...item, market }), 350)
+      const ack = market === 'CHAUD' ? 'Un proche — on pourra être direct et sincère.' : market === 'FROID' ? 'Vous vous connaissez peu — on restera léger.' : 'Une connaissance, noté.'
+      setMsgs((prev) => [...prev, { from: 'atlas', text: `${ack} Tu veux que je l'enregistre dans la fiche de ${item.prenom} ?`, choices: [{ label: 'Oui, enregistre-la', value: `save:${market}` }, { label: 'Non, garde juste pour maintenant', value: `nosave:${market}` }], item }])
+      setTimeout(scrollToBottom, 60)
+      return
+    }
+    if (value.startsWith('save:')) {
+      const market = value.slice(5)
+      fetch(`/api/contacts/${item.contactId}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ market }) })
+        .then((r) => { setMsgs((prev) => [...prev, { from: 'atlas', text: r.ok ? `C'est noté dans sa fiche ✓` : `Je n'ai pas réussi à l'enregistrer, mais on continue.` }]); setTimeout(() => askChannel({ ...item, market }), 400) })
+        .catch(() => { setMsgs((prev) => [...prev, { from: 'atlas', text: `Je n'ai pas réussi à l'enregistrer, mais on continue.` }]); setTimeout(() => askChannel({ ...item, market }), 400) })
+      return
+    }
+    if (value.startsWith('nosave:')) {
+      const market = value.slice(7)
+      setMsgs((prev) => [...prev, { from: 'atlas', text: 'Ok, je ne le note pas.' }])
+      setTimeout(() => askChannel({ ...item, market }), 300)
       return
     }
     if (value === 'chan:message') {
