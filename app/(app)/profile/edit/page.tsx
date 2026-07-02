@@ -10,7 +10,6 @@ import { PersonalityQuiz } from '@/components/personality-quiz'
 import { toast } from 'sonner'
 
 const PERSONALITY_COLORS: Record<string, string> = { ROUGE: '#EF4444', VERT: '#22C55E', BLEU: '#3B82F6', JAUNE: '#F4B342' }
-const PERSONALITY_LABELS: Record<string, string> = { ROUGE: 'Rouge', VERT: 'Vert', BLEU: 'Bleu', JAUNE: 'Jaune' }
 
 const EDUCATIONS = ['Primaire et secondaire', 'Supérieur court (Bac+2/3)', 'Supérieur long (Bac+5 et +)']
 const DRAFT_KEY = 'profile_draft_v1' // état en cours (saisie + rubrique ouverte), restauré au refresh (sessionStorage)
@@ -353,7 +352,7 @@ export default function ProfileEditPage() {
               <div className="flex items-center justify-between rounded-xl border border-border bg-background px-4 py-3">
                 <div className="flex items-center gap-2.5">
                   <span className="size-6 rounded-full" style={{ backgroundColor: PERSONALITY_COLORS[form.personality] }} />
-                  <span className="text-lg font-medium text-foreground">{PERSONALITY_LABELS[form.personality]}</span>
+                  <span className="text-lg font-medium text-foreground">Personnalité</span>
                 </div>
                 <button type="button" onClick={() => setQuizOpen(true)} className="text-base font-semibold text-primary">Refaire le test</button>
               </div>
