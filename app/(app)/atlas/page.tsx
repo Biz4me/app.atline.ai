@@ -13,9 +13,7 @@ const BUCKET_LABEL: Record<string, string> = { PRESENTER: 'Présenter', FORMER: 
 const TH = String.fromCharCode(0x202F), NB = String.fromCharCode(0xA0), EM = String.fromCharCode(0x2014)
 const frText = (t: string) => t.replace(/ ([:;!?])/g, TH + '$1').replace(new RegExp(' ' + EM + ' ', 'g'), NB + EM + ' ')
 
-import { AtlasPlanCard } from '@/components/atlas-plan-card'
-
-type Msg = { from: 'user' | 'atlas'; text: string; chips?: string[]; card?: 'plan' }
+type Msg = { from: 'user' | 'atlas'; text: string; chips?: string[] }
 
 // Indicateur « Atlas réfléchit » — 3 points en cascade
 function TypingDots() {
@@ -327,6 +325,25 @@ export default function AtlasPage() {
     }
   }
 
+  // « Mon plan du jour » : Atlas présente les priorités EN CONVERSATION (aucune carte).
+  const showPlan = async () => {
+    if (streaming) return
+    let ctx = 'Donne-moi mon plan du jour.'
+    try {
+      const r = await fetch('/api/plan/today')
+      const d = r.ok ? await r.json() : null
+      const items: { headline: string; reason: string; prenom: string; stage: string }[] = d?.items ?? []
+      if (items.length === 0) {
+        ctx = "Je n'ai aucune priorité urgente aujourd'hui d'après mes contacts. Dis-moi à ta voix, comme un coach, comment on avance (prospecter, enrichir ma liste, me former…) — une action à la fois."
+      } else {
+        ctx = 'Voici mes priorités du jour, déjà calculées et classées :\n'
+          + items.map((it, i) => `${i + 1}. ${it.headline} — ${it.reason} (contact : ${it.prenom}, étape : ${it.stage || 'à définir'})`).join('\n')
+          + "\n\nPrésente-les-moi à ta voix comme un coach — ne me balance pas une liste, parle-moi. Commence par la plus importante : dis-moi l'état d'esprit et propose-moi soit de m'y attaquer, soit de me préparer (m'entraîner avec Aria / un script). Reste sur ce contact tant qu'on ne l'a pas traité, puis on passe au suivant."
+      }
+    } catch { /* fallback ctx par défaut */ }
+    sendMsg(ctx, 'Mon plan du jour')
+  }
+
   const newSession = () => {
     closeHist()
     localStorage.removeItem('atlas-last-conv')
@@ -486,7 +503,7 @@ export default function AtlasPage() {
             {!input.trim() && (
               <div className="mx-auto flex w-full max-w-md flex-col gap-0.5">
                 {[
-                  { icon: Zap, label: 'Mon plan du jour', run: () => { setMsgs((prev) => [...prev, { from: 'user', text: 'Mon plan du jour' }, { from: 'atlas', text: '', card: 'plan' }]); setTimeout(scrollToBottom, 50) } },
+                  { icon: Zap, label: 'Mon plan du jour', run: () => showPlan() },
                   { icon: Target, label: 'Mon prochain pas', run: () => sendMsg('Quel est mon prochain pas ?') },
                   { icon: Mic, label: 'Simuler un appel avec Aria', run: () => router.push('/aria') },
                   { icon: SquarePen, label: 'Créer un post avec Nova', run: () => router.push('/nova') },
@@ -517,8 +534,6 @@ export default function AtlasPage() {
                   <div className="max-w-[82%] whitespace-pre-line rounded-2xl rounded-br-md bg-primary px-3.5 py-2.5 text-lg leading-[1.4] text-primary-foreground lg:text-sm">
                     {frText(m.text)}
                   </div>
-                ) : m.card === 'plan' ? (
-                  <AtlasPlanCard onPick={(item) => sendMsg(`Je m'attaque à cette action de mon plan : « ${item.headline} » — ${item.reason} (contact : ${item.prenom}, étape : ${item.stage || 'à définir'}). Coache-moi à ta façon, en restant sur ce contact tout le long : dis-moi l'état d'esprit, et si j'hésite propose-moi de m'entraîner avec Aria ou de préparer un script avant que j'y aille.`, item.headline)} />
                 ) : m.text === '' ? (
                   <TypingDots />
                 ) : (
