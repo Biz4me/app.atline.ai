@@ -12,6 +12,13 @@ import { toast } from 'sonner'
 const PERSONALITY_COLORS: Record<string, string> = { ROUGE: '#EF4444', VERT: '#22C55E', BLEU: '#3B82F6', JAUNE: '#F4B342' }
 
 const EDUCATIONS = ['Primaire et secondaire', 'Supérieur court (Bac+2/3)', 'Supérieur long (Bac+5 et +)']
+
+// Date de naissance en 3 déroulants (jour / mois / année) — style SelectMenu, sans calendrier
+const DOB_DAYS = Array.from({ length: 31 }, (_, i) => ({ value: String(i + 1).padStart(2, '0'), label: String(i + 1) }))
+const DOB_MONTHS = ['Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin', 'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre']
+  .map((m, i) => ({ value: String(i + 1).padStart(2, '0'), label: m }))
+const DOB_NOW_YEAR = new Date().getFullYear()
+const DOB_YEARS = Array.from({ length: DOB_NOW_YEAR - 1924 }, (_, i) => ({ value: String(DOB_NOW_YEAR - i), label: String(DOB_NOW_YEAR - i) }))
 const DRAFT_KEY = 'profile_draft_v1' // état en cours (saisie + rubrique ouverte), restauré au refresh (sessionStorage)
 // Harmonise le genre sur M/F/N (rattrape les anciennes valeurs Homme/Femme/Autre)
 const normGender = (g: string) => (g === 'Homme' ? 'M' : g === 'Femme' ? 'F' : g === 'Autre' || g === 'Neutre' ? 'N' : g)
@@ -150,8 +157,21 @@ export default function ProfileEditPage() {
   const setSocial = (k: string, v: string) => setForm((f) => ({ ...f, socials: { ...f.socials, [k]: v } }))
   const setCoaching = (k: string, v: string) => setForm((f) => ({ ...f, coaching: { ...f.coaching, [k]: v } }))
 
-  // Date de naissance : ouvre le picker natif via un input caché
-  const birthDateRef = useRef<HTMLInputElement>(null)
+  // Date de naissance : 3 déroulants (jour / mois / année), recomposés en YYYY-MM-DD
+  const [dob, setDob] = useState<{ d: string; m: string; y: string }>({ d: '', m: '', y: '' })
+  const dobInit = useRef(false)
+  useEffect(() => {
+    if (!dobInit.current && form.birthDate) {
+      const [y, m, d] = form.birthDate.split('-')
+      setDob({ y: y ?? '', m: m ?? '', d: d ?? '' })
+      dobInit.current = true
+    }
+  }, [form.birthDate])
+  const setDobPart = (patch: Partial<{ d: string; m: string; y: string }>) => {
+    const next = { ...dob, ...patch }
+    setDob(next)
+    set('birthDate', next.y && next.m && next.d ? `${next.y}-${next.m}-${next.d}` : '')
+  }
 
   // Pseudo : vérif de dispo en direct (débounce) via /api/auth/username
   const [unameStatus, setUnameStatus] = useState<'idle' | 'checking' | 'ok' | 'taken' | 'invalid'>('idle')
@@ -332,14 +352,11 @@ export default function ProfileEditPage() {
               {unameStatus === 'ok' && <p className="mt-1 px-1 text-sm text-[#22C55E]">Disponible</p>}
             </div>
             <SelectMenu className={inputCls} placeholder="Genre" value={form.gender} onChange={(v) => set('gender', v)} options={[{ value: 'M', label: 'Homme' }, { value: 'F', label: 'Femme' }, { value: 'N', label: 'Neutre' }]} />
-            {/* Date de naissance — bouton + input date caché (picker natif) */}
-            <div className="relative">
-              <button type="button" onClick={() => birthDateRef.current?.showPicker?.()} className={`${inputCls} flex items-center text-left`}>
-                <span className={form.birthDate ? 'text-foreground' : 'text-muted-foreground'}>
-                  {form.birthDate ? new Date(form.birthDate + 'T12:00:00').toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' }) : 'Date de naissance'}
-                </span>
-              </button>
-              <input ref={birthDateRef} type="date" value={form.birthDate} onChange={(e) => set('birthDate', e.target.value)} max={new Date().toISOString().slice(0, 10)} className="pointer-events-none absolute inset-0 opacity-0" />
+            {/* Date de naissance — 3 déroulants (jour / mois / année), sans calendrier ni weekend */}
+            <div className="grid grid-cols-[1fr_1.5fr_1.2fr] gap-2">
+              <SelectMenu className={inputCls} placeholder="Jour" value={dob.d} onChange={(v) => setDobPart({ d: v })} options={DOB_DAYS} />
+              <SelectMenu className={inputCls} placeholder="Mois" value={dob.m} onChange={(v) => setDobPart({ m: v })} options={DOB_MONTHS} />
+              <SelectMenu className={inputCls} placeholder="Année" value={dob.y} onChange={(v) => setDobPart({ y: v })} options={DOB_YEARS} />
             </div>
             <input className={inputCls} type="tel" value={form.phone} onChange={(e) => set('phone', e.target.value)} placeholder="Téléphone" />
             <input className={inputCls} type="tel" value={form.phone2} onChange={(e) => set('phone2', e.target.value)} placeholder="Téléphone secondaire" />
