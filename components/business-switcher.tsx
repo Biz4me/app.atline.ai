@@ -353,7 +353,7 @@ export function BusinessSwitcher({ collapsed, variant = 'sheet', fullWidth = fal
         {addPageMounted && typeof window !== 'undefined' && createPortal(
           <div
             className={cn(
-              'fixed inset-0 z-[200] flex flex-col bg-background transition-transform duration-300 ease-out',
+              'fixed inset-0 z-[200] mx-auto flex max-w-[480px] flex-col bg-background transition-transform duration-300 ease-out lg:max-w-none',
               addPageVisible ? 'translate-x-0' : 'translate-x-full',
             )}
             style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}

@@ -378,7 +378,7 @@ export default function LessonPage() {
 
   return (
     <div
-      className={isQuizPage ? "fixed inset-0 z-[60] flex flex-col bg-background animate-slide-in-right" : "min-h-screen bg-background animate-slide-in-right"}
+      className={isQuizPage ? "fixed inset-0 z-[60] mx-auto flex max-w-[480px] flex-col bg-background animate-slide-in-right lg:max-w-none" : "min-h-screen bg-background animate-slide-in-right"}
     >
       {/* Header sticky */}
       <div

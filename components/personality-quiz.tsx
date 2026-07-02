@@ -206,7 +206,7 @@ export function PersonalityQuiz({ onClose, onResult, firstName = '', gender = ''
   const progress = phase === 'quiz' ? (step + 1) / questions.length : 1
 
   return (
-    <div className="fixed inset-0 z-[80] flex flex-col bg-background animate-slide-in-right" style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}>
+    <div className="fixed inset-0 z-[80] mx-auto flex max-w-[480px] flex-col bg-background animate-slide-in-right lg:max-w-none" style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}>
       {/* Header + progression */}
       <div className="shrink-0" style={{ paddingTop: 'max(0.5rem, env(safe-area-inset-top))' }}>
         <div className="flex items-center justify-between px-2 py-2">

@@ -317,7 +317,7 @@ export default function SettingsSectionPage({ params }: { params: Promise<{ sect
 
   return (
     <div
-      className="lg:hidden fixed inset-0 z-[70] bg-background overflow-y-auto animate-slide-in-right"
+      className="lg:hidden fixed inset-0 z-[70] mx-auto max-w-[480px] bg-background overflow-y-auto animate-slide-in-right"
       style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
     >
       {/* Header */}

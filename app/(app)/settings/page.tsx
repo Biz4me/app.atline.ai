@@ -33,7 +33,7 @@ export default function SettingsPage() {
     <>
       {/* MOBILE ONLY — full screen overlay */}
       <div
-        className="lg:hidden fixed inset-0 z-[60] bg-background overflow-y-auto animate-slide-in-right"
+        className="lg:hidden fixed inset-0 z-[60] mx-auto max-w-[480px] bg-background overflow-y-auto animate-slide-in-right"
         style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
       >
         {/* Header */}
