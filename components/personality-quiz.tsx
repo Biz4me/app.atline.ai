@@ -1,7 +1,7 @@
 'use client'
 
 import { useMemo, useState, useEffect, useRef } from 'react'
-import { Check, X } from 'lucide-react'
+import { X } from 'lucide-react'
 
 type Color = 'ROUGE' | 'VERT' | 'BLEU' | 'JAUNE'
 
@@ -31,6 +31,14 @@ const PROFILES: Record<Color, Profile> = {
     caracterise: 'Relationnel et bienveillant — tu veux aider, sans pression.',
     adapte: "Atlas sera chaleureux, à l'écoute, et respectera ton rythme.",
   },
+}
+
+// Résultat exploitable hors quiz (carte profil) — archétype gendré + description statique
+export function describePersonality(color: string, gender: string) {
+  const p = (PROFILES as Record<string, Profile>)[color]
+  if (!p) return null
+  const archetype = gender === 'F' ? p.archetype.f : gender === 'N' ? p.archetype.n : p.archetype.m
+  return { name: p.name, color: p.color, archetype, text: `${p.caracterise} ${p.adapte}` }
 }
 
 const QUESTIONS: { prompt: string; options: { text: string; color: Color }[] }[] = [
@@ -217,9 +225,7 @@ export function PersonalityQuiz({ onClose, onResult, firstName = '', gender = ''
       {/* Résultat */}
       {phase === 'result' && result ? (
         <div className="flex flex-1 flex-col items-center px-6 pt-10 text-center">
-          <div className="grid size-24 place-items-center rounded-full text-3xl font-extrabold text-white" style={{ backgroundColor: PROFILES[result].color }}>
-            <Check className="size-10" />
-          </div>
+          <div className="size-24 shrink-0 rounded-full" style={{ backgroundColor: PROFILES[result].color }} />
           <h1 className="mt-5 font-display text-[27px] font-extrabold leading-tight" style={{ color: PROFILES[result].color }}>
             Tu es {arche(result)}
           </h1>

@@ -6,7 +6,7 @@ import { ChevronLeft, ChevronDown, Check, X, Loader2, User as UserIcon, MapPin, 
 import { signOut } from 'next-auth/react'
 import { Card } from '@/components/card'
 import { SelectMenu } from '@/components/select-menu'
-import { PersonalityQuiz } from '@/components/personality-quiz'
+import { PersonalityQuiz, describePersonality } from '@/components/personality-quiz'
 import { toast } from 'sonner'
 
 const PERSONALITY_COLORS: Record<string, string> = { ROUGE: '#EF4444', VERT: '#22C55E', BLEU: '#3B82F6', JAUNE: '#F4B342' }
@@ -111,6 +111,7 @@ export default function ProfileEditPage() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [quizOpen, setQuizOpen] = useState(false)
+  const [persoOpen, setPersoOpen] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [moreSocials, setMoreSocials] = useState(false)
@@ -374,12 +375,24 @@ export default function ProfileEditPage() {
           <Collapsible icon={Sparkles} title="Qui tu es" filled={sec.quitues} total={tot.quitues} open={!!open.quitues} onToggle={() => toggle('quitues')}>
             <AutoTextarea className={`${inputCls} min-h-[88px] resize-none overflow-hidden`} value={form.bio} onChange={(v) => set('bio', v)} placeholder="Bio — quelques mots sur toi…" />
             {form.personality ? (
-              <div className="flex items-center justify-between rounded-xl border border-border bg-background px-4 py-3">
-                <div className="flex items-center gap-2.5">
-                  <span className="size-6 rounded-full" style={{ backgroundColor: PERSONALITY_COLORS[form.personality] }} />
-                  <span className="text-lg font-medium text-foreground">Personnalité</span>
+              <div className="overflow-hidden rounded-xl border border-border bg-background">
+                <div className="flex items-center gap-2.5 px-4 py-3">
+                  <button type="button" onClick={() => setPersoOpen((o) => !o)} className="flex min-w-0 flex-1 items-center gap-2.5 text-left">
+                    <span className="size-6 shrink-0 rounded-full" style={{ backgroundColor: PERSONALITY_COLORS[form.personality] }} />
+                    <span className="flex-1 text-lg font-medium text-foreground">Personnalité</span>
+                    <ChevronDown className={`size-4 shrink-0 text-muted-foreground transition-transform ${persoOpen ? 'rotate-180' : ''}`} />
+                  </button>
+                  <button type="button" onClick={() => setQuizOpen(true)} className="shrink-0 text-base font-semibold text-primary">Refaire le test</button>
                 </div>
-                <button type="button" onClick={() => setQuizOpen(true)} className="text-base font-semibold text-primary">Refaire le test</button>
+                {persoOpen && (() => {
+                  const info = describePersonality(form.personality, form.gender)
+                  return info ? (
+                    <div className="border-t border-border px-4 py-3">
+                      <p className="text-base font-semibold" style={{ color: info.color }}>{info.archetype}</p>
+                      <p className="mt-1 text-base leading-relaxed text-muted-foreground">{info.text}</p>
+                    </div>
+                  ) : null
+                })()}
               </div>
             ) : (
               <button
