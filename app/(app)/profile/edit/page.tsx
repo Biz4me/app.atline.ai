@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
-import { ChevronLeft, ChevronDown, Check, X, Loader2, User as UserIcon, MapPin, Sparkles, Target, Camera, Trash2, Share2 } from 'lucide-react'
+import { ChevronLeft, ChevronDown, Check, X, Loader2, User as UserIcon, Phone, Sparkles, Target, Camera, Trash2, Share2 } from 'lucide-react'
 import { signOut } from 'next-auth/react'
 import { Card } from '@/components/card'
 import { SelectMenu } from '@/components/select-menu'
@@ -282,14 +282,14 @@ export default function ProfileEditPage() {
   // Remplissage par rubrique (compteur / coche sur les cartes)
   const nf = (vals: (string | undefined)[]) => vals.filter((v) => v && String(v).trim()).length
   const sec = {
-    identite: nf([form.firstName, form.lastName, form.gender, form.birthDate, form.phone]),
+    identite: nf([form.firstName, form.lastName, form.gender, form.birthDate]),
     quitues: nf([form.bio, form.personality, form.coaching.passions]),
     coaching: nf([form.coaching.why, form.coaching.background, form.coaching.challenge, form.profession, form.education, form.coaching.availability, form.coaching.level]),
     socials: SOCIALS_MAIN.filter((s) => form.socials[s.key] && String(form.socials[s.key]).trim()).length,
-    adresse: nf([form.address, form.postal, form.city, form.country]),
+    adresse: nf([form.phone, form.address, form.postal, form.city, form.country]),
   }
   // Champs optionnels exclus du calcul (tél. secondaire, complément d'adresse) → 100 % réellement atteignable
-  const tot = { identite: 5, quitues: 3, coaching: 7, socials: SOCIALS_MAIN.length, adresse: 4 }
+  const tot = { identite: 4, quitues: 3, coaching: 7, socials: SOCIALS_MAIN.length, adresse: 5 }
   // Complétion = tout le profil (somme des rubriques) → le libellé « Profil complété » est honnête
   const totalFilled = sec.identite + sec.quitues + sec.coaching + sec.socials + sec.adresse
   const totalFields = tot.identite + tot.quitues + tot.coaching + tot.socials + tot.adresse
@@ -379,8 +379,6 @@ export default function ProfileEditPage() {
               <SelectMenu className={inputCls} placeholder="Mois" value={dob.m} onChange={(v) => setDobPart({ m: v })} options={DOB_MONTHS} />
               <SelectMenu className={inputCls} placeholder="Année" value={dob.y} onChange={(v) => setDobPart({ y: v })} options={DOB_YEARS} />
             </div>
-            <input className={inputCls} type="tel" inputMode="numeric" value={form.phone} onChange={(e) => set('phone', formatPhone(e.target.value))} placeholder="Téléphone" />
-            <input className={inputCls} type="tel" inputMode="numeric" value={form.phone2} onChange={(e) => set('phone2', formatPhone(e.target.value))} placeholder="Téléphone secondaire" />
           </Collapsible>
 
           {/* 2 — Qui tu es (personnalité — sert le ton des agents) */}
@@ -451,8 +449,10 @@ export default function ProfileEditPage() {
             )}
           </Collapsible>
 
-          {/* 5 — Adresse (administratif, en dernier) */}
-          <Collapsible icon={MapPin} title="Adresse" filled={sec.adresse} total={tot.adresse} open={!!open.adresse} onToggle={() => toggle('adresse')}>
+          {/* 5 — Coordonnées (tél + adresse) — aligné sur la fiche contact */}
+          <Collapsible icon={Phone} title="Coordonnées" filled={sec.adresse} total={tot.adresse} open={!!open.adresse} onToggle={() => toggle('adresse')}>
+            <input className={inputCls} type="tel" inputMode="numeric" value={form.phone} onChange={(e) => set('phone', formatPhone(e.target.value))} placeholder="Téléphone" />
+            <input className={inputCls} type="tel" inputMode="numeric" value={form.phone2} onChange={(e) => set('phone2', formatPhone(e.target.value))} placeholder="Téléphone secondaire" />
             <input className={inputCls} value={form.address} onChange={(e) => set('address', e.target.value)} placeholder="Adresse" />
             <input className={inputCls} value={form.address2} onChange={(e) => set('address2', e.target.value)} placeholder="Complément d'adresse" />
             <input className={inputCls} value={form.postal} onChange={(e) => set('postal', e.target.value)} placeholder="Code postal" />
