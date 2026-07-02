@@ -1,7 +1,7 @@
 'use client'
 
-import { useMemo, useState, useEffect } from 'react'
-import { ChevronLeft, Check, X } from 'lucide-react'
+import { useMemo, useState, useEffect, useRef } from 'react'
+import { Check, X } from 'lucide-react'
 
 type Color = 'ROUGE' | 'VERT' | 'BLEU' | 'JAUNE'
 
@@ -135,7 +135,19 @@ export function PersonalityQuiz({ onClose, onResult, firstName = '', gender = ''
     const p = PROFILES[result]
     const fallback = `${firstName ? firstName + ', ' : ''}tu es ${p.name} — ${arche(result)}. ${p.caracterise} ${p.adapte}`
     let cancelled = false
+    let full = ''
+    let shown = 0
+    let streamDone = false
     setRevealText('')
+
+    // Machine à écrire : révèle `full` char par char à 22ms (fluidité identique à l'onboarding)
+    const tick = () => {
+      if (cancelled) return
+      if (shown < full.length) { shown++; setRevealText(full.slice(0, shown)); setTimeout(tick, 22) }
+      else if (!streamDone) setTimeout(tick, 40) // rattrape le flux
+    }
+    setTimeout(tick, 200)
+
     ;(async () => {
       try {
         const r = await fetch('/api/onboarding/color-read', {
@@ -144,7 +156,7 @@ export function PersonalityQuiz({ onClose, onResult, firstName = '', gender = ''
           body: JSON.stringify({ user_first_name: firstName, color: result, answer: p.caracterise, gender: gender || 'M' }),
         })
         if (!r.ok || !r.body) throw new Error('no stream')
-        const reader = r.body.getReader(); const dec = new TextDecoder(); let buf = ''; let acc = ''
+        const reader = r.body.getReader(); const dec = new TextDecoder(); let buf = ''
         for (;;) {
           const { done, value } = await reader.read(); if (done) break
           buf += dec.decode(value, { stream: true })
@@ -153,17 +165,23 @@ export function PersonalityQuiz({ onClose, onResult, firstName = '', gender = ''
             const ln = buf.slice(0, idx).trim(); buf = buf.slice(idx + 2)
             if (!ln.startsWith('data:')) continue
             const pl = ln.slice(5).trim(); if (pl === '[DONE]') continue
-            try { const j = JSON.parse(pl); if (j.text) { acc += j.text; if (!cancelled) setRevealText(acc) } } catch { /* ignore */ }
+            try { const j = JSON.parse(pl); if (j.text) full += j.text } catch { /* ignore */ }
           }
         }
-        if (!acc && !cancelled) setRevealText(fallback)
-      } catch { if (!cancelled) setRevealText(fallback) }
+        if (!full) full = fallback
+      } catch { full = fallback }
+      finally { streamDone = true }
     })()
+
     return () => { cancelled = true }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [phase, result])
 
+  const busyRef = useRef(false)
   function answer(color: Color) {
+    if (busyRef.current) return // évite qu'un double-tap saute la question suivante
+    busyRef.current = true
+    setTimeout(() => { busyRef.current = false }, 280)
     if (phase === 'tie') { setResult(color); setPhase('result'); return }
     const next = [...answers, color]
     if (step < questions.length - 1) {
@@ -177,26 +195,14 @@ export function PersonalityQuiz({ onClose, onResult, firstName = '', gender = ''
     }
   }
 
-  function back() {
-    if (phase === 'quiz' && step > 0) {
-      setAnswers(answers.slice(0, -1))
-      setStep(step - 1)
-    } else {
-      onClose()
-    }
-  }
-
   const progress = phase === 'quiz' ? (step + 1) / questions.length : 1
 
   return (
     <div className="fixed inset-0 z-[80] flex flex-col bg-background animate-slide-in-right" style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}>
       {/* Header + progression */}
       <div className="shrink-0" style={{ paddingTop: 'max(0.5rem, env(safe-area-inset-top))' }}>
-        <div className="flex items-center gap-2 px-2 py-2">
-          <button type="button" onClick={back} aria-label="Précédent" className="flex size-9 items-center justify-center rounded-full text-muted-foreground active:bg-muted">
-            <ChevronLeft className="size-5" />
-          </button>
-          <p className="flex-1 text-lg font-semibold text-foreground">Ta couleur de personnalité</p>
+        <div className="flex items-center justify-between px-2 py-2">
+          <p className="pl-2 text-lg font-semibold text-foreground">Ta couleur de personnalité</p>
           <button type="button" onClick={onClose} aria-label="Fermer" className="flex size-9 items-center justify-center rounded-full text-muted-foreground active:bg-muted">
             <X className="size-5" />
           </button>
