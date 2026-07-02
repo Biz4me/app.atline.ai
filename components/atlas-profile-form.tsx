@@ -53,7 +53,11 @@ export function ProfileFormCard({ me, onSaved }: { me: Me; onSaved: (n: number) 
     if (touchedCoaching) payload.coaching = coaching
     try {
       const r = await fetch('/api/me', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
-      if (r.ok) { setDone(true); onSaved(filled.length) }
+      if (r.ok) {
+        // La page profil garde un brouillon en sessionStorage qui masquerait ces changements → on l'invalide.
+        try { sessionStorage.removeItem('profile_draft_v1') } catch { /* ignore */ }
+        setDone(true); onSaved(filled.length)
+      }
     } catch { /* ignore */ }
     finally { setSaving(false) }
   }
