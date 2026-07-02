@@ -13,7 +13,10 @@ const BUCKET_LABEL: Record<string, string> = { PRESENTER: 'Présenter', FORMER: 
 const TH = String.fromCharCode(0x202F), NB = String.fromCharCode(0xA0), EM = String.fromCharCode(0x2014)
 const frText = (t: string) => t.replace(/ ([:;!?])/g, TH + '$1').replace(new RegExp(' ' + EM + ' ', 'g'), NB + EM + ' ')
 
-type Msg = { from: 'user' | 'atlas'; text: string; chips?: string[] }
+import { ChatChoices, AtlasDraftCard, type PlanItem } from '@/components/atlas-plan-card'
+
+type Choice = { label: string; value: string }
+type Msg = { from: 'user' | 'atlas'; text: string; chips?: string[]; choices?: Choice[]; item?: PlanItem; draft?: { contactId: string; prenom: string; channel: string } }
 
 // Indicateur « Atlas réfléchit » — 3 points en cascade
 function TypingDots() {
@@ -325,23 +328,38 @@ export default function AtlasPage() {
     }
   }
 
-  // « Mon plan du jour » : Atlas présente les priorités EN CONVERSATION (aucune carte).
+  // « Mon plan du jour » : Atlas présente EN CONVERSATION, puis propose des ronds sélectifs pour la priorité n°1.
   const showPlan = async () => {
     if (streaming) return
-    let ctx = 'Donne-moi mon plan du jour.'
-    try {
-      const r = await fetch('/api/plan/today')
-      const d = r.ok ? await r.json() : null
-      const items: { headline: string; reason: string; prenom: string; stage: string }[] = d?.items ?? []
-      if (items.length === 0) {
-        ctx = "Je n'ai aucune priorité urgente aujourd'hui d'après mes contacts. Dis-moi à ta voix, comme un coach, comment on avance (prospecter, enrichir ma liste, me former…) — une action à la fois."
-      } else {
-        ctx = 'Voici mes priorités du jour, déjà calculées et classées :\n'
-          + items.map((it, i) => `${i + 1}. ${it.headline} — ${it.reason} (contact : ${it.prenom}, étape : ${it.stage || 'à définir'})`).join('\n')
-          + "\n\nPrésente-les-moi à ta voix comme un coach — ne me balance pas une liste, parle-moi. Commence par la plus importante : dis-moi l'état d'esprit et propose-moi soit de m'y attaquer, soit de me préparer (m'entraîner avec Aria / un script). Reste sur ce contact tant qu'on ne l'a pas traité, puis on passe au suivant."
-      }
-    } catch { /* fallback ctx par défaut */ }
-    sendMsg(ctx, 'Mon plan du jour')
+    let items: PlanItem[] = []
+    try { const r = await fetch('/api/plan/today'); const d = r.ok ? await r.json() : null; items = d?.items ?? [] } catch { /* ignore */ }
+    const ctx = items.length === 0
+      ? "Je n'ai aucune priorité urgente aujourd'hui d'après mes contacts. Dis-moi à ta voix, comme un coach, comment on avance (prospecter, enrichir ma liste, me former…) — une action à la fois."
+      : 'Voici mes priorités du jour, déjà calculées et classées :\n'
+        + items.map((it, i) => `${i + 1}. ${it.headline} — ${it.reason} (contact : ${it.prenom}, étape : ${it.stage || 'à définir'})`).join('\n')
+        + "\n\nPrésente-les-moi à ta voix comme un coach — ne me balance pas une liste, parle-moi. Commence par la plus importante et donne-moi l'état d'esprit. Ne me propose PAS d'options toi-même : je vais choisir juste après."
+    await sendMsg(ctx, 'Mon plan du jour')
+    const top = items[0]
+    if (top) {
+      const choices: Choice[] = top.action === 'MESSAGE'
+        ? [{ label: `Prépare-moi le message pour ${top.prenom}`, value: 'draft' }, { label: "Je m'entraîne d'abord avec Aria", value: 'aria' }, { label: 'Je gère, ouvre sa fiche', value: 'fiche' }]
+        : [{ label: `Ouvre la fiche de ${top.prenom}`, value: 'fiche' }, { label: "Je m'entraîne avec Aria", value: 'aria' }]
+      setMsgs((prev) => [...prev, { from: 'atlas', text: `On commence par ${top.prenom} — dis-moi :`, choices, item: top }])
+      setTimeout(scrollToBottom, 60)
+    }
+  }
+
+  // Sélection d'un rond : on retire les choix, on renvoie le choix en bulle, et on branche.
+  const handleChoice = (item: PlanItem, value: string, label: string, idx: number) => {
+    setMsgs((prev) => {
+      const cleared = prev.map((m, j) => (j === idx ? { ...m, choices: undefined } : m))
+      const extra: Msg[] = [{ from: 'user', text: label }]
+      if (value === 'draft') extra.push({ from: 'atlas', text: '', draft: { contactId: item.contactId, prenom: item.prenom, channel: item.channel || 'WHATSAPP' } })
+      return [...cleared, ...extra]
+    })
+    if (value === 'aria') router.push(`/aria?contact=${item.contactId}`)
+    if (value === 'fiche') router.push(`/contacts/${item.contactId}`)
+    setTimeout(scrollToBottom, 60)
   }
 
   const newSession = () => {
@@ -534,6 +552,13 @@ export default function AtlasPage() {
                   <div className="max-w-[82%] whitespace-pre-line rounded-2xl rounded-br-md bg-primary px-3.5 py-2.5 text-lg leading-[1.4] text-primary-foreground lg:text-sm">
                     {frText(m.text)}
                   </div>
+                ) : m.choices && m.item ? (
+                  <div className="flex w-full flex-col gap-2">
+                    {m.text && <p className="text-lg leading-[1.65] text-foreground lg:text-sm">{m.text}</p>}
+                    <ChatChoices choices={m.choices} onPick={(value, label) => handleChoice(m.item!, value, label, i)} />
+                  </div>
+                ) : m.draft ? (
+                  <AtlasDraftCard contactId={m.draft.contactId} prenom={m.draft.prenom} channel={m.draft.channel} />
                 ) : m.text === '' ? (
                   <TypingDots />
                 ) : (
