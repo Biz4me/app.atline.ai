@@ -443,6 +443,7 @@ model Contact {
   convertedUserId String?
   personality   PersonalityType?
   market        MarketTemp?
+  qualification Json?
   profession    String?
   education     String?
   birthDate     DateTime?

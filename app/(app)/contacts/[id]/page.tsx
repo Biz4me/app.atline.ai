@@ -122,7 +122,7 @@ function PersoEval({ onClose, onResult }: { onClose: () => void; onResult: (colo
 type Contact = {
   id: string; name: string; firstName: string; lastName: string; gender: string; profession: string; education: string; birthDate: string; initials: string; accent: string
   kind: string; email: string; phone: string; phone2: string; address: string; address2: string; postal: string; city: string; country: string
-  source: string; personality: string | null; market: string | null; prospectStage: string | null; partnerStage: string | null
+  source: string; personality: string | null; market: string | null; qualification: Record<string, string>; prospectStage: string | null; partnerStage: string | null
   score: number; exposures: number; lastContact: string | null; note: string; tags: string[]; convertedUserId: string | null
 }
 type Interaction = { id: string; type: string; direction: string; outcome: string | null; body: string | null; isExposure: boolean; createdAt: string }
@@ -420,6 +420,18 @@ export default function ContactDetailPage({ params }: { params: Promise<{ id: st
     setPfDob({ y: y ?? '', m: m ?? '', d: d ?? '' })
   }, [contact])
   const setPfField = (k: keyof typeof pf, v: string) => setPf((s) => ({ ...s, [k]: v }))
+  // Qualification (DISC + proximité + signaux partenaire) — 3 blocs visuels
+  const [qual, setQual] = useState({ personality: '', market: '', situation: '', interests: '', motivation: '', insatisfaction: '', reseau: '', ouverture: '' })
+  useEffect(() => {
+    if (!contact) return
+    const q = (contact.qualification && typeof contact.qualification === 'object') ? contact.qualification : {}
+    setQual({
+      personality: contact.personality ?? '', market: contact.market ?? '',
+      situation: q.situation ?? '', interests: q.interests ?? '', motivation: q.motivation ?? '',
+      insatisfaction: q.insatisfaction ?? '', reseau: q.reseau ?? '', ouverture: q.ouverture ?? '',
+    })
+  }, [contact])
+  const setQ = (k: keyof typeof qual, v: string) => setQual((s) => ({ ...s, [k]: v }))
   const setPfDobPart = (patch: Partial<{ d: string; m: string; y: string }>) => {
     const next = { ...pfDob, ...patch }
     if (next.d && parseInt(next.d, 10) > daysInMonth(next.m, next.y)) next.d = ''
@@ -488,8 +500,56 @@ export default function ContactDetailPage({ params }: { params: Promise<{ id: st
             <input className={fieldCls} value={pf.city} onChange={(e) => setPfField('city', e.target.value)} placeholder="Ville" />
             <SelectMenu className={fieldCls} placeholder="Pays" value={pf.country} onChange={(v) => setPfField('country', v)} options={PAYS.map((p) => ({ value: p, label: p }))} />
           </Collapsible>
+          <Collapsible icon={Sparkles} title="Qualification" filled={[qual.personality, qual.market, qual.situation, qual.interests, qual.motivation, qual.insatisfaction, qual.reseau, qual.ouverture].filter((v) => v && String(v).trim()).length} total={8} open={!!pfOpen.qual} onToggle={() => pfToggle('qual')}>
+            {/* Bloc 1 — Comment l'aborder (DISC + proximité) */}
+            <div>
+              <p className="mb-1.5 text-base font-semibold text-foreground">Comment l&apos;aborder</p>
+              <div className="flex gap-2">
+                {Object.entries(PERSO).map(([v, p]) => (
+                  <button key={v} type="button" onClick={() => setQ('personality', qual.personality === v ? '' : v)}
+                    className={cn('flex-1 rounded-xl py-2.5 text-base font-semibold transition-colors', qual.personality === v ? 'text-white' : 'border border-border bg-surface text-foreground')}
+                    style={qual.personality === v ? { backgroundColor: p.hex } : undefined}>{p.label}</button>
+                ))}
+              </div>
+              <div className="mt-2 flex gap-2">
+                {Object.entries(MARCHE).map(([v, m]) => (
+                  <button key={v} type="button" onClick={() => setQ('market', qual.market === v ? '' : v)}
+                    className={cn('flex-1 rounded-xl py-2.5 text-base font-semibold transition-colors', qual.market === v ? 'text-white' : 'border border-border bg-surface text-foreground')}
+                    style={qual.market === v ? { backgroundColor: m.hex } : undefined}>{m.label}</button>
+                ))}
+              </div>
+              {qual.personality && PERSO[qual.personality] && <p className="mt-2 rounded-xl bg-muted/50 px-3 py-2 text-base leading-snug text-muted-foreground">{PERSO[qual.personality].approach}</p>}
+            </div>
+            {/* Bloc 2 — Le contexte */}
+            <div className="border-t border-border pt-3">
+              <p className="mb-1.5 text-base font-semibold text-foreground">Le contexte</p>
+              <div className="flex flex-col gap-2">
+                <input className={fieldCls} value={qual.situation} onChange={(e) => setQ('situation', e.target.value)} placeholder="Sa situation (métier, famille, dispo)" />
+                <input className={fieldCls} value={qual.interests} onChange={(e) => setQ('interests', e.target.value)} placeholder="Ses centres d'intérêt" />
+              </div>
+            </div>
+            {/* Bloc 3 — Potentiel partenaire */}
+            {(() => {
+              const potFilled = [qual.motivation, qual.insatisfaction, qual.reseau, qual.ouverture].filter((v) => v && v.trim()).length
+              const potLabel = potFilled >= 3 ? 'Fort' : potFilled === 2 ? 'Moyen' : 'À creuser'
+              return (
+                <div className="border-t border-border pt-3">
+                  <div className="mb-1.5 flex items-center justify-between">
+                    <p className="text-base font-semibold text-foreground">Potentiel partenaire</p>
+                    <span className="rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-bold text-primary">{potLabel}</span>
+                  </div>
+                  <div className="flex flex-col gap-2">
+                    <input className={fieldCls} value={qual.motivation} onChange={(e) => setQ('motivation', e.target.value)} placeholder="Sa motivation / besoin (argent, temps, santé…)" />
+                    <input className={fieldCls} value={qual.insatisfaction} onChange={(e) => setQ('insatisfaction', e.target.value)} placeholder="Son insatisfaction actuelle" />
+                    <input className={fieldCls} value={qual.reseau} onChange={(e) => setQ('reseau', e.target.value)} placeholder="Son réseau / influence" />
+                    <input className={fieldCls} value={qual.ouverture} onChange={(e) => setQ('ouverture', e.target.value)} placeholder="Son ouverture à l'opportunité" />
+                  </div>
+                </div>
+              )
+            })()}
+          </Collapsible>
         </div>
-        <button type="button" onClick={() => save(pf, 'Fiche enregistrée')} className="flex w-full items-center justify-center gap-2 rounded-2xl bg-primary py-3.5 text-base font-bold text-primary-foreground shadow-sm transition-transform active:scale-[0.98]">Enregistrer</button>
+        <button type="button" onClick={() => save({ ...pf, personality: qual.personality || null, market: qual.market || null, qualification: { situation: qual.situation, interests: qual.interests, motivation: qual.motivation, insatisfaction: qual.insatisfaction, reseau: qual.reseau, ouverture: qual.ouverture } }, 'Fiche enregistrée')} className="flex w-full items-center justify-center gap-2 rounded-2xl bg-primary py-3.5 text-base font-bold text-primary-foreground shadow-sm transition-transform active:scale-[0.98]">Enregistrer</button>
         <div className="rounded-xl border border-dashed border-border bg-muted/30 px-4 py-2.5 text-center text-xs text-muted-foreground">↓ Ci-dessous : l&apos;ancienne fiche (intacte) — on décidera ensemble comment l&apos;intégrer.</div>
       </div>
 

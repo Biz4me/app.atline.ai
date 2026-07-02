@@ -66,6 +66,7 @@ export async function GET(_: Request, ctx: { params: Promise<{ id: string }> }) 
     convertedUserId: c.convertedUserId ?? null,
     personality: c.personality ?? null,
     market: c.market ?? null,
+    qualification: (c.qualification && typeof c.qualification === 'object' && !Array.isArray(c.qualification)) ? c.qualification : {},
     prospectStage: c.prospectStage ?? null,
     partnerStage: c.partnerStage ?? null,
     score: computeScore(c),
@@ -87,7 +88,7 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
   if (!existing) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
   const body = await req.json()
-  const { name, firstName, lastName, gender, profession, education, birthDate, phone, phone2, email, address, address2, postal, city, country, note, stage, market, prospectStage, partnerStage, convert, personality, score, lastContact, tags } = body
+  const { name, firstName, lastName, gender, profession, education, birthDate, phone, phone2, email, address, address2, postal, city, country, note, stage, market, prospectStage, partnerStage, convert, personality, qualification, score, lastContact, tags } = body
 
   // Synchroniser name si prénom/nom changent (aligné profil)
   const nameUpdate: Record<string, string> = {}
@@ -147,6 +148,9 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
       ...(note !== undefined && { note }),
       ...(market !== undefined && { market: market || null }),
       ...(personality !== undefined && { personality }),
+      ...(qualification !== undefined && qualification && typeof qualification === 'object' && !Array.isArray(qualification) && {
+        qualification: Object.fromEntries(Object.entries(qualification as Record<string, unknown>).filter(([, v]) => typeof v === 'string' && v.trim()).map(([k, v]) => [k, (v as string).trim()])),
+      }),
       ...(score !== undefined && { score }),
       ...(lastContact !== undefined && { lastContact: lastContact ? new Date(lastContact) : null }),
       ...(tags !== undefined && { tags }),
