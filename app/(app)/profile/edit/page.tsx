@@ -230,10 +230,13 @@ export default function ProfileEditPage() {
   async function save() {
     setSaving(true)
     try {
+      // email se modifie dans Réglages › Connexion & sécurité — on ne le renvoie pas d'ici (éviter d'écraser un changement récent)
+      const payload = { ...form }
+      delete (payload as Partial<Form>).email
       const res = await fetch('/api/me', {
         method: 'PATCH',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify(form),
+        body: JSON.stringify(payload),
       })
       if (res.ok) {
         toast.success('Profil enregistré')
@@ -279,13 +282,14 @@ export default function ProfileEditPage() {
   // Remplissage par rubrique (compteur / coche sur les cartes)
   const nf = (vals: (string | undefined)[]) => vals.filter((v) => v && String(v).trim()).length
   const sec = {
-    identite: nf([form.firstName, form.lastName, form.gender, form.birthDate, form.phone, form.phone2]),
+    identite: nf([form.firstName, form.lastName, form.gender, form.birthDate, form.phone]),
     quitues: nf([form.bio, form.personality, form.coaching.passions]),
     coaching: nf([form.coaching.why, form.coaching.background, form.profession, form.education, form.coaching.audience, form.coaching.availability, form.coaching.level]),
     socials: SOCIALS_MAIN.filter((s) => form.socials[s.key] && String(form.socials[s.key]).trim()).length,
-    adresse: nf([form.address, form.address2, form.postal, form.city, form.country]),
+    adresse: nf([form.address, form.postal, form.city, form.country]),
   }
-  const tot = { identite: 6, quitues: 3, coaching: 7, socials: SOCIALS_MAIN.length, adresse: 5 }
+  // Champs optionnels exclus du calcul (tél. secondaire, complément d'adresse) → 100 % réellement atteignable
+  const tot = { identite: 5, quitues: 3, coaching: 7, socials: SOCIALS_MAIN.length, adresse: 4 }
   // Complétion = tout le profil (somme des rubriques) → le libellé « Profil complété » est honnête
   const totalFilled = sec.identite + sec.quitues + sec.coaching + sec.socials + sec.adresse
   const totalFields = tot.identite + tot.quitues + tot.coaching + tot.socials + tot.adresse
@@ -294,7 +298,7 @@ export default function ProfileEditPage() {
   return (
     <div className="mx-auto w-full max-w-2xl">
       {/* Header — titre centré + flèche retour (comme les pages du hub compte) */}
-      <div className="sticky top-0 z-10 relative flex items-center justify-center bg-background/90 px-4 py-3 backdrop-blur" style={{ paddingTop: 'max(0.75rem, env(safe-area-inset-top))' }}>
+      <div className="sticky top-0 z-10 flex items-center justify-center bg-background/90 px-4 py-3 backdrop-blur" style={{ paddingTop: 'max(0.75rem, env(safe-area-inset-top))' }}>
         <button type="button" onClick={() => router.back()} aria-label="Retour" className="absolute left-2 flex size-9 items-center justify-center rounded-full text-foreground active:bg-muted">
           <ChevronLeft className="size-5 stroke-[1.5]" />
         </button>
