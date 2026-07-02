@@ -460,6 +460,8 @@ export default function ProfileEditPage() {
 
       {quizOpen && (
         <PersonalityQuiz
+          firstName={form.firstName}
+          gender={form.gender}
           onClose={() => setQuizOpen(false)}
           onResult={(c) => { savePersonality(c); setQuizOpen(false) }}
         />

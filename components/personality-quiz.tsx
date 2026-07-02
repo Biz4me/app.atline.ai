@@ -1,30 +1,35 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useMemo, useState, useEffect } from 'react'
 import { ChevronLeft, Check, X } from 'lucide-react'
 
 type Color = 'ROUGE' | 'VERT' | 'BLEU' | 'JAUNE'
 
-const PROFILES: Record<Color, { name: string; color: string; result: string }> = {
+type Profile = { name: string; color: string; archetype: { m: string; f: string; n: string }; caracterise: string; adapte: string }
+const PROFILES: Record<Color, Profile> = {
   ROUGE: {
-    name: 'Rouge',
-    color: '#EF4444',
-    result: "Tu es orienté résultats : direct, rapide, tu aimes décider et avancer. Atlas ira droit au but avec toi — chiffres, objectifs et actions.",
+    name: 'Rouge', color: '#EF4444',
+    archetype: { m: 'Le Fonceur', f: 'La Fonceuse', n: 'Profil Fonceur' },
+    caracterise: 'Direct, rapide, orienté résultats — tu décides vite et tu avances.',
+    adapte: 'Atlas ira droit au but : objectifs, chiffres, actions.',
   },
   VERT: {
-    name: 'Vert',
-    color: '#22C55E',
-    result: "Tu es analytique et prudent : tu veux des faits avant d'agir. Atlas te donnera des preuves, du concret, et te laissera le temps d'analyser.",
+    name: 'Vert', color: '#22C55E',
+    archetype: { m: "L'Analyste", f: "L'Analyste", n: 'Profil Analyste' },
+    caracterise: "Rigoureux et prudent — tu veux des faits avant d'agir.",
+    adapte: "Atlas te donnera des preuves, du concret, et le temps d'analyser.",
   },
   BLEU: {
-    name: 'Bleu',
-    color: '#3B82F6',
-    result: "Tu es sociable et enthousiaste : tu carbures au fun, aux gens et à l'aventure. Atlas misera sur l'énergie, la vision et les relations.",
+    name: 'Bleu', color: '#3B82F6',
+    archetype: { m: "L'Enthousiaste", f: "L'Enthousiaste", n: 'Profil Enthousiaste' },
+    caracterise: "Sociable et spontané — tu carbures à l'énergie et aux gens.",
+    adapte: "Atlas misera sur la vision, l'élan et les relations.",
   },
   JAUNE: {
-    name: 'Jaune',
-    color: '#F4B342',
-    result: "Tu es relationnel et bienveillant : tu veux aider, sans pression. Atlas sera chaleureux, à l'écoute, et respectera ton rythme.",
+    name: 'Jaune', color: '#F4B342',
+    archetype: { m: 'Le Connecteur', f: 'La Connectrice', n: 'Profil Connecteur' },
+    caracterise: 'Relationnel et bienveillant — tu veux aider, sans pression.',
+    adapte: "Atlas sera chaleureux, à l'écoute, et respectera ton rythme.",
   },
 }
 
@@ -110,7 +115,8 @@ function tally(ans: Color[]): Color[] {
   return (Object.keys(c) as Color[]).filter((k) => c[k] === max)
 }
 
-export function PersonalityQuiz({ onClose, onResult }: { onClose: () => void; onResult: (color: string) => void }) {
+export function PersonalityQuiz({ onClose, onResult, firstName = '', gender = '' }: { onClose: () => void; onResult: (color: string) => void; firstName?: string; gender?: string }) {
+  const arche = (c: Color) => (gender === 'F' ? PROFILES[c].archetype.f : gender === 'N' ? PROFILES[c].archetype.n : PROFILES[c].archetype.m)
   // Options mélangées une fois (réduit le biais de position)
   const questions = useMemo(
     () => QUESTIONS.map((q) => ({ prompt: q.prompt, options: [...q.options].sort(() => Math.random() - 0.5) })),
@@ -121,6 +127,41 @@ export function PersonalityQuiz({ onClose, onResult }: { onClose: () => void; on
   const [answers, setAnswers] = useState<Color[]>([])
   const [tieOptions, setTieOptions] = useState<Color[]>([])
   const [result, setResult] = useState<Color | null>(null)
+
+  // Résultat « parlé » par Atlas (streaming) — comme l'onboarding ; fallback statique si l'IA ne répond pas
+  const [revealText, setRevealText] = useState('')
+  useEffect(() => {
+    if (phase !== 'result' || !result) return
+    const p = PROFILES[result]
+    const fallback = `${firstName ? firstName + ', ' : ''}tu es ${p.name} — ${arche(result)}. ${p.caracterise} ${p.adapte}`
+    let cancelled = false
+    setRevealText('')
+    ;(async () => {
+      try {
+        const r = await fetch('/api/onboarding/color-read', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ user_first_name: firstName, color: result, answer: p.caracterise, gender: gender || 'M' }),
+        })
+        if (!r.ok || !r.body) throw new Error('no stream')
+        const reader = r.body.getReader(); const dec = new TextDecoder(); let buf = ''; let acc = ''
+        for (;;) {
+          const { done, value } = await reader.read(); if (done) break
+          buf += dec.decode(value, { stream: true })
+          let idx: number
+          while ((idx = buf.indexOf('\n\n')) >= 0) {
+            const ln = buf.slice(0, idx).trim(); buf = buf.slice(idx + 2)
+            if (!ln.startsWith('data:')) continue
+            const pl = ln.slice(5).trim(); if (pl === '[DONE]') continue
+            try { const j = JSON.parse(pl); if (j.text) { acc += j.text; if (!cancelled) setRevealText(acc) } } catch { /* ignore */ }
+          }
+        }
+        if (!acc && !cancelled) setRevealText(fallback)
+      } catch { if (!cancelled) setRevealText(fallback) }
+    })()
+    return () => { cancelled = true }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [phase, result])
 
   function answer(color: Color) {
     if (phase === 'tie') { setResult(color); setPhase('result'); return }
@@ -174,9 +215,10 @@ export function PersonalityQuiz({ onClose, onResult }: { onClose: () => void; on
             <Check className="size-10" />
           </div>
           <h1 className="mt-5 font-display text-[27px] font-extrabold leading-tight" style={{ color: PROFILES[result].color }}>
-            Tu es {PROFILES[result].name}
+            Tu es {arche(result)}
           </h1>
-          <p className="mt-3 max-w-sm text-lg leading-relaxed text-muted-foreground">{PROFILES[result].result}</p>
+          <p className="mt-1 text-base font-semibold text-muted-foreground">Couleur {PROFILES[result].name}</p>
+          <p className="mt-3 min-h-[3.5rem] max-w-sm whitespace-pre-wrap text-lg leading-relaxed text-muted-foreground">{revealText || 'Atlas décrypte ta couleur…'}</p>
           <div className="mt-auto w-full pb-6 pt-8">
             <button
               type="button"
@@ -205,10 +247,13 @@ export function PersonalityQuiz({ onClose, onResult }: { onClose: () => void; on
                     key={c}
                     type="button"
                     onClick={() => answer(c)}
-                    className="flex w-full items-center gap-3 rounded-2xl border border-border bg-surface px-4 py-4 text-left shadow-card transition-colors active:bg-muted"
+                    className="flex w-full items-start gap-3 rounded-2xl border border-border bg-surface px-4 py-4 text-left shadow-card transition-colors active:bg-muted active:border-primary"
                   >
-                    <span className="size-6 shrink-0 rounded-full" style={{ backgroundColor: PROFILES[c].color }} />
-                    <span className="text-lg font-semibold text-foreground">{PROFILES[c].name}</span>
+                    <span className="mt-1 size-6 shrink-0 rounded-full" style={{ backgroundColor: PROFILES[c].color }} />
+                    <span className="min-w-0 flex-1">
+                      <span className="block text-lg font-semibold text-foreground">{PROFILES[c].name} — {arche(c)}</span>
+                      <span className="mt-0.5 block text-base leading-snug text-muted-foreground">{PROFILES[c].caracterise}</span>
+                    </span>
                   </button>
                 ))}
               </div>
