@@ -18,7 +18,7 @@ import { ProfileFormCard } from '@/components/atlas-profile-form'
 import { WhyDraftCard } from '@/components/atlas-why-card'
 
 type Choice = { label: string; value: string }
-type Msg = { from: 'user' | 'atlas'; text: string; chips?: string[]; choices?: Choice[]; whyChoice?: boolean; item?: PlanItem; draft?: { contactId: string; prenom: string; channel: string; phone: string | null; email: string | null }; profileForm?: { me: Record<string, unknown> }; whyDraft?: { conversationId: string } }
+type Msg = { from: 'user' | 'atlas'; text: string; chips?: string[]; choices?: Choice[]; whyReady?: boolean; item?: PlanItem; draft?: { contactId: string; prenom: string; channel: string; phone: string | null; email: string | null }; profileForm?: { me: Record<string, unknown> }; whyDraft?: { conversationId: string } }
 
 // Indicateur « Atlas réfléchit » — 3 points en cascade
 function TypingDots() {
@@ -495,39 +495,29 @@ Reste très court (2-3 phrases max), chaleureux, jamais de liste. Ne formule PAS
     sendMsg(frame, 'Je veux travailler mon pourquoi avec toi')
   }
 
-  // Réponse de l'utilisateur pendant la session (le composeur alimente la session, pas le chat libre).
+  // Réponse de l'utilisateur pendant la session : il tape simplement, comme une vraie conversation.
+  // Atlas creuse (frame en historique). À partir de 2 échanges, une pastille discrète « formule mon pourquoi » apparaît.
   const whyAnswer = (v: string) => {
     setInput('')
     whyTurnsRef.current += 1
     const turn = whyTurnsRef.current
-    // Si un bloc « creuser / synthétiser » traînait, l'utilisateur a choisi de continuer à écrire → on le retire.
-    setMsgs((prev) => prev.map((m) => (m.whyChoice ? { ...m, choices: undefined, whyChoice: false } : m)))
-    sendMsg(v, undefined, () => { if (turn >= 2) appendWhyChoice() })
+    // On retire la pastille de synthèse précédente : l'utilisateur a préféré continuer à parler.
+    setMsgs((prev) => prev.filter((m) => !m.whyReady))
+    sendMsg(v, undefined, () => { if (turn >= 2) appendWhyReady() })
   }
 
-  // À partir de 2 échanges, Atlas propose de creuser encore ou de synthétiser (rond sélectif).
-  const appendWhyChoice = () => {
-    setMsgs((prev) => {
-      if (prev.some((m) => m.whyChoice && m.choices)) return prev
-      return [...prev, { from: 'atlas', text: '', whyChoice: true, choices: [{ label: 'Creusons encore un peu', value: 'why:more' }, { label: '✅ Formule mon pourquoi', value: 'why:synth' }] }]
-    })
+  // Pastille unique et non-intrusive : disponible quand l'utilisateur se sent prêt à faire formuler son pourquoi.
+  const appendWhyReady = () => {
+    setMsgs((prev) => (prev.some((m) => m.whyReady) ? prev : [...prev, { from: 'atlas', text: '', whyReady: true }]))
     setTimeout(scrollToBottom, 60)
   }
 
-  const handleWhyChoice = (value: string, label: string, idx: number) => {
-    setMsgs((prev) => [...prev.map((m, j) => (j === idx ? { ...m, choices: undefined, whyChoice: false } : m)), { from: 'user', text: label }])
-    if (value === 'why:more') {
-      setTimeout(() => { setMsgs((prev) => [...prev, { from: 'atlas', text: "Vas-y, je t'écoute — dis-m'en plus." }]); scrollToBottom() }, 200)
-      return
-    }
-    if (value === 'why:synth') synthesizeWhy()
-  }
-
   const synthesizeWhy = () => {
+    if (streaming) return
     const convId = c
-    if (!convId) { setMsgs((prev) => [...prev, { from: 'atlas', text: "Il me faut encore un peu d'échange avant de formuler ça juste — dis-m'en un peu plus." }]); return }
+    if (!convId) { setMsgs((prev) => [...prev.filter((m) => !m.whyReady), { from: 'atlas', text: "Il me faut encore un peu d'échange avant de formuler ça juste — dis-m'en un peu plus." }]); return }
     sessionRef.current = null
-    setMsgs((prev) => [...prev, { from: 'atlas', text: "Laisse-moi relire ce que tu m'as confié et te le refléter…" }, { from: 'atlas', text: '', whyDraft: { conversationId: convId } }])
+    setMsgs((prev) => [...prev.filter((m) => !m.whyReady), { from: 'atlas', text: "Laisse-moi relire ce que tu m'as confié et te le refléter…" }, { from: 'atlas', text: '', whyDraft: { conversationId: convId } }])
     setTimeout(scrollToBottom, 80)
   }
 
@@ -817,11 +807,14 @@ Reste très court (2-3 phrases max), chaleureux, jamais de liste. Ne formule PAS
                   <div className="max-w-[82%] whitespace-pre-line rounded-2xl rounded-br-md bg-primary px-3.5 py-2.5 text-lg leading-[1.4] text-primary-foreground lg:text-sm">
                     {frText(m.text)}
                   </div>
-                ) : m.choices && m.whyChoice ? (
-                  <div className="flex w-full flex-col gap-2">
-                    {m.text && <p className="text-lg leading-[1.65] text-foreground lg:text-sm">{m.text}</p>}
-                    <ChatChoices choices={m.choices} onPick={(value, label) => handleWhyChoice(value, label, i)} />
-                  </div>
+                ) : m.whyReady ? (
+                  <button
+                    type="button"
+                    onClick={synthesizeWhy}
+                    className="self-start rounded-full border border-primary/30 bg-primary/10 px-4 py-2 text-sm font-semibold text-primary transition-colors active:bg-primary/20"
+                  >
+                    ✨ Je pense avoir dit l&apos;essentiel{' '}— formule mon pourquoi
+                  </button>
                 ) : m.choices && m.item ? (
                   <div className="flex w-full flex-col gap-2">
                     {m.text && <p className="text-lg leading-[1.65] text-foreground lg:text-sm">{m.text}</p>}
