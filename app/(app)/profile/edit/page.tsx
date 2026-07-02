@@ -381,7 +381,22 @@ export default function ProfileEditPage() {
             </div>
           </Collapsible>
 
-          {/* 2 — Qui tu es (personnalité — sert le ton des agents) */}
+          {/* 2 — Coordonnées (tél + email + adresse) — aligné sur la fiche contact */}
+          <Collapsible icon={Phone} title="Coordonnées" filled={sec.adresse} total={tot.adresse} open={!!open.adresse} onToggle={() => toggle('adresse')}>
+            <input className={inputCls} type="tel" inputMode="numeric" value={form.phone} onChange={(e) => set('phone', formatPhone(e.target.value))} placeholder="Téléphone" />
+            <input className={inputCls} type="tel" inputMode="numeric" value={form.phone2} onChange={(e) => set('phone2', formatPhone(e.target.value))} placeholder="Téléphone secondaire" />
+            <div>
+              <input className={`${inputCls} cursor-not-allowed opacity-70`} value={form.email} readOnly placeholder="Email" />
+              <p className="mt-1 px-1 text-xs text-muted-foreground">Modifiable dans Réglages › Connexion &amp; sécurité</p>
+            </div>
+            <input className={inputCls} value={form.address} onChange={(e) => set('address', e.target.value)} placeholder="Adresse" />
+            <input className={inputCls} value={form.address2} onChange={(e) => set('address2', e.target.value)} placeholder="Complément d'adresse" />
+            <input className={inputCls} value={form.postal} onChange={(e) => set('postal', e.target.value)} placeholder="Code postal" />
+            <input className={inputCls} value={form.city} onChange={(e) => set('city', e.target.value)} placeholder="Ville" />
+            <SelectMenu className={inputCls} placeholder="Pays" value={form.country} onChange={(v) => set('country', v)} options={[{ value: 'France', label: 'France' }, { value: 'Espagne', label: 'Espagne' }, { value: 'Allemagne', label: 'Allemagne' }, { value: 'Italie', label: 'Italie' }]} />
+          </Collapsible>
+
+          {/* 3 — Qui tu es (personnalité — sert le ton des agents) */}
           <Collapsible icon={Sparkles} title="Qui tu es" filled={sec.quitues} total={tot.quitues} open={!!open.quitues} onToggle={() => toggle('quitues')}>
             <AutoTextarea className={`${inputCls} min-h-[88px] resize-none overflow-hidden`} value={form.bio} onChange={(v) => set('bio', v)} placeholder="Bio — quelques mots sur toi…" />
             {form.personality ? (
@@ -417,7 +432,7 @@ export default function ProfileEditPage() {
             <input className={inputCls} value={form.coaching.passions ?? ''} onChange={(e) => setCoaching('passions', e.target.value)} placeholder="Tes passions" />
           </Collapsible>
 
-          {/* 3 — Ton activité & coaching (contexte MLM pour Atlas) */}
+          {/* 4 — Ton coaching (contexte MLM pour Atlas) */}
           <Collapsible icon={Target} title="Ton coaching" filled={sec.coaching} total={tot.coaching} open={!!open.coaching} onToggle={() => toggle('coaching')}>
             <AutoTextarea className={`${inputCls} min-h-[72px] resize-none overflow-hidden`} value={form.coaching.why ?? ''} onChange={(v) => setCoaching('why', v)} placeholder="Ton pourquoi" />
             <AutoTextarea className={`${inputCls} min-h-[72px] resize-none overflow-hidden`} value={form.coaching.background ?? ''} onChange={(v) => setCoaching('background', v)} placeholder="Ton parcours" />
@@ -428,7 +443,7 @@ export default function ProfileEditPage() {
             <SelectMenu className={inputCls} placeholder="Ton expérience en MLM" value={form.coaching.level ?? ''} onChange={(v) => setCoaching('level', v)} options={[{ value: 'Débutant', label: 'Débutant' }, { value: 'Intermédiaire', label: 'Intermédiaire' }, { value: 'Confirmé', label: 'Confirmé' }, { value: 'Expert', label: 'Expert' }]} />
           </Collapsible>
 
-          {/* 4 — Réseaux sociaux (pour Nova) — 5 principaux + 4 optionnels */}
+          {/* 5 — Réseaux sociaux (pour Nova) — 5 principaux + 4 optionnels */}
           <Collapsible icon={Share2} title="Réseaux sociaux" filled={sec.socials} total={tot.socials} open={!!open.socials} onToggle={() => toggle('socials')}>
             {[...SOCIALS_MAIN, ...(moreSocials ? SOCIALS_MORE : [])].map((s) => (
               <div key={s.key} className="flex items-center gap-2.5">
@@ -449,16 +464,6 @@ export default function ProfileEditPage() {
             )}
           </Collapsible>
 
-          {/* 5 — Coordonnées (tél + adresse) — aligné sur la fiche contact */}
-          <Collapsible icon={Phone} title="Coordonnées" filled={sec.adresse} total={tot.adresse} open={!!open.adresse} onToggle={() => toggle('adresse')}>
-            <input className={inputCls} type="tel" inputMode="numeric" value={form.phone} onChange={(e) => set('phone', formatPhone(e.target.value))} placeholder="Téléphone" />
-            <input className={inputCls} type="tel" inputMode="numeric" value={form.phone2} onChange={(e) => set('phone2', formatPhone(e.target.value))} placeholder="Téléphone secondaire" />
-            <input className={inputCls} value={form.address} onChange={(e) => set('address', e.target.value)} placeholder="Adresse" />
-            <input className={inputCls} value={form.address2} onChange={(e) => set('address2', e.target.value)} placeholder="Complément d'adresse" />
-            <input className={inputCls} value={form.postal} onChange={(e) => set('postal', e.target.value)} placeholder="Code postal" />
-            <input className={inputCls} value={form.city} onChange={(e) => set('city', e.target.value)} placeholder="Ville" />
-            <SelectMenu className={inputCls} placeholder="Pays" value={form.country} onChange={(v) => set('country', v)} options={[{ value: 'France', label: 'France' }, { value: 'Espagne', label: 'Espagne' }, { value: 'Allemagne', label: 'Allemagne' }, { value: 'Italie', label: 'Italie' }]} />
-          </Collapsible>
           </div>
 
           {/* Zone danger — séparée et discrète */}
