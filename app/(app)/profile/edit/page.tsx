@@ -420,7 +420,7 @@ export default function ProfileEditPage() {
           </Collapsible>
 
           {/* 3 — Ton activité & coaching (contexte MLM pour Atlas) */}
-          <Collapsible icon={Target} title="Ton activité & coaching" filled={sec.coaching} total={tot.coaching} open={!!open.coaching} onToggle={() => toggle('coaching')}>
+          <Collapsible icon={Target} title="Ton coaching" filled={sec.coaching} total={tot.coaching} open={!!open.coaching} onToggle={() => toggle('coaching')}>
             <AutoTextarea className={`${inputCls} min-h-[72px] resize-none overflow-hidden`} value={form.coaching.why ?? ''} onChange={(v) => setCoaching('why', v)} placeholder="Ton pourquoi" />
             <AutoTextarea className={`${inputCls} min-h-[72px] resize-none overflow-hidden`} value={form.coaching.background ?? ''} onChange={(v) => setCoaching('background', v)} placeholder="Ton parcours" />
             <AutoTextarea className={`${inputCls} min-h-[72px] resize-none overflow-hidden`} value={form.coaching.challenge ?? ''} onChange={(v) => setCoaching('challenge', v)} placeholder="Ton principal défi — là où tu bloques en ce moment" />
