@@ -138,13 +138,26 @@ export default function AtlasPage() {
         }
         if (r.ok && !cancelled) {
           const d = await r.json()
+          const raw: { role: string; content: string }[] = d.messages ?? []
           setMsgs(
-            (d.messages ?? []).map((m: { role: string; content: string }) => ({
+            raw.map((m) => ({
               from: m.role === 'USER' ? 'user' : 'atlas',
               text: m.role === 'USER' ? displayUserText(m.content) : m.content,
             })),
           )
           scrollToBottom()
+          // Reprise d'une session « pourquoi » non finalisée : cadre présent + pourquoi pas encore enregistré.
+          const isWhySession = raw.some((m) => m.role === 'USER' && m.content.startsWith('[SESSION_POURQUOI]'))
+          if (isWhySession) {
+            let saved = false
+            try { const me = await fetch('/api/me').then((x) => (x.ok ? x.json() : null)); const w = me?.coaching?.why; saved = typeof w === 'string' && w.trim().length > 0 } catch { /* ignore */ }
+            if (!cancelled && !saved) {
+              const userTurns = raw.filter((m) => m.role === 'USER' && !m.content.startsWith('[SESSION_POURQUOI]')).length
+              sessionRef.current = 'why'
+              whyTurnsRef.current = userTurns
+              if (userTurns >= 2) { setMsgs((prev) => (prev.some((m) => m.whyReady) ? prev : [...prev, { from: 'atlas', text: '', whyReady: true }])); scrollToBottom() }
+            }
+          }
         }
       } catch {
         /* ignore */
