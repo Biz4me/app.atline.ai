@@ -99,6 +99,10 @@ export default function AtlasPage() {
   const scrollRef = useRef<HTMLDivElement>(null)
   const loadedRef = useRef<string | null>(null)
   const atBottomRef = useRef(true)
+  // Capture d'une info à texte libre demandée par Atlas (ex. métier) + file de champs manquants à combler
+  const captureRef = useRef<{ field: string; item: PlanItem } | null>(null)
+  const pendingRef = useRef<{ field: string; value: string; item: PlanItem } | null>(null)
+  const gatherRef = useRef<{ queue: string[]; item: PlanItem | null }>({ queue: [], item: null })
 
   // Charge la conversation de l'URL (?c=) — saute si on vient de la créer (loadedRef).
   useEffect(() => {
@@ -359,7 +363,27 @@ export default function AtlasPage() {
     setTimeout(scrollToBottom, 60)
   }
 
-  // Le point sur la fiche : ce qu'Atlas sait / ce qui manque d'important, puis on complète.
+  // Demande un champ à texte libre (métier) — capté via le composeur.
+  const askProfession = (item: PlanItem) => {
+    captureRef.current = { field: 'profession', item }
+    setMsgs((prev) => [...prev, { from: 'atlas', text: `Il fait quoi dans la vie, ${item.prenom} ? Écris-le-moi, ça m'aide à personnaliser.` }])
+    setTimeout(scrollToBottom, 60)
+  }
+
+  // Enchaîne les champs manquants un par un ; file vide → on passe au canal.
+  const gatherStep = () => {
+    const { queue, item } = gatherRef.current
+    if (!item) return
+    if (queue.length === 0) { askChannel(item); return }
+    const f = queue[0]
+    if (f === 'market') askField(item, 'market')
+    else if (f === 'personality') askField(item, 'disc')
+    else if (f === 'profession') askProfession(item)
+    else askChannel(item)
+  }
+  const advanceGather = () => { gatherRef.current.queue = gatherRef.current.queue.slice(1); setTimeout(gatherStep, 350) }
+
+  // Le point sur la fiche : ce qu'Atlas sait / ce qui manque d'important, puis on complète un par un.
   const pointAndGather = async (item: PlanItem) => {
     let c: { profession?: string | null; market?: string | null; personality?: string | null; note?: string | null } | null = null
     try { const r = await fetch(`/api/contacts/${item.contactId}`); c = r.ok ? await r.json() : null } catch { /* ignore */ }
@@ -368,18 +392,16 @@ export default function AtlasPage() {
     if (c?.market) has.push('votre proximité')
     if (c?.personality) has.push('sa personnalité')
     if (c?.note && c.note.trim()) has.push('quelques notes')
-    const missMarket = !c?.market
-    const missDisc = !c?.personality
-    const missLabels: string[] = []
-    if (missMarket) missLabels.push('votre proximité')
-    if (missDisc) missLabels.push('sa personnalité (pour le ton)')
-    if (!c?.profession) missLabels.push('son métier')
+    const queue: string[] = []
+    if (!c?.market) queue.push('market')
+    if (!c?.personality) queue.push('personality')
+    if (!c?.profession) queue.push('profession')
+    const missLabels = queue.map((q) => (q === 'market' ? 'votre proximité' : q === 'personality' ? 'sa personnalité (pour le ton)' : 'son métier'))
     const knownTxt = has.length ? `Ce que je sais sur ${item.prenom} : ${has.join(', ')}.` : `Je ne connais pas encore grand-chose sur ${item.prenom}.`
     const missTxt = missLabels.length ? ` Pour viser juste, ça m'aiderait de connaître : ${missLabels.join(', ')}.` : " On a l'essentiel."
     setMsgs((prev) => [...prev, { from: 'atlas', text: knownTxt + missTxt }])
-    if (missMarket) setTimeout(() => askField(item, 'market'), 550)
-    else if (missDisc) setTimeout(() => askField(item, 'disc'), 550)
-    else setTimeout(() => askChannel(item), 450)
+    gatherRef.current = { queue, item }
+    setTimeout(gatherStep, 550)
   }
 
   // Démarre le flux d'action : point sur le contact → enrichissement → canal → concret.
@@ -423,13 +445,28 @@ export default function AtlasPage() {
     if (value.startsWith('save:')) {
       const [, field, val] = value.split(':')
       fetch(`/api/contacts/${item.contactId}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ [field]: val }) })
-        .then((r) => { setMsgs((prev) => [...prev, { from: 'atlas', text: r.ok ? "C'est noté dans sa fiche ✓" : "Je n'ai pas réussi à l'enregistrer, mais on continue." }]); setTimeout(() => askChannel(item), 400) })
-        .catch(() => { setMsgs((prev) => [...prev, { from: 'atlas', text: "Je n'ai pas réussi à l'enregistrer, mais on continue." }]); setTimeout(() => askChannel(item), 400) })
+        .then((r) => { setMsgs((prev) => [...prev, { from: 'atlas', text: r.ok ? "C'est noté dans sa fiche ✓" : "Je n'ai pas réussi à l'enregistrer, mais on continue." }]); advanceGather() })
+        .catch(() => { setMsgs((prev) => [...prev, { from: 'atlas', text: "Je n'ai pas réussi à l'enregistrer, mais on continue." }]); advanceGather() })
       return
     }
     if (value.startsWith('nosave:')) {
       setMsgs((prev) => [...prev, { from: 'atlas', text: 'Ok, je ne le note pas.' }])
-      setTimeout(() => askChannel(item), 300)
+      advanceGather()
+      return
+    }
+    if (value === 'savecap') {
+      const p = pendingRef.current; pendingRef.current = null
+      if (p) {
+        fetch(`/api/contacts/${item.contactId}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ [p.field]: p.value }) })
+          .then((r) => { setMsgs((prev) => [...prev, { from: 'atlas', text: r.ok ? "C'est noté dans sa fiche ✓" : "Je n'ai pas réussi à l'enregistrer, mais on continue." }]); advanceGather() })
+          .catch(() => { setMsgs((prev) => [...prev, { from: 'atlas', text: "Je n'ai pas réussi à l'enregistrer, mais on continue." }]); advanceGather() })
+      } else advanceGather()
+      return
+    }
+    if (value === 'nocap') {
+      pendingRef.current = null
+      setMsgs((prev) => [...prev, { from: 'atlas', text: 'Ok, je ne le note pas.' }])
+      advanceGather()
       return
     }
     if (value === 'chan:message') {
@@ -457,6 +494,28 @@ export default function AtlasPage() {
     if (value === 'call:aria' || value === 'aria') { router.push(`/aria?contact=${item.contactId}`); return }
     if (value === 'call:now' && item.phone) { window.location.href = `tel:${item.phone}`; return }
     if (value === 'fiche') { router.push(`/contacts/${item.contactId}`) }
+  }
+
+  // Saisie captée (champ texte libre demandé par Atlas) → il propose de l'enregistrer, puis enchaîne.
+  const handleCapture = (v: string) => {
+    const cap = captureRef.current
+    captureRef.current = null
+    setInput('')
+    setMsgs((prev) => [...prev, { from: 'user', text: v }])
+    if (!cap) return
+    pendingRef.current = { field: cap.field, value: v, item: cap.item }
+    setTimeout(() => {
+      setMsgs((prev) => [...prev, { from: 'atlas', text: `Noté. Tu veux que je l'enregistre dans la fiche de ${cap.item.prenom} ?`, choices: [{ label: 'Oui, enregistre-le', value: 'savecap' }, { label: 'Non merci', value: 'nocap' }], item: cap.item }])
+      scrollToBottom()
+    }, 200)
+  }
+
+  // Envoi du composeur : si Atlas attend une info (capture), on la capte ; sinon message normal.
+  const submitInput = () => {
+    const v = input.trim()
+    if (!v || streaming) return
+    if (captureRef.current) { handleCapture(v); return }
+    sendMsg(v)
   }
 
   const newSession = () => {
@@ -718,7 +777,7 @@ export default function AtlasPage() {
               onKeyDown={(e) => {
                 if (e.key === 'Enter' && !e.shiftKey) {
                   e.preventDefault()
-                  sendMsg(input)
+                  submitInput()
                 }
               }}
               placeholder="Écris à Atlas…"
@@ -733,7 +792,7 @@ export default function AtlasPage() {
             </button>
             <button
               type="button"
-              onClick={() => sendMsg(input)}
+              onClick={submitInput}
               disabled={streaming || !input.trim()}
               className="flex size-9 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-sm hover:opacity-90 transition-opacity disabled:opacity-40"
             >
@@ -747,7 +806,7 @@ export default function AtlasPage() {
       <AppComposer
         value={input}
         onChange={setInput}
-        onSubmit={() => sendMsg(input)}
+        onSubmit={submitInput}
         onAttach={() => fileInputRef.current?.click()}
         agentLabel="Atlas"
         disabled={streaming}
