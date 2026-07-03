@@ -118,7 +118,7 @@ export default function ActivitiesPage() {
         method: 'PATCH',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({
-          mlmName: act.mlmName, rank: act.rank, produit: act.produit, links: act.links,
+          mlmName: act.mlmName, rank: act.rank, links: act.links,
         }),
       })
       if (res.ok) toast.success('Activité enregistrée')
@@ -180,10 +180,12 @@ export default function ActivitiesPage() {
               <input className={inputCls} value={act.mlmName} onChange={(e) => setField('mlmName', e.target.value)} placeholder="Nom de l'activité" />
               {/* Catégorie / secteur — auto (RAG société), lecture seule */}
               <div className={`${inputCls} text-foreground`}>{act.category ? act.category.charAt(0).toUpperCase() + act.category.slice(1) : 'Coaching'}</div>
-              <input className={inputCls} value={act.produit} onChange={(e) => setField('produit', e.target.value)} placeholder="Produit / offre phare" />
               <input className={inputCls} value={act.rank} onChange={(e) => setField('rank', e.target.value)} placeholder="Rang dans ton MLM" />
 
-              {/* — Travaillés avec Atlas (conviction → cible → objectif) — */}
+              {/* — Travaillés avec Atlas (offre → conviction → cible → objectif) — */}
+              <AtlasSessionField title="Ton offre phare" filled={!!act.produit} onOpen={() => router.push('/atlas?session=produit')}>
+                <p className="whitespace-pre-wrap text-lg leading-relaxed text-foreground lg:text-sm">{act.produit}</p>
+              </AtlasSessionField>
               <AtlasSessionField title="Ce qui t'a convaincu" filled={!!act.story} onOpen={() => router.push('/atlas?session=rencontre')}>
                 <p className="whitespace-pre-wrap text-lg leading-relaxed text-foreground lg:text-sm">{act.story}</p>
               </AtlasSessionField>
