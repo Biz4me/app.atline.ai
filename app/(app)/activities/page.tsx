@@ -184,7 +184,7 @@ export default function ActivitiesPage() {
               <input className={inputCls} value={act.rank} onChange={(e) => setField('rank', e.target.value)} placeholder="Rang dans ton MLM" />
 
               {/* — Travaillés avec Atlas (conviction → cible → objectif) — */}
-              <AtlasSessionField title="Ce qui m'a convaincu" filled={!!act.story} onOpen={() => router.push('/atlas?session=rencontre')}>
+              <AtlasSessionField title="Ce qui t'a convaincu" filled={!!act.story} onOpen={() => router.push('/atlas?session=rencontre')}>
                 <p className="whitespace-pre-wrap text-lg leading-relaxed text-foreground lg:text-sm">{act.story}</p>
               </AtlasSessionField>
 
