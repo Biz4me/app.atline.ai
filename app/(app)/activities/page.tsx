@@ -117,7 +117,7 @@ export default function ActivitiesPage() {
         method: 'PATCH',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({
-          mlmName: act.mlmName, rank: act.rank, produit: act.produit, audience: act.audience, links: act.links,
+          mlmName: act.mlmName, rank: act.rank, produit: act.produit, links: act.links,
         }),
       })
       if (res.ok) toast.success('Activité enregistrée')
@@ -204,7 +204,23 @@ export default function ActivitiesPage() {
                 </button>
               )}
               <input className={inputCls} value={act.produit} onChange={(e) => setField('produit', e.target.value)} placeholder="Produit / offre phare" />
-              <textarea className={`${inputCls} min-h-[72px] resize-none overflow-hidden`} value={act.audience} onChange={(e) => setField('audience', e.target.value)} placeholder="Audience cible — à qui tu t'adresses" />
+
+              {/* Audience cible = champ STRATÉGIQUE : se définit en session avec Atlas (cibler juste) */}
+              {act.audience ? (
+                <div className="rounded-xl border border-border bg-background px-4 py-3">
+                  <p className="mb-1 text-xs font-semibold text-muted-foreground">Audience cible</p>
+                  <p className="whitespace-pre-wrap text-lg italic leading-relaxed text-foreground lg:text-sm">{act.audience}</p>
+                  <button type="button" onClick={() => router.push('/atlas?session=audience')} className="mt-2.5 flex items-center gap-1.5 text-sm font-semibold text-primary">
+                    <Compass className="size-3.5" /> Retravailler avec Atlas
+                  </button>
+                </div>
+              ) : (
+                <button type="button" onClick={() => router.push('/atlas?session=audience')} className="flex w-full items-center gap-2.5 rounded-xl border border-dashed border-primary/40 bg-primary/5 px-4 py-[7px] text-left transition-colors active:bg-primary/10">
+                  <Compass className="size-4 shrink-0 text-primary" />
+                  <span className="min-w-0 flex-1 truncate text-lg text-foreground lg:text-sm">Audience cible</span>
+                  <span className="shrink-0 text-sm font-semibold text-primary">à définir</span>
+                </button>
+              )}
 
               {/* Ma rencontre = champ narratif PROFOND : se travaille en session avec Atlas (pas en saisie libre) */}
               {act.story ? (

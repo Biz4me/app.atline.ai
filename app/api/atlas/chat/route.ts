@@ -14,6 +14,7 @@ function convTitle(query: string): string {
   if (query.startsWith('[SESSION_RENCONTRE]')) return 'Ma rencontre'
   if (query.startsWith('[SESSION_MINDSET]')) return 'Mon état d’esprit'
   if (query.startsWith('[SESSION_OBJECTIFS]')) return 'Mes objectifs'
+  if (query.startsWith('[SESSION_AUDIENCE]')) return 'Mon audience cible'
   if (query.startsWith('[SESSION')) return 'Session Atlas'
   if (query.startsWith('Voici mes priorités') || query.startsWith('Avant de courir après les contacts') || query.startsWith("Je n'ai aucune priorité")) return 'Mon plan du jour'
   if (query.startsWith('Tu es Atlas, coach en marketing de réseau. Rédige')) return 'Message rédigé'

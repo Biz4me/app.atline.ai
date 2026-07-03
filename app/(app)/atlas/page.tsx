@@ -20,7 +20,7 @@ import { WhyValidateCard } from '@/components/atlas-why-card'
 type Choice = { label: string; value: string }
 type Msg = { from: 'user' | 'atlas'; text: string; chips?: string[]; choices?: Choice[]; item?: PlanItem; draft?: { contactId: string; prenom: string; channel: string; phone: string | null; email: string | null }; profileForm?: { me: Record<string, unknown> }; whyCard?: { text: string; kind: SessionKind; title: string; obj?: Objectifs; superseded?: boolean; done?: boolean } }
 
-type SessionKind = 'why' | 'rencontre' | 'mindset' | 'objectifs'
+type SessionKind = 'why' | 'rencontre' | 'mindset' | 'objectifs' | 'audience'
 type Objectifs = { mensuel: string; m3: string; m6: string; m12: string }
 
 // Session « objectifs » : Atlas émet [[SAVE]] mensuel=N; m3=N; m6=N; m12=N → on parse l'échelle.
@@ -52,6 +52,7 @@ const displayUserText = (content: string): string => {
   if (content.startsWith('[SESSION_RENCONTRE]')) return 'Je veux te raconter ma rencontre avec mon activité'
   if (content.startsWith('[SESSION_MINDSET]')) return 'Je veux poser mon état d’esprit avec toi'
   if (content.startsWith('[SESSION_OBJECTIFS]')) return 'Je veux fixer mes objectifs avec toi'
+  if (content.startsWith('[SESSION_AUDIENCE]')) return 'Je veux définir mon audience cible avec toi'
   if (content.startsWith('Voici mes priorités') || content.startsWith('Avant de courir après les contacts') || content.startsWith("Je n'ai aucune priorité")) return 'Mon plan du jour'
   return content
 }
@@ -197,6 +198,18 @@ Comporte-toi comme un excellent coach lucide${NB}: un vrai échange, pas un cour
 
 TECHNIQUE (invisible pour moi, ne l'explique jamais)${NB}: le jour où je VALIDE explicitement l'échelle, écris ta phrase de clôture motivante, PUIS ajoute tout à la fin, sur une nouvelle ligne, EXACTEMENT ce format (des nombres entiers de partenaires)${NB}: [[SAVE]] mensuel=N; m3=N; m6=N; m12=N. N'écris [[SAVE]] QU'APRÈS ma validation, jamais avant.`,
     },
+    audience: {
+      display: 'Je veux définir mon audience cible avec toi',
+      title: 'Ton audience cible',
+      frame: `[SESSION_AUDIENCE] On définit MON audience cible${NB}: à qui je m'adresse vraiment. La plupart visent "tout le monde" et n'atteignent personne${NB}; on va cibler juste (ça sert ma prospection ET mon contenu).
+
+Comporte-toi comme un excellent coach curieux${NB}: un vrai échange, pas un cours.
+- Accueille-moi en UNE phrase, puis creuse UNE question à la fois${NB}: qui mon produit/opportunité aide le PLUS, avec qui JE connecte le plus naturellement, quel problème concret je résous, à quoi ressemble la personne idéale (sa situation, son besoin, son moment de vie).
+- Recadre avec bienveillance si je vise trop large. Court, jamais de liste.
+- Quand TOI, en bon coach, tu juges que ma cible est claire et nette, PROPOSE une formulation courte (1-2 phrases${NB}: QUI + pour quel BESOIN) et demande-moi si c'est juste OU si je veux l'ajuster.
+
+TECHNIQUE (invisible pour moi, ne l'explique jamais)${NB}: le jour où je VALIDE explicitement, écris ta phrase de clôture, PUIS ajoute tout à la fin, sur une nouvelle ligne, EXACTEMENT ce format${NB}: [[SAVE]] suivi de mon audience cible en 1-2 phrases. N'écris [[SAVE]] QU'APRÈS ma validation explicite, jamais avant.`,
+    },
   }
 
   // Charge la conversation de l'URL (?c=) — saute si on vient de la créer (loadedRef).
@@ -231,16 +244,16 @@ TECHNIQUE (invisible pour moi, ne l'explique jamais)${NB}: le jour où je VALIDE
             raw.some((m) => m.role === 'USER' && m.content.startsWith('[SESSION_RENCONTRE]')) ? 'rencontre'
             : raw.some((m) => m.role === 'USER' && m.content.startsWith('[SESSION_MINDSET]')) ? 'mindset'
             : raw.some((m) => m.role === 'USER' && m.content.startsWith('[SESSION_OBJECTIFS]')) ? 'objectifs'
+            : raw.some((m) => m.role === 'USER' && m.content.startsWith('[SESSION_AUDIENCE]')) ? 'audience'
             : raw.some((m) => m.role === 'USER' && m.content.startsWith('[SESSION_POURQUOI]')) ? 'why'
             : null
           if (kind) {
             let saved = false
             try {
-              if (kind === 'rencontre' || kind === 'objectifs') {
+              if (kind === 'rencontre' || kind === 'objectifs' || kind === 'audience') {
                 const a = await fetch('/api/activities/active').then((x) => (x.ok ? x.json() : null))
-                saved = kind === 'rencontre'
-                  ? typeof a?.activity?.story === 'string' && a.activity.story.trim().length > 0
-                  : !!a?.activity?.objectif?.mensuel
+                if (kind === 'objectifs') saved = !!a?.activity?.objectif?.mensuel
+                else { const s = a?.activity?.[kind === 'rencontre' ? 'story' : 'audience']; saved = typeof s === 'string' && s.trim().length > 0 }
               } else { const me = await fetch('/api/me').then((x) => (x.ok ? x.json() : null)); const v = me?.coaching?.[kind === 'why' ? 'why' : 'mindset']; saved = typeof v === 'string' && v.trim().length > 0 }
             } catch { /* ignore */ }
             if (!cancelled && !saved) {
@@ -665,8 +678,9 @@ TECHNIQUE (invisible pour moi, ne l'explique jamais)${NB}: le jour où je VALIDE
   // Enregistrement selon la session : pourquoi/mindset → coaching.* ; rencontre → activité (story) ; objectifs → activité (objectif JSON).
   const persistSession = async (kind: SessionKind, text: string, obj?: Objectifs): Promise<boolean> => {
     try {
-      if (kind === 'rencontre') {
-        const r = await fetch('/api/activities/active', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ story: text }) })
+      if (kind === 'rencontre' || kind === 'audience') {
+        const body = kind === 'rencontre' ? { story: text } : { audience: text }
+        const r = await fetch('/api/activities/active', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
         return r.ok
       }
       if (kind === 'objectifs') {
@@ -693,6 +707,8 @@ TECHNIQUE (invisible pour moi, ne l'explique jamais)${NB}: le jour où je VALIDE
         ? `C’est posé ✓ Ton état d’esprit de pro est ta fondation${NB}: c’est ce qui te fera tenir quand les autres lâchent. On peut avancer.`
         : kind === 'objectifs'
         ? `C’est fixé ✓ Ton objectif mensuel devient ta boussole${NB}: je te suis dessus chaque mois et je te dis quoi faire pour combler l’écart.`
+        : kind === 'audience'
+        ? `C’est noté ✓ Ta cible est claire maintenant${NB}: elle guidera qui tu prospectes et le contenu qu’on crée avec Nova.`
         : `C’est enregistré ✓ Ton histoire avec cette activité me servira à personnaliser tes messages et à nourrir ta présentation.`
       setMsgs((prev) => [
         ...prev.map((m, j) => (j === idx && m.whyCard ? { ...m, whyCard: { ...m.whyCard, done: true } } : m)),
