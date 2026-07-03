@@ -112,6 +112,7 @@ export async function GET() {
   }
   const coaching = (user?.coaching && typeof user.coaching === 'object' && !Array.isArray(user.coaching)) ? (user.coaching as Record<string, unknown>) : {}
   const hasStory = typeof business?.story === 'string' && business.story.trim().length > 0
+  const hasMindset = (typeof coaching.mindset === 'string' && (coaching.mindset as string).trim().length > 0) || mindsetDone
   const hasWhy = typeof coaching.why === 'string' && (coaching.why as string).trim().length > 0
   const listCount = contacts.length
 
@@ -122,8 +123,8 @@ export async function GET() {
   })
   // Le bon départ (dans l'ordre) : brise-glace (rencontre) → posture (mindset) → profondeur (pourquoi) → matière (liste).
   if (!hasStory)               cands.push(foundItem('FOUND_RENCONTRE', 4, 'Raconte-moi ta rencontre avec ton activité', 'Ton histoire avec ce business : comment tu l’as découvert et pourquoi tu y crois. C’est mon point de départ pour te coacher juste.', null))
-  // Mindset : seulement au tout début (pas encore de pourquoi) pour ne pas harceler un utilisateur lancé.
-  if (!hasWhy && !mindsetDone) cands.push(foundItem('FOUND_MINDSET', 3, 'Pose ton état d’esprit de pro', 'Module 1 — la base : comprendre le métier avant de te lancer. 15 min qui changent tout.', mindsetModule ? `/formation/${mindsetModule.id}` : '/formation'))
+  // Mindset : session « établir & vérifier » (posé si session faite OU module M1 terminé).
+  if (!hasMindset)             cands.push(foundItem('FOUND_MINDSET', 3, 'Pose ton état d’esprit de pro', 'La posture d’un pro : un vrai métier, pas un jackpot ; la régularité bat le talent. 5 min avec moi et tu pars sur les bons rails.', null))
   if (!hasWhy)                cands.push(foundItem('FOUND_WHY', 2, 'Formule ton pourquoi', 'Module 2 — ton moteur. Sans un pourquoi clair, tout s’essouffle. On le travaille ensemble.', null))
   if (listCount < 10)         cands.push(foundItem('FOUND_LIST', 1, 'Construis ta liste de noms', `Module 4 — la matière première de ton activité. Tu as ${listCount} contact${listCount > 1 ? 's' : ''}, vise 100 noms.`, '/contacts'))
 

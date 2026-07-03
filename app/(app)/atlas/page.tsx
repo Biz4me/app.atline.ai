@@ -20,7 +20,7 @@ import { WhyValidateCard } from '@/components/atlas-why-card'
 type Choice = { label: string; value: string }
 type Msg = { from: 'user' | 'atlas'; text: string; chips?: string[]; choices?: Choice[]; item?: PlanItem; draft?: { contactId: string; prenom: string; channel: string; phone: string | null; email: string | null }; profileForm?: { me: Record<string, unknown> }; whyCard?: { text: string; kind: SessionKind; title: string; superseded?: boolean; done?: boolean } }
 
-type SessionKind = 'why' | 'rencontre'
+type SessionKind = 'why' | 'rencontre' | 'mindset'
 
 // Indicateur « Atlas réfléchit » — 3 points en cascade
 function TypingDots() {
@@ -42,6 +42,7 @@ function TypingDots() {
 const displayUserText = (content: string): string => {
   if (content.startsWith('[SESSION_POURQUOI]')) return 'Je veux travailler mon pourquoi avec toi'
   if (content.startsWith('[SESSION_RENCONTRE]')) return 'Je veux te raconter ma rencontre avec mon activité'
+  if (content.startsWith('[SESSION_MINDSET]')) return 'Je veux poser mon état d’esprit avec toi'
   if (content.startsWith('Voici mes priorités') || content.startsWith('Avant de courir après les contacts') || content.startsWith("Je n'ai aucune priorité")) return 'Mon plan du jour'
   return content
 }
@@ -161,6 +162,19 @@ Comporte-toi comme un excellent coach curieux${NB}: un VRAI dialogue vivant, pas
 
 TECHNIQUE (invisible pour moi, ne l'explique jamais)${NB}: le jour où je VALIDE explicitement ta formulation, écris ta phrase de clôture, PUIS ajoute tout à la fin, sur une nouvelle ligne, EXACTEMENT ce format${NB}: [[SAVE]] suivi de mon histoire finale à la 1ʳᵉ personne (2-4 phrases). N'écris [[SAVE]] QU'APRÈS ma validation explicite, jamais avant.`,
     },
+    mindset: {
+      display: 'Je veux poser mon état d’esprit avec toi',
+      title: 'Ton état d’esprit de pro',
+      frame: `[SESSION_MINDSET] On pose mon ÉTAT D'ESPRIT de pro${NB}: la base avant tout le reste. Le marketing de réseau est un VRAI métier${NB}: ça s'apprend, ça demande de la constance, et ceux qui réussissent ne sont pas les plus doués mais les plus réguliers.
+
+Comporte-toi comme un excellent coach${NB}: un vrai échange, pas un cours magistral.
+- Accueille-moi en UNE phrase, puis pose UNE seule question pour comprendre où j'en suis (par ex. "quand tu t'es lancé, tu t'attendais à quoi${NB}?").
+- À chacune de mes réponses, RE-CADRE UNE chose à la fois, avec bienveillance mais fermeté${NB}: c'est un métier (pas un jackpot) · la régularité bat le talent · un "non" n'est jamais un rejet de MOI · 5-10h/semaine sur la durée. Une idée par tour, jamais de liste. Corrige mes croyances limitantes si tu en entends.
+- Régulièrement, REFLÈTE ce que tu entends et VÉRIFIE que j'ai compris ("redis-moi avec tes mots ce que ça change pour toi").
+- Quand TOI, en bon coach, tu juges que j'ai vraiment intégré la posture (je la formule avec MES mots, pas juste "oui"), PROPOSE une phrase d'engagement à la 1ʳᵉ personne (2-4 phrases) qui capture mon état d'esprit de pro, et demande-moi si c'est juste OU si je veux ajuster.
+
+TECHNIQUE (invisible pour moi, ne l'explique jamais)${NB}: le jour où je VALIDE explicitement, écris ta phrase de clôture, PUIS ajoute tout à la fin, sur une nouvelle ligne, EXACTEMENT ce format${NB}: [[SAVE]] suivi de mon engagement final à la 1ʳᵉ personne (2-4 phrases). N'écris [[SAVE]] QU'APRÈS ma validation explicite, jamais avant.`,
+    },
   }
 
   // Charge la conversation de l'URL (?c=) — saute si on vient de la créer (loadedRef).
@@ -193,13 +207,14 @@ TECHNIQUE (invisible pour moi, ne l'explique jamais)${NB}: le jour où je VALIDE
           // Reprise d'une session de fondation non finalisée : cadre présent + valeur pas encore enregistrée.
           const kind: SessionKind | null =
             raw.some((m) => m.role === 'USER' && m.content.startsWith('[SESSION_RENCONTRE]')) ? 'rencontre'
+            : raw.some((m) => m.role === 'USER' && m.content.startsWith('[SESSION_MINDSET]')) ? 'mindset'
             : raw.some((m) => m.role === 'USER' && m.content.startsWith('[SESSION_POURQUOI]')) ? 'why'
             : null
           if (kind) {
             let saved = false
             try {
-              if (kind === 'why') { const me = await fetch('/api/me').then((x) => (x.ok ? x.json() : null)); const w = me?.coaching?.why; saved = typeof w === 'string' && w.trim().length > 0 }
-              else { const a = await fetch('/api/activities/active').then((x) => (x.ok ? x.json() : null)); const s = a?.activity?.story; saved = typeof s === 'string' && s.trim().length > 0 }
+              if (kind === 'rencontre') { const a = await fetch('/api/activities/active').then((x) => (x.ok ? x.json() : null)); const s = a?.activity?.story; saved = typeof s === 'string' && s.trim().length > 0 }
+              else { const me = await fetch('/api/me').then((x) => (x.ok ? x.json() : null)); const v = me?.coaching?.[kind === 'why' ? 'why' : 'mindset']; saved = typeof v === 'string' && v.trim().length > 0 }
             } catch { /* ignore */ }
             if (!cancelled && !saved) {
               // Reprise transparente : on rebranche le composeur sur la session, la conversation continue naturellement.
@@ -526,6 +541,7 @@ TECHNIQUE (invisible pour moi, ne l'explique jamais)${NB}: le jour où je VALIDE
     if (!item.contactId) {
       if (item.action === 'FOUND_WHY') { setTimeout(() => startSessionRef.current('why'), 300); return }
       if (item.action === 'FOUND_RENCONTRE') { setTimeout(() => startSessionRef.current('rencontre'), 300); return }
+      if (item.action === 'FOUND_MINDSET') { setTimeout(() => startSessionRef.current('mindset'), 300); return }
       if (item.action === 'FOUND_PROFILE') { setTimeout(() => showProfileForm(), 300); return }
       const label = item.action === 'FOUND_LIST' ? 'Construire ma liste' : item.action === 'FOUND_MINDSET' ? 'Ouvrir le module' : 'Y aller'
       setMsgs((prev) => [...prev, { from: 'atlas', text: item.reason, choices: [{ label, value: 'goto' }], item }])
@@ -603,17 +619,18 @@ TECHNIQUE (invisible pour moi, ne l'explique jamais)${NB}: le jour où je VALIDE
     setTimeout(scrollToBottom, 80)
   }
 
-  // Enregistrement au bon endroit selon la session : pourquoi → profil (coaching.why) ; rencontre → activité (story).
+  // Enregistrement au bon endroit selon la session : pourquoi/mindset → profil (coaching.*) ; rencontre → activité (story).
   const persistSession = async (kind: SessionKind, text: string): Promise<boolean> => {
     try {
-      if (kind === 'why') {
-        const me = await fetch('/api/me').then((x) => (x.ok ? x.json() : null))
-        const coaching = { ...(me?.coaching && typeof me.coaching === 'object' ? me.coaching : {}), why: text }
-        const r = await fetch('/api/me', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ coaching }) })
-        if (r.ok) { try { sessionStorage.removeItem('profile_draft_v1') } catch { /* ignore */ } }
+      if (kind === 'rencontre') {
+        const r = await fetch('/api/activities/active', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ story: text }) })
         return r.ok
       }
-      const r = await fetch('/api/activities/active', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ story: text }) })
+      const field = kind === 'why' ? 'why' : 'mindset'
+      const me = await fetch('/api/me').then((x) => (x.ok ? x.json() : null))
+      const coaching = { ...(me?.coaching && typeof me.coaching === 'object' ? me.coaching : {}), [field]: text }
+      const r = await fetch('/api/me', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ coaching }) })
+      if (r.ok) { try { sessionStorage.removeItem('profile_draft_v1') } catch { /* ignore */ } }
       return r.ok
     } catch { return false }
   }
@@ -624,6 +641,8 @@ TECHNIQUE (invisible pour moi, ne l'explique jamais)${NB}: le jour où je VALIDE
       sessionRef.current = null
       const confirm = kind === 'why'
         ? `C’est gravé dans ton profil ✓ Ton pourquoi sera ton point d’ancrage${NB}: on y reviendra chaque fois que tu douteras ou qu’on préparera un message important.`
+        : kind === 'mindset'
+        ? `C’est posé ✓ Ton état d’esprit de pro est ta fondation${NB}: c’est ce qui te fera tenir quand les autres lâchent. On peut avancer.`
         : `C’est enregistré ✓ Ton histoire avec cette activité me servira à personnaliser tes messages et à nourrir ta présentation.`
       setMsgs((prev) => [
         ...prev.map((m, j) => (j === idx && m.whyCard ? { ...m, whyCard: { ...m.whyCard, done: true } } : m)),
