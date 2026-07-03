@@ -18,12 +18,16 @@ const DATE_YEARS = Array.from({ length: 21 }, (_, i) => { const y = new Date().g
 const inputCls =
   'w-full rounded-xl border border-border bg-background px-4 py-[7px] text-lg text-foreground outline-none placeholder:text-muted-foreground'
 
+// Liens = uniquement les liens opérationnels du flow (présenter / vendre / parrainer / équipe).
+// Les réseaux sociaux + WhatsApp perso vivent dans le Profil (marque perso, pilotée par Nova).
 const LINK_GROUPS: { group: string; items: { key: string; label: string; placeholder: string }[] }[] = [
+  { group: 'Présenter', items: [
+    { key: 'RDV', label: 'Prise de RDV', placeholder: 'lien de booking (Calendly…)' },
+    { key: 'ZOOM', label: 'Présentation', placeholder: 'lien Zoom / vidéo de présentation' },
+  ] },
   { group: 'Vendre', items: [{ key: 'BOUTIQUE', label: 'Boutique', placeholder: 'lien de ta boutique' }] },
   { group: 'Parrainer', items: [{ key: 'PARRAINAGE', label: 'Parrainage', placeholder: 'lien de parrainage' }] },
-  { group: 'Rencontrer', items: [{ key: 'RDV', label: 'RDV', placeholder: 'lien de prise de RDV' }, { key: 'ZOOM', label: 'Zoom', placeholder: 'lien Zoom' }] },
-  { group: 'Contacter', items: [{ key: 'WHATSAPP', label: 'WhatsApp', placeholder: 'lien wa.me/…' }, { key: 'WHATSAPP_GROUP', label: 'Groupe WhatsApp', placeholder: 'lien du groupe' }] },
-  { group: 'Réseaux', items: [{ key: 'INSTAGRAM', label: 'Instagram', placeholder: 'lien Instagram' }, { key: 'FACEBOOK', label: 'Facebook', placeholder: 'lien Facebook' }, { key: 'TIKTOK', label: 'TikTok', placeholder: 'lien TikTok' }] },
+  { group: 'Équipe', items: [{ key: 'WHATSAPP_GROUP', label: 'Groupe équipe', placeholder: 'lien du groupe WhatsApp' }] },
 ]
 const LINK_KEYS = LINK_GROUPS.flatMap((g) => g.items.map((i) => i.key))
 
