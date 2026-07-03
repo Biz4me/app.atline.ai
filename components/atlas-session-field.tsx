@@ -9,7 +9,7 @@ export function AtlasSessionField({ title, filled, onOpen, children }: { title: 
   if (!filled) {
     return (
       <button type="button" onClick={onOpen} className="flex w-full items-center justify-between gap-2.5 rounded-xl bg-primary/5 px-4 py-[7px] text-left transition-colors active:bg-primary/10">
-        <span className="min-w-0 flex-1 truncate text-lg text-foreground lg:text-sm">{title}</span>
+        <span className="min-w-0 flex-1 truncate text-lg text-muted-foreground lg:text-sm">{title}</span>
         <Sparkles className="size-4 shrink-0 text-primary" />
       </button>
     )

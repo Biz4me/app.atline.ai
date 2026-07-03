@@ -7,8 +7,8 @@ interface BusinessCtx {
   current: Business
   all: Business[]
   setCurrent: (b: Business) => void
-  addBusiness: (name: string) => void
-  refresh: () => void
+  addBusiness: (name: string) => Promise<void>
+  refresh: () => Promise<void>
 }
 
 const Ctx = createContext<BusinessCtx | null>(null)

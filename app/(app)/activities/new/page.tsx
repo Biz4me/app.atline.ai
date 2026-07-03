@@ -20,7 +20,17 @@ const COMPANIES = [
 
 export default function NewActivityPage() {
   const router = useRouter()
-  const { all } = useBusiness()
+  const { all, addBusiness } = useBusiness()
+  const [creating, setCreating] = useState(false)
+
+  // Crée réellement l'activité (POST + refresh du contexte → apparaît dans le switcher), puis ouvre sa fiche.
+  async function create() {
+    const name = company.trim()
+    if (!name || creating) return
+    setCreating(true)
+    await addBusiness(name)
+    router.push('/activities')
+  }
 
   const [company, setCompany] = useState('')
   const [showCompanyPicker, setShowCompanyPicker] = useState(false)
@@ -69,7 +79,7 @@ export default function NewActivityPage() {
           hasOtherBusinesses={hasOtherBusinesses} all={all}
           shareToggle={shareToggle} setShareToggle={setShareToggle}
           sharedWith={sharedWith} toggleShare={toggleShare}
-          onSubmit={() => router.push('/home')}
+          onSubmit={create}
         />
       </div>
 
@@ -140,8 +150,9 @@ export default function NewActivityPage() {
               {/* CTA */}
               <button
                 type="button"
-                onClick={() => router.push('/home')}
-                className="w-full rounded-2xl bg-primary py-4 text-base font-semibold text-primary-foreground hover:opacity-90 transition-opacity"
+                onClick={create}
+                disabled={!company.trim() || creating}
+                className="w-full rounded-2xl bg-primary py-4 text-base font-semibold text-primary-foreground hover:opacity-90 transition-opacity disabled:opacity-50"
               >
                 {"Créer l'activité"}
               </button>
