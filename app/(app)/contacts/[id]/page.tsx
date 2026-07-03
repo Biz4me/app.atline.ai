@@ -10,6 +10,7 @@ import {
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 import { Card } from '@/components/card'
+import { ContactComposer } from '@/components/contact-composer'
 import { WhenPicker } from '@/components/when-picker'
 import { SelectMenu } from '@/components/select-menu'
 import { PersonalityQuiz, describePersonality } from '@/components/personality-quiz'
@@ -481,7 +482,7 @@ export default function ContactDetailPage({ params }: { params: Promise<{ id: st
         </Collapsible>
       </div>
 
-      <div className="flex flex-col gap-4 px-4 pb-10 pt-2">
+      <div className="flex flex-col gap-4 px-4 pb-24 pt-2">
         {/* Curseur d'étape — un seul tunnel (opportunité) : prospect, partenaire, OU client re-sollicité */}
         {showOppCursor && (
           <StageCursor
@@ -681,6 +682,8 @@ export default function ContactDetailPage({ params }: { params: Promise<{ id: st
         </div>
       )}
 
+      {/* Composeur Atlas scopé sur ce contact (Phase B) */}
+      <ContactComposer contactId={id} contactName={c.name || pf.firstName} />
     </div>
   )
 }
