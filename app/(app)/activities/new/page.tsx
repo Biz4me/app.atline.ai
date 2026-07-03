@@ -13,16 +13,17 @@ import { toast } from 'sonner'
 const inputCls =
   'w-full rounded-xl border border-border bg-background px-4 py-[7px] text-lg text-foreground outline-none placeholder:text-muted-foreground'
 
-// Compteur : contenu « N label », steppers − / + à droite.
+// Compteur : contenu « N label », steppers − / + à droite (neutres).
 function Stepper({ label, value, onChange }: { label: string; value: string; onChange: (v: string) => void }) {
   const n = parseInt(value || '0', 10) || 0
+  const active = n > 0
   const set = (nv: number) => onChange(String(Math.max(0, nv)))
   return (
     <div className={`${inputCls} flex items-center justify-between py-1.5`}>
-      <span className="text-lg text-foreground lg:text-sm"><span className="font-semibold">{n}</span> <span className="text-muted-foreground">{label}</span></span>
+      <span className={`text-lg lg:text-sm ${active ? 'font-semibold text-foreground' : 'text-muted-foreground'}`}>{n} {label}</span>
       <div className="flex items-center gap-1.5">
         <button type="button" onClick={() => set(n - 1)} disabled={n <= 0} className="flex size-7 items-center justify-center rounded-full bg-muted text-foreground active:bg-muted/70 disabled:opacity-40"><Minus className="size-4" /></button>
-        <button type="button" onClick={() => set(n + 1)} className="flex size-7 items-center justify-center rounded-full bg-primary text-primary-foreground active:scale-95 transition-transform"><Plus className="size-4" /></button>
+        <button type="button" onClick={() => set(n + 1)} className="flex size-7 items-center justify-center rounded-full bg-muted text-foreground active:bg-muted/70"><Plus className="size-4" /></button>
       </div>
     </div>
   )
