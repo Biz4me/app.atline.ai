@@ -5,8 +5,13 @@ import { useRouter } from 'next/navigation'
 import { ChevronLeft, ChevronDown, Check, Loader2, Briefcase, Link2, FileText, Sparkles, Plus, Trash2 } from 'lucide-react'
 import { Card } from '@/components/card'
 import { AtlasSessionField } from '@/components/atlas-session-field'
+import { SelectMenu } from '@/components/select-menu'
 import { useOverlay } from '@/components/overlay-provider'
 import { toast } from 'sonner'
+
+const DATE_MONTHS = ['Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin', 'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre']
+  .map((m, i) => ({ value: String(i + 1).padStart(2, '0'), label: m }))
+const DATE_YEARS = Array.from({ length: 21 }, (_, i) => { const y = new Date().getFullYear() - i; return { value: String(y), label: String(y) } })
 
 // Charte identique au profil (au détail près)
 const inputCls =
@@ -30,7 +35,7 @@ const BUCKET_LABEL: Record<string, string> = { PRESENTER: 'Présenter', FORMER: 
 
 type Support = { id: string; title: string; description: string | null; format: string; fileUrl: string; createdAt: string }
 type Activity = {
-  id: string; mlmName: string; rank: string; category: string; goal: string; produit: string; audience: string; story: string; color: string; active: boolean
+  id: string; mlmName: string; rank: string; category: string; goal: string; produit: string; audience: string; story: string; startDate: string; sponsorName: string; color: string; active: boolean
   objectif: Record<string, string>
   links: Record<string, string>
   supports: Record<string, Support[]>
@@ -127,6 +132,13 @@ export default function ActivitiesPage() {
     if (res.ok) { await loadAct(); toast.success('Document supprimé') }
   }
   const setLink = (k: string, v: string) => setAct((a) => (a ? { ...a, links: { ...a.links, [k]: v } } : a))
+  // Date de démarrage « YYYY-MM » construite depuis 2 déroulants (mois / année).
+  const setStartPart = (part: 'y' | 'm', v: string) => setAct((a) => {
+    if (!a) return a
+    const [y = '', m = ''] = (a.startDate || '').split('-')
+    const ny = part === 'y' ? v : y, nm = part === 'm' ? v : m
+    return { ...a, startDate: ny || nm ? `${ny}-${nm}` : '' }
+  })
 
   async function save() {
     if (!act) return
@@ -136,7 +148,7 @@ export default function ActivitiesPage() {
         method: 'PATCH',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({
-          mlmName: act.mlmName, rank: act.rank, links: act.links,
+          mlmName: act.mlmName, rank: act.rank, sponsorName: act.sponsorName, startDate: act.startDate, links: act.links,
         }),
       })
       if (res.ok) toast.success('Activité enregistrée')
@@ -150,11 +162,11 @@ export default function ActivitiesPage() {
 
   // Complétion (même logique que le profil : somme des rubriques)
   const sec = act ? {
-    identite: nf([act.mlmName, act.rank, act.produit, act.audience, act.story, act.objectif?.mensuel]),
+    identite: nf([act.mlmName, act.rank, act.sponsorName, act.startDate, act.produit, act.audience, act.story, act.objectif?.mensuel]),
     liens: LINK_KEYS.filter((k) => act.links[k]?.trim()).length,
     documents: BUCKETS.filter((b) => (act.supports[b.key] ?? []).length > 0).length,
   } : { identite: 0, liens: 0, documents: 0 }
-  const tot = { identite: 6, liens: LINK_KEYS.length, documents: BUCKETS.length }
+  const tot = { identite: 8, liens: LINK_KEYS.length, documents: BUCKETS.length }
   const totalFilled = sec.identite + sec.liens + sec.documents
   const totalFields = tot.identite + tot.liens + tot.documents
   const pct = totalFields ? Math.round((totalFilled / totalFields) * 100) : 0
@@ -218,6 +230,12 @@ export default function ActivitiesPage() {
               {/* Catégorie / secteur — auto (RAG société), lecture seule */}
               <div className={`${inputCls} text-foreground`}>{act.category ? act.category.charAt(0).toUpperCase() + act.category.slice(1) : 'Coaching'}</div>
               <input className={inputCls} value={act.rank} onChange={(e) => setField('rank', e.target.value)} placeholder="Rang dans ton MLM" />
+              <input className={inputCls} value={act.sponsorName} onChange={(e) => setField('sponsorName', e.target.value)} placeholder="Prénom de ton parrain" />
+              {/* Date de démarrage — mois / année (déroulants, comme la charte du profil) */}
+              <div className="grid grid-cols-2 gap-2">
+                <SelectMenu className={inputCls} placeholder="Mois de démarrage" value={act.startDate?.split('-')[1] ?? ''} onChange={(v) => setStartPart('m', v)} options={DATE_MONTHS} />
+                <SelectMenu className={inputCls} placeholder="Année" value={act.startDate?.split('-')[0] ?? ''} onChange={(v) => setStartPart('y', v)} options={DATE_YEARS} />
+              </div>
 
               {/* — Travaillés avec Atlas (offre → conviction → cible → objectif) — */}
               <AtlasSessionField title="Ton offre phare" filled={!!act.produit} onOpen={() => router.push('/atlas?session=produit')}>

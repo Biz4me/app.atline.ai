@@ -51,6 +51,8 @@ export async function GET() {
       produit: biz.produit ?? '',
       audience: biz.audience ?? '',
       story: biz.story ?? '',
+      startDate: biz.startDate ?? '',
+      sponsorName: biz.sponsorName ?? '',
       color: biz.color,
       active: biz.active,
       links: linkMap,
@@ -79,6 +81,8 @@ export async function PATCH(req: Request) {
   if (typeof body.produit === 'string') data.produit = body.produit.trim() || null
   if (typeof body.audience === 'string') data.audience = body.audience.trim() || null
   if (typeof body.story === 'string') data.story = body.story.trim() || null
+  if (typeof body.startDate === 'string') data.startDate = body.startDate.trim() || null
+  if (typeof body.sponsorName === 'string') data.sponsorName = body.sponsorName.trim() || null
   if (body.objectif && typeof body.objectif === 'object' && !Array.isArray(body.objectif)) {
     const clean: Record<string, string> = {}
     for (const [k, v] of Object.entries(body.objectif)) {
