@@ -174,11 +174,24 @@ export default function ActivitiesPage() {
 
           {/* Cartes de l'activité — espacement resserré (gap-2) comme le profil */}
           <div className="flex flex-col gap-2">
-            {/* 1 — Identité */}
-            <Collapsible icon={Briefcase} title="Identité" filled={sec.identite} total={tot.identite} open={!!open.identite} onToggle={() => toggle('identite')}>
+            {/* 1 — Ton business : les faits d'abord, puis les champs travaillés avec Atlas */}
+            <Collapsible icon={Briefcase} title="Ton business" filled={sec.identite} total={tot.identite} open={!!open.identite} onToggle={() => toggle('identite')}>
+              {/* — Les faits — */}
               <input className={inputCls} value={act.mlmName} onChange={(e) => setField('mlmName', e.target.value)} placeholder="Nom de l'activité" />
+              {/* Catégorie / secteur — auto (RAG société), lecture seule */}
+              <div className={`${inputCls} text-foreground`}>{act.category ? act.category.charAt(0).toUpperCase() + act.category.slice(1) : 'Coaching'}</div>
+              <input className={inputCls} value={act.produit} onChange={(e) => setField('produit', e.target.value)} placeholder="Produit / offre phare" />
               <input className={inputCls} value={act.rank} onChange={(e) => setField('rank', e.target.value)} placeholder="Rang dans ton MLM" />
-              {/* Objectif de recrutement — session Atlas (échelle mensuel + 3/6/12) */}
+
+              {/* — Travaillés avec Atlas (conviction → cible → objectif) — */}
+              <AtlasSessionField title="Ce qui m'a convaincu" filled={!!act.story} onOpen={() => router.push('/atlas?session=rencontre')}>
+                <p className="whitespace-pre-wrap text-lg leading-relaxed text-foreground lg:text-sm">{act.story}</p>
+              </AtlasSessionField>
+
+              <AtlasSessionField title="Audience cible" filled={!!act.audience} onOpen={() => router.push('/atlas?session=audience')}>
+                <p className="whitespace-pre-wrap text-lg leading-relaxed text-foreground lg:text-sm">{act.audience}</p>
+              </AtlasSessionField>
+
               <AtlasSessionField title="Objectif de recrutement" filled={!!act.objectif?.mensuel} onOpen={() => router.push('/atlas?session=objectifs')}>
                 {([['Mensuel', act.objectif?.mensuel], ['3 mois', act.objectif?.m3], ['6 mois', act.objectif?.m6], ['12 mois', act.objectif?.m12]] as [string, string | undefined][]).map(([lab, v]) => (
                   <div key={lab} className="flex items-baseline justify-between border-b border-border/40 py-1.5 last:border-0">
@@ -186,17 +199,6 @@ export default function ActivitiesPage() {
                     <span className="text-lg font-bold text-foreground lg:text-base">{v || '—'} <span className="text-sm font-medium text-muted-foreground">part.</span></span>
                   </div>
                 ))}
-              </AtlasSessionField>
-              <input className={inputCls} value={act.produit} onChange={(e) => setField('produit', e.target.value)} placeholder="Produit / offre phare" />
-
-              {/* Audience cible — session Atlas (cibler juste) */}
-              <AtlasSessionField title="Audience cible" filled={!!act.audience} onOpen={() => router.push('/atlas?session=audience')}>
-                <p className="whitespace-pre-wrap text-lg leading-relaxed text-foreground lg:text-sm">{act.audience}</p>
-              </AtlasSessionField>
-
-              {/* Ce qui m'a convaincu — session Atlas (rencontre + conviction + affinité secteur) */}
-              <AtlasSessionField title="Ce qui m'a convaincu" filled={!!act.story} onOpen={() => router.push('/atlas?session=rencontre')}>
-                <p className="whitespace-pre-wrap text-lg leading-relaxed text-foreground lg:text-sm">{act.story}</p>
               </AtlasSessionField>
             </Collapsible>
 
