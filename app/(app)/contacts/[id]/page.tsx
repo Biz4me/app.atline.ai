@@ -349,6 +349,12 @@ export default function ContactDetailPage({ params }: { params: Promise<{ id: st
   const isProspect = c.kind === 'PROSPECT'
   const isClient = c.kind === 'CLIENT'
   const isPartner = c.kind === 'PARTENAIRE'
+  // Double-track : un client peut être re-sollicité (prospectStage actif) → on montre les deux.
+  const recruiting = isClient && !!c.prospectStage
+  const showOppCursor = isProspect || isPartner || recruiting
+  const oppStages = isPartner ? PARTNER_STAGES : PROSPECT_STAGES
+  const oppCurrent = isPartner ? c.partnerStage : c.prospectStage
+  const recruitingLabel = PROSPECT_STAGES.find((s) => s.id === c.prospectStage)?.label ?? ''
 
   return (
     <div className="mx-auto flex min-h-dvh w-full max-w-2xl flex-col bg-background">
@@ -364,6 +370,10 @@ export default function ContactDetailPage({ params }: { params: Promise<{ id: st
         <div className="flex flex-col items-center gap-2.5">
           <div className="grid size-20 place-items-center rounded-full text-2xl font-bold text-white" style={{ backgroundColor: perso?.hex ?? c.accent }}>{c.initials}</div>
           <p className="text-lg font-semibold text-foreground">{c.name || 'Contact'}</p>
+          {/* Badge combiné double-track : le client re-sollicité reste client ET affiche son stade opportunité */}
+          {recruiting && (
+            <span className="rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">En recrutement · {recruitingLabel}</span>
+          )}
         </div>
         {(() => {
           const secId = pfNf([pf.firstName, pf.lastName, pf.gender, pf.birthDate, pf.profession, pf.education])
@@ -465,9 +475,25 @@ export default function ContactDetailPage({ params }: { params: Promise<{ id: st
       </div>
 
       <div className="flex flex-col gap-4 px-4 pb-24 pt-2">
-        {/* Curseur d'étape — où en est ce contact dans le flow */}
-        {isProspect && <StageCursor stages={PROSPECT_STAGES} current={c.prospectStage} onPick={(id) => save({ prospectStage: id }, 'Étape mise à jour')} />}
-        {isPartner && <StageCursor stages={PARTNER_STAGES} current={c.partnerStage} onPick={(id) => save({ partnerStage: id }, 'Étape mise à jour')} />}
+        {/* Curseur d'étape — un seul tunnel (opportunité) : prospect, partenaire, OU client re-sollicité */}
+        {showOppCursor && (
+          <StageCursor
+            stages={oppStages}
+            current={oppCurrent}
+            onPick={(id) => save(isPartner ? { partnerStage: id } : { prospectStage: id }, 'Étape mise à jour')}
+          />
+        )}
+        {/* Fiche client « pur » : possibilité de le réengager vers l'opportunité (entre au tunnel Invitation) */}
+        {isClient && !recruiting && (
+          <button
+            type="button"
+            onClick={() => save({ prospectStage: 'INVITATION' }, "Réengagé vers l'opportunité")}
+            className="flex w-full items-center justify-center gap-2 rounded-2xl border border-primary/30 bg-primary/5 py-3 text-base font-bold text-primary transition-transform active:scale-[0.98]"
+          >
+            <ArrowRight className="size-4 stroke-[1.5]" />
+            Réengager vers l'opportunité
+          </button>
+        )}
         {/* LE PROCHAIN PAS — cockpit Atlas */}
         {nextStep && (
           <div className="rounded-2xl border border-primary/30 bg-primary/5 p-4">

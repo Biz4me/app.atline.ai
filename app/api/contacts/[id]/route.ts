@@ -122,7 +122,10 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
   } else if (convert === 'prospect') {
     pipelineUpdate = { kind: 'PROSPECT', prospectStage: existing.prospectStage ?? 'NOUVEAU', partnerStage: null }
   } else if (prospectStage !== undefined) {
-    pipelineUpdate = { kind: 'PROSPECT', prospectStage, clientStage: null, partnerStage: null }
+    // Double-track : un CLIENT re-sollicité garde son statut client (+ clientStage) et gagne un stade opportunité.
+    pipelineUpdate = existing.kind === 'CLIENT'
+      ? { prospectStage }
+      : { kind: 'PROSPECT', prospectStage, clientStage: null, partnerStage: null }
   } else if (partnerStage !== undefined) {
     pipelineUpdate = { kind: 'PARTENAIRE', partnerStage }
   }
