@@ -48,8 +48,10 @@ export default function NewActivityPage() {
   const [total, setTotal] = useState('')
   const [clients, setClients] = useState('')
   const [creating, setCreating] = useState(false)
-  const [open, setOpen] = useState<Record<string, boolean>>({ activite: true })
-  const toggle = (k: string) => setOpen((o) => ({ [k]: !o[k] }))
+  // Création : les 2 cartes ouvertes d'emblée (voir tous les champs) + toggle indépendant (pas d'accordéon).
+  const [open, setOpen] = useState<Record<string, boolean>>({ activite: true, structure: true })
+  const toggle = (k: string) => setOpen((o) => ({ ...o, [k]: !o[k] }))
+  const category = company === OTHER_COMPANY ? 'autre' : company ? categoryForCompany(company) : ''
 
   async function create() {
     if (!name.trim() || creating) return
@@ -92,6 +94,8 @@ export default function NewActivityPage() {
             {company === OTHER_COMPANY && (
               <input className={inputCls} value={customName} onChange={(e) => setCustomName(e.target.value)} placeholder="Nom de ta société" autoFocus />
             )}
+            {/* Catégorie — dérivée de la société (lecture seule) */}
+            <div className={`${inputCls} ${category ? 'text-foreground' : 'text-muted-foreground'}`}>{category ? category.charAt(0).toUpperCase() + category.slice(1) : 'Catégorie'}</div>
             <input className={inputCls} value={rank} onChange={(e) => setRank(e.target.value)} placeholder="Rang dans ton MLM" />
             <input className={inputCls} value={sponsorName} onChange={(e) => setSponsorName(e.target.value)} placeholder="Prénom de ton parrain" />
             <div>
