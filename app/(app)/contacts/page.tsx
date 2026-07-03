@@ -28,6 +28,10 @@ const segmentConfig: Record<Segment, { label: string; stages: ContactStage[] }> 
   partenaires: { label: 'Partenaires', stages: ['partenaire']                   },
 }
 
+// « Tous » n'est plus un onglet : c'est l'état par défaut (aucun segment actif = tout).
+// Les onglets sont un toggle → re-cliquer le segment actif revient à « tous ».
+const SEGMENT_TABS: Segment[] = ['prospects', 'clients', 'partenaires']
+
 const stageFilters: Record<Segment, { id: string; label: string; stages?: ContactStage[] }[]> = {
   tous:        [{ id: 'tous', label: 'Tous' }],
   prospects: [
@@ -405,13 +409,13 @@ function ContactsContent() {
             />
           </div>
 
-          {/* 3 segments */}
+          {/* Segments — toggle : re-cliquer l'actif revient à « tous » */}
           <div className="grid grid-cols-3 rounded-xl bg-muted p-1 gap-1">
-            {(Object.keys(segmentConfig) as Segment[]).map((seg) => (
+            {SEGMENT_TABS.map((seg) => (
               <button
                 key={seg}
                 type="button"
-                onClick={() => handleSegmentChange(seg)}
+                onClick={() => handleSegmentChange(segment === seg ? 'tous' : seg)}
                 className={cn(
                   'rounded-lg py-2 text-base font-semibold transition-colors',
                   segment === seg
@@ -538,7 +542,7 @@ function ContactsContent() {
 
           {/* Segments + dropdown */}
           <div ref={dropdownRef} className="relative flex items-center gap-1">
-            {(Object.keys(segmentConfig) as Segment[]).map((seg) => {
+            {SEGMENT_TABS.map((seg) => {
               const hasFilters = stageFilters[seg].length > 1
               const activeFilter = segment === seg && hasFilters && stageFilter !== 'tous'
                 ? stageFilters[seg].find((f) => f.id === stageFilter)?.label
@@ -548,8 +552,14 @@ function ContactsContent() {
                   key={seg}
                   type="button"
                   onClick={() => {
-                    if (seg !== segment) handleSegmentChange(seg)
-                    if (hasFilters) setDropdownOpen(seg === segment ? !dropdownOpen : true)
+                    if (seg === segment) {
+                      // re-clic sur l'actif → retour à « tous »
+                      handleSegmentChange('tous')
+                      setDropdownOpen(false)
+                    } else {
+                      handleSegmentChange(seg)
+                      setDropdownOpen(hasFilters)
+                    }
                   }}
                   className={cn(
                     'flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium transition-colors',
