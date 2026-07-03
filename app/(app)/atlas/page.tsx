@@ -16,9 +16,10 @@ const frText = (t: string) => t.replace(/ ([:;!?])/g, TH + '$1').replace(new Reg
 import { ChatChoices, AtlasDraftCard, type PlanItem } from '@/components/atlas-plan-card'
 import { ProfileFormCard } from '@/components/atlas-profile-form'
 import { WhyValidateCard } from '@/components/atlas-why-card'
+import { AtlasNavCard } from '@/components/atlas-nav-card'
 
 type Choice = { label: string; value: string }
-type Msg = { from: 'user' | 'atlas'; text: string; chips?: string[]; choices?: Choice[]; item?: PlanItem; draft?: { contactId: string; prenom: string; channel: string; phone: string | null; email: string | null }; profileForm?: { me: Record<string, unknown> }; whyCard?: { text: string; kind: SessionKind; title: string; obj?: Objectifs; superseded?: boolean; done?: boolean } }
+type Msg = { from: 'user' | 'atlas'; text: string; chips?: string[]; choices?: Choice[]; item?: PlanItem; draft?: { contactId: string; prenom: string; channel: string; phone: string | null; email: string | null }; profileForm?: { me: Record<string, unknown> }; whyCard?: { text: string; kind: SessionKind; title: string; obj?: Objectifs; superseded?: boolean; done?: boolean }; navCard?: { route: string; label: string } }
 
 type SessionKind = 'why' | 'rencontre' | 'mindset' | 'objectifs' | 'audience' | 'parcours' | 'produit'
 type Objectifs = { mensuel: string; m3: string; m6: string; m12: string }
@@ -72,6 +73,20 @@ const extractSaved = (content: string): string => {
   const m = content.match(/\[\[(?:SAVE|POURQUOI)\]\]([\s\S]*)$/)
   return m ? m[1].trim() : ''
 }
+
+// Concierge de navigation : marqueur invisible [[OPEN]] route | libellé émis par Atlas
+// quand l'utilisateur veut « voir / ouvrir / trouver » une info → carte deep-link (1 tap).
+const OPEN_MARK = '[[OPEN]]'
+const OPEN_MARK_RE = /\[\[OPEN\]\]\s*([^\n|]+?)\s*\|\s*([^\n]+)/
+// Ne jamais suivre une route arbitraire : on n'autorise que les destinations internes connues.
+const OPEN_ROUTES = ['/home', '/contacts', '/activities', '/formation', '/agenda', '/messages', '/communaute', '/notifications', '/mon-abonnement', '/profile/edit', '/settings/parrainage']
+const cleanOpenRoute = (raw: string): string | null => {
+  const r = raw.trim()
+  if (!r.startsWith('/')) return null
+  const path = r.split('?')[0]
+  return OPEN_ROUTES.some((base) => path === base || path.startsWith(base + '/')) ? r : null
+}
+const stripOpenMarker = (content: string): string => content.replace(/\s*\[\[OPEN\]\][\s\S]*$/, '')
 
 const suggestions = [
   'Comment relancer un prospect tiède ?',
@@ -264,10 +279,13 @@ TECHNIQUE (invisible pour moi, ne l'explique jamais)${NB}: le jour où je VALIDE
           const d = await r.json()
           const raw: { role: string; content: string }[] = d.messages ?? []
           setMsgs(
-            raw.map((m) => ({
-              from: m.role === 'USER' ? 'user' : 'atlas',
-              text: m.role === 'USER' ? displayUserText(m.content) : stripSaveMarker(m.content),
-            })),
+            raw.flatMap((m): Msg[] => {
+              if (m.role === 'USER') return [{ from: 'user', text: displayUserText(m.content) }]
+              const base: Msg = { from: 'atlas', text: stripOpenMarker(stripSaveMarker(m.content)) }
+              const om = m.content.match(OPEN_MARK_RE)
+              if (om) { const route = cleanOpenRoute(om[1]); if (route) return [base, { from: 'atlas', text: '', navCard: { route, label: om[2].trim() } }] }
+              return [base]
+            }),
           )
           scrollToBottom()
           // Reprise d'une session de fondation non finalisée : cadre présent + valeur pas encore enregistrée.
@@ -474,11 +492,17 @@ TECHNIQUE (invisible pour moi, ne l'explique jamais)${NB}: le jour où je VALIDE
     let streamDone = false
     let resolveDone: () => void = () => {}
     const donePromise = new Promise<void>((res) => { resolveDone = res })
-    // En session, on ne révèle jamais le marqueur ni un début de marqueur en fin de flux.
+    // On ne révèle jamais un marqueur (ni un début de marqueur en fin de flux) :
+    // [[SAVE]] en session, [[OPEN]] en chat normal (concierge de navigation).
     const revealTarget = () => {
-      if (!sessionKind) return full
-      if (markerIdx >= 0) return full.slice(0, markerIdx).replace(/\s+$/, '')
-      for (let n = Math.min(MARK.length - 1, full.length); n > 0; n--) if (full.endsWith(MARK.slice(0, n))) return full.slice(0, full.length - n)
+      if (sessionKind) {
+        if (markerIdx >= 0) return full.slice(0, markerIdx).replace(/\s+$/, '')
+        for (let n = Math.min(MARK.length - 1, full.length); n > 0; n--) if (full.endsWith(MARK.slice(0, n))) return full.slice(0, full.length - n)
+        return full
+      }
+      const oi = full.indexOf(OPEN_MARK)
+      if (oi >= 0) return full.slice(0, oi).replace(/\s+$/, '')
+      for (let n = Math.min(OPEN_MARK.length - 1, full.length); n > 0; n--) if (full.endsWith(OPEN_MARK.slice(0, n))) return full.slice(0, full.length - n)
       return full
     }
     const tick = () => {
@@ -538,6 +562,13 @@ TECHNIQUE (invisible pour moi, ne l'explique jamais)${NB}: le jour où je VALIDE
         if (!revealTarget().trim()) setLastAtlas('Voilà, je crois qu’on y est.')
         const finalText = full.slice(markerIdx + MARK.length).trim()
         if (finalText) appendSessionCard(sessionKind, finalText)
+      } else if (!sessionKind) {
+        // Concierge : Atlas a émis [[OPEN]] route | libellé → carte deep-link (1 tap).
+        const om = full.match(OPEN_MARK_RE)
+        if (om) {
+          const route = cleanOpenRoute(om[1])
+          if (route) { setLastAtlas(stripOpenMarker(full).trim()); appendNavCard(route, om[2].trim()) }
+        }
       }
       afterDone?.()
     } catch {
@@ -726,6 +757,12 @@ TECHNIQUE (invisible pour moi, ne l'explique jamais)${NB}: le jour où je VALIDE
     const msg = sessionCardMsg(kind, text)
     if (!msg) return
     setMsgs((prev) => [...prev, msg])
+    setTimeout(scrollToBottom, 80)
+  }
+
+  // Concierge : ajoute une carte deep-link sous la réponse d'Atlas (accès à l'info en 1 tap).
+  const appendNavCard = (route: string, label: string) => {
+    setMsgs((prev) => [...prev, { from: 'atlas', text: '', navCard: { route, label } }])
     setTimeout(scrollToBottom, 80)
   }
 
@@ -1073,6 +1110,8 @@ TECHNIQUE (invisible pour moi, ne l'explique jamais)${NB}: le jour où je VALIDE
                   <ProfileFormCard me={m.profileForm.me} onSaved={(n) => { setMsgs((prev) => [...prev, { from: 'atlas', text: `C'est noté dans ton profil ✓ (${n} info${n > 1 ? 's' : ''}). Plus je te connais, mieux je te coache.` }]); setTimeout(scrollToBottom, 60) }} />
                 ) : m.whyCard ? (
                   <WhyValidateCard title={m.whyCard.title} text={m.whyCard.text} obj={m.whyCard.obj} superseded={m.whyCard.superseded} done={m.whyCard.done} onValidate={() => validateWhyCard(i, m.whyCard!.kind, m.whyCard!.text, m.whyCard!.obj)} />
+                ) : m.navCard ? (
+                  <AtlasNavCard route={m.navCard.route} label={m.navCard.label} />
                 ) : m.text === '' ? (
                   <TypingDots />
                 ) : (

@@ -2,7 +2,7 @@
 
 import { useMemo, useState, useRef, useEffect } from 'react'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { useBusiness } from '@/components/business-provider'
 import { DiscAvatar } from '@/components/disc-avatar'
 import { StagePill } from '@/components/pills'
@@ -220,7 +220,9 @@ function ContactsContent() {
   const [loading, setLoading]         = useState(true)
   const [segment, setSegment]         = useState<Segment>('tous')
   const [stageFilter, setStageFilter] = useState('tous')
-  const [query, setQuery]             = useState('')
+  // Deep-link concierge : Atlas peut ouvrir la liste pré-filtrée sur un prénom (/contacts?q=Julien).
+  const initialQuery = useSearchParams().get('q') ?? ''
+  const [query, setQuery]             = useState(initialQuery)
   const [addOpen, setAddOpen]         = useState(false)
   const [sortKey, setSortKey]         = useState<SortKey | null>(null)
   const [sortDir, setSortDir]         = useState<SortDir>('asc')
