@@ -185,11 +185,14 @@ export default function ActivitiesPage() {
               <input className={inputCls} value={act.mlmName} onChange={(e) => setField('mlmName', e.target.value)} placeholder="Nom de l'activité" />
               <input className={inputCls} value={act.rank} onChange={(e) => setField('rank', e.target.value)} placeholder="Rang / palier — ex. Manager, Diamant…" />
               <SelectMenu className={inputCls} placeholder="Catégorie" value={act.category} onChange={(v) => setField('category', v)} options={CATEGORIES.map((c) => ({ value: c, label: c.charAt(0).toUpperCase() + c.slice(1) }))} />
-              {/* Objectif — nombre + unité + période (3 champs, comme la date de naissance du profil) */}
-              <div className="flex gap-2">
-                <input type="number" min="0" className={`${inputCls} w-20 shrink-0`} value={act.objectif?.target ?? ''} onChange={(e) => setObjectif('target', e.target.value)} placeholder="3" />
+              {/* Objectif — nombre + unité + période (sous-intitulé pour lever l'ambiguïté du nombre seul) */}
+              <div>
+                <p className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Objectif</p>
+                <div className="flex gap-2">
+                <input type="number" min="0" className={`${inputCls} w-20 shrink-0 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none`} value={act.objectif?.target ?? ''} onChange={(e) => setObjectif('target', e.target.value)} placeholder="3" />
                 <SelectMenu className={`${inputCls} min-w-0 flex-1`} placeholder="Unité" value={act.objectif?.unit ?? 'partenaires'} onChange={(v) => setObjectif('unit', v)} options={[{ value: 'partenaires', label: 'partenaires' }, { value: 'clients', label: 'clients' }, { value: '€', label: '€ de CA' }]} />
                 <SelectMenu className={`${inputCls} min-w-0 flex-1`} placeholder="Période" value={act.objectif?.period ?? 'mois'} onChange={(v) => setObjectif('period', v)} options={[{ value: 'mois', label: 'ce mois' }, { value: 'trimestre', label: 'ce trimestre' }, { value: 'an', label: 'cette année' }]} />
+                </div>
               </div>
               <input className={inputCls} value={act.produit} onChange={(e) => setField('produit', e.target.value)} placeholder="Produit / offre phare" />
               <textarea className={`${inputCls} min-h-[72px] resize-none overflow-hidden`} value={act.audience} onChange={(e) => setField('audience', e.target.value)} placeholder="Audience cible — à qui tu t'adresses" />
