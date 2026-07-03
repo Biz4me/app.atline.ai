@@ -98,10 +98,11 @@ export async function GET() {
   }
 
   // ── Niveau 1.5 — GATE de phase : la Fondation (Bande A) prime tant qu'elle n'est pas posée ──
-  // Séquence des modules : M1 Mindset → M2 Pourquoi → M4 Liste. On ne pousse au tunnel (niv. 2+)
-  // qu'une fois ces prérequis en place. Les incontournables temporels (niv. 1) passent toujours avant.
-  const [user, mindsetModule] = await Promise.all([
+  // Séquence : Rencontre (mon histoire avec l'activité) → M1 Mindset → M2 Pourquoi → M4 Liste.
+  // On ne pousse au tunnel (niv. 2+) qu'une fois ces prérequis posés. Les incontournables temporels (niv. 1) passent toujours avant.
+  const [user, business, mindsetModule] = await Promise.all([
     db.user.findUnique({ where: { id: userId }, select: { coaching: true } }),
+    db.userMlmBusiness.findUnique({ where: { id: bizId }, select: { story: true } }),
     db.lmsModule.findFirst({ where: { position: 0 }, select: { id: true } }).catch(() => null),
   ])
   let mindsetDone = false
@@ -110,6 +111,7 @@ export async function GET() {
     mindsetDone = p?.status === 'DONE'
   }
   const coaching = (user?.coaching && typeof user.coaching === 'object' && !Array.isArray(user.coaching)) ? (user.coaching as Record<string, unknown>) : {}
+  const hasStory = typeof business?.story === 'string' && business.story.trim().length > 0
   const hasWhy = typeof coaching.why === 'string' && (coaching.why as string).trim().length > 0
   const listCount = contacts.length
 
@@ -118,6 +120,8 @@ export async function GET() {
     level: 1.5, priority: 100 + rank, action, headline, reason, channel: null, stage: 'SOCLE',
     phone: null, email: null, market: null, route,
   })
+  // Le bon départ (dans l'ordre) : brise-glace (rencontre) → posture (mindset) → profondeur (pourquoi) → matière (liste).
+  if (!hasStory)               cands.push(foundItem('FOUND_RENCONTRE', 4, 'Raconte-moi ta rencontre avec ton activité', 'Ton histoire avec ce business : comment tu l’as découvert et pourquoi tu y crois. C’est mon point de départ pour te coacher juste.', null))
   // Mindset : seulement au tout début (pas encore de pourquoi) pour ne pas harceler un utilisateur lancé.
   if (!hasWhy && !mindsetDone) cands.push(foundItem('FOUND_MINDSET', 3, 'Pose ton état d’esprit de pro', 'Module 1 — la base : comprendre le métier avant de te lancer. 15 min qui changent tout.', mindsetModule ? `/formation/${mindsetModule.id}` : '/formation'))
   if (!hasWhy)                cands.push(foundItem('FOUND_WHY', 2, 'Formule ton pourquoi', 'Module 2 — ton moteur. Sans un pourquoi clair, tout s’essouffle. On le travaille ensemble.', null))

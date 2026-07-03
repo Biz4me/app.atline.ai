@@ -18,7 +18,9 @@ import { ProfileFormCard } from '@/components/atlas-profile-form'
 import { WhyValidateCard } from '@/components/atlas-why-card'
 
 type Choice = { label: string; value: string }
-type Msg = { from: 'user' | 'atlas'; text: string; chips?: string[]; choices?: Choice[]; item?: PlanItem; draft?: { contactId: string; prenom: string; channel: string; phone: string | null; email: string | null }; profileForm?: { me: Record<string, unknown> }; whyCard?: { text: string; superseded?: boolean; done?: boolean } }
+type Msg = { from: 'user' | 'atlas'; text: string; chips?: string[]; choices?: Choice[]; item?: PlanItem; draft?: { contactId: string; prenom: string; channel: string; phone: string | null; email: string | null }; profileForm?: { me: Record<string, unknown> }; whyCard?: { text: string; kind: SessionKind; title: string; superseded?: boolean; done?: boolean } }
+
+type SessionKind = 'why' | 'rencontre'
 
 // Indicateur « Atlas réfléchit » — 3 points en cascade
 function TypingDots() {
@@ -39,15 +41,18 @@ function TypingDots() {
 // (cadre de session, contexte du plan) envoyés au LLM avec un libellé propre. On restitue ce libellé.
 const displayUserText = (content: string): string => {
   if (content.startsWith('[SESSION_POURQUOI]')) return 'Je veux travailler mon pourquoi avec toi'
+  if (content.startsWith('[SESSION_RENCONTRE]')) return 'Je veux te raconter ma rencontre avec mon activité'
   if (content.startsWith('Voici mes priorités') || content.startsWith('Avant de courir après les contacts') || content.startsWith("Je n'ai aucune priorité")) return 'Mon plan du jour'
   return content
 }
 
-// Le marqueur technique [[POURQUOI]] (+ le pourquoi final) ne doit jamais s'afficher : on le retire à l'écran.
-const WHY_MARK = '[[POURQUOI]]'
-const stripWhyMarker = (content: string): string => {
-  const k = content.indexOf(WHY_MARK)
-  return k >= 0 ? content.slice(0, k).replace(/\s+$/, '') : content
+// Marqueur technique de sauvegarde ([[SAVE]], ou l'ancien [[POURQUOI]]) + son texte : jamais affiché.
+const SAVE_MARK = '[[SAVE]]'
+const SAVE_MARK_RE = /\s*\[\[(?:SAVE|POURQUOI)\]\][\s\S]*$/
+const stripSaveMarker = (content: string): string => content.replace(SAVE_MARK_RE, '')
+const extractSaved = (content: string): string => {
+  const m = content.match(/\[\[(?:SAVE|POURQUOI)\]\]([\s\S]*)$/)
+  return m ? m[1].trim() : ''
 }
 
 const suggestions = [
@@ -123,8 +128,40 @@ export default function AtlasPage() {
   const pendingRef = useRef<{ field: string; value: string; item: PlanItem } | null>(null)
   const gatherRef = useRef<{ queue: string[]; item: PlanItem | null }>({ queue: [], item: null })
   // Session profonde en cours (ex. « le pourquoi ») : le composeur alimente la session au lieu du chat libre.
-  const sessionRef = useRef<null | 'why'>(null)
+  const sessionRef = useRef<null | SessionKind>(null)
   const whyTurnsRef = useRef(0)
+
+  // Métadonnées par session de fondation (frame envoyé au LLM, libellés, titre de carte).
+  const SESSION_META: Record<SessionKind, { display: string; title: string; frame: string }> = {
+    why: {
+      display: 'Je veux travailler mon pourquoi avec toi',
+      title: 'Ton pourquoi',
+      frame: `[SESSION_POURQUOI] On démarre un échange à cœur ouvert pour formuler MON POURQUOI profond${NB}: la vraie motivation de fond derrière mon activité, au-delà de "gagner de l'argent".
+
+Comporte-toi comme un excellent coach en tête-à-tête${NB}: un VRAI dialogue vivant, pas un questionnaire.
+- Accueille-moi en UNE phrase, puis pose UNE seule question ouverte pour démarrer.
+- À chacune de mes réponses, RE-CREUSE une fois, une question à la fois (les 5 pourquoi${NB}: "et pourquoi c'est important pour toi${NB}?", "qu'est-ce que ça changerait concrètement dans ta vie${NB}?"). Court, chaleureux, jamais de liste.
+- Régulièrement, REFLÈTE en une phrase ce que tu entends ("ce que j'entends, c'est que…").
+- Quand TOI, en bon coach, tu juges que le pourquoi est vraiment là (profond et incarné, pas juste "être libre"), PROPOSE ta formulation à la 1ʳᵉ personne (2-4 phrases) et demande-moi si ça capture bien mon vrai pourquoi OU si je veux ajuster. Ne te précipite pas.
+- Si j'ajuste, intègre et re-propose, jusqu'à ce que ce soit juste.
+
+TECHNIQUE (invisible pour moi, ne l'explique jamais)${NB}: le jour où je VALIDE explicitement ta formulation (je dis oui / c'est ça / parfait…), écris ta phrase de clôture chaleureuse, PUIS ajoute tout à la fin, sur une nouvelle ligne, EXACTEMENT ce format${NB}: [[SAVE]] suivi de mon pourquoi final à la 1ʳᵉ personne (2-4 phrases). N'écris la ligne [[SAVE]] QU'APRÈS ma validation explicite, jamais avant.`,
+    },
+    rencontre: {
+      display: 'Je veux te raconter ma rencontre avec mon activité',
+      title: 'Ta rencontre avec ton activité',
+      frame: `[SESSION_RENCONTRE] On fait connaissance sur MON activité. Je veux comprendre mon histoire avec ce business${NB}: comment je l'ai découvert, et surtout pourquoi CELUI-LÀ, ma conviction.
+
+Comporte-toi comme un excellent coach curieux${NB}: un VRAI dialogue vivant, pas un questionnaire.
+- Accueille-moi en UNE phrase, puis pose UNE seule question ouverte pour démarrer (par ex. "raconte-moi${NB}: comment t'es tombé sur cette activité${NB}?").
+- À chacune de mes réponses, RE-CREUSE une fois, une question à la fois${NB}: qu'est-ce qui t'a convaincu (le produit, les gens, l'opportunité${NB}?), ce que tu as ressenti, pourquoi tu y crois vraiment. Court, chaleureux, jamais de liste.
+- Régulièrement, REFLÈTE en une phrase ce que tu entends.
+- Quand TOI, en bon coach, tu juges que mon histoire ET ma conviction sont claires, PROPOSE une formulation à la 1ʳᵉ personne (2-4 phrases) qui capture ma rencontre et pourquoi j'y crois, et demande-moi si c'est juste OU si je veux ajuster.
+- Si j'ajuste, intègre et re-propose, jusqu'à ce que ce soit juste.
+
+TECHNIQUE (invisible pour moi, ne l'explique jamais)${NB}: le jour où je VALIDE explicitement ta formulation, écris ta phrase de clôture, PUIS ajoute tout à la fin, sur une nouvelle ligne, EXACTEMENT ce format${NB}: [[SAVE]] suivi de mon histoire finale à la 1ʳᵉ personne (2-4 phrases). N'écris [[SAVE]] QU'APRÈS ma validation explicite, jamais avant.`,
+    },
+  }
 
   // Charge la conversation de l'URL (?c=) — saute si on vient de la créer (loadedRef).
   useEffect(() => {
@@ -149,25 +186,29 @@ export default function AtlasPage() {
           setMsgs(
             raw.map((m) => ({
               from: m.role === 'USER' ? 'user' : 'atlas',
-              text: m.role === 'USER' ? displayUserText(m.content) : stripWhyMarker(m.content),
+              text: m.role === 'USER' ? displayUserText(m.content) : stripSaveMarker(m.content),
             })),
           )
           scrollToBottom()
-          // Reprise d'une session « pourquoi » non finalisée : cadre présent + pourquoi pas encore enregistré.
-          const isWhySession = raw.some((m) => m.role === 'USER' && m.content.startsWith('[SESSION_POURQUOI]'))
-          if (isWhySession) {
+          // Reprise d'une session de fondation non finalisée : cadre présent + valeur pas encore enregistrée.
+          const kind: SessionKind | null =
+            raw.some((m) => m.role === 'USER' && m.content.startsWith('[SESSION_RENCONTRE]')) ? 'rencontre'
+            : raw.some((m) => m.role === 'USER' && m.content.startsWith('[SESSION_POURQUOI]')) ? 'why'
+            : null
+          if (kind) {
             let saved = false
-            try { const me = await fetch('/api/me').then((x) => (x.ok ? x.json() : null)); const w = me?.coaching?.why; saved = typeof w === 'string' && w.trim().length > 0 } catch { /* ignore */ }
+            try {
+              if (kind === 'why') { const me = await fetch('/api/me').then((x) => (x.ok ? x.json() : null)); const w = me?.coaching?.why; saved = typeof w === 'string' && w.trim().length > 0 }
+              else { const a = await fetch('/api/activities/active').then((x) => (x.ok ? x.json() : null)); const s = a?.activity?.story; saved = typeof s === 'string' && s.trim().length > 0 }
+            } catch { /* ignore */ }
             if (!cancelled && !saved) {
               // Reprise transparente : on rebranche le composeur sur la session, la conversation continue naturellement.
-              sessionRef.current = 'why'
-              whyTurnsRef.current = raw.filter((m) => m.role === 'USER' && !m.content.startsWith('[SESSION_POURQUOI]')).length
+              sessionRef.current = kind
+              whyTurnsRef.current = raw.filter((m) => m.role === 'USER' && !m.content.startsWith('[SESSION')).length
               // Si Atlas avait déjà proposé une formulation validée (dernier marqueur), on rétablit la carte « Je valide ».
-              const lastMarked = [...raw].reverse().find((m) => m.role !== 'USER' && m.content.includes(WHY_MARK))
-              if (lastMarked) {
-                const pourquoi = lastMarked.content.slice(lastMarked.content.indexOf(WHY_MARK) + WHY_MARK.length).trim()
-                if (pourquoi) setMsgs((prev) => [...prev, { from: 'atlas', text: '', whyCard: { text: pourquoi } }])
-              }
+              const lastMarked = [...raw].reverse().find((m) => m.role !== 'USER' && SAVE_MARK_RE.test(m.content))
+              const finalText = lastMarked ? extractSaved(lastMarked.content) : ''
+              if (finalText) setMsgs((prev) => [...prev, { from: 'atlas', text: '', whyCard: { text: finalText, kind, title: SESSION_META[kind].title } }])
             }
           }
         }
@@ -238,18 +279,19 @@ export default function AtlasPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  // Démarrage d'une session profonde depuis un lien (?session=why), ex. bouton « Travaille-le avec Atlas » du profil.
+  // Démarrage d'une session profonde depuis un lien (?session=why | rencontre), ex. bouton « Travaille-le avec Atlas ».
   const sessionStartedRef = useRef(false)
-  const startWhyRef = useRef<() => void>(() => {})
+  const startSessionRef = useRef<(k: SessionKind) => void>(() => {})
   useEffect(() => {
-    if (sessionParam !== 'why' || sessionStartedRef.current || loadingConv) return
+    if ((sessionParam !== 'why' && sessionParam !== 'rencontre') || sessionStartedRef.current || loadingConv) return
     sessionStartedRef.current = true
+    const kind = sessionParam as SessionKind
     // On repart d'un chat vierge pour la session, puis on retire le paramètre de l'URL.
     localStorage.removeItem('atlas-last-conv')
     loadedRef.current = null
     setMsgs([])
     router.replace('/atlas', { scroll: false })
-    setTimeout(() => startWhyRef.current(), 100)
+    setTimeout(() => startSessionRef.current(kind), 100)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sessionParam, loadingConv])
 
@@ -334,17 +376,17 @@ export default function AtlasPage() {
     scrollToBottom()
 
     // Machine à écrire — même rythme que l'onboarding (22ms/car), indépendant de l'arrivée des tokens
-    const isWhy = sessionRef.current === 'why'
-    const MARK = '[[POURQUOI]]'
+    const sessionKind = sessionRef.current   // session active au moment de l'envoi (why/rencontre) ou null
+    const MARK = SAVE_MARK
     let full = ''
     let markerIdx = -1
     let shown = 0
     let streamDone = false
     let resolveDone: () => void = () => {}
     const donePromise = new Promise<void>((res) => { resolveDone = res })
-    // En session pourquoi, on ne révèle jamais le marqueur ni un début de marqueur en fin de flux.
+    // En session, on ne révèle jamais le marqueur ni un début de marqueur en fin de flux.
     const revealTarget = () => {
-      if (!isWhy) return full
+      if (!sessionKind) return full
       if (markerIdx >= 0) return full.slice(0, markerIdx).replace(/\s+$/, '')
       for (let n = Math.min(MARK.length - 1, full.length); n > 0; n--) if (full.endsWith(MARK.slice(0, n))) return full.slice(0, full.length - n)
       return full
@@ -392,7 +434,7 @@ export default function AtlasPage() {
           if (payload === '[DONE]') continue
           try {
             const data = JSON.parse(payload)
-            if (data.text) { full += data.text; if (isWhy && markerIdx < 0) { const k = full.indexOf(MARK); if (k >= 0) markerIdx = k } }
+            if (data.text) { full += data.text; if (sessionKind && markerIdx < 0) { const k = full.indexOf(MARK); if (k >= 0) markerIdx = k } }
           } catch {
             /* ligne SSE incomplète, ignorée */
           }
@@ -402,10 +444,10 @@ export default function AtlasPage() {
       streamDone = true
       await donePromise
       // Atlas a proposé sa formulation validée (marqueur présent) → carte de validation « Je valide ».
-      if (isWhy && markerIdx >= 0) {
+      if (sessionKind && markerIdx >= 0) {
         if (!revealTarget().trim()) setLastAtlas('Voilà, je crois qu’on y est.')
-        const pourquoi = full.slice(markerIdx + MARK.length).trim()
-        if (pourquoi) appendWhyCard(pourquoi)
+        const finalText = full.slice(markerIdx + MARK.length).trim()
+        if (finalText) appendSessionCard(sessionKind, finalText)
       }
       afterDone?.()
     } catch {
@@ -482,7 +524,8 @@ export default function AtlasPage() {
   const startActionFlow = (item: PlanItem) => {
     // Item de FONDATION (socle, pas de contact) : le gate de phase prime → on route vers la bonne surface.
     if (!item.contactId) {
-      if (item.action === 'FOUND_WHY') { setTimeout(() => startWhyRef.current(), 300); return }
+      if (item.action === 'FOUND_WHY') { setTimeout(() => startSessionRef.current('why'), 300); return }
+      if (item.action === 'FOUND_RENCONTRE') { setTimeout(() => startSessionRef.current('rencontre'), 300); return }
       if (item.action === 'FOUND_PROFILE') { setTimeout(() => showProfileForm(), 300); return }
       const label = item.action === 'FOUND_LIST' ? 'Construire ma liste' : item.action === 'FOUND_MINDSET' ? 'Ouvrir le module' : 'Y aller'
       setMsgs((prev) => [...prev, { from: 'atlas', text: item.reason, choices: [{ label, value: 'goto' }], item }])
@@ -534,26 +577,18 @@ export default function AtlasPage() {
 
   // ── Session profonde « le pourquoi » : Atlas creuse en conversation, puis synthétise une formulation
   //    que l'utilisateur régénère et valide → Atlas l'enregistre dans le profil (coaching.why). ──
-  const startWhySession = () => {
+  // Démarre une session de fondation (pourquoi, rencontre…) — même patron : Atlas creuse, propose, on valide par carte.
+  const startSession = (kind: SessionKind) => {
     if (streaming) return
-    sessionRef.current = 'why'
+    sessionRef.current = kind
     whyTurnsRef.current = 0
-    const frame = `[SESSION_POURQUOI] On démarre un échange à cœur ouvert pour formuler MON POURQUOI profond${NB}: la vraie motivation de fond derrière mon activité, au-delà de "gagner de l'argent".
-
-Comporte-toi comme un excellent coach en tête-à-tête${NB}: un VRAI dialogue vivant, pas un questionnaire.
-- Accueille-moi en UNE phrase, puis pose UNE seule question ouverte pour démarrer.
-- À chacune de mes réponses, RE-CREUSE une fois, une question à la fois (les 5 pourquoi${NB}: "et pourquoi c'est important pour toi${NB}?", "qu'est-ce que ça changerait concrètement dans ta vie${NB}?"). Court, chaleureux, jamais de liste.
-- Régulièrement, REFLÈTE en une phrase ce que tu entends ("ce que j'entends, c'est que…") pour montrer que tu suis et affiner petit à petit.
-- Quand TOI, en bon coach, tu juges que le pourquoi est vraiment là (profond et incarné, pas juste "être libre"), PROPOSE ta formulation à la 1ʳᵉ personne (2-4 phrases) et demande-moi si ça capture bien mon vrai pourquoi OU si je veux ajouter/ajuster quelque chose. Ne te précipite pas${NB}: ce moment arrive quand c'est mûr.
-- Si j'ajuste, intègre et re-propose, jusqu'à ce que ce soit juste.
-
-TECHNIQUE (invisible pour moi, ne l'explique jamais)${NB}: le jour où je VALIDE explicitement ta formulation (je dis oui / c'est ça / parfait…), écris ta phrase de clôture chaleureuse, PUIS ajoute tout à la fin, sur une nouvelle ligne, EXACTEMENT ce format${NB}: [[POURQUOI]] suivi de mon pourquoi final à la 1ʳᵉ personne (2-4 phrases). N'écris la ligne [[POURQUOI]] QU'APRÈS ma validation explicite, jamais avant.`
-    sendMsg(frame, 'Je veux travailler mon pourquoi avec toi')
+    const meta = SESSION_META[kind]
+    sendMsg(meta.frame, meta.display)
   }
 
-  // Réponse de l'utilisateur pendant la session : il tape simplement, comme une vraie conversation.
+  // Réponse de l'utilisateur pendant une session : il tape simplement, comme une vraie conversation.
   // Atlas creuse, récapitule, et décide lui-même quand proposer sa formulation (→ carte de validation).
-  const whyAnswer = (v: string) => {
+  const sessionAnswer = (v: string) => {
     setInput('')
     whyTurnsRef.current += 1
     // L'utilisateur préfère continuer à parler plutôt que valider → la proposition en cours est dépassée, Atlas affine.
@@ -563,25 +598,36 @@ TECHNIQUE (invisible pour moi, ne l'explique jamais)${NB}: le jour où je VALIDE
 
   // Atlas a proposé une formulation validée ensemble (marqueur émis) → carte de validation (non régénérable).
   // La session reste active : si l'utilisateur écrit encore, la carte est dépassée et Atlas affine ; s'il tape « Je valide », on enregistre.
-  const appendWhyCard = (text: string) => {
-    setMsgs((prev) => [...prev, { from: 'atlas', text: '', whyCard: { text } }])
+  const appendSessionCard = (kind: SessionKind, text: string) => {
+    setMsgs((prev) => [...prev, { from: 'atlas', text: '', whyCard: { text, kind, title: SESSION_META[kind].title } }])
     setTimeout(scrollToBottom, 80)
   }
 
-  const validateWhyCard = async (idx: number, text: string): Promise<boolean> => {
-    let ok = false
+  // Enregistrement au bon endroit selon la session : pourquoi → profil (coaching.why) ; rencontre → activité (story).
+  const persistSession = async (kind: SessionKind, text: string): Promise<boolean> => {
     try {
-      const me = await fetch('/api/me').then((x) => (x.ok ? x.json() : null))
-      const coaching = { ...(me?.coaching && typeof me.coaching === 'object' ? me.coaching : {}), why: text }
-      const r = await fetch('/api/me', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ coaching }) })
-      ok = r.ok
-      if (ok) { try { sessionStorage.removeItem('profile_draft_v1') } catch { /* ignore */ } }
-    } catch { /* ignore */ }
+      if (kind === 'why') {
+        const me = await fetch('/api/me').then((x) => (x.ok ? x.json() : null))
+        const coaching = { ...(me?.coaching && typeof me.coaching === 'object' ? me.coaching : {}), why: text }
+        const r = await fetch('/api/me', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ coaching }) })
+        if (r.ok) { try { sessionStorage.removeItem('profile_draft_v1') } catch { /* ignore */ } }
+        return r.ok
+      }
+      const r = await fetch('/api/activities/active', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ story: text }) })
+      return r.ok
+    } catch { return false }
+  }
+
+  const validateWhyCard = async (idx: number, kind: SessionKind, text: string): Promise<boolean> => {
+    const ok = await persistSession(kind, text)
     if (ok) {
       sessionRef.current = null
+      const confirm = kind === 'why'
+        ? `C’est gravé dans ton profil ✓ Ton pourquoi sera ton point d’ancrage${NB}: on y reviendra chaque fois que tu douteras ou qu’on préparera un message important.`
+        : `C’est enregistré ✓ Ton histoire avec cette activité me servira à personnaliser tes messages et à nourrir ta présentation.`
       setMsgs((prev) => [
         ...prev.map((m, j) => (j === idx && m.whyCard ? { ...m, whyCard: { ...m.whyCard, done: true } } : m)),
-        { from: 'atlas', text: `C’est gravé dans ton profil ✓ Ton pourquoi sera ton point d’ancrage${NB}: on y reviendra chaque fois que tu douteras ou qu’on préparera un message important.` },
+        { from: 'atlas', text: confirm },
       ])
       setTimeout(scrollToBottom, 60)
     }
@@ -675,7 +721,7 @@ TECHNIQUE (invisible pour moi, ne l'explique jamais)${NB}: le jour où je VALIDE
     const v = input.trim()
     if (!v || streaming) return
     if (captureRef.current) { handleCapture(v); return }
-    if (sessionRef.current === 'why') { whyAnswer(v); return }
+    if (sessionRef.current) { sessionAnswer(v); return }
     sendMsg(v)
   }
 
@@ -689,7 +735,7 @@ TECHNIQUE (invisible pour moi, ne l'explique jamais)${NB}: le jour où je VALIDE
   }
 
   // Permet à l'effet ?session=why de déclencher la session une fois la fonction définie.
-  startWhyRef.current = startWhySession
+  startSessionRef.current = startSession
 
   // Historique + nouveau chat pilotés depuis la barre du haut globale (via événements)
   const toggleHistRef = useRef(toggleHist); toggleHistRef.current = toggleHist
@@ -846,7 +892,7 @@ TECHNIQUE (invisible pour moi, ne l'explique jamais)${NB}: le jour où je VALIDE
                   { icon: Mic, label: 'Simuler un appel avec Aria', run: () => router.push('/aria') },
                   { icon: SquarePen, label: 'Créer un post avec Nova', run: () => router.push('/nova') },
                   { icon: UserRound, label: 'Compléter mon profil', run: () => showProfileForm() },
-                  { icon: Compass, label: 'Travailler mon pourquoi', run: () => startWhySession() },
+                  { icon: Compass, label: 'Travailler mon pourquoi', run: () => startSession('why') },
                 ].map(({ icon: Icon, label, run }) => (
                   <button
                     key={label}
@@ -884,7 +930,7 @@ TECHNIQUE (invisible pour moi, ne l'explique jamais)${NB}: le jour où je VALIDE
                 ) : m.profileForm ? (
                   <ProfileFormCard me={m.profileForm.me} onSaved={(n) => { setMsgs((prev) => [...prev, { from: 'atlas', text: `C'est noté dans ton profil ✓ (${n} info${n > 1 ? 's' : ''}). Plus je te connais, mieux je te coache.` }]); setTimeout(scrollToBottom, 60) }} />
                 ) : m.whyCard ? (
-                  <WhyValidateCard text={m.whyCard.text} superseded={m.whyCard.superseded} done={m.whyCard.done} onValidate={() => validateWhyCard(i, m.whyCard!.text)} />
+                  <WhyValidateCard title={m.whyCard.title} text={m.whyCard.text} superseded={m.whyCard.superseded} done={m.whyCard.done} onValidate={() => validateWhyCard(i, m.whyCard!.kind, m.whyCard!.text)} />
                 ) : m.text === '' ? (
                   <TypingDots />
                 ) : (

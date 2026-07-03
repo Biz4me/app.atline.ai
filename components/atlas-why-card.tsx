@@ -6,7 +6,7 @@ import { Check } from 'lucide-react'
 // Carte de VALIDATION du pourquoi (non régénérable) — n'apparaît QUE lorsqu'Atlas et l'utilisateur
 // ont validé ensemble la formulation. « Je valide » → enregistrement dans le profil.
 // Si l'utilisateur continue à écrire au lieu de valider, la carte est marquée « dépassée » (Atlas affine).
-export function WhyValidateCard({ text, superseded, done, onValidate }: { text: string; superseded?: boolean; done?: boolean; onValidate: () => Promise<boolean> }) {
+export function WhyValidateCard({ text, title = 'Ton pourquoi', superseded, done, onValidate }: { text: string; title?: string; superseded?: boolean; done?: boolean; onValidate: () => Promise<boolean> }) {
   const [saving, setSaving] = useState(false)
   const [localDone, setLocalDone] = useState(false)
   const finished = done || localDone
@@ -31,7 +31,7 @@ export function WhyValidateCard({ text, superseded, done, onValidate }: { text: 
 
   return (
     <div className="w-full overflow-hidden rounded-2xl border border-border bg-surface">
-      <div className="border-b border-border px-4 py-2.5 text-sm font-semibold text-muted-foreground">Ton pourquoi</div>
+      <div className="border-b border-border px-4 py-2.5 text-sm font-semibold text-muted-foreground">{title}</div>
       <div className="whitespace-pre-wrap px-4 py-3 text-lg italic leading-relaxed text-foreground lg:text-sm">{text}</div>
       {finished ? (
         <div className="flex items-center gap-1.5 border-t border-border px-4 py-3 text-sm font-semibold text-primary">

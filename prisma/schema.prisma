@@ -378,6 +378,7 @@ model UserMlmBusiness {
   objectif      Json?
   produit       String?
   audience      String?
+  story         String?  // narratif « ma rencontre / ma conviction » — rempli en session Atlas
   color         String
   initials      String
   active        Boolean  @default(true)

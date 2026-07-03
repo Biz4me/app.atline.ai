@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useRef, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
-import { ChevronLeft, Check, Loader2, Briefcase, Link2, FileText, Sparkles, Plus, Trash2 } from 'lucide-react'
+import { ChevronLeft, Check, Loader2, Briefcase, Link2, FileText, Sparkles, Plus, Trash2, Compass } from 'lucide-react'
 import { Card } from '@/components/card'
 import { useOverlay } from '@/components/overlay-provider'
 import { toast } from 'sonner'
@@ -29,7 +29,7 @@ const BUCKET_LABEL: Record<string, string> = { PRESENTER: 'Présenter', FORMER: 
 
 type Support = { id: string; title: string; description: string | null; format: string; fileUrl: string; createdAt: string }
 type Activity = {
-  id: string; mlmName: string; rank: string; category: string; goal: string; produit: string; audience: string; color: string; active: boolean
+  id: string; mlmName: string; rank: string; category: string; goal: string; produit: string; audience: string; story: string; color: string; active: boolean
   objectif: Record<string, string>
   links: Record<string, string>
   supports: Record<string, Support[]>
@@ -181,6 +181,27 @@ export default function ActivitiesPage() {
                 <span className="mb-1.5 block text-base font-medium text-muted-foreground">Audience cible <span className="text-muted-foreground/60">(Aria &amp; Nova)</span></span>
                 <textarea className={`${inputCls} min-h-[72px] resize-none`} value={act.audience} onChange={(e) => setField('audience', e.target.value)} placeholder="À qui tu t'adresses — ex. jeunes parents, sportifs, indépendants…" />
               </label>
+
+              {/* Ma rencontre = champ narratif PROFOND : se travaille en session avec Atlas (pas en saisie libre) */}
+              <div className="block">
+                <span className="mb-1.5 block text-base font-medium text-muted-foreground">Ma rencontre avec cette activité <span className="text-muted-foreground/60">(Atlas, Aria &amp; Nova)</span></span>
+                {act.story ? (
+                  <div className="rounded-xl border border-border bg-background px-4 py-3">
+                    <p className="whitespace-pre-wrap text-lg italic leading-relaxed text-foreground lg:text-sm">{act.story}</p>
+                    <button type="button" onClick={() => router.push('/atlas?session=rencontre')} className="mt-2.5 flex items-center gap-1.5 text-sm font-semibold text-primary">
+                      <Compass className="size-3.5" /> Retravailler avec Atlas
+                    </button>
+                  </div>
+                ) : (
+                  <button type="button" onClick={() => router.push('/atlas?session=rencontre')} className="flex w-full items-center gap-3 rounded-xl border border-dashed border-primary/40 bg-primary/5 px-4 py-3 text-left transition-colors active:bg-primary/10">
+                    <Compass className="size-5 shrink-0 text-primary" />
+                    <span className="min-w-0">
+                      <span className="block text-lg font-semibold text-foreground lg:text-sm">Raconte ta rencontre à Atlas</span>
+                      <span className="block text-sm text-muted-foreground">Comment tu as découvert ce business et pourquoi tu y crois</span>
+                    </span>
+                  </button>
+                )}
+              </div>
             </div>
           </Card>
 

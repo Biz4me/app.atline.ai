@@ -11,6 +11,7 @@ const ATLAS_URL = process.env.ATLAS_URL || 'http://127.0.0.1:8100'
 // Titre lisible pour l'historique : les prompts internes (session, plan) ne doivent pas s'afficher bruts.
 function convTitle(query: string): string {
   if (query.startsWith('[SESSION_POURQUOI]')) return 'Mon pourquoi'
+  if (query.startsWith('[SESSION_RENCONTRE]')) return 'Ma rencontre'
   if (query.startsWith('[SESSION')) return 'Session Atlas'
   if (query.startsWith('Voici mes priorités') || query.startsWith('Avant de courir après les contacts') || query.startsWith("Je n'ai aucune priorité")) return 'Mon plan du jour'
   if (query.startsWith('Tu es Atlas, coach en marketing de réseau. Rédige')) return 'Message rédigé'
