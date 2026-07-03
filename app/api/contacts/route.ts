@@ -48,6 +48,12 @@ export async function GET(req: Request) {
     accent: c.accent ?? '#F97316',
     stage: toStage(c),
     kind: c.kind,
+    // Double-track : le marché (proximité) + les stades des deux tunnels, séparés.
+    market: c.market,
+    prospectStage: c.prospectStage,
+    partnerStage: c.partnerStage,
+    isClient: c.kind === 'CLIENT' || c.clientStage != null,
+    isPartner: c.kind === 'PARTENAIRE' || c.partnerStage != null,
     source: c.source?.toLowerCase() ?? 'manuel',
     city: c.city ?? '',
     phone: c.phone ?? '',

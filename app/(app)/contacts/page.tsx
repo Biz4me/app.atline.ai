@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { useBusiness } from '@/components/business-provider'
 import { DiscAvatar } from '@/components/disc-avatar'
 import { StagePill } from '@/components/pills'
+import { SelectMenu } from '@/components/select-menu'
 import type { ContactStage, ContactPipelineStage, DiscType } from '@/lib/types'
 import {
   Search, Plus, UserRound, ChevronDown, Check,
@@ -29,8 +30,44 @@ const segmentConfig: Record<Segment, { label: string; stages: ContactStage[] }> 
 }
 
 // « Tous » n'est plus un onglet : c'est l'état par défaut (aucun segment actif = tout).
-// Les onglets sont un toggle → re-cliquer le segment actif revient à « tous ».
+// Les onglets sont un toggle → re-cliquer le segment actif revient à « tous ». (desktop)
 const SEGMENT_TABS: Segment[] = ['prospects', 'clients', 'partenaires']
+
+// ── 3 déroulants de la liste (mobile) : Segment · Marché · Stade ──────────────
+const SEGMENT_OPTS = [
+  { value: 'tous', label: 'Tous' }, { value: 'prospects', label: 'Prospects' },
+  { value: 'clients', label: 'Clients' }, { value: 'partenaires', label: 'Partenaires' },
+]
+const MARKET_OPTS = [
+  { value: 'all', label: 'Marché' }, { value: 'CHAUD', label: 'Chaud' },
+  { value: 'TIEDE', label: 'Tiède' }, { value: 'FROID', label: 'Froid' },
+]
+const DD_CLS = 'rounded-xl border border-border bg-surface px-3 py-2.5 text-base'
+// Stades du tunnel opportunité — adaptés au segment (déroulant 3).
+const PROSPECT_STADES = [
+  { value: 'NOUVEAU', label: 'Nouveau' }, { value: 'INVITATION', label: 'Invitation' },
+  { value: 'PRESENTATION', label: 'Présentation' }, { value: 'SUIVI', label: 'Suivi' }, { value: 'CLOSING', label: 'Closing' },
+]
+const PARTNER_STADES = [
+  { value: 'DEMARRAGE', label: 'Démarrage' }, { value: 'FORMATION', label: 'Formation' },
+  { value: 'ACTIF', label: 'Actif' }, { value: 'LEADER', label: 'Leader' },
+]
+const stadeOptionsFor = (seg: Segment) =>
+  seg === 'prospects' ? PROSPECT_STADES
+  : seg === 'partenaires' ? PARTNER_STADES
+  : seg === 'tous' ? [...PROSPECT_STADES, ...PARTNER_STADES]
+  : [] // clients = binaire, pas de stade
+
+// Segment dérivé (double-track) : un contact peut être Client ET en recrutement (prospectStage actif).
+const segMatch = (c: UiContact, seg: Segment): boolean => {
+  if (seg === 'tous') return true
+  if (seg === 'partenaires') return c.isPartner
+  if (seg === 'clients') return c.isClient
+  if (seg === 'prospects') return !c.isPartner && c.prospectStage != null
+  return true
+}
+// Stade du tunnel opportunité actif (partenaire prioritaire sur prospect).
+const oppStageOf = (c: UiContact): string | null => (c.isPartner ? c.partnerStage : c.prospectStage)
 
 const stageFilters: Record<Segment, { id: string; label: string; stages?: ContactStage[] }[]> = {
   tous:        [{ id: 'tous', label: 'Tous' }],
@@ -72,12 +109,17 @@ type ApiContact = {
   id: string; name: string; stage: ContactStage; source: string
   city: string; phone: string; email: string; personality: string | null
   lastContact: string | null; businessId: string
+  market: string | null; prospectStage: string | null; partnerStage: string | null
+  isClient: boolean; isPartner: boolean
 }
 type UiContact = {
   id: string; firstName: string; lastName: string
   stage: ContactStage; stade?: ContactPipelineStage; disc: DiscType | null
   source: string; lastInteraction: string; city: string
   phone: string; email: string; businessId: string
+  // Double-track : produit (isClient) + opportunité (prospect/partner stage) + marché (proximité).
+  market: string | null; prospectStage: string | null; partnerStage: string | null
+  isClient: boolean; isPartner: boolean
 }
 
 function relTime(iso: string | null): string {
@@ -105,6 +147,11 @@ function adaptContact(c: ApiContact): UiContact {
     phone: c.phone ?? '',
     email: c.email ?? '',
     businessId: c.businessId,
+    market: c.market ?? null,
+    prospectStage: c.prospectStage ?? null,
+    partnerStage: c.partnerStage ?? null,
+    isClient: !!c.isClient,
+    isPartner: !!c.isPartner,
   }
 }
 
@@ -224,6 +271,8 @@ function ContactsContent() {
   const [loading, setLoading]         = useState(true)
   const [segment, setSegment]         = useState<Segment>('tous')
   const [stageFilter, setStageFilter] = useState('tous')
+  const [market, setMarket]           = useState('all')   // déroulant 2 (marché/proximité)
+  const [stade, setStade]             = useState('all')   // déroulant 3 (stade du tunnel)
   // Deep-link concierge : Atlas peut ouvrir la liste pré-filtrée sur un prénom (/contacts?q=Julien).
   const initialQuery = useSearchParams().get('q') ?? ''
   const [query, setQuery]             = useState(initialQuery)
@@ -286,6 +335,7 @@ function ContactsContent() {
   const handleSegmentChange = (seg: Segment) => {
     setSegment(seg)
     setStageFilter('tous')
+    setStade('all')   // un stade d'un autre tunnel devient invalide → on repart à « tous »
   }
 
   function toggleSort(key: SortKey) {
@@ -298,12 +348,13 @@ function ContactsContent() {
   }
 
   const list = useMemo(() => {
-    const segStages    = segmentConfig[segment].stages
-    const filterDef    = stageFilters[segment].find((f) => f.id === stageFilter)
-    const activeStages = filterDef?.stages ?? segStages
-
     let result = rows
-      .filter((c) => activeStages.includes(c.stage))
+      // 3 déroulants (mobile) — segment dérivé (double-track) · marché · stade du tunnel
+      .filter((c) => segMatch(c, segment))
+      .filter((c) => market === 'all' || c.market === market)
+      .filter((c) => stade === 'all' || oppStageOf(c) === stade)
+      // filtres colonnes desktop (défaut 'all'/'tous' → sans effet en mobile)
+      .filter((c) => stageFilter === 'tous' || (stageFilters[segment].find((f) => f.id === stageFilter)?.stages ?? []).includes(c.stage))
       .filter((c) => stadeColFilter === 'all' || c.stade === stadeColFilter)
       .filter((c) => tempColFilter === 'all' || c.stage === tempColFilter)
       .filter((c) =>
@@ -327,13 +378,13 @@ function ContactsContent() {
     }
 
     return result
-  }, [rows, segment, stageFilter, query, sortKey, sortDir, stadeColFilter, tempColFilter])
+  }, [rows, segment, market, stade, stageFilter, query, sortKey, sortDir, stadeColFilter, tempColFilter])
 
   const totalPages = Math.max(1, Math.ceil(list.length / pageSize))
   const safePage   = Math.min(page, totalPages - 1)
   const paginated  = list.slice(safePage * pageSize, (safePage + 1) * pageSize)
 
-  useEffect(() => { setPage(0) }, [segment, stageFilter, query, stadeColFilter, tempColFilter, sortKey, sortDir])
+  useEffect(() => { setPage(0) }, [segment, market, stade, stageFilter, query, stadeColFilter, tempColFilter, sortKey, sortDir])
 
   const filters = stageFilters[segment]
   const thProps = { current: sortKey, dir: sortDir, onSort: toggleSort }
@@ -409,45 +460,19 @@ function ContactsContent() {
             />
           </div>
 
-          {/* Segments — toggle : re-cliquer l'actif revient à « tous » */}
-          <div className="grid grid-cols-3 rounded-xl bg-muted p-1 gap-1">
-            {SEGMENT_TABS.map((seg) => (
-              <button
-                key={seg}
-                type="button"
-                onClick={() => handleSegmentChange(segment === seg ? 'tous' : seg)}
-                className={cn(
-                  'rounded-lg py-2 text-base font-semibold transition-colors',
-                  segment === seg
-                    ? 'bg-background text-primary shadow-sm'
-                    : 'text-muted-foreground'
-                )}
-              >
-                {segmentConfig[seg].label}
-              </button>
-            ))}
+          {/* 3 déroulants indépendants : Segment · Marché · Stade (stade grisé si Clients = binaire) */}
+          <div className="grid grid-cols-3 gap-2">
+            <SelectMenu className={DD_CLS} value={segment} onChange={(v) => handleSegmentChange(v as Segment)} placeholder="Tous" options={SEGMENT_OPTS} />
+            <SelectMenu className={DD_CLS} value={market} onChange={setMarket} placeholder="Marché" options={MARKET_OPTS} />
+            {segment === 'clients' ? (
+              <div className={`${DD_CLS} flex items-center justify-between opacity-50`}>
+                <span className="truncate text-muted-foreground">Stade</span>
+                <ChevronDown className="size-4 shrink-0 text-muted-foreground" />
+              </div>
+            ) : (
+              <SelectMenu className={DD_CLS} value={stade} onChange={setStade} placeholder="Stade" options={[{ value: 'all', label: 'Stade' }, ...stadeOptionsFor(segment)]} />
+            )}
           </div>
-
-          {/* Chips filtres */}
-          {filters.length > 1 && (
-            <div className="no-scrollbar -mx-4 flex gap-2 overflow-x-auto px-4">
-              {filters.map((f) => (
-                <button
-                  key={f.id}
-                  type="button"
-                  onClick={() => setStageFilter(f.id)}
-                  className={cn(
-                    'shrink-0 rounded-full px-4 py-1.5 text-base font-semibold transition-colors',
-                    stageFilter === f.id
-                      ? 'bg-primary/10 text-primary'
-                      : 'border border-border bg-surface text-fg-2'
-                  )}
-                >
-                  {f.label}
-                </button>
-              ))}
-            </div>
-          )}
 
           {/* Liste */}
           {!loading && list.length === 0 ? (
