@@ -80,13 +80,49 @@ async function buildAtlasSnapshot(userId: string): Promise<string> {
   }
 }
 
+// Snapshot d'UN contact (fiche) → Atlas connaît la personne : faits durs + qualification
+// (modèle explicite) + note + sa mémoire auto-éditée + dernières interactions.
+async function buildContactSnapshot(userId: string, contactId: string): Promise<string> {
+  try {
+    const c = await db.contact.findFirst({ where: { id: contactId, userId } })
+    if (!c) return ''
+    const q = (c.qualification ?? null) as Record<string, string> | null
+    const interactions = await db.interaction.findMany({
+      where: { contactId, userId }, orderBy: { createdAt: 'desc' }, take: 3,
+      select: { type: true, outcome: true, createdAt: true },
+    })
+    const lines: string[] = [`Contact : ${c.name}`]
+    const kindLabel = c.kind === 'CLIENT' ? 'Client' : c.kind === 'PARTENAIRE' ? 'Partenaire' : 'Prospect'
+    let statut = kindLabel
+    if (c.prospectStage) statut += ` · tunnel : ${c.prospectStage}`
+    if (c.partnerStage) statut += ` · partenaire : ${c.partnerStage}`
+    lines.push(`Statut : ${statut}`)
+    if (c.market) lines.push(`Marché (proximité) : ${({ CHAUD: 'chaud', TIEDE: 'tiède', FROID: 'froid' } as Record<string, string>)[c.market] ?? c.market}`)
+    if (c.personality) lines.push(`Couleur (Big Al) : ${c.personality}`)
+    if (q) {
+      const ql = [q.situation && `situation: ${q.situation}`, q.interests && `intérêts: ${q.interests}`, q.motivation && `motivation: ${q.motivation}`, q.insatisfaction && `insatisfaction: ${q.insatisfaction}`, q.reseau && `réseau: ${q.reseau}`, q.ouverture && `ouverture: ${q.ouverture}`].filter(Boolean).join(' · ')
+      if (ql) lines.push(`Qualification : ${ql}`)
+    }
+    if (typeof c.exposures === 'number' && c.exposures > 0) lines.push(`Expositions : ${c.exposures}`)
+    if (c.note) lines.push(`Note : ${c.note}`)
+    if (c.atlasMemory) lines.push(`Ta mémoire sur lui : ${c.atlasMemory}`)
+    if (interactions.length) {
+      const il = interactions.map((i) => `${i.type.toLowerCase()}${i.outcome ? ` (${i.outcome.toLowerCase()})` : ''} le ${i.createdAt.toLocaleDateString('fr-FR')}`).join(' · ')
+      lines.push(`Dernières interactions : ${il}`)
+    }
+    return lines.join('\n')
+  } catch {
+    return ''
+  }
+}
+
 export async function POST(req: NextRequest) {
   // user_id réel depuis la session NextAuth — jamais fourni par le client.
   const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET })
   const userId = token?.id as string | undefined
   if (!userId) return NextResponse.json({ error: 'non authentifié' }, { status: 401 })
 
-  let body: { query?: string; conversationId?: string; mlm_actif?: string }
+  let body: { query?: string; conversationId?: string; mlm_actif?: string; contactId?: string }
   try {
     body = await req.json()
   } catch {
@@ -133,6 +169,8 @@ export async function POST(req: NextRequest) {
   const isSession = query.startsWith('[SESSION')
   const isDraft = query.includes('Rédige UN message prêt à envoyer') || query.startsWith('Tu es Atlas, coach en marketing de réseau. Rédige')
   const user_snapshot = isSession || isDraft ? '' : await buildAtlasSnapshot(userId)
+  // Contexte contact : uniquement si la fiche passe un contactId (composeur scopé).
+  const contact_snapshot = body.contactId && !isSession && !isDraft ? await buildContactSnapshot(userId, body.contactId) : ''
 
   // Appel FastAPI
   let resp: Response
@@ -146,6 +184,7 @@ export async function POST(req: NextRequest) {
         mlm_actif: body.mlm_actif ?? 'Atline',
         conversation_history,
         user_snapshot,
+        contact_snapshot,
       }),
     })
   } catch {

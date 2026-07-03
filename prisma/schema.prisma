@@ -459,6 +459,8 @@ model Contact {
   tags          String[]
   lastContact   DateTime?
   note          String?
+  atlasMemory   String?         // bloc mémoire auto-édité par Atlas (MemGPT-style) — ce qu'il a appris sur ce contact
+  atlasMemoryAt DateTime?       // dernière mise à jour du bloc mémoire
   lat           Float?
   lng           Float?
   createdAt     DateTime        @default(now())
