@@ -3,7 +3,7 @@
 import { use, useEffect, useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import {
-  ChevronLeft, Pencil, Mail, Link2, Clock, Tag,
+  Pencil, Mail, Link2, Clock, Tag,
   MessageSquare, PhoneCall, CalendarPlus, Mic, Sparkles, ArrowRight, X, Plus,
   MessageCircle, Bell, Share2, StickyNote, Check, ChevronDown, User as UserIcon, Contact, Trash2,
 } from 'lucide-react'
@@ -352,11 +352,11 @@ export default function ContactDetailPage({ params }: { params: Promise<{ id: st
 
   return (
     <div className="mx-auto flex min-h-dvh w-full max-w-2xl flex-col bg-background">
-      {/* Topbar */}
+      {/* Topbar — titre = statut du contact, croix de fermeture à droite, aucune flèche retour */}
       <div className="sticky top-0 z-30 flex items-center gap-2 bg-background/90 px-4 py-3 backdrop-blur" style={{ paddingTop: 'max(0.75rem, env(safe-area-inset-top))' }}>
-        <button type="button" onClick={() => router.back()} className="-ml-1 flex size-9 items-center justify-center rounded-full text-muted-foreground active:bg-muted"><ChevronLeft className="size-5 stroke-[1.5]" /></button>
-        <p className="flex-1 text-center text-sm font-medium text-muted-foreground">{KIND_LABEL[c.kind]}</p>
         <div className="size-9" />
+        <p className="flex-1 text-center text-sm font-medium text-muted-foreground">{KIND_LABEL[c.kind]}</p>
+        <button type="button" onClick={() => router.push('/contacts')} aria-label="Fermer" className="-mr-1 flex size-9 items-center justify-center rounded-full text-muted-foreground active:bg-muted"><X className="size-5 stroke-[1.5]" /></button>
       </div>
 
       {/* ═══ STRUCTURE CHARTE PROFIL (nouveau — à adapter) ═══ */}
