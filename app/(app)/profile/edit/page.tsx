@@ -295,12 +295,12 @@ export default function ProfileEditPage() {
   const sec = {
     identite: nf([form.firstName, form.lastName, form.gender, form.birthDate, form.profession, form.education]),
     quitues: nf([form.bio, form.personality, form.coaching.passions]),
-    coaching: nf([form.coaching.why, form.coaching.background, form.coaching.challenge, form.coaching.availability, form.coaching.level]),
+    coaching: nf([form.coaching.why, form.coaching.background, form.coaching.availability, form.coaching.level]),
     socials: SOCIALS_MAIN.filter((s) => form.socials[s.key] && String(form.socials[s.key]).trim()).length,
     adresse: nf([form.phone, form.address, form.postal, form.city, form.country]),
   }
   // Champs optionnels exclus du calcul (tél. secondaire, complément d'adresse) → 100 % réellement atteignable
-  const tot = { identite: 6, quitues: 3, coaching: 5, socials: SOCIALS_MAIN.length, adresse: 5 }
+  const tot = { identite: 6, quitues: 3, coaching: 4, socials: SOCIALS_MAIN.length, adresse: 5 }
   // Complétion = tout le profil (somme des rubriques) → le libellé « Profil complété » est honnête
   const totalFilled = sec.identite + sec.quitues + sec.coaching + sec.socials + sec.adresse
   const totalFields = tot.identite + tot.quitues + tot.coaching + tot.socials + tot.adresse
@@ -457,8 +457,10 @@ export default function ProfileEditPage() {
             <AtlasSessionField title="Ton pourquoi" filled={!!form.coaching.why} onOpen={() => router.push('/atlas?session=why')}>
               <p className="whitespace-pre-wrap text-lg leading-relaxed text-foreground lg:text-sm">{form.coaching.why}</p>
             </AtlasSessionField>
-            <AutoTextarea className={`${inputCls} min-h-[72px] resize-none overflow-hidden`} value={form.coaching.background ?? ''} onChange={(v) => setCoaching('background', v)} placeholder="Ton parcours" />
-            <AutoTextarea className={`${inputCls} min-h-[72px] resize-none overflow-hidden`} value={form.coaching.challenge ?? ''} onChange={(v) => setCoaching('challenge', v)} placeholder="Ton principal défi — là où tu bloques en ce moment" />
+            {/* Le parcours = champ profond : session avec Atlas (même modèle) */}
+            <AtlasSessionField title="Ton parcours" filled={!!form.coaching.background} onOpen={() => router.push('/atlas?session=parcours')}>
+              <p className="whitespace-pre-wrap text-lg leading-relaxed text-foreground lg:text-sm">{form.coaching.background}</p>
+            </AtlasSessionField>
             <SelectMenu className={inputCls} placeholder="Ta disponibilité" value={form.coaching.availability ?? ''} onChange={(v) => setCoaching('availability', v)} options={[{ value: 'Temps plein', label: 'Temps plein' }, { value: 'Temps partiel', label: 'Temps partiel' }, { value: 'Quelques heures / semaine', label: 'Quelques heures / semaine' }, { value: 'Soirs & week-ends', label: 'Soirs & week-ends' }]} />
             <SelectMenu className={inputCls} placeholder="Ton expérience en MLM" value={form.coaching.level ?? ''} onChange={(v) => setCoaching('level', v)} options={[{ value: 'Débutant', label: 'Débutant' }, { value: 'Intermédiaire', label: 'Intermédiaire' }, { value: 'Confirmé', label: 'Confirmé' }, { value: 'Expert', label: 'Expert' }]} />
           </Collapsible>
