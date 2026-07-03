@@ -471,10 +471,9 @@ export default function ContactDetailPage({ params }: { params: Promise<{ id: st
             })()}
           </Collapsible>
         </div>
-        <button type="button" onClick={() => save({ ...pf, personality: qual.personality || null, market: qual.market || null, qualification: { situation: qual.situation, interests: qual.interests, motivation: qual.motivation, insatisfaction: qual.insatisfaction, reseau: qual.reseau, ouverture: qual.ouverture } }, 'Fiche enregistrée')} className="flex w-full items-center justify-center gap-2 rounded-2xl bg-primary py-3.5 text-base font-bold text-primary-foreground shadow-sm transition-transform active:scale-[0.98]">Enregistrer</button>
       </div>
 
-      <div className="flex flex-col gap-4 px-4 pb-24 pt-2">
+      <div className="flex flex-col gap-4 px-4 pb-28 pt-2">
         {/* Curseur d'étape — un seul tunnel (opportunité) : prospect, partenaire, OU client re-sollicité */}
         {showOppCursor && (
           <StageCursor
@@ -688,6 +687,17 @@ export default function ContactDetailPage({ params }: { params: Promise<{ id: st
           </div>
         </div>
       )}
+
+      {/* Bouton Enregistrer flottant (charte fiche — comme /activities) */}
+      <div className="fixed inset-x-0 z-[48] px-4" style={{ bottom: 'max(20px, env(safe-area-inset-bottom))' }}>
+        <button
+          type="button"
+          onClick={() => save({ ...pf, personality: qual.personality || null, market: qual.market || null, qualification: { situation: qual.situation, interests: qual.interests, motivation: qual.motivation, insatisfaction: qual.insatisfaction, reseau: qual.reseau, ouverture: qual.ouverture } }, 'Fiche enregistrée')}
+          className="mx-auto flex w-full max-w-md items-center justify-center gap-2 rounded-full bg-primary py-3.5 text-base font-bold text-primary-foreground shadow-lg transition-transform active:scale-[0.98]"
+        >
+          Enregistrer
+        </button>
+      </div>
     </div>
   )
 }
