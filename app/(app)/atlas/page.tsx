@@ -773,7 +773,7 @@ TECHNIQUE (invisible pour moi, ne l'explique jamais)${NB}: le jour où je VALIDE
                           )}
                         >
                           <History className="size-4 shrink-0 stroke-[1.5] text-muted-foreground" />
-                          <span className="flex-1 truncate text-sm text-foreground">{cv.title || 'Sans titre'}</span>
+                          <span className="min-w-0 flex-1 truncate text-sm text-foreground">{cv.title || 'Sans titre'}</span>
                         </button>
                         <button
                           type="button"
