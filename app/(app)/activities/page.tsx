@@ -2,13 +2,15 @@
 
 import { useEffect, useState, useRef, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
-import { ChevronLeft, Check, Loader2, Briefcase, Link2, FileText, Sparkles, Plus, Trash2, Compass } from 'lucide-react'
+import { ChevronLeft, ChevronDown, Check, Loader2, Briefcase, Link2, FileText, Sparkles, Plus, Trash2, Compass } from 'lucide-react'
 import { Card } from '@/components/card'
+import { SelectMenu } from '@/components/select-menu'
 import { useOverlay } from '@/components/overlay-provider'
 import { toast } from 'sonner'
 
+// Charte identique au profil (au détail près)
 const inputCls =
-  'w-full rounded-xl border border-border bg-background px-4 py-3 text-lg text-foreground outline-none placeholder:text-muted-foreground focus:ring-2 focus:ring-primary/30'
+  'w-full rounded-xl border border-border bg-background px-4 py-[7px] text-lg text-foreground outline-none placeholder:text-muted-foreground'
 
 const CATEGORIES = ['coaching', 'bien-être', 'nutrition', 'cosmétique', 'mode', 'maison', 'finance', 'voyage', 'tech', 'autre']
 
@@ -19,6 +21,7 @@ const LINK_GROUPS: { group: string; items: { key: string; label: string; placeho
   { group: 'Contacter', items: [{ key: 'WHATSAPP', label: 'WhatsApp', placeholder: 'lien wa.me/…' }, { key: 'WHATSAPP_GROUP', label: 'Groupe WhatsApp', placeholder: 'lien du groupe' }] },
   { group: 'Réseaux', items: [{ key: 'INSTAGRAM', label: 'Instagram', placeholder: 'lien Instagram' }, { key: 'FACEBOOK', label: 'Facebook', placeholder: 'lien Facebook' }, { key: 'TIKTOK', label: 'TikTok', placeholder: 'lien TikTok' }] },
 ]
+const LINK_KEYS = LINK_GROUPS.flatMap((g) => g.items.map((i) => i.key))
 
 const BUCKETS: { key: string; label: string; hint: string }[] = [
   { key: 'PRESENTER', label: 'Présenter', hint: 'plan de rému, présentation…' },
@@ -35,14 +38,27 @@ type Activity = {
   supports: Record<string, Support[]>
 }
 
-function SectionHeader({ icon: Icon, title }: { icon: typeof Briefcase; title: string }) {
+// Rubrique pliante — identique au profil (icône + titre + filled/total + chevron)
+function Collapsible({ icon: Icon, title, filled, total, open, onToggle, children }: { icon: typeof Briefcase; title: string; filled: number; total: number; open: boolean; onToggle: () => void; children: React.ReactNode }) {
+  const done = total > 0 && filled >= total
   return (
-    <div className="flex items-center gap-2.5 border-b border-border px-4 py-3.5">
-      <span className="grid size-8 shrink-0 place-items-center rounded-full bg-primary/10"><Icon className="size-4 text-primary" /></span>
-      <p className="text-lg font-semibold text-foreground">{title}</p>
-    </div>
+    <Card className="overflow-hidden p-0">
+      <button type="button" onClick={onToggle} className={`flex w-full items-center gap-2.5 px-4 py-3.5 ${open ? 'border-b border-border' : ''}`}>
+        <Icon className="size-5 shrink-0 text-muted-foreground stroke-[1.5]" />
+        <p className="flex-1 text-left text-lg font-semibold text-foreground">{title}</p>
+        {done ? (
+          <span className="grid size-5 shrink-0 place-items-center rounded-full bg-[#22C55E] text-white"><Check className="size-3.5" /></span>
+        ) : (
+          <span className="shrink-0 text-base font-semibold text-muted-foreground">{filled}/{total}</span>
+        )}
+        <ChevronDown className={`size-4 shrink-0 text-muted-foreground transition-transform ${open ? 'rotate-180' : ''}`} />
+      </button>
+      {open && <div className="space-y-4 p-4">{children}</div>}
+    </Card>
   )
 }
+
+const nf = (vals: (string | undefined)[]) => vals.filter((v) => v && String(v).trim()).length
 
 export default function ActivitiesPage() {
   const router = useRouter()
@@ -54,6 +70,8 @@ export default function ActivitiesPage() {
   const [saving, setSaving] = useState(false)
   const [uploadBucket, setUploadBucket] = useState<string | null>(null)
   const [uploading, setUploading] = useState(false)
+  const [open, setOpen] = useState<Record<string, boolean>>({ identite: true })
+  const toggle = (k: string) => setOpen((o) => ({ [k]: !o[k] }))
   const fileRef = useRef<HTMLInputElement>(null)
 
   const loadAct = useCallback(() => {
@@ -118,15 +136,25 @@ export default function ActivitiesPage() {
     }
   }
 
+  // Complétion (même logique que le profil : somme des rubriques)
+  const sec = act ? {
+    identite: nf([act.mlmName, act.rank, act.produit, act.audience, act.story, act.objectif?.target]),
+    liens: LINK_KEYS.filter((k) => act.links[k]?.trim()).length,
+    documents: BUCKETS.filter((b) => (act.supports[b.key] ?? []).length > 0).length,
+  } : { identite: 0, liens: 0, documents: 0 }
+  const tot = { identite: 6, liens: LINK_KEYS.length, documents: BUCKETS.length }
+  const totalFilled = sec.identite + sec.liens + sec.documents
+  const totalFields = tot.identite + tot.liens + tot.documents
+  const pct = totalFields ? Math.round((totalFilled / totalFields) * 100) : 0
+
   return (
     <div className="mx-auto w-full max-w-2xl">
-      {/* Header */}
-      <div className="sticky top-0 z-10 flex items-center bg-background px-2 py-3">
-        <button type="button" onClick={back} className="flex size-9 items-center justify-center rounded-full text-muted-foreground active:bg-muted">
-          <ChevronLeft className="size-5" />
+      {/* Header — titre centré + flèche retour (comme les pages du hub compte) */}
+      <div className="sticky top-0 z-10 flex items-center justify-center bg-background/90 px-4 py-3 backdrop-blur" style={{ paddingTop: 'max(0.75rem, env(safe-area-inset-top))' }}>
+        <button type="button" onClick={back} aria-label="Retour" className="absolute left-2 flex size-9 items-center justify-center rounded-full text-foreground active:bg-muted">
+          <ChevronLeft className="size-5 stroke-[1.5]" />
         </button>
-        <h1 className="flex-1 text-center font-display text-lg font-semibold">Mon activité</h1>
-        <div className="size-9" />
+        <h1 className="text-lg font-semibold text-foreground">Mon activité</h1>
       </div>
 
       {loading ? (
@@ -139,101 +167,69 @@ export default function ActivitiesPage() {
         </div>
       ) : (
         <div className="space-y-5 px-4 pb-28 pt-4">
-          {/* Identité */}
-          <Card className="overflow-hidden p-0">
-            <SectionHeader icon={Briefcase} title="Identité" />
-            <div className="space-y-4 p-4">
-              <label className="block">
-                <span className="mb-1.5 block text-base font-medium text-muted-foreground">Nom de l&apos;activité</span>
-                <input className={inputCls} value={act.mlmName} onChange={(e) => setField('mlmName', e.target.value)} />
-              </label>
-              <label className="block">
-                <span className="mb-1.5 block text-base font-medium text-muted-foreground">Rang / palier <span className="text-muted-foreground/60">(à saisir)</span></span>
-                <input className={inputCls} value={act.rank} onChange={(e) => setField('rank', e.target.value)} placeholder="ex. Manager, Diamant…" />
-              </label>
-              <label className="block">
-                <span className="mb-1.5 block text-base font-medium text-muted-foreground">Catégorie <span className="text-muted-foreground/60">(adapte Atlas)</span></span>
-                <select className={inputCls} value={act.category} onChange={(e) => setField('category', e.target.value)}>
-                  {CATEGORIES.map((c) => <option key={c} value={c}>{c.charAt(0).toUpperCase() + c.slice(1)}</option>)}
-                </select>
-              </label>
-              <div>
-                <span className="mb-1.5 block text-base font-medium text-muted-foreground">Objectif <span className="text-muted-foreground/60">(mesurable)</span></span>
-                <div className="flex gap-2">
-                  <input type="number" min="0" className={`${inputCls} w-20 shrink-0`} value={act.objectif?.target ?? ''} onChange={(e) => setObjectif('target', e.target.value)} placeholder="3" />
-                  <select className={`${inputCls} min-w-0 flex-1`} value={act.objectif?.unit ?? 'partenaires'} onChange={(e) => setObjectif('unit', e.target.value)}>
-                    <option value="partenaires">partenaires</option>
-                    <option value="clients">clients</option>
-                    <option value="€">€ de CA</option>
-                  </select>
-                  <select className={`${inputCls} min-w-0 flex-1`} value={act.objectif?.period ?? 'mois'} onChange={(e) => setObjectif('period', e.target.value)}>
-                    <option value="mois">ce mois</option>
-                    <option value="trimestre">ce trimestre</option>
-                    <option value="an">cette année</option>
-                  </select>
-                </div>
+          {/* Complétion de l'activité — bandeau fin, sans carte */}
+          <div className="px-1">
+            <p className="mb-1.5 text-base font-semibold text-foreground">Activité complétée à <span className="text-primary">{pct}%</span></p>
+            <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
+              <div className="h-full rounded-full bg-primary transition-all" style={{ width: `${pct}%` }} />
+            </div>
+          </div>
+
+          <input ref={fileRef} type="file" onChange={onFile} className="hidden"
+            accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.csv,.txt,image/*" />
+
+          {/* Cartes de l'activité — espacement resserré (gap-2) comme le profil */}
+          <div className="flex flex-col gap-2">
+            {/* 1 — Identité */}
+            <Collapsible icon={Briefcase} title="Identité" filled={sec.identite} total={tot.identite} open={!!open.identite} onToggle={() => toggle('identite')}>
+              <input className={inputCls} value={act.mlmName} onChange={(e) => setField('mlmName', e.target.value)} placeholder="Nom de l'activité" />
+              <input className={inputCls} value={act.rank} onChange={(e) => setField('rank', e.target.value)} placeholder="Rang / palier — ex. Manager, Diamant…" />
+              <SelectMenu className={inputCls} placeholder="Catégorie" value={act.category} onChange={(v) => setField('category', v)} options={CATEGORIES.map((c) => ({ value: c, label: c.charAt(0).toUpperCase() + c.slice(1) }))} />
+              {/* Objectif — nombre + unité + période (3 champs, comme la date de naissance du profil) */}
+              <div className="flex gap-2">
+                <input type="number" min="0" className={`${inputCls} w-20 shrink-0`} value={act.objectif?.target ?? ''} onChange={(e) => setObjectif('target', e.target.value)} placeholder="3" />
+                <SelectMenu className={`${inputCls} min-w-0 flex-1`} placeholder="Unité" value={act.objectif?.unit ?? 'partenaires'} onChange={(v) => setObjectif('unit', v)} options={[{ value: 'partenaires', label: 'partenaires' }, { value: 'clients', label: 'clients' }, { value: '€', label: '€ de CA' }]} />
+                <SelectMenu className={`${inputCls} min-w-0 flex-1`} placeholder="Période" value={act.objectif?.period ?? 'mois'} onChange={(v) => setObjectif('period', v)} options={[{ value: 'mois', label: 'ce mois' }, { value: 'trimestre', label: 'ce trimestre' }, { value: 'an', label: 'cette année' }]} />
               </div>
-              <label className="block">
-                <span className="mb-1.5 block text-base font-medium text-muted-foreground">Produit / offre phare <span className="text-muted-foreground/60">(Aria &amp; Nova)</span></span>
-                <input className={inputCls} value={act.produit} onChange={(e) => setField('produit', e.target.value)} placeholder="ex. Complément minceur, coaching 12 semaines…" />
-              </label>
-              <label className="block">
-                <span className="mb-1.5 block text-base font-medium text-muted-foreground">Audience cible <span className="text-muted-foreground/60">(Aria &amp; Nova)</span></span>
-                <textarea className={`${inputCls} min-h-[72px] resize-none`} value={act.audience} onChange={(e) => setField('audience', e.target.value)} placeholder="À qui tu t'adresses — ex. jeunes parents, sportifs, indépendants…" />
-              </label>
+              <input className={inputCls} value={act.produit} onChange={(e) => setField('produit', e.target.value)} placeholder="Produit / offre phare" />
+              <textarea className={`${inputCls} min-h-[72px] resize-none overflow-hidden`} value={act.audience} onChange={(e) => setField('audience', e.target.value)} placeholder="Audience cible — à qui tu t'adresses" />
 
               {/* Ma rencontre = champ narratif PROFOND : se travaille en session avec Atlas (pas en saisie libre) */}
-              <div className="block">
-                <span className="mb-1.5 block text-base font-medium text-muted-foreground">Ma rencontre avec cette activité <span className="text-muted-foreground/60">(Atlas, Aria &amp; Nova)</span></span>
-                {act.story ? (
-                  <div className="rounded-xl border border-border bg-background px-4 py-3">
-                    <p className="whitespace-pre-wrap text-lg italic leading-relaxed text-foreground lg:text-sm">{act.story}</p>
-                    <button type="button" onClick={() => router.push('/atlas?session=rencontre')} className="mt-2.5 flex items-center gap-1.5 text-sm font-semibold text-primary">
-                      <Compass className="size-3.5" /> Retravailler avec Atlas
-                    </button>
-                  </div>
-                ) : (
-                  <button type="button" onClick={() => router.push('/atlas?session=rencontre')} className="flex w-full items-center gap-3 rounded-xl border border-dashed border-primary/40 bg-primary/5 px-4 py-3 text-left transition-colors active:bg-primary/10">
-                    <Compass className="size-5 shrink-0 text-primary" />
-                    <span className="min-w-0">
-                      <span className="block text-lg font-semibold text-foreground lg:text-sm">Raconte ta rencontre à Atlas</span>
-                      <span className="block text-sm text-muted-foreground">Comment tu as découvert ce business et pourquoi tu y crois</span>
-                    </span>
+              {act.story ? (
+                <div className="rounded-xl border border-border bg-background px-4 py-3">
+                  <p className="mb-1 text-xs font-semibold text-muted-foreground">Ma rencontre avec cette activité</p>
+                  <p className="whitespace-pre-wrap text-lg italic leading-relaxed text-foreground lg:text-sm">{act.story}</p>
+                  <button type="button" onClick={() => router.push('/atlas?session=rencontre')} className="mt-2.5 flex items-center gap-1.5 text-sm font-semibold text-primary">
+                    <Compass className="size-3.5" /> Retravailler avec Atlas
                   </button>
-                )}
-              </div>
-            </div>
-          </Card>
+                </div>
+              ) : (
+                <button type="button" onClick={() => router.push('/atlas?session=rencontre')} className="flex w-full items-center gap-3 rounded-xl border border-dashed border-primary/40 bg-primary/5 px-4 py-3 text-left transition-colors active:bg-primary/10">
+                  <Compass className="size-5 shrink-0 text-primary" />
+                  <span className="min-w-0">
+                    <span className="block text-lg font-semibold text-foreground lg:text-sm">Raconte ta rencontre à Atlas</span>
+                    <span className="block text-sm text-muted-foreground">Comment tu as découvert ce business et pourquoi tu y crois</span>
+                  </span>
+                </button>
+              )}
+            </Collapsible>
 
-          {/* Liens */}
-          <Card className="overflow-hidden p-0">
-            <SectionHeader icon={Link2} title="Liens" />
-            <div className="space-y-4 p-4">
+            {/* 2 — Liens */}
+            <Collapsible icon={Link2} title="Liens" filled={sec.liens} total={tot.liens} open={!!open.liens} onToggle={() => toggle('liens')}>
               {LINK_GROUPS.map((g) => (
                 <div key={g.group}>
                   <p className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">{g.group}</p>
                   <div className="space-y-2.5">
                     {g.items.map((it) => (
-                      <input
-                        key={it.key}
-                        className={inputCls}
-                        value={act.links[it.key] ?? ''}
-                        onChange={(e) => setLink(it.key, e.target.value)}
-                        placeholder={`${it.label} — ${it.placeholder}`}
-                      />
+                      <input key={it.key} className={inputCls} value={act.links[it.key] ?? ''} onChange={(e) => setLink(it.key, e.target.value)} placeholder={`${it.label} — ${it.placeholder}`} />
                     ))}
                   </div>
                 </div>
               ))}
-            </div>
-          </Card>
+            </Collapsible>
 
-          {/* Documents */}
-          <Card className="overflow-hidden p-0">
-            <SectionHeader icon={FileText} title="Documents" />
-            <input ref={fileRef} type="file" onChange={onFile} className="hidden"
-              accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.csv,.txt,image/*" />
-            <div className="space-y-4 p-4">
+            {/* 3 — Documents */}
+            <Collapsible icon={FileText} title="Documents" filled={sec.documents} total={tot.documents} open={!!open.documents} onToggle={() => toggle('documents')}>
               <button type="button" onClick={() => { setUploadBucket('AUTO'); fileRef.current?.click() }} disabled={uploading}
                 className="flex w-full items-center justify-center gap-1.5 rounded-xl bg-primary py-2.5 text-base font-bold text-primary-foreground active:opacity-90 disabled:opacity-50">
                 {uploading && uploadBucket === 'AUTO' ? <Loader2 className="size-4 animate-spin" /> : <Sparkles className="size-4" />}
@@ -272,24 +268,17 @@ export default function ActivitiesPage() {
                 <Sparkles className="size-4 shrink-0 text-primary" />
                 <p className="text-base text-muted-foreground"><span className="font-semibold text-primary">Atlas</span> classe ton document d&apos;après son nom. Sinon, choisis le dossier toi-même avec « + Ajouter ».</p>
               </div>
-            </div>
-          </Card>
+            </Collapsible>
+          </div>
         </div>
       )}
 
-      {/* Save bar */}
+      {/* Bouton Enregistrer flottant — identique au profil */}
       {!loading && act && (
-        <div className="fixed inset-x-0 bottom-0 z-[40] bg-background px-4 py-3">
-          <div className="mx-auto max-w-2xl">
-            <button
-              type="button"
-              onClick={save}
-              disabled={saving}
-              className="flex w-full items-center justify-center gap-2 rounded-2xl bg-primary py-3.5 text-base font-bold text-primary-foreground shadow-md transition-transform active:scale-[0.98] disabled:opacity-60"
-            >
-              {saving ? <Loader2 className="size-5 animate-spin" /> : <><Check className="size-5" />Enregistrer</>}
-            </button>
-          </div>
+        <div className="fixed inset-x-0 z-[48] px-4" style={{ bottom: 'max(20px, env(safe-area-inset-bottom))' }}>
+          <button type="button" onClick={save} disabled={saving} className="mx-auto flex w-full max-w-md items-center justify-center gap-2 rounded-full bg-primary py-3.5 text-base font-bold text-primary-foreground shadow-lg transition-transform active:scale-[0.98] disabled:opacity-60">
+            {saving ? <Loader2 className="size-5 animate-spin" /> : 'Enregistrer'}
+          </button>
         </div>
       )}
     </div>
