@@ -4,15 +4,12 @@ import { useEffect, useState, useRef, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { ChevronLeft, ChevronDown, Check, Loader2, Briefcase, Link2, FileText, Sparkles, Plus, Trash2, Compass } from 'lucide-react'
 import { Card } from '@/components/card'
-import { SelectMenu } from '@/components/select-menu'
 import { useOverlay } from '@/components/overlay-provider'
 import { toast } from 'sonner'
 
 // Charte identique au profil (au détail près)
 const inputCls =
   'w-full rounded-xl border border-border bg-background px-4 py-[7px] text-lg text-foreground outline-none placeholder:text-muted-foreground'
-
-const CATEGORIES = ['coaching', 'bien-être', 'nutrition', 'cosmétique', 'mode', 'maison', 'finance', 'voyage', 'tech', 'autre']
 
 const LINK_GROUPS: { group: string; items: { key: string; label: string; placeholder: string }[] }[] = [
   { group: 'Vendre', items: [{ key: 'BOUTIQUE', label: 'Boutique', placeholder: 'lien de ta boutique' }] },
@@ -120,7 +117,7 @@ export default function ActivitiesPage() {
         method: 'PATCH',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({
-          mlmName: act.mlmName, rank: act.rank, category: act.category, produit: act.produit, audience: act.audience, links: act.links,
+          mlmName: act.mlmName, rank: act.rank, produit: act.produit, audience: act.audience, links: act.links,
         }),
       })
       if (res.ok) toast.success('Activité enregistrée')
@@ -179,8 +176,7 @@ export default function ActivitiesPage() {
             {/* 1 — Identité */}
             <Collapsible icon={Briefcase} title="Identité" filled={sec.identite} total={tot.identite} open={!!open.identite} onToggle={() => toggle('identite')}>
               <input className={inputCls} value={act.mlmName} onChange={(e) => setField('mlmName', e.target.value)} placeholder="Nom de l'activité" />
-              <input className={inputCls} value={act.rank} onChange={(e) => setField('rank', e.target.value)} placeholder="Rang / palier — ex. Manager, Diamant…" />
-              <SelectMenu className={inputCls} placeholder="Catégorie" value={act.category} onChange={(v) => setField('category', v)} options={CATEGORIES.map((c) => ({ value: c, label: c.charAt(0).toUpperCase() + c.slice(1) }))} />
+              <input className={inputCls} value={act.rank} onChange={(e) => setField('rank', e.target.value)} placeholder="Rang dans ton MLM" />
               {/* Objectifs = champ STRATÉGIQUE : se définit en session avec Atlas (cibles réalistes, mesurables) */}
               {act.objectif?.mensuel ? (
                 <div className="rounded-xl border border-border bg-background px-4 py-3">
