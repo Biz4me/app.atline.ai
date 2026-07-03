@@ -177,6 +177,11 @@ export default function ActivitiesPage() {
             <Collapsible icon={Briefcase} title="Identité" filled={sec.identite} total={tot.identite} open={!!open.identite} onToggle={() => toggle('identite')}>
               <input className={inputCls} value={act.mlmName} onChange={(e) => setField('mlmName', e.target.value)} placeholder="Nom de l'activité" />
               <input className={inputCls} value={act.rank} onChange={(e) => setField('rank', e.target.value)} placeholder="Rang dans ton MLM" />
+              {/* Catégorie — auto-remplie par le RAG société (lecture seule) */}
+              <div className={`${inputCls} flex items-center justify-between`}>
+                <span className="capitalize text-foreground">{act.category || 'coaching'}</span>
+                <span className="text-xs font-medium text-muted-foreground">catégorie · auto</span>
+              </div>
               {/* Objectifs = champ STRATÉGIQUE : se définit en session avec Atlas (cibles réalistes, mesurables) */}
               {act.objectif?.mensuel ? (
                 <div className="rounded-xl border border-border bg-background px-4 py-3">
@@ -192,12 +197,10 @@ export default function ActivitiesPage() {
                   </button>
                 </div>
               ) : (
-                <button type="button" onClick={() => router.push('/atlas?session=objectifs')} className="flex w-full items-center gap-3 rounded-xl border border-dashed border-primary/40 bg-primary/5 px-4 py-3 text-left transition-colors active:bg-primary/10">
-                  <Compass className="size-5 shrink-0 text-primary" />
-                  <span className="min-w-0">
-                    <span className="block text-lg font-semibold text-foreground lg:text-sm">Fixe tes objectifs avec Atlas</span>
-                    <span className="block text-sm text-muted-foreground">De vrais objectifs de partenaires, réalistes et mesurables</span>
-                  </span>
+                <button type="button" onClick={() => router.push('/atlas?session=objectifs')} className="flex w-full items-center gap-2.5 rounded-xl border border-dashed border-primary/40 bg-primary/5 px-4 py-[7px] text-left transition-colors active:bg-primary/10">
+                  <Compass className="size-4 shrink-0 text-primary" />
+                  <span className="min-w-0 flex-1 truncate text-lg text-foreground lg:text-sm">Mes objectifs de partenaires</span>
+                  <span className="shrink-0 text-sm font-semibold text-primary">à définir</span>
                 </button>
               )}
               <input className={inputCls} value={act.produit} onChange={(e) => setField('produit', e.target.value)} placeholder="Produit / offre phare" />
@@ -213,12 +216,10 @@ export default function ActivitiesPage() {
                   </button>
                 </div>
               ) : (
-                <button type="button" onClick={() => router.push('/atlas?session=rencontre')} className="flex w-full items-center gap-3 rounded-xl border border-dashed border-primary/40 bg-primary/5 px-4 py-3 text-left transition-colors active:bg-primary/10">
-                  <Compass className="size-5 shrink-0 text-primary" />
-                  <span className="min-w-0">
-                    <span className="block text-lg font-semibold text-foreground lg:text-sm">Raconte ta rencontre à Atlas</span>
-                    <span className="block text-sm text-muted-foreground">Comment tu as découvert ce business et pourquoi tu y crois</span>
-                  </span>
+                <button type="button" onClick={() => router.push('/atlas?session=rencontre')} className="flex w-full items-center gap-2.5 rounded-xl border border-dashed border-primary/40 bg-primary/5 px-4 py-[7px] text-left transition-colors active:bg-primary/10">
+                  <Compass className="size-4 shrink-0 text-primary" />
+                  <span className="min-w-0 flex-1 truncate text-lg text-foreground lg:text-sm">Ma rencontre avec l&apos;activité</span>
+                  <span className="shrink-0 text-sm font-semibold text-primary">à définir</span>
                 </button>
               )}
             </Collapsible>
