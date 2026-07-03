@@ -381,6 +381,7 @@ model UserMlmBusiness {
   story         String?  // narratif « ma rencontre / ma conviction » — rempli en session Atlas
   startDate     String?  // date de démarrage, granularité mois : « YYYY-MM »
   sponsorName   String?  // prénom du parrain (upline direct)
+  structure     Json?    // structure de départ (baseline) : { directs, total, clients }
   color         String
   initials      String
   active        Boolean  @default(true)

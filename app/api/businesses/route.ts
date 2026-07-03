@@ -38,6 +38,9 @@ export async function POST(req: Request) {
   const name = typeof body?.name === 'string' ? body.name.trim() : ''
   if (!name) return NextResponse.json({ error: 'Nom requis' }, { status: 400 })
   const category = typeof body?.category === 'string' && body.category.trim() ? body.category.trim() : 'coaching'
+  const str = (v: unknown) => (typeof v === 'string' && v.trim() ? v.trim() : null)
+  const rank = str(body?.rank), sponsorName = str(body?.sponsorName), startDate = str(body?.startDate)
+  const structure = (body?.structure && typeof body.structure === 'object' && !Array.isArray(body.structure)) ? (body.structure as object) : undefined
 
   const mlmSlug = slugify(name) || 'activite'
 
@@ -48,6 +51,7 @@ export async function POST(req: Request) {
       data: {
         userId, mlmName: name, mlmSlug, role: 'Distributeur', goal: '',
         color: pick(), initials: name.slice(0, 2).toUpperCase(), active: true, category, position: count,
+        rank, sponsorName, startDate, ...(structure ? { structure } : {}),
       },
     })
   }

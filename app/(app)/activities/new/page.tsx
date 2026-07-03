@@ -1,340 +1,107 @@
 'use client'
 
-import { useRef, useState } from 'react'
+import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { ChevronDown, Calendar, ArrowLeft } from 'lucide-react'
-import { useBusiness } from '@/components/business-provider'
+import { ChevronLeft, Loader2, Briefcase, Network } from 'lucide-react'
 import { Card } from '@/components/card'
-import { cn } from '@/lib/utils'
+import { SelectMenu } from '@/components/select-menu'
+import { useBusiness } from '@/components/business-provider'
+import { toast } from 'sonner'
 
-const COMPANIES = [
-  "Herbalife",
-  "Forever Living",
-  "Amway",
-  "doTERRA",
-  "Nu Skin",
-  "Atomy",
-  "4Life",
-  "Modere",
-]
+// Même charte que la fiche activité (au détail près)
+const inputCls =
+  'w-full rounded-xl border border-border bg-background px-4 py-[7px] text-lg text-foreground outline-none placeholder:text-muted-foreground'
 
-export default function NewActivityPage() {
-  const router = useRouter()
-  const { all, addBusiness } = useBusiness()
-  const [creating, setCreating] = useState(false)
+const DATE_MONTHS = ['Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin', 'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre']
+  .map((m, i) => ({ value: String(i + 1).padStart(2, '0'), label: m }))
+const DATE_YEARS = Array.from({ length: 21 }, (_, i) => { const y = new Date().getFullYear() - i; return { value: String(y), label: String(y) } })
 
-  // Crée réellement l'activité (POST + refresh du contexte → apparaît dans le switcher), puis ouvre sa fiche.
-  async function create() {
-    const name = company.trim()
-    if (!name || creating) return
-    setCreating(true)
-    await addBusiness(name)
-    router.push('/activities')
-  }
-
-  const [company, setCompany] = useState('')
-  const [showCompanyPicker, setShowCompanyPicker] = useState(false)
-  const [startDate, setStartDate] = useState('')
-  const [nbDirect, setNbDirect] = useState('')
-  const [nbTotal, setNbTotal] = useState('')
-  const [nbClients, setNbClients] = useState('')
-  const [sharedWith, setSharedWith] = useState<string[]>([])
-  const [shareToggle, setShareToggle] = useState(false)
-
-  const dateRef = useRef<HTMLInputElement>(null)
-
-  function toggleShare(id: string) {
-    setSharedWith(prev =>
-      prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
-    )
-  }
-
-  const formattedDate = startDate
-    ? new Date(startDate).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })
-    : null
-
-  const hasOtherBusinesses = all.length > 1
-
+function SectionHeader({ icon: Icon, title }: { icon: typeof Briefcase; title: string }) {
   return (
-    <>
-      {/* MOBILE */}
-      <div className="lg:hidden px-4 py-6 flex flex-col gap-4">
-        <button
-          type="button"
-          onClick={() => router.back()}
-          className="flex items-center gap-2 text-sm text-muted-foreground mb-2"
-        >
-          <ArrowLeft className="size-4" />
-          Retour
-        </button>
-        <p className="text-lg font-semibold text-foreground">Nouvelle activité</p>
-        <ActivityForm
-          company={company} setCompany={setCompany}
-          showCompanyPicker={showCompanyPicker} setShowCompanyPicker={setShowCompanyPicker}
-          startDate={startDate} setStartDate={setStartDate}
-          formattedDate={formattedDate} dateRef={dateRef}
-          nbDirect={nbDirect} setNbDirect={setNbDirect}
-          nbTotal={nbTotal} setNbTotal={setNbTotal}
-          nbClients={nbClients} setNbClients={setNbClients}
-          hasOtherBusinesses={hasOtherBusinesses} all={all}
-          shareToggle={shareToggle} setShareToggle={setShareToggle}
-          sharedWith={sharedWith} toggleShare={toggleShare}
-          onSubmit={create}
-        />
-      </div>
-
-      {/* DESKTOP */}
-      <div className="hidden lg:block">
-        <div className="max-w-2xl mx-auto px-6 py-10">
-          {/* Header */}
-          <div className="flex items-center gap-3 mb-6">
-            <button
-              type="button"
-              onClick={() => router.back()}
-              className="flex size-8 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted transition-colors"
-            >
-              <ArrowLeft className="size-4" />
-            </button>
-            <h1 className="text-lg font-semibold text-foreground">Nouvelle activité</h1>
-          </div>
-
-          {/* 2-col grid */}
-          <div className="grid grid-cols-3 gap-5 items-start">
-            {/* Left — 2/3 */}
-            <div className="col-span-2 flex flex-col gap-4">
-              <ActivityForm
-                company={company} setCompany={setCompany}
-                showCompanyPicker={showCompanyPicker} setShowCompanyPicker={setShowCompanyPicker}
-                startDate={startDate} setStartDate={setStartDate}
-                formattedDate={formattedDate} dateRef={dateRef}
-                nbDirect={nbDirect} setNbDirect={setNbDirect}
-                nbTotal={nbTotal} setNbTotal={setNbTotal}
-                nbClients={nbClients} setNbClients={setNbClients}
-                hasOtherBusinesses={hasOtherBusinesses} all={all}
-                shareToggle={shareToggle} setShareToggle={setShareToggle}
-                sharedWith={sharedWith} toggleShare={toggleShare}
-              />
-            </div>
-
-            {/* Right — 1/3 sticky */}
-            <div className="col-span-1 sticky top-20 flex flex-col gap-3">
-              {/* Summary card */}
-              <div className="rounded-2xl border border-border bg-surface shadow-card overflow-hidden">
-                <div className="px-4 py-3.5 border-b border-border">
-                  <p className="text-sm font-semibold text-foreground">Résumé</p>
-                </div>
-                <div className="px-4 py-5 flex flex-col items-center gap-3">
-                  {company ? (
-                    <>
-                      <div
-                        className="flex size-14 items-center justify-center rounded-full text-lg font-bold text-white"
-                        style={{ backgroundColor: '#F97316' }}
-                      >
-                        {company.slice(0, 2).toUpperCase()}
-                      </div>
-                      <p className="text-sm font-semibold text-foreground text-center">{company}</p>
-                    </>
-                  ) : (
-                    <div className="flex size-14 items-center justify-center rounded-full bg-muted text-muted-foreground text-lg font-bold">
-                      ?
-                    </div>
-                  )}
-                  {formattedDate ? (
-                    <p className="text-xs text-muted-foreground text-center">depuis le {formattedDate}</p>
-                  ) : (
-                    <p className="text-xs text-muted-foreground/50 text-center">Date non définie</p>
-                  )}
-                </div>
-              </div>
-
-              {/* CTA */}
-              <button
-                type="button"
-                onClick={create}
-                disabled={!company.trim() || creating}
-                className="w-full rounded-2xl bg-primary py-4 text-base font-semibold text-primary-foreground hover:opacity-90 transition-opacity disabled:opacity-50"
-              >
-                {"Créer l'activité"}
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-    </>
+    <div className="flex items-center gap-2.5 border-b border-border px-4 py-3.5">
+      <Icon className="size-5 shrink-0 text-muted-foreground stroke-[1.5]" />
+      <p className="text-lg font-semibold text-foreground">{title}</p>
+    </div>
   )
 }
 
-/* ── Shared form ── */
-interface FormProps {
-  company: string
-  setCompany: (v: string) => void
-  showCompanyPicker: boolean
-  setShowCompanyPicker: (v: boolean | ((prev: boolean) => boolean)) => void
-  startDate: string
-  setStartDate: (v: string) => void
-  formattedDate: string | null
-  dateRef: React.RefObject<HTMLInputElement | null>
-  nbDirect: string
-  setNbDirect: (v: string) => void
-  nbTotal: string
-  setNbTotal: (v: string) => void
-  nbClients: string
-  setNbClients: (v: string) => void
-  hasOtherBusinesses: boolean
-  all: { id: string; name: string; initials: string; color: string }[]
-  shareToggle: boolean
-  setShareToggle: (v: boolean) => void
-  sharedWith: string[]
-  toggleShare: (id: string) => void
-  onSubmit?: () => void
-}
+export default function NewActivityPage() {
+  const router = useRouter()
+  const { refresh } = useBusiness()
 
-function ActivityForm({
-  company, setCompany,
-  showCompanyPicker, setShowCompanyPicker,
-  startDate, setStartDate,
-  formattedDate, dateRef,
-  nbDirect, setNbDirect,
-  nbTotal, setNbTotal,
-  nbClients, setNbClients,
-  hasOtherBusinesses, all,
-  shareToggle, setShareToggle,
-  sharedWith, toggleShare,
-  onSubmit,
-}: FormProps) {
+  const [name, setName] = useState('')
+  const [rank, setRank] = useState('')
+  const [sponsorName, setSponsorName] = useState('')
+  const [start, setStart] = useState({ m: '', y: '' })
+  const [directs, setDirects] = useState('')
+  const [total, setTotal] = useState('')
+  const [clients, setClients] = useState('')
+  const [creating, setCreating] = useState(false)
+
+  async function create() {
+    if (!name.trim() || creating) return
+    setCreating(true)
+    const structure = (directs || total || clients) ? { directs, total, clients } : undefined
+    try {
+      const res = await fetch('/api/businesses', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          name: name.trim(), rank, sponsorName,
+          startDate: start.y || start.m ? `${start.y}-${start.m}` : '',
+          structure,
+        }),
+      })
+      if (!res.ok) throw new Error()
+      await refresh()
+      router.push('/activities')
+    } catch {
+      toast.error('Échec de la création')
+      setCreating(false)
+    }
+  }
+
   return (
-    <div className="flex flex-col gap-4">
-      {/* Activité */}
-      <Card className="p-0 overflow-hidden">
-        <div className="px-4 py-3.5 border-b border-border">
-          <p className="text-sm font-semibold text-foreground">Activité</p>
-        </div>
-        <button
-          type="button"
-          onClick={() => setShowCompanyPicker(v => !v)}
-          className="flex w-full items-center justify-between px-4 py-3.5 border-b border-border"
-        >
-          <span className={cn('text-sm', company ? 'text-foreground font-medium' : 'text-muted-foreground')}>
-            {company || "Choisir une entreprise…"}
-          </span>
-          <ChevronDown className={cn('size-4 text-muted-foreground transition-transform shrink-0', showCompanyPicker && 'rotate-180')} />
+    <div className="mx-auto w-full max-w-2xl">
+      {/* Header — titre centré + retour à gauche (charte du hub compte) */}
+      <div className="sticky top-0 z-10 flex items-center justify-center bg-background/90 px-4 py-3 backdrop-blur" style={{ paddingTop: 'max(0.75rem, env(safe-area-inset-top))' }}>
+        <button type="button" onClick={() => router.back()} aria-label="Retour" className="absolute left-2 flex size-9 items-center justify-center rounded-full text-foreground active:bg-muted">
+          <ChevronLeft className="size-5 stroke-[1.5]" />
         </button>
-        {showCompanyPicker && (
-          <div className="max-h-44 overflow-y-auto border-b border-border">
-            {COMPANIES.map(c => (
-              <button
-                key={c}
-                type="button"
-                onClick={() => { setCompany(c); setShowCompanyPicker(false) }}
-                className="flex w-full items-center justify-between px-4 py-3 text-sm text-foreground hover:bg-muted transition-colors"
-              >
-                {c}
-                {company === c && <span className="size-2 rounded-full bg-primary" />}
-              </button>
-            ))}
-          </div>
-        )}
-        <div className="relative">
-          <button
-            type="button"
-            onClick={() => dateRef.current?.showPicker()}
-            className="flex w-full items-center justify-between px-4 py-3.5"
-          >
-            <span className={cn('text-sm', startDate ? 'text-foreground font-medium' : 'text-muted-foreground')}>
-              {formattedDate ?? "Date de démarrage"}
-            </span>
-            <Calendar className="size-4 text-muted-foreground shrink-0" />
-          </button>
-          <input
-            ref={dateRef}
-            type="date"
-            value={startDate}
-            onChange={e => setStartDate(e.target.value)}
-            className="absolute inset-0 opacity-0 pointer-events-none"
-          />
-        </div>
-      </Card>
+        <h1 className="text-lg font-semibold text-foreground">Nouvelle activité</h1>
+      </div>
 
-      {/* Structure initiale */}
-      <Card className="p-0 overflow-hidden">
-        <div className="px-4 py-3.5 border-b border-border flex items-baseline gap-2">
-          <p className="text-sm font-semibold text-foreground">Structure initiale</p>
-          <span className="text-xs text-muted-foreground">— optionnel</span>
-        </div>
-        <div className="grid grid-cols-3 gap-2 px-4 py-3.5">
-          {[
-            { line1: 'Partenaires', line2: 'directs', value: nbDirect, set: setNbDirect },
-            { line1: 'Organisation', line2: 'totale', value: nbTotal, set: setNbTotal },
-            { line1: 'Clients', line2: 'directs', value: nbClients, set: setNbClients },
-          ].map(({ line1, line2, value, set }) => (
-            <div key={line1} className="flex flex-col items-center gap-0.5 rounded-xl bg-muted/50 px-2 py-2.5">
-              <input
-                type="number"
-                min="0"
-                value={value}
-                onChange={e => set(e.target.value)}
-                placeholder="0"
-                className="w-full bg-transparent text-center text-lg font-bold text-foreground outline-none placeholder:text-muted-foreground/40 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none [-moz-appearance:textfield]"
-              />
-              <p className="text-xs text-muted-foreground text-center leading-tight">{line1}<br />{line2}</p>
+      <div className="space-y-5 px-4 pb-28 pt-4">
+        <Card className="overflow-hidden p-0">
+          <SectionHeader icon={Briefcase} title="L'activité" />
+          <div className="space-y-4 p-4">
+            <input className={inputCls} value={name} onChange={(e) => setName(e.target.value)} placeholder="Nom de ta société MLM" autoFocus />
+            <input className={inputCls} value={rank} onChange={(e) => setRank(e.target.value)} placeholder="Rang dans ton MLM" />
+            <input className={inputCls} value={sponsorName} onChange={(e) => setSponsorName(e.target.value)} placeholder="Prénom de ton parrain" />
+            <div className="grid grid-cols-2 gap-2">
+              <SelectMenu className={inputCls} placeholder="Mois de démarrage" value={start.m} onChange={(v) => setStart((s) => ({ ...s, m: v }))} options={DATE_MONTHS} />
+              <SelectMenu className={inputCls} placeholder="Année" value={start.y} onChange={(v) => setStart((s) => ({ ...s, y: v }))} options={DATE_YEARS} />
             </div>
-          ))}
-        </div>
-      </Card>
-
-
-      {/* Base de contacts */}
-      {hasOtherBusinesses && (
-        <Card className="p-0 overflow-hidden">
-          <div className="px-4 py-3.5 border-b border-border">
-            <p className="text-sm font-semibold text-foreground">Base de contacts</p>
-          </div>
-          <div className="max-h-52 overflow-y-auto">
-            {all.map(b => (
-              <button
-                key={b.id}
-                type="button"
-                onClick={() => toggleShare(b.id)}
-                className={cn(
-                  'flex w-full items-center justify-between px-4 py-3.5 border-b border-border last:border-0 transition-colors',
-                  sharedWith.includes(b.id) ? 'bg-primary/5' : ''
-                )}
-              >
-                <div className="flex items-center gap-3">
-                  <span
-                    className="flex size-8 shrink-0 items-center justify-center rounded-full text-xs font-bold text-white"
-                    style={{ backgroundColor: b.color }}
-                  >
-                    {b.initials}
-                  </span>
-                  <span className="text-sm font-medium text-foreground">{b.name}</span>
-                </div>
-                <div className={cn(
-                  'size-5 rounded flex items-center justify-center border transition-colors',
-                  sharedWith.includes(b.id) ? 'bg-primary border-primary' : 'border-border'
-                )}>
-                  {sharedWith.includes(b.id) && (
-                    <svg viewBox="0 0 12 12" className="size-3 text-white fill-none stroke-current stroke-2">
-                      <path d="M2 6l3 3 5-5" strokeLinecap="round" strokeLinejoin="round" />
-                    </svg>
-                  )}
-                </div>
-              </button>
-            ))}
           </div>
         </Card>
-      )}
 
-      {/* CTA — mobile uniquement */}
-      {onSubmit && (
-        <button
-          type="button"
-          onClick={onSubmit}
-          className="w-full rounded-2xl bg-primary py-4 text-base font-semibold text-primary-foreground active:opacity-90 transition-opacity"
-        >
-          {"Créer l'activité"}
+        <Card className="overflow-hidden p-0">
+          <SectionHeader icon={Network} title="Structure de départ" />
+          <div className="space-y-4 p-4">
+            <p className="text-sm text-muted-foreground">Optionnel — si tu reprends une activité déjà lancée.</p>
+            <input type="number" min="0" inputMode="numeric" className={`${inputCls} [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none`} value={directs} onChange={(e) => setDirects(e.target.value)} placeholder="Partenaires directs" />
+            <input type="number" min="0" inputMode="numeric" className={`${inputCls} [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none`} value={total} onChange={(e) => setTotal(e.target.value)} placeholder="Organisation totale" />
+            <input type="number" min="0" inputMode="numeric" className={`${inputCls} [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none`} value={clients} onChange={(e) => setClients(e.target.value)} placeholder="Clients directs" />
+          </div>
+        </Card>
+      </div>
+
+      {/* Bouton flottant — identique à la fiche activité */}
+      <div className="fixed inset-x-0 z-[48] px-4" style={{ bottom: 'max(20px, env(safe-area-inset-bottom))' }}>
+        <button type="button" onClick={create} disabled={!name.trim() || creating} className="mx-auto flex w-full max-w-md items-center justify-center gap-2 rounded-full bg-primary py-3.5 text-base font-bold text-primary-foreground shadow-lg transition-transform active:scale-[0.98] disabled:opacity-50">
+          {creating ? <Loader2 className="size-5 animate-spin" /> : "Créer l'activité"}
         </button>
-      )}
+      </div>
     </div>
   )
 }
