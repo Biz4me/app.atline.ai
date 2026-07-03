@@ -102,7 +102,7 @@ export async function GET() {
   // On ne pousse au tunnel (niv. 2+) qu'une fois ces prérequis posés. Les incontournables temporels (niv. 1) passent toujours avant.
   const [user, business, mindsetModule] = await Promise.all([
     db.user.findUnique({ where: { id: userId }, select: { coaching: true } }),
-    db.userMlmBusiness.findUnique({ where: { id: bizId }, select: { story: true } }),
+    db.userMlmBusiness.findUnique({ where: { id: bizId }, select: { story: true, objectif: true } }),
     db.lmsModule.findFirst({ where: { position: 0 }, select: { id: true } }).catch(() => null),
   ])
   let mindsetDone = false
@@ -114,6 +114,8 @@ export async function GET() {
   const hasStory = typeof business?.story === 'string' && business.story.trim().length > 0
   const hasMindset = (typeof coaching.mindset === 'string' && (coaching.mindset as string).trim().length > 0) || mindsetDone
   const hasWhy = typeof coaching.why === 'string' && (coaching.why as string).trim().length > 0
+  const objectif = (business?.objectif && typeof business.objectif === 'object' && !Array.isArray(business.objectif)) ? (business.objectif as Record<string, unknown>) : {}
+  const hasObjectif = typeof objectif.mensuel === 'string' && (objectif.mensuel as string).trim().length > 0
   const listCount = contacts.length
 
   const foundItem = (action: string, rank: number, headline: string, reason: string, route: string | null): Cand => ({
@@ -127,6 +129,8 @@ export async function GET() {
   if (!hasMindset)             cands.push(foundItem('FOUND_MINDSET', 3, 'Pose ton état d’esprit de pro', 'La posture d’un pro : un vrai métier, pas un jackpot ; la régularité bat le talent. 5 min avec moi et tu pars sur les bons rails.', null))
   if (!hasWhy)                cands.push(foundItem('FOUND_WHY', 2, 'Formule ton pourquoi', 'Module 2 — ton moteur. Sans un pourquoi clair, tout s’essouffle. On le travaille ensemble.', null))
   if (listCount < 10)         cands.push(foundItem('FOUND_LIST', 1, 'Construis ta liste de noms', `Module 4 — la matière première de ton activité. Tu as ${listCount} contact${listCount > 1 ? 's' : ''}, vise 100 noms.`, '/contacts'))
+  // Objectifs : APRÈS la liste (rang le plus bas) — pour fixer des cibles réalistes, pas dans le vide.
+  else if (!hasObjectif)      cands.push(foundItem('FOUND_OBJECTIFS', 0, 'Fixe tes objectifs de partenaires', 'Maintenant que ta liste tourne, on pose de vrais objectifs mesurables — un cap mensuel et ta trajectoire à 3, 6, 12 mois.', null))
 
   // ── Niveau 1 — Temporel (fenêtres qui se ferment) ──
   const today = new Date()

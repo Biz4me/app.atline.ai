@@ -6,7 +6,26 @@ import { Check } from 'lucide-react'
 // Carte de VALIDATION du pourquoi (non régénérable) — n'apparaît QUE lorsqu'Atlas et l'utilisateur
 // ont validé ensemble la formulation. « Je valide » → enregistrement dans le profil.
 // Si l'utilisateur continue à écrire au lieu de valider, la carte est marquée « dépassée » (Atlas affine).
-export function WhyValidateCard({ text, title = 'Ton pourquoi', superseded, done, onValidate }: { text: string; title?: string; superseded?: boolean; done?: boolean; onValidate: () => Promise<boolean> }) {
+type Objectifs = { mensuel: string; m3: string; m6: string; m12: string }
+
+// Échelle d'objectifs (session « objectifs ») : rendu en paliers plutôt qu'en paragraphe.
+function ObjLadder({ obj }: { obj: Objectifs }) {
+  const rows: [string, string][] = [
+    ['Objectif mensuel', obj.mensuel], ['À 3 mois', obj.m3], ['À 6 mois', obj.m6], ['À 12 mois', obj.m12],
+  ]
+  return (
+    <div className="px-4 py-2">
+      {rows.map(([label, val]) => (
+        <div key={label} className="flex items-baseline justify-between border-b border-border/60 py-2 last:border-0">
+          <span className="text-sm text-muted-foreground">{label}</span>
+          <span className="text-lg font-bold text-foreground lg:text-base">{val || '—'} <span className="text-sm font-medium text-muted-foreground">partenaires</span></span>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+export function WhyValidateCard({ text, title = 'Ton pourquoi', obj, superseded, done, onValidate }: { text: string; title?: string; obj?: Objectifs; superseded?: boolean; done?: boolean; onValidate: () => Promise<boolean> }) {
   const [saving, setSaving] = useState(false)
   const [localDone, setLocalDone] = useState(false)
   const finished = done || localDone
@@ -32,10 +51,14 @@ export function WhyValidateCard({ text, title = 'Ton pourquoi', superseded, done
   return (
     <div className="w-full overflow-hidden rounded-2xl border border-border bg-surface">
       <div className="border-b border-border px-4 py-2.5 text-sm font-semibold text-muted-foreground">{title}</div>
-      <div className="whitespace-pre-wrap px-4 py-3 text-lg italic leading-relaxed text-foreground lg:text-sm">{text}</div>
+      {obj ? (
+        <ObjLadder obj={obj} />
+      ) : (
+        <div className="whitespace-pre-wrap px-4 py-3 text-lg italic leading-relaxed text-foreground lg:text-sm">{text}</div>
+      )}
       {finished ? (
         <div className="flex items-center gap-1.5 border-t border-border px-4 py-3 text-sm font-semibold text-primary">
-          <Check className="size-4" strokeWidth={3} /> Enregistré dans ton profil
+          <Check className="size-4" strokeWidth={3} /> {obj ? 'Enregistré dans ton activité' : 'Enregistré dans ton profil'}
         </div>
       ) : (
         <div className="flex flex-col gap-1.5 border-t border-border px-4 py-2.5">

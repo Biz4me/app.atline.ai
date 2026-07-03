@@ -111,7 +111,6 @@ export default function ActivitiesPage() {
     if (res.ok) { await loadAct(); toast.success('Document supprimé') }
   }
   const setLink = (k: string, v: string) => setAct((a) => (a ? { ...a, links: { ...a.links, [k]: v } } : a))
-  const setObjectif = (k: string, v: string) => setAct((a) => (a ? { ...a, objectif: { ...a.objectif, [k]: v } } : a))
 
   async function save() {
     if (!act) return
@@ -122,9 +121,6 @@ export default function ActivitiesPage() {
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({
           mlmName: act.mlmName, rank: act.rank, category: act.category, produit: act.produit, audience: act.audience, links: act.links,
-          objectif: act.objectif?.target?.trim()
-            ? { target: act.objectif.target.trim(), unit: act.objectif.unit || 'partenaires', period: act.objectif.period || 'mois' }
-            : {},
         }),
       })
       if (res.ok) toast.success('Activité enregistrée')
@@ -138,7 +134,7 @@ export default function ActivitiesPage() {
 
   // Complétion (même logique que le profil : somme des rubriques)
   const sec = act ? {
-    identite: nf([act.mlmName, act.rank, act.produit, act.audience, act.story, act.objectif?.target]),
+    identite: nf([act.mlmName, act.rank, act.produit, act.audience, act.story, act.objectif?.mensuel]),
     liens: LINK_KEYS.filter((k) => act.links[k]?.trim()).length,
     documents: BUCKETS.filter((b) => (act.supports[b.key] ?? []).length > 0).length,
   } : { identite: 0, liens: 0, documents: 0 }
@@ -185,12 +181,29 @@ export default function ActivitiesPage() {
               <input className={inputCls} value={act.mlmName} onChange={(e) => setField('mlmName', e.target.value)} placeholder="Nom de l'activité" />
               <input className={inputCls} value={act.rank} onChange={(e) => setField('rank', e.target.value)} placeholder="Rang / palier — ex. Manager, Diamant…" />
               <SelectMenu className={inputCls} placeholder="Catégorie" value={act.category} onChange={(v) => setField('category', v)} options={CATEGORIES.map((c) => ({ value: c, label: c.charAt(0).toUpperCase() + c.slice(1) }))} />
-              {/* Objectif — tranche + unité + période, placeholder-only (charte). Paliers pour un objectif réaliste. */}
-              <div className="grid grid-cols-3 gap-2">
-                <SelectMenu className={inputCls} placeholder="Objectif" value={act.objectif?.target ?? ''} onChange={(v) => setObjectif('target', v)} options={[{ value: '1 à 3', label: '1 à 3' }, { value: '3 à 5', label: '3 à 5' }, { value: '5 à 10', label: '5 à 10' }, { value: '10 à 20', label: '10 à 20' }, { value: '20+', label: '20+' }]} />
-                <SelectMenu className={inputCls} placeholder="Unité" value={act.objectif?.unit ?? 'partenaires'} onChange={(v) => setObjectif('unit', v)} options={[{ value: 'partenaires', label: 'partenaires' }, { value: 'clients', label: 'clients' }, { value: '€', label: '€ de CA' }]} />
-                <SelectMenu className={inputCls} placeholder="Période" value={act.objectif?.period ?? 'mois'} onChange={(v) => setObjectif('period', v)} options={[{ value: 'mois', label: 'ce mois' }, { value: 'trimestre', label: 'ce trimestre' }, { value: 'an', label: 'cette année' }]} />
-              </div>
+              {/* Objectifs = champ STRATÉGIQUE : se définit en session avec Atlas (cibles réalistes, mesurables) */}
+              {act.objectif?.mensuel ? (
+                <div className="rounded-xl border border-border bg-background px-4 py-3">
+                  <p className="mb-1.5 text-xs font-semibold text-muted-foreground">Mes objectifs de partenaires</p>
+                  {([['Mensuel', act.objectif.mensuel], ['3 mois', act.objectif.m3], ['6 mois', act.objectif.m6], ['12 mois', act.objectif.m12]] as [string, string][]).map(([lab, v]) => (
+                    <div key={lab} className="flex items-baseline justify-between border-b border-border/60 py-1.5 last:border-0">
+                      <span className="text-sm text-muted-foreground">{lab}</span>
+                      <span className="text-lg font-bold text-foreground lg:text-base">{v || '—'} <span className="text-sm font-medium text-muted-foreground">part.</span></span>
+                    </div>
+                  ))}
+                  <button type="button" onClick={() => router.push('/atlas?session=objectifs')} className="mt-2.5 flex items-center gap-1.5 text-sm font-semibold text-primary">
+                    <Compass className="size-3.5" /> Retravailler avec Atlas
+                  </button>
+                </div>
+              ) : (
+                <button type="button" onClick={() => router.push('/atlas?session=objectifs')} className="flex w-full items-center gap-3 rounded-xl border border-dashed border-primary/40 bg-primary/5 px-4 py-3 text-left transition-colors active:bg-primary/10">
+                  <Compass className="size-5 shrink-0 text-primary" />
+                  <span className="min-w-0">
+                    <span className="block text-lg font-semibold text-foreground lg:text-sm">Fixe tes objectifs avec Atlas</span>
+                    <span className="block text-sm text-muted-foreground">De vrais objectifs de partenaires, réalistes et mesurables</span>
+                  </span>
+                </button>
+              )}
               <input className={inputCls} value={act.produit} onChange={(e) => setField('produit', e.target.value)} placeholder="Produit / offre phare" />
               <textarea className={`${inputCls} min-h-[72px] resize-none overflow-hidden`} value={act.audience} onChange={(e) => setField('audience', e.target.value)} placeholder="Audience cible — à qui tu t'adresses" />
 

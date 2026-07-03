@@ -18,9 +18,17 @@ import { ProfileFormCard } from '@/components/atlas-profile-form'
 import { WhyValidateCard } from '@/components/atlas-why-card'
 
 type Choice = { label: string; value: string }
-type Msg = { from: 'user' | 'atlas'; text: string; chips?: string[]; choices?: Choice[]; item?: PlanItem; draft?: { contactId: string; prenom: string; channel: string; phone: string | null; email: string | null }; profileForm?: { me: Record<string, unknown> }; whyCard?: { text: string; kind: SessionKind; title: string; superseded?: boolean; done?: boolean } }
+type Msg = { from: 'user' | 'atlas'; text: string; chips?: string[]; choices?: Choice[]; item?: PlanItem; draft?: { contactId: string; prenom: string; channel: string; phone: string | null; email: string | null }; profileForm?: { me: Record<string, unknown> }; whyCard?: { text: string; kind: SessionKind; title: string; obj?: Objectifs; superseded?: boolean; done?: boolean } }
 
-type SessionKind = 'why' | 'rencontre' | 'mindset'
+type SessionKind = 'why' | 'rencontre' | 'mindset' | 'objectifs'
+type Objectifs = { mensuel: string; m3: string; m6: string; m12: string }
+
+// Session « objectifs » : Atlas émet [[SAVE]] mensuel=N; m3=N; m6=N; m12=N → on parse l'échelle.
+const parseObjectifs = (payload: string): Objectifs | null => {
+  const g = (re: RegExp) => payload.match(re)?.[1] ?? ''
+  const o: Objectifs = { mensuel: g(/mensuel\s*=\s*(\d+)/i), m3: g(/m3\s*=\s*(\d+)/i), m6: g(/m6\s*=\s*(\d+)/i), m12: g(/m12\s*=\s*(\d+)/i) }
+  return o.mensuel || o.m3 || o.m6 || o.m12 ? o : null
+}
 
 // Indicateur « Atlas réfléchit » — 3 points en cascade
 function TypingDots() {
@@ -43,6 +51,7 @@ const displayUserText = (content: string): string => {
   if (content.startsWith('[SESSION_POURQUOI]')) return 'Je veux travailler mon pourquoi avec toi'
   if (content.startsWith('[SESSION_RENCONTRE]')) return 'Je veux te raconter ma rencontre avec mon activité'
   if (content.startsWith('[SESSION_MINDSET]')) return 'Je veux poser mon état d’esprit avec toi'
+  if (content.startsWith('[SESSION_OBJECTIFS]')) return 'Je veux fixer mes objectifs avec toi'
   if (content.startsWith('Voici mes priorités') || content.startsWith('Avant de courir après les contacts') || content.startsWith("Je n'ai aucune priorité")) return 'Mon plan du jour'
   return content
 }
@@ -175,6 +184,18 @@ Comporte-toi comme un excellent coach${NB}: un vrai échange, pas un cours magis
 
 TECHNIQUE (invisible pour moi, ne l'explique jamais)${NB}: le jour où je VALIDE explicitement, écris ta phrase de clôture, PUIS ajoute tout à la fin, sur une nouvelle ligne, EXACTEMENT ce format${NB}: [[SAVE]] suivi de mon engagement final à la 1ʳᵉ personne (2-4 phrases). N'écris [[SAVE]] QU'APRÈS ma validation explicite, jamais avant.`,
     },
+    objectifs: {
+      display: 'Je veux fixer mes objectifs avec toi',
+      title: 'Tes objectifs',
+      frame: `[SESSION_OBJECTIFS] On fixe mes objectifs de PARTENAIRES${NB}: de VRAIS objectifs réalistes, pas des chiffres en l'air. On mesure en partenaires uniquement (c'est ce que tu sais suivre).
+
+Comporte-toi comme un excellent coach lucide${NB}: un vrai échange, pas un cours.
+- Accueille-moi en UNE phrase, puis comprends ma réalité, UNE question à la fois${NB}: combien d'heures par semaine je peux mettre, où en est ma liste de noms, mon expérience.
+- Recadre avec réalisme (le seuil de rentabilité d'abord, la régularité${NB}; un débutant ne signe pas 10 partenaires le 1er mois). Une idée par tour, jamais de liste.
+- Quand tu as de quoi, PROPOSE une échelle progressive et ATTEIGNABLE${NB}: un objectif MENSUEL récurrent (la locomotive), puis des caps CUMULÉS à 3, 6 et 12 mois. Explique ton raisonnement en 1-2 phrases et demande-moi si ça te semble juste et atteignable, OU si je veux l'ajuster (plus ambitieux / plus prudent).
+
+TECHNIQUE (invisible pour moi, ne l'explique jamais)${NB}: le jour où je VALIDE explicitement l'échelle, écris ta phrase de clôture motivante, PUIS ajoute tout à la fin, sur une nouvelle ligne, EXACTEMENT ce format (des nombres entiers de partenaires)${NB}: [[SAVE]] mensuel=N; m3=N; m6=N; m12=N. N'écris [[SAVE]] QU'APRÈS ma validation, jamais avant.`,
+    },
   }
 
   // Charge la conversation de l'URL (?c=) — saute si on vient de la créer (loadedRef).
@@ -208,13 +229,18 @@ TECHNIQUE (invisible pour moi, ne l'explique jamais)${NB}: le jour où je VALIDE
           const kind: SessionKind | null =
             raw.some((m) => m.role === 'USER' && m.content.startsWith('[SESSION_RENCONTRE]')) ? 'rencontre'
             : raw.some((m) => m.role === 'USER' && m.content.startsWith('[SESSION_MINDSET]')) ? 'mindset'
+            : raw.some((m) => m.role === 'USER' && m.content.startsWith('[SESSION_OBJECTIFS]')) ? 'objectifs'
             : raw.some((m) => m.role === 'USER' && m.content.startsWith('[SESSION_POURQUOI]')) ? 'why'
             : null
           if (kind) {
             let saved = false
             try {
-              if (kind === 'rencontre') { const a = await fetch('/api/activities/active').then((x) => (x.ok ? x.json() : null)); const s = a?.activity?.story; saved = typeof s === 'string' && s.trim().length > 0 }
-              else { const me = await fetch('/api/me').then((x) => (x.ok ? x.json() : null)); const v = me?.coaching?.[kind === 'why' ? 'why' : 'mindset']; saved = typeof v === 'string' && v.trim().length > 0 }
+              if (kind === 'rencontre' || kind === 'objectifs') {
+                const a = await fetch('/api/activities/active').then((x) => (x.ok ? x.json() : null))
+                saved = kind === 'rencontre'
+                  ? typeof a?.activity?.story === 'string' && a.activity.story.trim().length > 0
+                  : !!a?.activity?.objectif?.mensuel
+              } else { const me = await fetch('/api/me').then((x) => (x.ok ? x.json() : null)); const v = me?.coaching?.[kind === 'why' ? 'why' : 'mindset']; saved = typeof v === 'string' && v.trim().length > 0 }
             } catch { /* ignore */ }
             if (!cancelled && !saved) {
               // Reprise transparente : on rebranche le composeur sur la session, la conversation continue naturellement.
@@ -223,7 +249,8 @@ TECHNIQUE (invisible pour moi, ne l'explique jamais)${NB}: le jour où je VALIDE
               // Si Atlas avait déjà proposé une formulation validée (dernier marqueur), on rétablit la carte « Je valide ».
               const lastMarked = [...raw].reverse().find((m) => m.role !== 'USER' && SAVE_MARK_RE.test(m.content))
               const finalText = lastMarked ? extractSaved(lastMarked.content) : ''
-              if (finalText) setMsgs((prev) => [...prev, { from: 'atlas', text: '', whyCard: { text: finalText, kind, title: SESSION_META[kind].title } }])
+              const card = finalText ? sessionCardMsg(kind, finalText) : null
+              if (card) setMsgs((prev) => [...prev, card])
             }
           }
         }
@@ -542,6 +569,7 @@ TECHNIQUE (invisible pour moi, ne l'explique jamais)${NB}: le jour où je VALIDE
       if (item.action === 'FOUND_WHY') { setTimeout(() => startSessionRef.current('why'), 300); return }
       if (item.action === 'FOUND_RENCONTRE') { setTimeout(() => startSessionRef.current('rencontre'), 300); return }
       if (item.action === 'FOUND_MINDSET') { setTimeout(() => startSessionRef.current('mindset'), 300); return }
+      if (item.action === 'FOUND_OBJECTIFS') { setTimeout(() => startSessionRef.current('objectifs'), 300); return }
       if (item.action === 'FOUND_PROFILE') { setTimeout(() => showProfileForm(), 300); return }
       const label = item.action === 'FOUND_LIST' ? 'Construire ma liste' : item.action === 'FOUND_MINDSET' ? 'Ouvrir le module' : 'Y aller'
       setMsgs((prev) => [...prev, { from: 'atlas', text: item.reason, choices: [{ label, value: 'goto' }], item }])
@@ -612,18 +640,37 @@ TECHNIQUE (invisible pour moi, ne l'explique jamais)${NB}: le jour où je VALIDE
     sendMsg(v)
   }
 
+  // Construit le message-carte de validation à partir du texte final émis après [[SAVE]].
+  // Pour « objectifs », le texte est un payload structuré (mensuel=…; m3=…) → on parse l'échelle.
+  const sessionCardMsg = (kind: SessionKind, finalText: string): Msg | null => {
+    if (kind === 'objectifs') {
+      const obj = parseObjectifs(finalText)
+      if (!obj) return null
+      const summary = `Mensuel${NB}: ${obj.mensuel || '—'} · 3 mois${NB}: ${obj.m3 || '—'} · 6 mois${NB}: ${obj.m6 || '—'} · 12 mois${NB}: ${obj.m12 || '—'}`
+      return { from: 'atlas', text: '', whyCard: { text: summary, kind, title: SESSION_META[kind].title, obj } }
+    }
+    return { from: 'atlas', text: '', whyCard: { text: finalText, kind, title: SESSION_META[kind].title } }
+  }
+
   // Atlas a proposé une formulation validée ensemble (marqueur émis) → carte de validation (non régénérable).
   // La session reste active : si l'utilisateur écrit encore, la carte est dépassée et Atlas affine ; s'il tape « Je valide », on enregistre.
   const appendSessionCard = (kind: SessionKind, text: string) => {
-    setMsgs((prev) => [...prev, { from: 'atlas', text: '', whyCard: { text, kind, title: SESSION_META[kind].title } }])
+    const msg = sessionCardMsg(kind, text)
+    if (!msg) return
+    setMsgs((prev) => [...prev, msg])
     setTimeout(scrollToBottom, 80)
   }
 
-  // Enregistrement au bon endroit selon la session : pourquoi/mindset → profil (coaching.*) ; rencontre → activité (story).
-  const persistSession = async (kind: SessionKind, text: string): Promise<boolean> => {
+  // Enregistrement selon la session : pourquoi/mindset → coaching.* ; rencontre → activité (story) ; objectifs → activité (objectif JSON).
+  const persistSession = async (kind: SessionKind, text: string, obj?: Objectifs): Promise<boolean> => {
     try {
       if (kind === 'rencontre') {
         const r = await fetch('/api/activities/active', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ story: text }) })
+        return r.ok
+      }
+      if (kind === 'objectifs') {
+        if (!obj) return false
+        const r = await fetch('/api/activities/active', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ objectif: obj }) })
         return r.ok
       }
       const field = kind === 'why' ? 'why' : 'mindset'
@@ -635,14 +682,16 @@ TECHNIQUE (invisible pour moi, ne l'explique jamais)${NB}: le jour où je VALIDE
     } catch { return false }
   }
 
-  const validateWhyCard = async (idx: number, kind: SessionKind, text: string): Promise<boolean> => {
-    const ok = await persistSession(kind, text)
+  const validateWhyCard = async (idx: number, kind: SessionKind, text: string, obj?: Objectifs): Promise<boolean> => {
+    const ok = await persistSession(kind, text, obj)
     if (ok) {
       sessionRef.current = null
       const confirm = kind === 'why'
         ? `C’est gravé dans ton profil ✓ Ton pourquoi sera ton point d’ancrage${NB}: on y reviendra chaque fois que tu douteras ou qu’on préparera un message important.`
         : kind === 'mindset'
         ? `C’est posé ✓ Ton état d’esprit de pro est ta fondation${NB}: c’est ce qui te fera tenir quand les autres lâchent. On peut avancer.`
+        : kind === 'objectifs'
+        ? `C’est fixé ✓ Ton objectif mensuel devient ta boussole${NB}: je te suis dessus chaque mois et je te dis quoi faire pour combler l’écart.`
         : `C’est enregistré ✓ Ton histoire avec cette activité me servira à personnaliser tes messages et à nourrir ta présentation.`
       setMsgs((prev) => [
         ...prev.map((m, j) => (j === idx && m.whyCard ? { ...m, whyCard: { ...m.whyCard, done: true } } : m)),
@@ -949,7 +998,7 @@ TECHNIQUE (invisible pour moi, ne l'explique jamais)${NB}: le jour où je VALIDE
                 ) : m.profileForm ? (
                   <ProfileFormCard me={m.profileForm.me} onSaved={(n) => { setMsgs((prev) => [...prev, { from: 'atlas', text: `C'est noté dans ton profil ✓ (${n} info${n > 1 ? 's' : ''}). Plus je te connais, mieux je te coache.` }]); setTimeout(scrollToBottom, 60) }} />
                 ) : m.whyCard ? (
-                  <WhyValidateCard title={m.whyCard.title} text={m.whyCard.text} superseded={m.whyCard.superseded} done={m.whyCard.done} onValidate={() => validateWhyCard(i, m.whyCard!.kind, m.whyCard!.text)} />
+                  <WhyValidateCard title={m.whyCard.title} text={m.whyCard.text} obj={m.whyCard.obj} superseded={m.whyCard.superseded} done={m.whyCard.done} onValidate={() => validateWhyCard(i, m.whyCard!.kind, m.whyCard!.text, m.whyCard!.obj)} />
                 ) : m.text === '' ? (
                   <TypingDots />
                 ) : (
