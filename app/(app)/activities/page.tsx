@@ -72,6 +72,8 @@ export default function ActivitiesPage() {
   const toggle = (k: string) => setOpen((o) => ({ [k]: !o[k] }))
   const fileRef = useRef<HTMLInputElement>(null)
 
+  const [activities, setActivities] = useState<{ id: string; name: string; isActive: boolean }[]>([])
+
   const loadAct = useCallback(() => {
     return fetch('/api/activities/active')
       .then((r) => (r.ok ? r.json() : null))
@@ -79,7 +81,23 @@ export default function ActivitiesPage() {
       .catch(() => {})
   }, [])
 
-  useEffect(() => { loadAct().finally(() => setLoading(false)) }, [loadAct])
+  const loadList = useCallback(() => {
+    return fetch('/api/businesses')
+      .then((r) => (r.ok ? r.json() : []))
+      .then((rows) => setActivities(Array.isArray(rows) ? rows.map((b: { id: string; name: string; isActive: boolean }) => ({ id: b.id, name: b.name, isActive: b.isActive })) : []))
+      .catch(() => {})
+  }, [])
+
+  useEffect(() => { Promise.all([loadAct(), loadList()]).finally(() => setLoading(false)) }, [loadAct, loadList])
+
+  // Bascule l'activité active (onglets) → recharge la fiche + la liste (pour l'onglet surligné).
+  async function switchTo(id: string) {
+    if (activities.find((a) => a.id === id)?.isActive) return
+    setLoading(true)
+    try { await fetch('/api/businesses/active', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ id }) }) } catch { /* ignore */ }
+    await Promise.all([loadAct(), loadList()])
+    setLoading(false)
+  }
 
   const setField = (k: keyof Activity, v: string) => setAct((a) => (a ? { ...a, [k]: v } : a))
 
@@ -143,13 +161,32 @@ export default function ActivitiesPage() {
 
   return (
     <div className="mx-auto w-full max-w-2xl">
-      {/* Header — titre centré + flèche retour (comme les pages du hub compte) */}
+      {/* Header — titre centré + retour à gauche + « + » (ajouter une activité) à droite */}
       <div className="sticky top-0 z-10 flex items-center justify-center bg-background/90 px-4 py-3 backdrop-blur" style={{ paddingTop: 'max(0.75rem, env(safe-area-inset-top))' }}>
         <button type="button" onClick={back} aria-label="Retour" className="absolute left-2 flex size-9 items-center justify-center rounded-full text-foreground active:bg-muted">
           <ChevronLeft className="size-5 stroke-[1.5]" />
         </button>
         <h1 className="text-lg font-semibold text-foreground">Mon activité</h1>
+        <button type="button" onClick={() => router.push('/activities/new')} aria-label="Ajouter une activité" className="absolute right-2 flex size-9 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-sm active:scale-95 transition-transform">
+          <Plus className="size-5 stroke-[2]" />
+        </button>
       </div>
+
+      {/* Onglets d'activités — visibles dès 2 activités, max 2 par ligne */}
+      {activities.length >= 2 && (
+        <div className="grid grid-cols-2 gap-2 px-4 pt-3">
+          {activities.map((a) => (
+            <button
+              key={a.id}
+              type="button"
+              onClick={() => switchTo(a.id)}
+              className={`truncate rounded-xl px-3 py-2 text-sm font-semibold transition-colors ${a.isActive ? 'bg-primary text-primary-foreground' : 'bg-muted text-foreground active:bg-muted/70'}`}
+            >
+              {a.name}
+            </button>
+          ))}
+        </div>
+      )}
 
       {loading ? (
         <div className="flex min-h-[60vh] items-center justify-center"><Loader2 className="size-6 animate-spin text-muted-foreground" /></div>
@@ -157,7 +194,7 @@ export default function ActivitiesPage() {
         <div className="flex flex-col items-center gap-2 px-6 pt-24 text-center">
           <Briefcase className="size-7 text-muted-foreground" />
           <p className="text-lg font-medium text-foreground">Aucune activité</p>
-          <p className="text-base text-muted-foreground">Crée une activité depuis le switcher en haut.</p>
+          <p className="text-base text-muted-foreground">Touche le <span className="font-semibold text-primary">+</span> en haut à droite pour en créer une.</p>
         </div>
       ) : (
         <div className="space-y-5 px-4 pb-28 pt-4">
