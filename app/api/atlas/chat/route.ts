@@ -23,6 +23,44 @@ function convTitle(query: string): string {
   return query.slice(0, 60)
 }
 
+// Instantané compact des données de l'utilisateur → Atlas répond avec la vraie valeur
+// (objectif, offre, relances…) au lieu d'inventer. Une ligne par info renseignée, sinon omise.
+async function buildAtlasSnapshot(userId: string): Promise<string> {
+  try {
+    const prefs = await db.userPreferences.findUnique({ where: { userId }, select: { activeCompanyId: true } })
+    const biz = prefs?.activeCompanyId
+      ? await db.userMlmBusiness.findFirst({ where: { id: prefs.activeCompanyId, userId } })
+      : await db.userMlmBusiness.findFirst({ where: { userId }, orderBy: { position: 'asc' } })
+
+    const now = new Date()
+    const endOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59)
+    const [contactsCount, relancesDue] = await Promise.all([
+      db.contact.count({ where: { userId } }),
+      db.relance.count({ where: { userId, status: 'PENDING', dueAt: { lte: endOfDay } } }),
+    ])
+
+    const lines: string[] = []
+    if (biz) {
+      let head = `Activité active : ${biz.mlmName}`
+      if (biz.rank) head += ` · rang ${biz.rank}`
+      if (biz.startDate) head += ` · démarrage ${biz.startDate}`
+      lines.push(head)
+      if (biz.produit) lines.push(`Offre phare : ${biz.produit}`)
+      if (biz.audience) lines.push(`Audience cible : ${biz.audience}`)
+      const o = (biz.objectif ?? null) as { mensuel?: string; m3?: string; m6?: string; m12?: string } | null
+      if (o && (o.mensuel || o.m3 || o.m6 || o.m12)) {
+        const seg = [o.mensuel && `${o.mensuel}/mois`, o.m3 && `${o.m3} à 3 mois`, o.m6 && `${o.m6} à 6 mois`, o.m12 && `${o.m12} à 12 mois`].filter(Boolean).join(', ')
+        lines.push(`Objectif de recrutement : ${seg} (partenaires)`)
+      }
+    }
+    lines.push(`Contacts : ${contactsCount} au total`)
+    if (relancesDue > 0) lines.push(`Relances à faire (échéance ≤ aujourd'hui) : ${relancesDue}`)
+    return lines.join('\n')
+  } catch {
+    return ''
+  }
+}
+
 export async function POST(req: NextRequest) {
   // user_id réel depuis la session NextAuth — jamais fourni par le client.
   const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET })
@@ -72,6 +110,11 @@ export async function POST(req: NextRequest) {
     data: { conversationId: cid, role: 'USER', content: query, qdrantChunks: [] },
   })
 
+  // Instantané données user — uniquement en chat normal (pas en session ni en rédaction de message).
+  const isSession = query.startsWith('[SESSION')
+  const isDraft = query.includes('Rédige UN message prêt à envoyer') || query.startsWith('Tu es Atlas, coach en marketing de réseau. Rédige')
+  const user_snapshot = isSession || isDraft ? '' : await buildAtlasSnapshot(userId)
+
   // Appel FastAPI
   let resp: Response
   try {
@@ -83,6 +126,7 @@ export async function POST(req: NextRequest) {
         user_id: userId,
         mlm_actif: body.mlm_actif ?? 'Atline',
         conversation_history,
+        user_snapshot,
       }),
     })
   } catch {
