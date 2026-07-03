@@ -78,9 +78,12 @@ export default function NewActivityPage() {
             <input className={inputCls} value={name} onChange={(e) => setName(e.target.value)} placeholder="Nom de ta société MLM" autoFocus />
             <input className={inputCls} value={rank} onChange={(e) => setRank(e.target.value)} placeholder="Rang dans ton MLM" />
             <input className={inputCls} value={sponsorName} onChange={(e) => setSponsorName(e.target.value)} placeholder="Prénom de ton parrain" />
-            <div className="grid grid-cols-2 gap-2">
-              <SelectMenu className={inputCls} placeholder="Mois de démarrage" value={start.m} onChange={(v) => setStart((s) => ({ ...s, m: v }))} options={DATE_MONTHS} />
-              <SelectMenu className={inputCls} placeholder="Année" value={start.y} onChange={(v) => setStart((s) => ({ ...s, y: v }))} options={DATE_YEARS} />
+            <div>
+              <p className="mb-1.5 px-1 text-sm text-muted-foreground">Date de démarrage</p>
+              <div className="grid grid-cols-2 gap-2">
+                <SelectMenu className={inputCls} placeholder="Mois" value={start.m} onChange={(v) => setStart((s) => ({ ...s, m: v }))} options={DATE_MONTHS} />
+                <SelectMenu className={inputCls} placeholder="Année" value={start.y} onChange={(v) => setStart((s) => ({ ...s, y: v }))} options={DATE_YEARS} />
+              </div>
             </div>
           </div>
         </Card>

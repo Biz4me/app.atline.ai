@@ -231,10 +231,13 @@ export default function ActivitiesPage() {
               <div className={`${inputCls} text-foreground`}>{act.category ? act.category.charAt(0).toUpperCase() + act.category.slice(1) : 'Coaching'}</div>
               <input className={inputCls} value={act.rank} onChange={(e) => setField('rank', e.target.value)} placeholder="Rang dans ton MLM" />
               <input className={inputCls} value={act.sponsorName} onChange={(e) => setField('sponsorName', e.target.value)} placeholder="Prénom de ton parrain" />
-              {/* Date de démarrage — mois / année (déroulants, comme la charte du profil) */}
-              <div className="grid grid-cols-2 gap-2">
-                <SelectMenu className={inputCls} placeholder="Mois de démarrage" value={act.startDate?.split('-')[1] ?? ''} onChange={(v) => setStartPart('m', v)} options={DATE_MONTHS} />
-                <SelectMenu className={inputCls} placeholder="Année" value={act.startDate?.split('-')[0] ?? ''} onChange={(v) => setStartPart('y', v)} options={DATE_YEARS} />
+              {/* Date de démarrage — intitulé + mois / année (2 déroulants restent ambigus sans label) */}
+              <div>
+                <p className="mb-1.5 px-1 text-sm text-muted-foreground">Date de démarrage</p>
+                <div className="grid grid-cols-2 gap-2">
+                  <SelectMenu className={inputCls} placeholder="Mois" value={act.startDate?.split('-')[1] ?? ''} onChange={(v) => setStartPart('m', v)} options={DATE_MONTHS} />
+                  <SelectMenu className={inputCls} placeholder="Année" value={act.startDate?.split('-')[0] ?? ''} onChange={(v) => setStartPart('y', v)} options={DATE_YEARS} />
+                </div>
               </div>
 
               {/* — Travaillés avec Atlas (offre → conviction → cible → objectif) — */}
