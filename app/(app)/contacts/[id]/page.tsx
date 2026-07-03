@@ -470,10 +470,18 @@ export default function ContactDetailPage({ params }: { params: Promise<{ id: st
             })()}
           </Collapsible>
         </div>
+          {/* Enregistrement contextuel : le save vit dans « Détails » (le bas est libre pour le composeur) */}
+          <button
+            type="button"
+            onClick={() => save({ ...pf, personality: qual.personality || null, market: qual.market || null, qualification: { situation: qual.situation, interests: qual.interests, motivation: qual.motivation, insatisfaction: qual.insatisfaction, reseau: qual.reseau, ouverture: qual.ouverture } }, 'Fiche enregistrée')}
+            className="flex w-full items-center justify-center gap-2 rounded-2xl bg-primary py-3 text-base font-bold text-primary-foreground transition-transform active:scale-[0.98]"
+          >
+            Enregistrer les détails
+          </button>
         </Collapsible>
       </div>
 
-      <div className="flex flex-col gap-4 px-4 pb-28 pt-2">
+      <div className="flex flex-col gap-4 px-4 pb-10 pt-2">
         {/* Curseur d'étape — un seul tunnel (opportunité) : prospect, partenaire, OU client re-sollicité */}
         {showOppCursor && (
           <StageCursor
@@ -512,12 +520,12 @@ export default function ContactDetailPage({ params }: { params: Promise<{ id: st
             )}
           </div>
         )}
-        {/* LE PROCHAIN PAS — cockpit Atlas */}
+        {/* Prochain pas — simplifié, à la charte (carte standard, accent Atlas discret) */}
         {nextStep && (
-          <div className="rounded-2xl border border-primary/30 bg-primary/5 p-4">
-            <div className="mb-1.5 flex items-center gap-1.5">
-              <Sparkles className="size-4 stroke-[1.5] text-primary" />
-              <p className="text-[10px] font-bold uppercase tracking-widest text-primary">Le prochain pas · Atlas</p>
+          <div className="rounded-2xl border border-border bg-surface p-4">
+            <div className="mb-1 flex items-center gap-1.5">
+              <Sparkles className="size-3.5 stroke-[1.5] text-primary" />
+              <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Prochain pas · Atlas</p>
             </div>
             <p className="text-base font-bold text-foreground">{nextStep.headline}</p>
             <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">{nextStep.reason}</p>
@@ -528,7 +536,7 @@ export default function ContactDetailPage({ params }: { params: Promise<{ id: st
               </button>
             )}
             {nextStep.action === 'EDIT' && (
-              <button type="button" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })} className="mt-3 flex w-full items-center justify-center gap-1.5 rounded-xl bg-primary py-2.5 text-xs font-bold text-primary-foreground active:opacity-90">Compléter la fiche</button>
+              <button type="button" onClick={() => { setPfOpen((o) => ({ ...o, details: true })); window.scrollTo({ top: 0, behavior: 'smooth' }) }} className="mt-3 flex w-full items-center justify-center gap-1.5 rounded-xl bg-primary py-2.5 text-xs font-bold text-primary-foreground active:opacity-90">Compléter la fiche</button>
             )}
           </div>
         )}
@@ -673,16 +681,6 @@ export default function ContactDetailPage({ params }: { params: Promise<{ id: st
         </div>
       )}
 
-      {/* Bouton Enregistrer flottant (charte fiche — comme /activities) */}
-      <div className="fixed inset-x-0 z-[48] px-4" style={{ bottom: 'max(20px, env(safe-area-inset-bottom))' }}>
-        <button
-          type="button"
-          onClick={() => save({ ...pf, personality: qual.personality || null, market: qual.market || null, qualification: { situation: qual.situation, interests: qual.interests, motivation: qual.motivation, insatisfaction: qual.insatisfaction, reseau: qual.reseau, ouverture: qual.ouverture } }, 'Fiche enregistrée')}
-          className="mx-auto flex w-full max-w-md items-center justify-center gap-2 rounded-full bg-primary py-3.5 text-base font-bold text-primary-foreground shadow-lg transition-transform active:scale-[0.98]"
-        >
-          Enregistrer
-        </button>
-      </div>
     </div>
   )
 }
