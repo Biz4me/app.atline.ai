@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import {
   Pencil, Mail, Link2, Clock, Tag,
   MessageSquare, PhoneCall, CalendarPlus, Mic, Sparkles, ArrowRight, X, Plus,
-  MessageCircle, Bell, Share2, StickyNote, Check, ChevronDown, User as UserIcon, Contact, Trash2,
+  MessageCircle, Bell, Share2, StickyNote, Check, ChevronDown, User as UserIcon, Contact, Trash2, ClipboardList,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
@@ -338,7 +338,7 @@ export default function ContactDetailPage({ params }: { params: Promise<{ id: st
     setPf((s) => ({ ...s, birthDate: next.y && next.m && next.d ? `${next.y}-${next.m}-${next.d}` : '' }))
   }
   const pfDobDays = Array.from({ length: daysInMonth(pfDob.m, pfDob.y) }, (_, i) => ({ value: String(i + 1).padStart(2, '0'), label: String(i + 1) }))
-  const pfToggle = (k: string) => setPfOpen((o) => ({ [k]: !o[k] }))
+  const pfToggle = (k: string) => setPfOpen((o) => ({ ...o, [k]: !o[k] }))
   const pfNf = (vals: string[]) => vals.filter((v) => v && String(v).trim()).length
 
   if (loading) return <div className="flex min-h-dvh items-center justify-center text-sm text-muted-foreground">Chargement…</div>
@@ -355,6 +355,11 @@ export default function ContactDetailPage({ params }: { params: Promise<{ id: st
   const oppStages = isPartner ? PARTNER_STAGES : PROSPECT_STAGES
   const oppCurrent = isPartner ? c.partnerStage : c.prospectStage
   const recruitingLabel = PROSPECT_STAGES.find((s) => s.id === c.prospectStage)?.label ?? ''
+  // Ligne de statut fusionnée + compteur « Détails »
+  const segmentLabel = isPartner ? 'Partenaire' : isClient ? (recruiting ? 'Client · en recrutement' : 'Client') : 'Prospect'
+  const stadeLabel = showOppCursor ? (oppStages.find((s) => s.id === oppCurrent)?.label ?? null) : null
+  const marketLabel = qual.market ? ({ CHAUD: 'Marché chaud', TIEDE: 'Marché tiède', FROID: 'Marché froid' } as Record<string, string>)[qual.market] : null
+  const detailsFilled = pfNf([pf.firstName, pf.lastName, pf.gender, pf.birthDate, pf.profession, pf.education]) + pfNf([pf.phone, pf.email, pf.address, pf.postal, pf.city, pf.country]) + [qual.personality, qual.market, qual.situation, qual.interests, qual.motivation, qual.insatisfaction, qual.reseau, qual.ouverture].filter((v) => v && String(v).trim()).length
 
   return (
     <div className="mx-auto flex min-h-dvh w-full max-w-2xl flex-col bg-background">
@@ -370,22 +375,16 @@ export default function ContactDetailPage({ params }: { params: Promise<{ id: st
         <div className="flex flex-col items-center gap-2.5">
           <div className="grid size-20 place-items-center rounded-full text-2xl font-bold text-white" style={{ backgroundColor: perso?.hex ?? c.accent }}>{c.initials}</div>
           <p className="text-lg font-semibold text-foreground">{c.name || 'Contact'}</p>
-          {/* Badge combiné double-track : le client re-sollicité reste client ET affiche son stade opportunité */}
-          {recruiting && (
-            <span className="rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">En recrutement · {recruitingLabel}</span>
-          )}
+          {/* Statut fusionné : segment · stade · marché · couleur — tout d'un coup d'œil */}
+          <div className="flex flex-wrap items-center justify-center gap-1.5">
+            <span className="rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-semibold text-primary">{segmentLabel}</span>
+            {stadeLabel && <span className="rounded-full bg-muted px-2.5 py-0.5 text-xs font-medium text-muted-foreground">{stadeLabel}</span>}
+            {marketLabel && <span className="rounded-full bg-muted px-2.5 py-0.5 text-xs font-medium text-muted-foreground">{marketLabel}</span>}
+            {perso && <span className="flex items-center gap-1 rounded-full bg-muted px-2.5 py-0.5 text-xs font-medium text-muted-foreground"><span className="size-2 rounded-full" style={{ backgroundColor: perso.hex }} />{perso.label}</span>}
+          </div>
         </div>
-        {(() => {
-          const secId = pfNf([pf.firstName, pf.lastName, pf.gender, pf.birthDate, pf.profession, pf.education])
-          const secCo = pfNf([pf.phone, pf.email, pf.address, pf.postal, pf.city, pf.country])
-          const pct = Math.round(((secId + secCo) / 12) * 100)
-          return (
-            <div className="px-1">
-              <p className="mb-1.5 text-base font-semibold text-foreground">Fiche complétée à <span className="text-primary">{pct}%</span></p>
-              <div className="h-2 w-full overflow-hidden rounded-full bg-muted"><div className="h-full rounded-full bg-primary transition-all" style={{ width: `${pct}%` }} /></div>
-            </div>
-          )
-        })()}
+        {/* Détails de la fiche — repliés par défaut (consultation d'abord, on édite à la demande) */}
+        <Collapsible icon={ClipboardList} title="Détails de la fiche" filled={detailsFilled} total={20} open={!!pfOpen.details} onToggle={() => pfToggle('details')}>
         <div className="flex flex-col gap-2">
           <Collapsible icon={UserIcon} title="Identité" filled={pfNf([pf.firstName, pf.lastName, pf.gender, pf.birthDate, pf.profession, pf.education])} total={6} open={!!pfOpen.identite} onToggle={() => pfToggle('identite')}>
             <input className={fieldCls} value={pf.firstName} onChange={(e) => setPfField('firstName', e.target.value)} placeholder="Prénom" />
@@ -471,6 +470,7 @@ export default function ContactDetailPage({ params }: { params: Promise<{ id: st
             })()}
           </Collapsible>
         </div>
+        </Collapsible>
       </div>
 
       <div className="flex flex-col gap-4 px-4 pb-28 pt-2">
@@ -492,6 +492,25 @@ export default function ContactDetailPage({ params }: { params: Promise<{ id: st
             <ArrowRight className="size-4 stroke-[1.5]" />
             Réengager vers l'opportunité
           </button>
+        )}
+        {/* Signal + conversions — regroupés avec le tunnel (là où on fait avancer le contact) */}
+        {isProspect && (
+          <p className="-mt-1 text-xs text-muted-foreground">
+            <span className="font-semibold text-foreground">{c.exposures} exposition{c.exposures > 1 ? 's' : ''}</span> · vise 4-6 avant le closing · score {c.score}/100
+          </p>
+        )}
+        {(isProspect || isClient) && (
+          <div className="flex flex-wrap gap-2">
+            {isProspect && (
+              <button type="button" onClick={() => save({ convert: 'client' }, 'Converti en client')} className="flex items-center gap-1.5 rounded-xl border border-border bg-surface px-3 py-2 text-sm font-semibold text-foreground active:bg-muted">Convertir en client <ArrowRight className="size-3" /></button>
+            )}
+            {isProspect && (
+              <button type="button" onClick={() => save({ convert: 'partenaire' }, 'Converti en partenaire')} className="flex items-center gap-1.5 rounded-xl border border-border bg-surface px-3 py-2 text-sm font-semibold text-foreground active:bg-muted">Convertir en partenaire <ArrowRight className="size-3" /></button>
+            )}
+            {isClient && (
+              <button type="button" onClick={() => save({ convert: 'partenaire' }, 'Converti en partenaire')} className="flex items-center gap-1.5 rounded-xl border border-border bg-surface px-3 py-2 text-sm font-semibold text-foreground active:bg-muted">Convertir en partenaire (upsell) <ArrowRight className="size-3" /></button>
+            )}
+          </div>
         )}
         {/* LE PROCHAIN PAS — cockpit Atlas */}
         {nextStep && (
@@ -534,47 +553,13 @@ export default function ContactDetailPage({ params }: { params: Promise<{ id: st
             </button>
           ))}
         </div>
-        <div className="grid grid-cols-2 gap-2">
-          <button type="button" onClick={() => router.push(`/aria?contact=${c.id}`)} className="flex items-center justify-center gap-1.5 rounded-2xl bg-[#14B8A6]/10 py-3 text-base font-bold text-[#14B8A6] active:bg-[#14B8A6]/20"><Mic className="size-4 stroke-[1.5]" />Simuler avec Aria</button>
-          <button type="button" onClick={() => toast('Atlas analyse ce contact — bientôt')} className="flex items-center justify-center gap-1.5 rounded-2xl bg-primary/10 py-3 text-base font-bold text-primary active:bg-primary/20"><Sparkles className="size-4 stroke-[1.5]" />Demander à Atlas</button>
-        </div>
-        <div className="grid grid-cols-2 gap-2">
-          <button type="button" onClick={() => setSchedule('rdv')} className="flex items-center justify-center gap-1.5 rounded-2xl border border-border bg-surface py-3 text-base font-bold text-foreground active:bg-muted"><CalendarPlus className="size-4 stroke-[1.5] text-primary" />Planifier un RDV</button>
-          <button type="button" onClick={() => setSchedule('relance')} className="flex items-center justify-center gap-1.5 rounded-2xl border border-border bg-surface py-3 text-base font-bold text-foreground active:bg-muted"><Bell className="size-4 stroke-[1.5] text-primary" />Programmer une relance</button>
+        {/* Rangée secondaire compacte : planifier / relancer / répéter avec Aria */}
+        <div className="grid grid-cols-3 gap-2">
+          <button type="button" onClick={() => setSchedule('rdv')} className="flex flex-col items-center gap-1.5 rounded-2xl border border-border bg-surface py-3 active:bg-muted"><CalendarPlus className="size-5 stroke-[1.5] text-primary" /><span className="text-[10px] font-medium text-foreground">RDV</span></button>
+          <button type="button" onClick={() => setSchedule('relance')} className="flex flex-col items-center gap-1.5 rounded-2xl border border-border bg-surface py-3 active:bg-muted"><Bell className="size-5 stroke-[1.5] text-primary" /><span className="text-[10px] font-medium text-foreground">Relance</span></button>
+          <button type="button" onClick={() => router.push(`/aria?contact=${c.id}`)} className="flex flex-col items-center gap-1.5 rounded-2xl bg-[#14B8A6]/10 py-3 active:bg-[#14B8A6]/20"><Mic className="size-5 stroke-[1.5] text-[#14B8A6]" /><span className="text-[10px] font-medium text-[#14B8A6]">Aria</span></button>
         </div>
 
-        {/* PIPELINE / STATUT */}
-        <Section title="Statut">
-          <div className="flex flex-col gap-3">
-            {isProspect && (
-              <p className="text-[10px] leading-relaxed text-muted-foreground">
-                <span className="font-bold text-foreground">{c.exposures} exposition{c.exposures > 1 ? 's' : ''}</span> · Worre vise 4-6 avant le closing (auto-comptées par les actions CRM).
-              </p>
-            )}
-            {isClient && <div className="rounded-xl bg-success/10 px-4 py-3 text-sm font-bold text-success">Client actif</div>}
-
-            {/* Conversions */}
-            <div className="flex flex-wrap gap-2 border-t border-border pt-3">
-              {isProspect && <>
-                <button type="button" onClick={() => save({ convert: 'client' }, 'Converti en client')} className="flex items-center gap-1.5 rounded-xl border border-border bg-surface px-3 py-2 text-base font-bold text-foreground active:bg-muted">Convertir en client <ArrowRight className="size-3" /></button>
-                <button type="button" onClick={() => save({ convert: 'partenaire' }, 'Converti en partenaire')} className="flex items-center gap-1.5 rounded-xl border border-border bg-surface px-3 py-2 text-base font-bold text-foreground active:bg-muted">Convertir en partenaire <ArrowRight className="size-3" /></button>
-              </>}
-              {isClient && <button type="button" onClick={() => save({ convert: 'partenaire' }, 'Converti en partenaire')} className="flex items-center gap-1.5 rounded-xl border border-border bg-surface px-3 py-2 text-base font-bold text-foreground active:bg-muted">Convertir en partenaire (upsell) <ArrowRight className="size-3" /></button>}
-              {isPartner && <p className="text-xs text-muted-foreground">Ses KPI viennent de son profil partenaire.</p>}
-            </div>
-          </div>
-        </Section>
-
-        {/* OPPORTUNITÉ (score auto) — la qualification (DISC, marché…) est désormais en haut */}
-        <Section title="Opportunité">
-          <div>
-            <div className="mb-1.5 flex items-center justify-between">
-              <p className="text-xs text-muted-foreground">Score d'opportunité <span className="text-[10px]">(auto)</span></p>
-              <p className="text-xs font-bold text-foreground">{c.score} / 100</p>
-            </div>
-            <div className="h-1.5 overflow-hidden rounded-full bg-muted"><div className="h-full rounded-full bg-primary transition-all" style={{ width: `${c.score}%` }} /></div>
-          </div>
-        </Section>
 
         {/* SUIVI */}
         <Section title="Suivi">
