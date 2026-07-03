@@ -15,7 +15,7 @@ export function AtlasSessionField({ title, filled, onOpen, children }: { title: 
     )
   }
   return (
-    <div className="rounded-xl bg-primary/5 px-4 py-3">
+    <div className="rounded-xl border border-border bg-background px-4 py-3">
       <div className="mb-1.5 flex items-center justify-between gap-2">
         <span className="text-lg font-semibold text-foreground">{title}</span>
         <Sparkles className="size-4 shrink-0 text-primary" />

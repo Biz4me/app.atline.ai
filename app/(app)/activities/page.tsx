@@ -178,11 +178,6 @@ export default function ActivitiesPage() {
             <Collapsible icon={Briefcase} title="Identité" filled={sec.identite} total={tot.identite} open={!!open.identite} onToggle={() => toggle('identite')}>
               <input className={inputCls} value={act.mlmName} onChange={(e) => setField('mlmName', e.target.value)} placeholder="Nom de l'activité" />
               <input className={inputCls} value={act.rank} onChange={(e) => setField('rank', e.target.value)} placeholder="Rang dans ton MLM" />
-              {/* Catégorie — auto-remplie par le RAG société (lecture seule) */}
-              <div className={`${inputCls} flex items-center justify-between`}>
-                <span className="capitalize text-foreground">{act.category || 'coaching'}</span>
-                <span className="text-xs font-medium text-muted-foreground">catégorie · auto</span>
-              </div>
               {/* Objectif de recrutement — session Atlas (échelle mensuel + 3/6/12) */}
               <AtlasSessionField title="Objectif de recrutement" filled={!!act.objectif?.mensuel} onOpen={() => router.push('/atlas?session=objectifs')}>
                 {([['Mensuel', act.objectif?.mensuel], ['3 mois', act.objectif?.m3], ['6 mois', act.objectif?.m6], ['12 mois', act.objectif?.m12]] as [string, string | undefined][]).map(([lab, v]) => (

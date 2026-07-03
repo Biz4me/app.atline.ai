@@ -636,12 +636,33 @@ TECHNIQUE (invisible pour moi, ne l'explique jamais)${NB}: le jour où je VALIDE
   // ── Session profonde « le pourquoi » : Atlas creuse en conversation, puis synthétise une formulation
   //    que l'utilisateur régénère et valide → Atlas l'enregistre dans le profil (coaching.why). ──
   // Démarre une session de fondation (pourquoi, rencontre…) — même patron : Atlas creuse, propose, on valide par carte.
-  const startSession = (kind: SessionKind) => {
+  // Récupère la valeur actuelle du champ (pour « Retravailler » : on repart de l'existant, on n'efface pas).
+  const fetchExisting = async (kind: SessionKind): Promise<string> => {
+    try {
+      if (kind === 'why' || kind === 'mindset') {
+        const me = await fetch('/api/me').then((x) => (x.ok ? x.json() : null))
+        const v = me?.coaching?.[kind]
+        return typeof v === 'string' ? v.trim() : ''
+      }
+      const a = await fetch('/api/activities/active').then((x) => (x.ok ? x.json() : null))
+      if (kind === 'rencontre') return typeof a?.activity?.story === 'string' ? a.activity.story.trim() : ''
+      if (kind === 'audience') return typeof a?.activity?.audience === 'string' ? a.activity.audience.trim() : ''
+      const o = a?.activity?.objectif
+      return o?.mensuel ? `mensuel=${o.mensuel}; m3=${o.m3 ?? ''}; m6=${o.m6 ?? ''}; m12=${o.m12 ?? ''} (partenaires)` : ''
+    } catch { return '' }
+  }
+
+  const startSession = async (kind: SessionKind) => {
     if (streaming) return
     sessionRef.current = kind
     whyTurnsRef.current = 0
     const meta = SESSION_META[kind]
-    sendMsg(meta.frame, meta.display)
+    const existing = await fetchExisting(kind)
+    // « Retravailler » : on donne la formulation actuelle comme base à améliorer (pas de repart à zéro).
+    const frame = existing
+      ? `${meta.frame}\n\n[BASE ACTUELLE] Ma formulation actuelle, qu'on RETRAVAILLE (pars d'elle, creuse pour l'améliorer/l'affiner, ne recommence pas de zéro)${NB}: «${existing}»`
+      : meta.frame
+    sendMsg(frame, meta.display)
   }
 
   // Réponse de l'utilisateur pendant une session : il tape simplement, comme une vraie conversation.
