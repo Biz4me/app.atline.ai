@@ -34,9 +34,16 @@ async function buildAtlasSnapshot(userId: string): Promise<string> {
 
     const now = new Date()
     const endOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59)
-    const [contactsCount, relancesDue] = await Promise.all([
+    const [contactsCount, relancesDue, lessonsTotal, lessonsDone, nextRdv] = await Promise.all([
       db.contact.count({ where: { userId } }),
       db.relance.count({ where: { userId, status: 'PENDING', dueAt: { lte: endOfDay } } }),
+      db.lmsLesson.count(),
+      db.userLessonProgress.count({ where: { userId, done: true } }),
+      db.appointment.findFirst({
+        where: { userId, done: false, startAt: { gte: now } },
+        orderBy: { startAt: 'asc' },
+        select: { title: true, startAt: true, contact: { select: { firstName: true, lastName: true } } },
+      }),
     ])
 
     const lines: string[] = []
@@ -52,9 +59,21 @@ async function buildAtlasSnapshot(userId: string): Promise<string> {
         const seg = [o.mensuel && `${o.mensuel}/mois`, o.m3 && `${o.m3} à 3 mois`, o.m6 && `${o.m6} à 6 mois`, o.m12 && `${o.m12} à 12 mois`].filter(Boolean).join(', ')
         lines.push(`Objectif de recrutement : ${seg} (partenaires)`)
       }
+      // Structure de départ logguée dans Atline (les ventes/commissions réelles vivent dans le back-office du MLM, pas ici).
+      const st = (biz.structure ?? null) as { directs?: string; total?: string; clients?: string } | null
+      if (st && (Number(st.directs) || Number(st.total) || Number(st.clients))) {
+        const seg = [Number(st.directs) && `${st.directs} partenaires directs`, Number(st.total) && `${st.total} dans l'organisation`, Number(st.clients) && `${st.clients} clients`].filter(Boolean).join(', ')
+        lines.push(`Structure de départ (déclarée) : ${seg}`)
+      }
     }
     lines.push(`Contacts : ${contactsCount} au total`)
     if (relancesDue > 0) lines.push(`Relances à faire (échéance ≤ aujourd'hui) : ${relancesDue}`)
+    if (lessonsTotal > 0) lines.push(`Formation : ${Math.round((lessonsDone / lessonsTotal) * 100)}% des leçons (${lessonsDone}/${lessonsTotal})`)
+    if (nextRdv) {
+      const when = new Intl.DateTimeFormat('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' }).format(nextRdv.startAt)
+      const who = nextRdv.contact ? ` avec ${[nextRdv.contact.firstName, nextRdv.contact.lastName].filter(Boolean).join(' ')}` : ''
+      lines.push(`Prochain rendez-vous : ${nextRdv.title}${who} — ${when}`)
+    }
     return lines.join('\n')
   } catch {
     return ''
