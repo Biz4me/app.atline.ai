@@ -6,6 +6,7 @@ import { ChevronLeft, Loader2, Briefcase, Network, Minus, Plus } from 'lucide-re
 import { SelectMenu } from '@/components/select-menu'
 import { CollapsibleSection } from '@/components/collapsible-section'
 import { useBusiness } from '@/components/business-provider'
+import { companyOptions, categoryForCompany, OTHER_COMPANY } from '@/lib/mlm-companies'
 import { toast } from 'sonner'
 
 // Même charte que la fiche activité (au détail près)
@@ -36,7 +37,9 @@ export default function NewActivityPage() {
   const router = useRouter()
   const { refresh } = useBusiness()
 
-  const [name, setName] = useState('')
+  const [company, setCompany] = useState('')       // société choisie dans le déroulant (ou OTHER_COMPANY)
+  const [customName, setCustomName] = useState('')  // nom saisi si « Autre société »
+  const name = company === OTHER_COMPANY ? customName : company
   const [rank, setRank] = useState('')
   const [sponsorName, setSponsorName] = useState('')
   const [start, setStart] = useState({ m: '', y: '' })
@@ -57,6 +60,7 @@ export default function NewActivityPage() {
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({
           name: name.trim(), rank, sponsorName,
+          category: company === OTHER_COMPANY ? 'autre' : categoryForCompany(company),
           startDate: start.y || start.m ? `${start.y}-${start.m}` : '',
           structure,
         }),
@@ -82,8 +86,11 @@ export default function NewActivityPage() {
 
       <div className="space-y-5 px-4 pb-28 pt-4">
         <div className="flex flex-col gap-2">
-          <CollapsibleSection icon={Briefcase} title="L'activité" filled={nf([name, rank, sponsorName, start.m && start.y ? 'x' : ''])} total={4} open={!!open.activite} onToggle={() => toggle('activite')}>
-            <input className={inputCls} value={name} onChange={(e) => setName(e.target.value)} placeholder="Nom de ta société MLM" autoFocus />
+          <CollapsibleSection icon={Briefcase} title="Ton business" filled={nf([name, rank, sponsorName, start.m && start.y ? 'x' : ''])} total={4} open={!!open.activite} onToggle={() => toggle('activite')}>
+            <SelectMenu className={inputCls} placeholder="Sélectionne ta société" value={company} onChange={setCompany} options={companyOptions()} />
+            {company === OTHER_COMPANY && (
+              <input className={inputCls} value={customName} onChange={(e) => setCustomName(e.target.value)} placeholder="Nom de ta société" autoFocus />
+            )}
             <input className={inputCls} value={rank} onChange={(e) => setRank(e.target.value)} placeholder="Rang dans ton MLM" />
             <input className={inputCls} value={sponsorName} onChange={(e) => setSponsorName(e.target.value)} placeholder="Prénom de ton parrain" />
             <div>

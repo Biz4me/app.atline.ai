@@ -6,6 +6,7 @@ import { ChevronLeft, Loader2, Briefcase, Link2, FileText, Sparkles, Plus, Trash
 import { AtlasSessionField } from '@/components/atlas-session-field'
 import { CollapsibleSection } from '@/components/collapsible-section'
 import { SelectMenu } from '@/components/select-menu'
+import { MLM_COMPANIES, companyOptions, categoryForCompany, OTHER_COMPANY } from '@/lib/mlm-companies'
 import { useOverlay } from '@/components/overlay-provider'
 import { toast } from 'sonner'
 
@@ -128,7 +129,7 @@ export default function ActivitiesPage() {
         method: 'PATCH',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({
-          mlmName: act.mlmName, rank: act.rank, sponsorName: act.sponsorName, startDate: act.startDate, links: act.links,
+          mlmName: act.mlmName, category: act.category, rank: act.rank, sponsorName: act.sponsorName, startDate: act.startDate, links: act.links,
         }),
       })
       if (res.ok) toast.success('Activité enregistrée')
@@ -206,7 +207,17 @@ export default function ActivitiesPage() {
             {/* 1 — Ton business : les faits d'abord, puis les champs travaillés avec Atlas */}
             <CollapsibleSection icon={Briefcase} title="Ton business" filled={sec.identite} total={tot.identite} open={!!open.identite} onToggle={() => toggle('identite')}>
               {/* — Les faits — */}
-              <input className={inputCls} value={act.mlmName} onChange={(e) => setField('mlmName', e.target.value)} placeholder="Nom de l'activité" />
+              {/* Société = déroulant (comme l'onboarding) ; sélectionner dérive la catégorie */}
+              <SelectMenu
+                className={inputCls}
+                placeholder="Sélectionne ta société"
+                value={act.mlmName}
+                onChange={(v) => setAct((a) => (a ? { ...a, mlmName: v, category: categoryForCompany(v) } : a))}
+                options={[
+                  ...(act.mlmName && !MLM_COMPANIES.some((c) => c.name === act.mlmName) ? [{ value: act.mlmName, label: act.mlmName }] : []),
+                  ...companyOptions().filter((o) => o.value !== OTHER_COMPANY),
+                ]}
+              />
               {/* Catégorie / secteur — auto (RAG société), lecture seule */}
               <div className={`${inputCls} text-foreground`}>{act.category ? act.category.charAt(0).toUpperCase() + act.category.slice(1) : 'Coaching'}</div>
               <input className={inputCls} value={act.rank} onChange={(e) => setField('rank', e.target.value)} placeholder="Rang dans ton MLM" />
