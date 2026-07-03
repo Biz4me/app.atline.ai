@@ -4,6 +4,7 @@ import { useEffect, useState, useRef, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { ChevronLeft, ChevronDown, Check, Loader2, Briefcase, Link2, FileText, Sparkles, Plus, Trash2 } from 'lucide-react'
 import { Card } from '@/components/card'
+import { AtlasSessionField } from '@/components/atlas-session-field'
 import { useOverlay } from '@/components/overlay-provider'
 import { toast } from 'sonner'
 
@@ -56,26 +57,6 @@ function Collapsible({ icon: Icon, title, filled, total, open, onToggle, childre
 }
 
 const nf = (vals: (string | undefined)[]) => vals.filter((v) => v && String(v).trim()).length
-
-// Champ STRATÉGIQUE défini en session avec Atlas — distingué par le FOND (pas de bordure) + l'icône Atlas (Sparkles).
-// Vide → une ligne (titre en creux). Rempli → le contenu de la session s'affiche ici + « Retravailler ».
-function AtlasField({ title, filled, onOpen, children }: { title: string; filled: boolean; onOpen: () => void; children?: React.ReactNode }) {
-  if (!filled) {
-    return (
-      <button type="button" onClick={onOpen} className="flex w-full items-center gap-2.5 rounded-xl bg-primary/5 px-4 py-[7px] text-left transition-colors active:bg-primary/10">
-        <Sparkles className="size-4 shrink-0 text-primary" />
-        <span className="flex-1 truncate text-lg text-muted-foreground lg:text-sm">{title}</span>
-      </button>
-    )
-  }
-  return (
-    <div className="rounded-xl bg-primary/5 px-4 py-3">
-      <p className="mb-1.5 flex items-center gap-1.5 text-xs font-semibold text-muted-foreground"><Sparkles className="size-3 text-primary" />{title}</p>
-      {children}
-      <button type="button" onClick={onOpen} className="mt-2 text-sm font-semibold text-primary">Retravailler avec Atlas</button>
-    </div>
-  )
-}
 
 export default function ActivitiesPage() {
   const router = useRouter()
@@ -203,25 +184,25 @@ export default function ActivitiesPage() {
                 <span className="text-xs font-medium text-muted-foreground">catégorie · auto</span>
               </div>
               {/* Objectif de recrutement — session Atlas (échelle mensuel + 3/6/12) */}
-              <AtlasField title="Objectif de recrutement" filled={!!act.objectif?.mensuel} onOpen={() => router.push('/atlas?session=objectifs')}>
+              <AtlasSessionField title="Objectif de recrutement" filled={!!act.objectif?.mensuel} onOpen={() => router.push('/atlas?session=objectifs')}>
                 {([['Mensuel', act.objectif?.mensuel], ['3 mois', act.objectif?.m3], ['6 mois', act.objectif?.m6], ['12 mois', act.objectif?.m12]] as [string, string | undefined][]).map(([lab, v]) => (
                   <div key={lab} className="flex items-baseline justify-between border-b border-border/40 py-1.5 last:border-0">
                     <span className="text-sm text-muted-foreground">{lab}</span>
                     <span className="text-lg font-bold text-foreground lg:text-base">{v || '—'} <span className="text-sm font-medium text-muted-foreground">part.</span></span>
                   </div>
                 ))}
-              </AtlasField>
+              </AtlasSessionField>
               <input className={inputCls} value={act.produit} onChange={(e) => setField('produit', e.target.value)} placeholder="Produit / offre phare" />
 
               {/* Audience cible — session Atlas (cibler juste) */}
-              <AtlasField title="Audience cible" filled={!!act.audience} onOpen={() => router.push('/atlas?session=audience')}>
-                <p className="whitespace-pre-wrap text-lg italic leading-relaxed text-foreground lg:text-sm">{act.audience}</p>
-              </AtlasField>
+              <AtlasSessionField title="Audience cible" filled={!!act.audience} onOpen={() => router.push('/atlas?session=audience')}>
+                <p className="whitespace-pre-wrap text-lg leading-relaxed text-foreground lg:text-sm">{act.audience}</p>
+              </AtlasSessionField>
 
               {/* Ce qui m'a convaincu — session Atlas (rencontre + conviction + affinité secteur) */}
-              <AtlasField title="Ce qui m'a convaincu" filled={!!act.story} onOpen={() => router.push('/atlas?session=rencontre')}>
-                <p className="whitespace-pre-wrap text-lg italic leading-relaxed text-foreground lg:text-sm">{act.story}</p>
-              </AtlasField>
+              <AtlasSessionField title="Ce qui m'a convaincu" filled={!!act.story} onOpen={() => router.push('/atlas?session=rencontre')}>
+                <p className="whitespace-pre-wrap text-lg leading-relaxed text-foreground lg:text-sm">{act.story}</p>
+              </AtlasSessionField>
             </Collapsible>
 
             {/* 2 — Liens */}
