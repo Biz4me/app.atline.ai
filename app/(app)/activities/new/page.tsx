@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { ChevronLeft, Loader2, Briefcase, Network } from 'lucide-react'
+import { ChevronLeft, Loader2, Briefcase, Network, Minus, Plus } from 'lucide-react'
 import { SelectMenu } from '@/components/select-menu'
 import { CollapsibleSection } from '@/components/collapsible-section'
 import { useBusiness } from '@/components/business-provider'
@@ -11,6 +11,21 @@ import { toast } from 'sonner'
 // Même charte que la fiche activité (au détail près)
 const inputCls =
   'w-full rounded-xl border border-border bg-background px-4 py-[7px] text-lg text-foreground outline-none placeholder:text-muted-foreground'
+
+// Compteur : contenu « N label », steppers − / + à droite.
+function Stepper({ label, value, onChange }: { label: string; value: string; onChange: (v: string) => void }) {
+  const n = parseInt(value || '0', 10) || 0
+  const set = (nv: number) => onChange(String(Math.max(0, nv)))
+  return (
+    <div className={`${inputCls} flex items-center justify-between py-1.5`}>
+      <span className="text-lg text-foreground lg:text-sm"><span className="font-semibold">{n}</span> <span className="text-muted-foreground">{label}</span></span>
+      <div className="flex items-center gap-1.5">
+        <button type="button" onClick={() => set(n - 1)} disabled={n <= 0} className="flex size-7 items-center justify-center rounded-full bg-muted text-foreground active:bg-muted/70 disabled:opacity-40"><Minus className="size-4" /></button>
+        <button type="button" onClick={() => set(n + 1)} className="flex size-7 items-center justify-center rounded-full bg-primary text-primary-foreground active:scale-95 transition-transform"><Plus className="size-4" /></button>
+      </div>
+    </div>
+  )
+}
 
 const DATE_MONTHS = ['Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin', 'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre']
   .map((m, i) => ({ value: String(i + 1).padStart(2, '0'), label: m }))
@@ -81,9 +96,9 @@ export default function NewActivityPage() {
           </CollapsibleSection>
 
           <CollapsibleSection icon={Network} title="Structure de départ" filled={nf([directs, total, clients])} total={3} open={!!open.structure} onToggle={() => toggle('structure')}>
-            <input type="number" min="0" inputMode="numeric" className={`${inputCls} [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none`} value={directs} onChange={(e) => setDirects(e.target.value)} placeholder="Partenaires directs" />
-            <input type="number" min="0" inputMode="numeric" className={`${inputCls} [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none`} value={total} onChange={(e) => setTotal(e.target.value)} placeholder="Organisation totale" />
-            <input type="number" min="0" inputMode="numeric" className={`${inputCls} [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none`} value={clients} onChange={(e) => setClients(e.target.value)} placeholder="Clients directs" />
+            <Stepper label="partenaires directs" value={directs} onChange={setDirects} />
+            <Stepper label="organisation totale" value={total} onChange={setTotal} />
+            <Stepper label="clients directs" value={clients} onChange={setClients} />
           </CollapsibleSection>
         </div>
       </div>
