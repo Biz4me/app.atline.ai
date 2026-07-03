@@ -2,9 +2,9 @@
 
 import { useEffect, useState, useRef, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
-import { ChevronLeft, ChevronDown, Check, Loader2, Briefcase, Link2, FileText, Sparkles, Plus, Trash2 } from 'lucide-react'
-import { Card } from '@/components/card'
+import { ChevronLeft, Loader2, Briefcase, Link2, FileText, Sparkles, Plus, Trash2 } from 'lucide-react'
 import { AtlasSessionField } from '@/components/atlas-session-field'
+import { CollapsibleSection } from '@/components/collapsible-section'
 import { SelectMenu } from '@/components/select-menu'
 import { useOverlay } from '@/components/overlay-provider'
 import { toast } from 'sonner'
@@ -39,26 +39,6 @@ type Activity = {
   objectif: Record<string, string>
   links: Record<string, string>
   supports: Record<string, Support[]>
-}
-
-// Rubrique pliante — identique au profil (icône + titre + filled/total + chevron)
-function Collapsible({ icon: Icon, title, filled, total, open, onToggle, children }: { icon: typeof Briefcase; title: string; filled: number; total: number; open: boolean; onToggle: () => void; children: React.ReactNode }) {
-  const done = total > 0 && filled >= total
-  return (
-    <Card className="overflow-hidden p-0">
-      <button type="button" onClick={onToggle} className={`flex w-full items-center gap-2.5 px-4 py-3.5 ${open ? 'border-b border-border' : ''}`}>
-        <Icon className="size-5 shrink-0 text-muted-foreground stroke-[1.5]" />
-        <p className="flex-1 text-left text-lg font-semibold text-foreground">{title}</p>
-        {done ? (
-          <span className="grid size-5 shrink-0 place-items-center rounded-full bg-[#22C55E] text-white"><Check className="size-3.5" /></span>
-        ) : (
-          <span className="shrink-0 text-base font-semibold text-muted-foreground">{filled}/{total}</span>
-        )}
-        <ChevronDown className={`size-4 shrink-0 text-muted-foreground transition-transform ${open ? 'rotate-180' : ''}`} />
-      </button>
-      {open && <div className="space-y-4 p-4">{children}</div>}
-    </Card>
-  )
 }
 
 const nf = (vals: (string | undefined)[]) => vals.filter((v) => v && String(v).trim()).length
@@ -224,7 +204,7 @@ export default function ActivitiesPage() {
           {/* Cartes de l'activité — espacement resserré (gap-2) comme le profil */}
           <div className="flex flex-col gap-2">
             {/* 1 — Ton business : les faits d'abord, puis les champs travaillés avec Atlas */}
-            <Collapsible icon={Briefcase} title="Ton business" filled={sec.identite} total={tot.identite} open={!!open.identite} onToggle={() => toggle('identite')}>
+            <CollapsibleSection icon={Briefcase} title="Ton business" filled={sec.identite} total={tot.identite} open={!!open.identite} onToggle={() => toggle('identite')}>
               {/* — Les faits — */}
               <input className={inputCls} value={act.mlmName} onChange={(e) => setField('mlmName', e.target.value)} placeholder="Nom de l'activité" />
               {/* Catégorie / secteur — auto (RAG société), lecture seule */}
@@ -260,10 +240,10 @@ export default function ActivitiesPage() {
                   </div>
                 ))}
               </AtlasSessionField>
-            </Collapsible>
+            </CollapsibleSection>
 
             {/* 2 — Liens */}
-            <Collapsible icon={Link2} title="Liens" filled={sec.liens} total={tot.liens} open={!!open.liens} onToggle={() => toggle('liens')}>
+            <CollapsibleSection icon={Link2} title="Liens" filled={sec.liens} total={tot.liens} open={!!open.liens} onToggle={() => toggle('liens')}>
               {LINK_GROUPS.map((g) => (
                 <div key={g.group}>
                   <p className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">{g.group}</p>
@@ -274,10 +254,10 @@ export default function ActivitiesPage() {
                   </div>
                 </div>
               ))}
-            </Collapsible>
+            </CollapsibleSection>
 
             {/* 3 — Documents */}
-            <Collapsible icon={FileText} title="Documents" filled={sec.documents} total={tot.documents} open={!!open.documents} onToggle={() => toggle('documents')}>
+            <CollapsibleSection icon={FileText} title="Documents" filled={sec.documents} total={tot.documents} open={!!open.documents} onToggle={() => toggle('documents')}>
               <button type="button" onClick={() => { setUploadBucket('AUTO'); fileRef.current?.click() }} disabled={uploading}
                 className="flex w-full items-center justify-center gap-1.5 rounded-xl bg-primary py-2.5 text-base font-bold text-primary-foreground active:opacity-90 disabled:opacity-50">
                 {uploading && uploadBucket === 'AUTO' ? <Loader2 className="size-4 animate-spin" /> : <Sparkles className="size-4" />}
@@ -316,7 +296,7 @@ export default function ActivitiesPage() {
                 <Sparkles className="size-4 shrink-0 text-primary" />
                 <p className="text-base text-muted-foreground"><span className="font-semibold text-primary">Atlas</span> classe ton document d&apos;après son nom. Sinon, choisis le dossier toi-même avec « + Ajouter ».</p>
               </div>
-            </Collapsible>
+            </CollapsibleSection>
           </div>
         </div>
       )}

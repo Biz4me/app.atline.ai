@@ -3,8 +3,8 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { ChevronLeft, Loader2, Briefcase, Network } from 'lucide-react'
-import { Card } from '@/components/card'
 import { SelectMenu } from '@/components/select-menu'
+import { CollapsibleSection } from '@/components/collapsible-section'
 import { useBusiness } from '@/components/business-provider'
 import { toast } from 'sonner'
 
@@ -15,15 +15,7 @@ const inputCls =
 const DATE_MONTHS = ['Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin', 'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre']
   .map((m, i) => ({ value: String(i + 1).padStart(2, '0'), label: m }))
 const DATE_YEARS = Array.from({ length: 21 }, (_, i) => { const y = new Date().getFullYear() - i; return { value: String(y), label: String(y) } })
-
-function SectionHeader({ icon: Icon, title }: { icon: typeof Briefcase; title: string }) {
-  return (
-    <div className="flex items-center gap-2.5 border-b border-border px-4 py-3.5">
-      <Icon className="size-5 shrink-0 text-muted-foreground stroke-[1.5]" />
-      <p className="text-lg font-semibold text-foreground">{title}</p>
-    </div>
-  )
-}
+const nf = (vals: string[]) => vals.filter((v) => v && v.trim()).length
 
 export default function NewActivityPage() {
   const router = useRouter()
@@ -37,6 +29,8 @@ export default function NewActivityPage() {
   const [total, setTotal] = useState('')
   const [clients, setClients] = useState('')
   const [creating, setCreating] = useState(false)
+  const [open, setOpen] = useState<Record<string, boolean>>({ activite: true })
+  const toggle = (k: string) => setOpen((o) => ({ [k]: !o[k] }))
 
   async function create() {
     if (!name.trim() || creating) return
@@ -72,9 +66,8 @@ export default function NewActivityPage() {
       </div>
 
       <div className="space-y-5 px-4 pb-28 pt-4">
-        <Card className="overflow-hidden p-0">
-          <SectionHeader icon={Briefcase} title="L'activité" />
-          <div className="space-y-4 p-4">
+        <div className="flex flex-col gap-2">
+          <CollapsibleSection icon={Briefcase} title="L'activité" filled={nf([name, rank, sponsorName, start.m && start.y ? 'x' : ''])} total={4} open={!!open.activite} onToggle={() => toggle('activite')}>
             <input className={inputCls} value={name} onChange={(e) => setName(e.target.value)} placeholder="Nom de ta société MLM" autoFocus />
             <input className={inputCls} value={rank} onChange={(e) => setRank(e.target.value)} placeholder="Rang dans ton MLM" />
             <input className={inputCls} value={sponsorName} onChange={(e) => setSponsorName(e.target.value)} placeholder="Prénom de ton parrain" />
@@ -85,18 +78,14 @@ export default function NewActivityPage() {
                 <SelectMenu className={inputCls} placeholder="Année" value={start.y} onChange={(v) => setStart((s) => ({ ...s, y: v }))} options={DATE_YEARS} />
               </div>
             </div>
-          </div>
-        </Card>
+          </CollapsibleSection>
 
-        <Card className="overflow-hidden p-0">
-          <SectionHeader icon={Network} title="Structure de départ" />
-          <div className="space-y-4 p-4">
-            <p className="text-sm text-muted-foreground">Optionnel — si tu reprends une activité déjà lancée.</p>
+          <CollapsibleSection icon={Network} title="Structure de départ" filled={nf([directs, total, clients])} total={3} open={!!open.structure} onToggle={() => toggle('structure')}>
             <input type="number" min="0" inputMode="numeric" className={`${inputCls} [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none`} value={directs} onChange={(e) => setDirects(e.target.value)} placeholder="Partenaires directs" />
             <input type="number" min="0" inputMode="numeric" className={`${inputCls} [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none`} value={total} onChange={(e) => setTotal(e.target.value)} placeholder="Organisation totale" />
             <input type="number" min="0" inputMode="numeric" className={`${inputCls} [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none`} value={clients} onChange={(e) => setClients(e.target.value)} placeholder="Clients directs" />
-          </div>
-        </Card>
+          </CollapsibleSection>
+        </div>
       </div>
 
       {/* Bouton flottant — identique à la fiche activité */}
