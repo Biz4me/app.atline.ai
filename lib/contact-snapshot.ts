@@ -26,6 +26,7 @@ export async function buildContactSnapshot(userId: string, contactId: string): P
       if (ql) lines.push(`Qualification : ${ql}`)
     }
     if (typeof c.exposures === 'number' && c.exposures > 0) lines.push(`Expositions : ${c.exposures}`)
+    if (c.source) lines.push(`Origine : ${c.source}`)
     if (c.note) lines.push(`Note : ${c.note}`)
     if (c.atlasMemory) lines.push(`Ta mémoire sur lui : ${c.atlasMemory}`)
     if (interactions.length) {

@@ -3,7 +3,7 @@
 import { use, useEffect, useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import {
-  Pencil, Mail, Link2, Clock, Tag,
+  Pencil, Mail, Tag,
   MessageSquare, PhoneCall, CalendarPlus, Mic, Sparkles, ArrowRight, X, Plus,
   MessageCircle, Bell, Share2, StickyNote, Check, ChevronDown, User as UserIcon, Contact, Trash2, ClipboardList,
 } from 'lucide-react'
@@ -35,13 +35,6 @@ const PARTNER_STAGES = [
   { id: 'ACTIF', label: 'Actif' },
   { id: 'LEADER', label: 'Leader' },
 ]
-const SOURCE_LABEL: Record<string, string> = {
-  instagram: 'Instagram', linkedin: 'LinkedIn', facebook: 'Facebook', tiktok: 'TikTok',
-  manuel: 'Manuel', bot_whatsapp: 'WhatsApp', bot_telegram: 'Telegram', import: 'Import',
-  rdv_inbound: 'RDV entrant', famille: 'Famille', refere: 'Référé par un ami',
-  connaissance: 'Connaissance', campagne_email: 'Campagne email', page_capture: 'Page de capture',
-  evenement: 'Événement',
-}
 const KIND_LABEL: Record<string, string> = { PROSPECT: 'Prospect', CLIENT: 'Client', PARTENAIRE: 'Partenaire' }
 const CHANNEL_LABEL: Record<string, string> = { SMS: 'SMS', WHATSAPP: 'WhatsApp', EMAIL: 'Email' }
 
@@ -266,7 +259,7 @@ export default function ContactDetailPage({ params }: { params: Promise<{ id: st
   const [memEditing, setMemEditing] = useState(false)
   const [contactConvs, setContactConvs] = useState<{ id: string; title: string | null; updatedAt: string }[]>([])
   const [openConvId, setOpenConvId] = useState<string | null>(null)
-  const [newTag, setNewTag] = useState('')
+  const [histOpen, setHistOpen] = useState(false)
   const [interactions, setInteractions] = useState<Interaction[]>([])
   const [appointments, setAppointments] = useState<Appt[]>([])
   const [relances, setRelances] = useState<Relance[]>([])
@@ -512,12 +505,11 @@ export default function ContactDetailPage({ params }: { params: Promise<{ id: st
             Réengager vers l'opportunité
           </button>
         )}
-        {/* Signal + conversions — regroupés avec le tunnel (là où on fait avancer le contact) */}
-        {isProspect && (
-          <p className="-mt-1 text-xs text-muted-foreground">
-            <span className="font-semibold text-foreground">{c.exposures} exposition{c.exposures > 1 ? 's' : ''}</span> · vise 4-6 avant le closing · score {c.score}/100
-          </p>
-        )}
+        {/* Signal actionnable — regroupé avec le tunnel (dont « dernier contact », remonté de Suivi) */}
+        <p className="-mt-1 text-xs text-muted-foreground">
+          {isProspect && <><span className="font-semibold text-foreground">{c.exposures} exposition{c.exposures > 1 ? 's' : ''}</span> · vise 4-6 avant le closing · score {c.score}/100 · </>}
+          dernier contact : <span className="font-medium text-foreground">{c.lastContact ? new Date(c.lastContact).toLocaleDateString('fr-FR') : 'jamais'}</span>
+        </p>
         {(isProspect || isClient) && (
           <div className="flex flex-wrap gap-2">
             {isProspect && (
@@ -602,23 +594,7 @@ export default function ContactDetailPage({ params }: { params: Promise<{ id: st
         </div>
 
 
-        {/* SUIVI */}
-        <Section title="Suivi">
-          <div className="flex flex-col gap-3">
-            <div className="flex items-center gap-3"><Link2 className="size-4 shrink-0 stroke-[1.5] text-muted-foreground" /><span className="text-sm text-muted-foreground">Source · <span className="font-medium text-foreground">{SOURCE_LABEL[c.source] ?? c.source}</span></span></div>
-            <div className="flex items-center gap-3"><Clock className="size-4 shrink-0 stroke-[1.5] text-muted-foreground" /><span className="text-sm text-muted-foreground">Dernier contact · <span className="font-medium text-foreground">{c.lastContact ? new Date(c.lastContact).toLocaleDateString('fr-FR') : 'jamais'}</span></span></div>
-            <div className="flex flex-wrap items-center gap-1.5">
-              <Tag className="size-4 shrink-0 stroke-[1.5] text-muted-foreground" />
-              {c.tags.map((t) => (
-                <span key={t} className="flex items-center gap-1 rounded-lg bg-muted px-2 py-1 text-xs font-medium text-muted-foreground">{t}
-                  <button type="button" onClick={() => save({ tags: c.tags.filter((x) => x !== t) })}><X className="size-3" /></button>
-                </span>
-              ))}
-              <input value={newTag} onChange={(e) => setNewTag(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter' && newTag.trim()) { save({ tags: [...c.tags, newTag.trim()] }); setNewTag('') } }}
-                placeholder="+ tag" className="w-20 rounded-lg border border-dashed border-border bg-transparent px-2 py-1 text-xs text-foreground outline-none placeholder:text-muted-foreground" />
-            </div>
-          </div>
-        </Section>
+        {/* Suivi (Source/Tags) retiré : Source → snapshot Atlas · Dernier contact → signal du haut · Tags → coupés */}
 
         {/* ÉCHANGES AVEC ATLAS — conversations passées sur ce contact (rouvrir dans le composeur) */}
         {contactConvs.length > 0 && (
@@ -662,28 +638,33 @@ export default function ContactDetailPage({ params }: { params: Promise<{ id: st
         )}
 
         {/* HISTORIQUE des interactions */}
-        <Section title="Historique">
-          {interactions.length === 0 ? (
-            <p className="text-sm text-muted-foreground">Aucune interaction pour l'instant. Tes actions (appel, message…) s'afficheront ici.</p>
-          ) : (
-            <ol className="flex flex-col gap-3">
-              {interactions.map((it) => {
-                const m = INTERACTION_META[it.type] ?? INTERACTION_META.AUTRE
-                return (
-                  <li key={it.id} className="flex items-start gap-3">
-                    <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground"><m.icon className="size-3.5 stroke-[1.5]" /></span>
-                    <div className="min-w-0 flex-1">
-                      <p className="text-sm font-medium text-foreground">{m.label}{it.direction === 'IN' ? ' reçu' : ''}{it.outcome ? ` · ${it.outcome.toLowerCase()}` : ''}</p>
-                      {it.body && <p className="truncate text-xs text-muted-foreground">{it.body}</p>}
-                      <p className="mt-0.5 text-[10px] text-muted-foreground">{new Date(it.createdAt).toLocaleString('fr-FR', { dateStyle: 'medium', timeStyle: 'short' })}</p>
-                    </div>
-                    {it.isExposure && <span className="shrink-0 text-[10px] font-bold text-primary">+1 expo</span>}
-                  </li>
-                )
-              })}
-            </ol>
-          )}
-        </Section>
+        {/* Historique — replié par défaut, masqué s'il est vide (journal terrain, secondaire) */}
+        {interactions.length > 0 && (
+          <Card className="overflow-hidden">
+            <button type="button" onClick={() => setHistOpen((o) => !o)} className={cn('flex w-full items-center justify-between px-5 py-3', histOpen && 'border-b border-border')}>
+              <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Historique ({interactions.length})</p>
+              <ChevronDown className={cn('size-4 text-muted-foreground transition-transform', histOpen && 'rotate-180')} />
+            </button>
+            {histOpen && (
+              <ol className="flex flex-col gap-3 px-5 py-4">
+                {interactions.map((it) => {
+                  const m = INTERACTION_META[it.type] ?? INTERACTION_META.AUTRE
+                  return (
+                    <li key={it.id} className="flex items-start gap-3">
+                      <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground"><m.icon className="size-3.5 stroke-[1.5]" /></span>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-medium text-foreground">{m.label}{it.direction === 'IN' ? ' reçu' : ''}{it.outcome ? ` · ${it.outcome.toLowerCase()}` : ''}</p>
+                        {it.body && <p className="truncate text-xs text-muted-foreground">{it.body}</p>}
+                        <p className="mt-0.5 text-[10px] text-muted-foreground">{new Date(it.createdAt).toLocaleString('fr-FR', { dateStyle: 'medium', timeStyle: 'short' })}</p>
+                      </div>
+                      {it.isExposure && <span className="shrink-0 text-[10px] font-bold text-primary">+1 expo</span>}
+                    </li>
+                  )
+                })}
+              </ol>
+            )}
+          </Card>
+        )}
 
         {/* Suppression du contact (relogée depuis l'ancien EditSheet) */}
         <div className="flex justify-center pt-2">
