@@ -52,7 +52,7 @@ export function AtlineSplash({ minDuration = 3400 }: { minDuration?: number }) {
           </rect>
         </clipPath>
 
-        <g transform="translate(22,6)">
+        <g transform="translate(26,2)">
           {/* A — se dessine */}
           <path d="M16,92 L50,16 L84,92" fill="none" stroke={INK} strokeWidth="13" strokeLinejoin="round" strokeLinecap="round" strokeDasharray="167" strokeDashoffset="167">
             <animate attributeName="stroke-dashoffset" values="167;83.5;0;0" keyTimes="0;0.08;0.16;1" dur="4s" repeatCount="indefinite" calcMode="spline" keySplines="0 0 1 1;0 0 1 1;0 0 1 1" />
