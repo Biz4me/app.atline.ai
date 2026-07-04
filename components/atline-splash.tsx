@@ -40,7 +40,7 @@ export function AtlineSplash({ minDuration = 3400 }: { minDuration?: number }) {
         transition: 'opacity 0.5s ease',
       }}
     >
-      <svg style={{ width: '86vw', maxWidth: 460, height: 'auto' }} viewBox="0 0 340 118" xmlns="http://www.w3.org/2000/svg" aria-label="atline">
+      <svg style={{ width: '84vw', maxWidth: 440, height: 'auto' }} viewBox="28 12 276 96" xmlns="http://www.w3.org/2000/svg" aria-label="atline">
         <clipPath id="atl-cb">
           <rect x="28" y="48" height="32" width="0">
             <animate attributeName="width" values="0;0;42;42" keyTimes="0;0.11;0.17;1" dur="4s" repeatCount="indefinite" />
@@ -52,7 +52,7 @@ export function AtlineSplash({ minDuration = 3400 }: { minDuration?: number }) {
           </rect>
         </clipPath>
 
-        <g transform="translate(26,2)">
+        <g transform="translate(22,6)">
           {/* A — se dessine */}
           <path d="M16,92 L50,16 L84,92" fill="none" stroke={INK} strokeWidth="13" strokeLinejoin="round" strokeLinecap="round" strokeDasharray="167" strokeDashoffset="167">
             <animate attributeName="stroke-dashoffset" values="167;83.5;0;0" keyTimes="0;0.08;0.16;1" dur="4s" repeatCount="indefinite" calcMode="spline" keySplines="0 0 1 1;0 0 1 1;0 0 1 1" />
