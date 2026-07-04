@@ -13,7 +13,7 @@ export async function middleware(req: NextRequest) {
     pathname.startsWith('/rdv/') ||
     pathname.startsWith('/_next') ||
     pathname.startsWith('/brand') ||
-    pathname.match(/\.(png|jpg|svg|ico|webp)$/)
+    pathname.match(/\.(png|jpg|svg|ico|webp|webmanifest)$/)
   ) {
     return NextResponse.next()
   }
