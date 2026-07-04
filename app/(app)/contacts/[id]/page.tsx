@@ -505,15 +505,15 @@ export default function ContactDetailPage({ params }: { params: Promise<{ id: st
             Réengager vers l'opportunité
           </button>
         )}
-        {/* Conversions — issue du tunnel : sur 1 ligne, juste sous le curseur */}
-        {isProspect && (
-          <div className="grid grid-cols-2 gap-2">
-            <button type="button" onClick={() => save({ convert: 'client' }, 'Converti en client')} className="rounded-xl border border-border bg-surface px-3 py-2.5 text-sm font-semibold text-foreground active:bg-muted">Convertir en client</button>
-            <button type="button" onClick={() => save({ convert: 'partenaire' }, 'Converti en partenaire')} className="rounded-xl border border-border bg-surface px-3 py-2.5 text-sm font-semibold text-foreground active:bg-muted">Convertir en partenaire</button>
+        {/* Conversions — issue du tunnel : pills compactes sur 1 ligne, secondaires */}
+        {(isProspect || isClient) && (
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-xs text-muted-foreground">Convertir en</span>
+            {isProspect && (
+              <button type="button" onClick={() => save({ convert: 'client' }, 'Converti en client')} className="rounded-full border border-border bg-surface px-3.5 py-1.5 text-sm font-semibold text-foreground active:bg-muted">Client</button>
+            )}
+            <button type="button" onClick={() => save({ convert: 'partenaire' }, 'Converti en partenaire')} className="rounded-full border border-border bg-surface px-3.5 py-1.5 text-sm font-semibold text-foreground active:bg-muted">Partenaire</button>
           </div>
-        )}
-        {isClient && (
-          <button type="button" onClick={() => save({ convert: 'partenaire' }, 'Converti en partenaire')} className="w-full rounded-xl border border-border bg-surface px-3 py-2.5 text-sm font-semibold text-foreground active:bg-muted">Convertir en partenaire</button>
         )}
         {/* Signal actionnable — expositions · score · dernier contact (déclencheur de relance) */}
         <p className="-mt-1 text-xs text-muted-foreground">
