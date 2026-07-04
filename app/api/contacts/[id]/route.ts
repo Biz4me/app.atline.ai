@@ -89,7 +89,7 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
   if (!existing) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
   const body = await req.json()
-  const { name, firstName, lastName, gender, profession, education, birthDate, phone, phone2, email, address, address2, postal, city, country, note, stage, market, prospectStage, partnerStage, convert, personality, qualification, score, lastContact, tags } = body
+  const { name, firstName, lastName, gender, profession, education, birthDate, phone, phone2, email, address, address2, postal, city, country, note, atlasMemory, stage, market, prospectStage, partnerStage, convert, personality, qualification, score, lastContact, tags } = body
 
   // Synchroniser name si prénom/nom changent (aligné profil)
   const nameUpdate: Record<string, string> = {}
@@ -150,6 +150,7 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
       ...(city !== undefined && { city }),
       ...(country !== undefined && { country: country || null }),
       ...(note !== undefined && { note }),
+      ...(atlasMemory !== undefined && { atlasMemory: atlasMemory || null, atlasMemoryAt: new Date() }),
       ...(market !== undefined && { market: market || null }),
       ...(personality !== undefined && { personality }),
       ...(qualification !== undefined && qualification && typeof qualification === 'object' && !Array.isArray(qualification) && {

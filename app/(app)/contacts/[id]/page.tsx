@@ -264,6 +264,8 @@ export default function ContactDetailPage({ params }: { params: Promise<{ id: st
   const [evalOpen, setEvalOpen] = useState(false)
   const [noteDraft, setNoteDraft] = useState('')
   const [noteEditing, setNoteEditing] = useState(false)
+  const [memDraft, setMemDraft] = useState('')
+  const [memEditing, setMemEditing] = useState(false)
   const [newTag, setNewTag] = useState('')
   const [interactions, setInteractions] = useState<Interaction[]>([])
   const [appointments, setAppointments] = useState<Appt[]>([])
@@ -283,7 +285,7 @@ export default function ContactDetailPage({ params }: { params: Promise<{ id: st
     ])
     if (!r1.ok) { setLoading(false); return }
     const data = await r1.json()
-    setContact(data); setNoteDraft(data.note ?? '')
+    setContact(data); setNoteDraft(data.note ?? ''); setMemDraft(data.atlasMemory ?? '')
     if (r2.ok) setInteractions(await r2.json())
     if (r3.ok) setAppointments(await r3.json())
     if (r4.ok) setRelances(await r4.json())
@@ -543,14 +545,25 @@ export default function ContactDetailPage({ params }: { params: Promise<{ id: st
           </div>
         )}
 
-        {/* Ce qu'Atlas retient — bloc mémoire auto-édité (MemGPT-style), transparent */}
-        {c.atlasMemory && (
+        {/* Ce qu'Atlas retient — bloc mémoire auto-édité (MemGPT-style), éditable/corrigeable */}
+        {(c.atlasMemory || memEditing) && (
           <div className="rounded-2xl border border-border bg-surface p-4">
-            <div className="mb-1 flex items-center gap-1.5">
-              <Sparkles className="size-3.5 stroke-[1.5] text-primary" />
-              <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Ce qu&apos;Atlas retient</p>
+            <div className="mb-1 flex items-center justify-between gap-2">
+              <span className="flex items-center gap-1.5">
+                <Sparkles className="size-3.5 stroke-[1.5] text-primary" />
+                <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Ce qu&apos;Atlas retient</p>
+              </span>
+              {memEditing ? (
+                <button type="button" onClick={() => { save({ atlasMemory: memDraft.trim() }, 'Mémoire mise à jour'); setMemEditing(false) }} className="rounded-lg bg-primary px-3 py-1 text-xs font-bold text-primary-foreground">Enregistrer</button>
+              ) : (
+                <button type="button" onClick={() => { setMemDraft(c.atlasMemory); setMemEditing(true) }} className="text-xs font-medium text-primary"><Pencil className="mr-1 inline size-3" />Corriger</button>
+              )}
             </div>
-            <p className="whitespace-pre-line text-sm leading-relaxed text-muted-foreground">{c.atlasMemory}</p>
+            {memEditing ? (
+              <textarea value={memDraft} onChange={(e) => setMemDraft(e.target.value)} rows={4} autoFocus placeholder="Ce qu'Atlas doit retenir de ce contact… (vide = effacer)" className="w-full resize-none bg-transparent text-sm leading-relaxed text-foreground outline-none placeholder:text-muted-foreground" />
+            ) : (
+              <p className="whitespace-pre-line text-sm leading-relaxed text-muted-foreground">{c.atlasMemory}</p>
+            )}
           </div>
         )}
 
