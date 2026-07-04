@@ -415,30 +415,30 @@ export default function ContactDetailPage({ params }: { params: Promise<{ id: st
           <Collapsible icon={Sparkles} title="Qualification" filled={[qual.personality, qual.market, qual.situation, qual.interests, qual.motivation, qual.insatisfaction, qual.reseau, qual.ouverture].filter((v) => v && String(v).trim()).length} total={8} open={!!pfOpen.qual} onToggle={() => pfToggle('qual')}>
             {/* Bloc 1 — Comment l'aborder (DISC + proximité) */}
             <div>
-              <p className="mb-1.5 text-base font-semibold text-foreground">Comment l&apos;aborder</p>
+              <p className="mb-1.5 text-sm font-semibold text-foreground">Comment l&apos;aborder</p>
               {qual.personality && PERSO[qual.personality] ? (
                 <div className="overflow-hidden rounded-xl border border-border bg-background">
                   <div className="flex items-center gap-2.5 px-4 py-3">
                     <button type="button" onClick={() => setDiscOpen((o) => !o)} className="flex min-w-0 flex-1 items-center gap-2.5 text-left">
                       <span className="size-6 shrink-0 rounded-full" style={{ backgroundColor: PERSO[qual.personality].hex }} />
-                      <span className="flex-1 text-lg font-medium text-foreground">Personnalité</span>
+                      <span className="flex-1 text-sm font-medium text-foreground">Personnalité</span>
                       <ChevronDown className={cn('size-4 shrink-0 text-muted-foreground transition-transform', discOpen && 'rotate-180')} />
                     </button>
-                    <button type="button" onClick={() => setEvalOpen(true)} className="shrink-0 text-base font-semibold text-primary">Refaire le test</button>
+                    <button type="button" onClick={() => setEvalOpen(true)} className="shrink-0 text-sm font-semibold text-primary">Refaire le test</button>
                   </div>
                   {discOpen && (() => {
                     const info = describePersonality(qual.personality, pf.gender)
                     return (
                       <div className="border-t border-border px-4 py-3">
-                        <p className="text-lg font-semibold" style={{ color: PERSO[qual.personality].hex }}>{info ? info.archetype : PERSO[qual.personality].label}</p>
-                        <p className="mt-1 text-lg leading-relaxed text-muted-foreground">{PERSO[qual.personality].approach}</p>
+                        <p className="text-sm font-semibold" style={{ color: PERSO[qual.personality].hex }}>{info ? info.archetype : PERSO[qual.personality].label}</p>
+                        <p className="mt-1 text-sm leading-relaxed text-muted-foreground">{PERSO[qual.personality].approach}</p>
                       </div>
                     )
                   })()}
                 </div>
               ) : (
-                <button type="button" onClick={() => setEvalOpen(true)} className="flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-primary/40 bg-primary/5 px-4 py-3 text-base font-semibold text-primary">
-                  <Sparkles className="size-4" /> Évaluer la couleur (test 3 questions)
+                <button type="button" onClick={() => setEvalOpen(true)} className="flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-primary/40 bg-primary/5 px-4 py-3 text-sm font-semibold text-primary">
+                  <Sparkles className="size-4" /> Évaluer la couleur
                 </button>
               )}
               <div className="mt-2">
@@ -447,7 +447,7 @@ export default function ContactDetailPage({ params }: { params: Promise<{ id: st
             </div>
             {/* Bloc 2 — Le contexte */}
             <div className="border-t border-border pt-3">
-              <p className="mb-1.5 text-base font-semibold text-foreground">Le contexte</p>
+              <p className="mb-1.5 text-sm font-semibold text-foreground">Le contexte</p>
               <div className="flex flex-col gap-2">
                 <input className={fieldCls} value={qual.situation} onChange={(e) => setQ('situation', e.target.value)} placeholder="Sa situation (métier, famille, dispo)" />
                 <input className={fieldCls} value={qual.interests} onChange={(e) => setQ('interests', e.target.value)} placeholder="Ses centres d'intérêt" />
@@ -460,7 +460,7 @@ export default function ContactDetailPage({ params }: { params: Promise<{ id: st
               return (
                 <div className="border-t border-border pt-3">
                   <div className="mb-1.5 flex items-center justify-between">
-                    <p className="text-base font-semibold text-foreground">Potentiel partenaire</p>
+                    <p className="text-sm font-semibold text-foreground">Potentiel partenaire</p>
                     <span className="rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-bold text-primary">{potLabel}</span>
                   </div>
                   <div className="flex flex-col gap-2">
@@ -505,30 +505,27 @@ export default function ContactDetailPage({ params }: { params: Promise<{ id: st
             Réengager vers l'opportunité
           </button>
         )}
-        {/* Signal actionnable — regroupé avec le tunnel (dont « dernier contact », remonté de Suivi) */}
-        <p className="-mt-1 text-xs text-muted-foreground">
-          {isProspect && <><span className="font-semibold text-foreground">{c.exposures} exposition{c.exposures > 1 ? 's' : ''}</span> · vise 4-6 avant le closing · score {c.score}/100 · </>}
-          dernier contact : <span className="font-medium text-foreground">{c.lastContact ? new Date(c.lastContact).toLocaleDateString('fr-FR') : 'jamais'}</span>
-        </p>
-        {(isProspect || isClient) && (
-          <div className="flex flex-wrap gap-2">
-            {isProspect && (
-              <button type="button" onClick={() => save({ convert: 'client' }, 'Converti en client')} className="flex items-center gap-1.5 rounded-xl border border-border bg-surface px-3 py-2 text-sm font-semibold text-foreground active:bg-muted">Convertir en client <ArrowRight className="size-3" /></button>
-            )}
-            {isProspect && (
-              <button type="button" onClick={() => save({ convert: 'partenaire' }, 'Converti en partenaire')} className="flex items-center gap-1.5 rounded-xl border border-border bg-surface px-3 py-2 text-sm font-semibold text-foreground active:bg-muted">Convertir en partenaire <ArrowRight className="size-3" /></button>
-            )}
-            {isClient && (
-              <button type="button" onClick={() => save({ convert: 'partenaire' }, 'Converti en partenaire')} className="flex items-center gap-1.5 rounded-xl border border-border bg-surface px-3 py-2 text-sm font-semibold text-foreground active:bg-muted">Convertir en partenaire (upsell) <ArrowRight className="size-3" /></button>
-            )}
+        {/* Conversions — issue du tunnel : sur 1 ligne, juste sous le curseur */}
+        {isProspect && (
+          <div className="grid grid-cols-2 gap-2">
+            <button type="button" onClick={() => save({ convert: 'client' }, 'Converti en client')} className="rounded-xl border border-border bg-surface px-3 py-2.5 text-sm font-semibold text-foreground active:bg-muted">Convertir en client</button>
+            <button type="button" onClick={() => save({ convert: 'partenaire' }, 'Converti en partenaire')} className="rounded-xl border border-border bg-surface px-3 py-2.5 text-sm font-semibold text-foreground active:bg-muted">Convertir en partenaire</button>
           </div>
         )}
+        {isClient && (
+          <button type="button" onClick={() => save({ convert: 'partenaire' }, 'Converti en partenaire')} className="w-full rounded-xl border border-border bg-surface px-3 py-2.5 text-sm font-semibold text-foreground active:bg-muted">Convertir en partenaire</button>
+        )}
+        {/* Signal actionnable — expositions · score · dernier contact (déclencheur de relance) */}
+        <p className="-mt-1 text-xs text-muted-foreground">
+          {isProspect && <><span className="font-semibold text-foreground">{c.exposures} exposition{c.exposures > 1 ? 's' : ''}</span> · score {c.score}/100 · </>}
+          dernier contact : <span className="font-medium text-foreground">{c.lastContact ? new Date(c.lastContact).toLocaleDateString('fr-FR') : 'jamais'}</span>
+        </p>
         {/* Prochain pas — simplifié, à la charte (carte standard, accent Atlas discret) */}
         {nextStep && (
           <div className="rounded-2xl border border-border bg-surface p-4">
             <div className="mb-1 flex items-center gap-1.5">
               <Sparkles className="size-3.5 stroke-[1.5] text-primary" />
-              <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Prochain pas · Atlas</p>
+              <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Prochain pas · Atlas</p>
             </div>
             <p className="text-base font-bold text-foreground">{nextStep.headline}</p>
             <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">{nextStep.reason}</p>
@@ -550,7 +547,7 @@ export default function ContactDetailPage({ params }: { params: Promise<{ id: st
             <div className="mb-1 flex items-center justify-between gap-2">
               <span className="flex items-center gap-1.5">
                 <Sparkles className="size-3.5 stroke-[1.5] text-primary" />
-                <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Ce qu&apos;Atlas retient</p>
+                <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Ce qu&apos;Atlas retient</p>
               </span>
               {memEditing ? (
                 <button type="button" onClick={() => { save({ atlasMemory: memDraft.trim() }, 'Mémoire mise à jour'); setMemEditing(false) }} className="rounded-lg bg-primary px-3 py-1 text-xs font-bold text-primary-foreground">Enregistrer</button>
@@ -582,15 +579,15 @@ export default function ContactDetailPage({ params }: { params: Promise<{ id: st
               }}
               className="flex flex-col items-center gap-1.5 rounded-2xl border border-border bg-surface py-3 active:bg-muted">
               <t.icon className="size-5 stroke-[1.5] text-primary" />
-              <span className="text-[10px] font-medium text-foreground">{t.label}</span>
+              <span className="text-xs font-medium text-foreground">{t.label}</span>
             </button>
           ))}
         </div>
         {/* Rangée secondaire compacte : planifier / relancer / répéter avec Aria */}
         <div className="grid grid-cols-3 gap-2">
-          <button type="button" onClick={() => setSchedule('rdv')} className="flex flex-col items-center gap-1.5 rounded-2xl border border-border bg-surface py-3 active:bg-muted"><CalendarPlus className="size-5 stroke-[1.5] text-primary" /><span className="text-[10px] font-medium text-foreground">RDV</span></button>
-          <button type="button" onClick={() => setSchedule('relance')} className="flex flex-col items-center gap-1.5 rounded-2xl border border-border bg-surface py-3 active:bg-muted"><Bell className="size-5 stroke-[1.5] text-primary" /><span className="text-[10px] font-medium text-foreground">Relance</span></button>
-          <button type="button" onClick={() => router.push(`/aria?contact=${c.id}`)} className="flex flex-col items-center gap-1.5 rounded-2xl bg-[#14B8A6]/10 py-3 active:bg-[#14B8A6]/20"><Mic className="size-5 stroke-[1.5] text-[#14B8A6]" /><span className="text-[10px] font-medium text-[#14B8A6]">Aria</span></button>
+          <button type="button" onClick={() => setSchedule('rdv')} className="flex flex-col items-center gap-1.5 rounded-2xl border border-border bg-surface py-3 active:bg-muted"><CalendarPlus className="size-5 stroke-[1.5] text-primary" /><span className="text-xs font-medium text-foreground">RDV</span></button>
+          <button type="button" onClick={() => setSchedule('relance')} className="flex flex-col items-center gap-1.5 rounded-2xl border border-border bg-surface py-3 active:bg-muted"><Bell className="size-5 stroke-[1.5] text-primary" /><span className="text-xs font-medium text-foreground">Relance</span></button>
+          <button type="button" onClick={() => router.push(`/aria?contact=${c.id}`)} className="flex flex-col items-center gap-1.5 rounded-2xl bg-[#14B8A6]/10 py-3 active:bg-[#14B8A6]/20"><Mic className="size-5 stroke-[1.5] text-[#14B8A6]" /><span className="text-xs font-medium text-[#14B8A6]">Aria</span></button>
         </div>
 
 

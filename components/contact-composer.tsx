@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
-import { Sparkles, ArrowUp, X, Loader2 } from 'lucide-react'
+import { Sparkles, SendHorizontal, X, Loader2 } from 'lucide-react'
 
 // Composeur scopé contact (fiche) : on demande des choses sur CE contact, Atlas répond
 // avec tout son contexte (buildContactSnapshot côté proxy via contactId). Fil éphémère —
@@ -22,11 +22,20 @@ export function ContactComposer({ contactId, contactName, loadConversationId, on
   const [open, setOpen] = useState(false)
   const convRef = useRef<string | null>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
+  const taRef = useRef<HTMLTextAreaElement>(null)
   const prenom = contactName.trim().split(/\s+/)[0] || 'ce contact'
 
   useEffect(() => {
     if (open) scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' })
   }, [messages, open])
+
+  // Textarea auto-grow (identique au composeur standard AppComposer)
+  useEffect(() => {
+    const el = taRef.current
+    if (!el) return
+    el.style.height = 'auto'
+    el.style.height = Math.min(el.scrollHeight, 120) + 'px'
+  }, [input])
 
   // Rouvrir une conversation passée (tap sur « Échanges avec Atlas » de la fiche).
   useEffect(() => {
@@ -101,7 +110,7 @@ export function ContactComposer({ contactId, contactName, loadConversationId, on
 
   return (
     <div className="fixed inset-x-0 bottom-0 z-[47]">
-      <div className="mx-auto max-w-2xl px-3" style={{ paddingBottom: 'max(0.5rem, env(safe-area-inset-bottom))' }}>
+      <div className="mx-auto max-w-md px-4" style={{ paddingBottom: 'max(20px, env(safe-area-inset-bottom))' }}>
         {/* Fil de conversation (au-dessus du composeur) */}
         {open && messages.length > 0 && (
           <div className="mb-2 overflow-hidden rounded-2xl border border-border bg-background shadow-[0_-8px_40px_rgba(0,0,0,.12)]">
@@ -113,11 +122,11 @@ export function ContactComposer({ contactId, contactName, loadConversationId, on
               {messages.map((m, i) => (
                 <div key={i} className={m.from === 'user' ? 'self-end max-w-[85%]' : 'self-start w-full'}>
                   {m.from === 'user' ? (
-                    <div className="rounded-2xl rounded-br-md bg-primary px-3.5 py-2 text-sm text-primary-foreground">{m.text}</div>
+                    <div className="rounded-2xl rounded-br-md bg-primary px-3.5 py-2 text-lg leading-[1.4] text-primary-foreground lg:text-sm">{m.text}</div>
                   ) : m.text === '' ? (
                     <div className="flex items-center gap-1 py-1 text-muted-foreground"><Loader2 className="size-4 animate-spin" /></div>
                   ) : (
-                    <div className="whitespace-pre-line text-sm leading-relaxed text-foreground">{m.text}</div>
+                    <div className="whitespace-pre-line text-lg leading-[1.65] text-foreground lg:text-sm">{m.text}</div>
                   )}
                 </div>
               ))}
@@ -125,24 +134,26 @@ export function ContactComposer({ contactId, contactName, loadConversationId, on
           </div>
         )}
 
-        {/* Barre composeur */}
-        <div className="flex items-center gap-2 rounded-full border border-border bg-surface py-1.5 pl-4 pr-1.5 shadow-sm">
-          <Sparkles className="size-4 shrink-0 text-primary" />
-          <input
+        {/* Barre composeur — même charte que le composeur standard (AppComposer) */}
+        <div className="flex items-end gap-2 rounded-[26px] border border-border bg-surface/95 px-3 py-1.5 shadow-[0_6px_24px_rgba(0,0,0,.12)] backdrop-blur-md">
+          <textarea
+            ref={taRef}
+            rows={1}
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            onKeyDown={(e) => { if (e.key === 'Enter') send() }}
+            onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send() } }}
             placeholder={`Demander à Atlas sur ${prenom}…`}
-            className="min-w-0 flex-1 bg-transparent text-sm text-foreground outline-none placeholder:text-muted-foreground"
+            className="min-w-0 flex-1 resize-none overflow-y-auto no-scrollbar bg-transparent text-lg leading-[1.4] text-foreground outline-none placeholder:text-muted-foreground lg:text-sm"
+            style={{ maxHeight: 120, paddingTop: 7, paddingBottom: 7 }}
           />
           <button
             type="button"
             onClick={send}
             disabled={!input.trim() || streaming}
             aria-label="Envoyer"
-            className="flex size-9 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground transition-opacity disabled:opacity-40"
+            className="flex size-9 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-sm transition-opacity active:opacity-90 disabled:opacity-40"
           >
-            {streaming ? <Loader2 className="size-4 animate-spin" /> : <ArrowUp className="size-4 stroke-[2.5]" />}
+            {streaming ? <Loader2 className="size-4 animate-spin" /> : <SendHorizontal className="size-[17px] stroke-[1.5]" />}
           </button>
         </div>
       </div>
