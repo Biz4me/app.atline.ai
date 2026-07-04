@@ -262,8 +262,6 @@ export default function ContactDetailPage({ params }: { params: Promise<{ id: st
   const [contact, setContact] = useState<Contact | null>(null)
   const [loading, setLoading] = useState(true)
   const [evalOpen, setEvalOpen] = useState(false)
-  const [noteDraft, setNoteDraft] = useState('')
-  const [noteEditing, setNoteEditing] = useState(false)
   const [memDraft, setMemDraft] = useState('')
   const [memEditing, setMemEditing] = useState(false)
   const [newTag, setNewTag] = useState('')
@@ -285,7 +283,7 @@ export default function ContactDetailPage({ params }: { params: Promise<{ id: st
     ])
     if (!r1.ok) { setLoading(false); return }
     const data = await r1.json()
-    setContact(data); setNoteDraft(data.note ?? ''); setMemDraft(data.atlasMemory ?? '')
+    setContact(data); setMemDraft(data.atlasMemory ?? '')
     if (r2.ok) setInteractions(await r2.json())
     if (r3.ok) setAppointments(await r3.json())
     if (r4.ok) setRelances(await r4.json())
@@ -611,16 +609,6 @@ export default function ContactDetailPage({ params }: { params: Promise<{ id: st
                 placeholder="+ tag" className="w-20 rounded-lg border border-dashed border-border bg-transparent px-2 py-1 text-xs text-foreground outline-none placeholder:text-muted-foreground" />
             </div>
           </div>
-        </Section>
-
-        {/* NOTE */}
-        <Section title="Note" action={noteEditing
-          ? <button type="button" onClick={() => { save({ note: noteDraft }, 'Note enregistrée'); setNoteEditing(false) }} className="rounded-lg bg-primary px-3 py-1 text-xs font-bold text-primary-foreground">Enregistrer</button>
-          : <button type="button" onClick={() => setNoteEditing(true)} className="text-xs font-medium text-primary"><Pencil className="mr-1 inline size-3" />Modifier</button>}>
-          {noteEditing
-            ? <textarea value={noteDraft} onChange={(e) => setNoteDraft(e.target.value)} rows={3} autoFocus placeholder="Contexte, ce qu'il aime, ses objections… (Atlas s'en sert)" className="w-full resize-none bg-transparent text-sm leading-relaxed text-foreground outline-none placeholder:text-muted-foreground" />
-            : c.note ? <p className="text-sm leading-relaxed text-muted-foreground">{c.note}</p>
-            : <button type="button" onClick={() => setNoteEditing(true)} className="text-sm text-muted-foreground active:text-foreground"><Plus className="mr-1 inline size-3.5" />Ajouter une note</button>}
         </Section>
 
         {/* À VENIR (RDV + relances programmées) */}
