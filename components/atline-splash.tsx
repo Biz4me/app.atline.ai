@@ -37,7 +37,7 @@ export function AtlineSplash({ minDuration = 2600 }: { minDuration?: number }) {
         transition: 'opacity 0.5s ease',
       }}
     >
-      <svg width={168} height={168} viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" aria-label="atline">
+      <svg style={{ width: '78vmin', height: '78vmin' }} viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" aria-label="atline">
         <g transform="translate(17.76,16.52) scale(0.62)">
           <path
             d="M16,92 L50,16 L84,92"
