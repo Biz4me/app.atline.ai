@@ -4,6 +4,7 @@ import { Toaster } from '@/components/ui/sonner'
 import { ThemeProvider } from '@/components/theme-provider'
 import './globals.css'
 import { SessionProvider } from '@/components/session-provider'
+import { AtlineSplash } from '@/components/atline-splash'
 
 // Cabinet Grotesk via Fontshare CDN (display font — titres, KPIs)
 const cabinetGroteskHref =
@@ -21,9 +22,18 @@ export const metadata: Metadata = {
     'Atline accompagne les distributeurs MLM : contacts, contenu Nova, réseau et coaching Atlas. App mobile française.',
   generator: 'v0.app',
   applicationName: 'Atline',
+  manifest: '/manifest.webmanifest',
   icons: {
-    icon: '/brand/atline-icon.png',
-    apple: '/brand/atline-icon.png',
+    icon: [
+      { url: '/favicon.svg', type: 'image/svg+xml' },
+      { url: '/favicon.ico' },
+    ],
+    apple: '/apple-touch-icon.png',
+  },
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'default',
+    title: 'Atline',
   },
 }
 
@@ -56,6 +66,7 @@ export default function RootLayout({
           {children}
           </SessionProvider>
           <Toaster position="top-center" />
+          <AtlineSplash />
           {process.env.NODE_ENV === 'production' && <Analytics />}
         </ThemeProvider>
       </body>
