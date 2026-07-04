@@ -505,19 +505,20 @@ export default function ContactDetailPage({ params }: { params: Promise<{ id: st
             Réengager vers l'opportunité
           </button>
         )}
-        {/* Conversions — issue du tunnel : pills compactes sur 1 ligne, secondaires */}
+        {/* Conversions — liens discrets (secondaire), alignés, sans pastille flottante */}
         {(isProspect || isClient) && (
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="text-xs text-muted-foreground">Convertir en</span>
+          <div className="flex flex-wrap items-center gap-1">
+            <span className="mr-1 text-xs text-muted-foreground">Convertir en</span>
             {isProspect && (
-              <button type="button" onClick={() => save({ convert: 'client' }, 'Converti en client')} className="rounded-full border border-border bg-surface px-3.5 py-1.5 text-sm font-semibold text-foreground active:bg-muted">Client</button>
+              <button type="button" onClick={() => save({ convert: 'client' }, 'Converti en client')} className="rounded-md px-2 py-0.5 text-sm font-semibold text-primary active:bg-primary/10">client</button>
             )}
-            <button type="button" onClick={() => save({ convert: 'partenaire' }, 'Converti en partenaire')} className="rounded-full border border-border bg-surface px-3.5 py-1.5 text-sm font-semibold text-foreground active:bg-muted">Partenaire</button>
+            {isProspect && <span className="text-xs text-muted-foreground">·</span>}
+            <button type="button" onClick={() => save({ convert: 'partenaire' }, 'Converti en partenaire')} className="rounded-md px-2 py-0.5 text-sm font-semibold text-primary active:bg-primary/10">partenaire</button>
           </div>
         )}
-        {/* Signal actionnable — expositions · score · dernier contact (déclencheur de relance) */}
-        <p className="-mt-1 text-xs text-muted-foreground">
-          {isProspect && <><span className="font-semibold text-foreground">{c.exposures} exposition{c.exposures > 1 ? 's' : ''}</span> · score {c.score}/100 · </>}
+        {/* Signal — expositions (branché) + dernier contact ; score retiré (métrique interne) */}
+        <p className="text-xs text-muted-foreground">
+          {isProspect && <><span className="font-semibold text-foreground">{c.exposures} exposition{c.exposures > 1 ? 's' : ''}</span> · </>}
           dernier contact : <span className="font-medium text-foreground">{c.lastContact ? new Date(c.lastContact).toLocaleDateString('fr-FR') : 'jamais'}</span>
         </p>
         {/* Prochain pas — simplifié, à la charte (carte standard, accent Atlas discret) */}
