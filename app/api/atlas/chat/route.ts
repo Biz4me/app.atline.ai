@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getToken } from 'next-auth/jwt'
 import { db } from '@/lib/db'
+import { buildContactSnapshot } from '@/lib/contact-snapshot'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -73,42 +74,6 @@ async function buildAtlasSnapshot(userId: string): Promise<string> {
       const when = new Intl.DateTimeFormat('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' }).format(nextRdv.startAt)
       const who = nextRdv.contact ? ` avec ${[nextRdv.contact.firstName, nextRdv.contact.lastName].filter(Boolean).join(' ')}` : ''
       lines.push(`Prochain rendez-vous : ${nextRdv.title}${who} — ${when}`)
-    }
-    return lines.join('\n')
-  } catch {
-    return ''
-  }
-}
-
-// Snapshot d'UN contact (fiche) → Atlas connaît la personne : faits durs + qualification
-// (modèle explicite) + note + sa mémoire auto-éditée + dernières interactions.
-async function buildContactSnapshot(userId: string, contactId: string): Promise<string> {
-  try {
-    const c = await db.contact.findFirst({ where: { id: contactId, userId } })
-    if (!c) return ''
-    const q = (c.qualification ?? null) as Record<string, string> | null
-    const interactions = await db.interaction.findMany({
-      where: { contactId, userId }, orderBy: { createdAt: 'desc' }, take: 3,
-      select: { type: true, outcome: true, createdAt: true },
-    })
-    const lines: string[] = [`Contact : ${c.name}`]
-    const kindLabel = c.kind === 'CLIENT' ? 'Client' : c.kind === 'PARTENAIRE' ? 'Partenaire' : 'Prospect'
-    let statut = kindLabel
-    if (c.prospectStage) statut += ` · tunnel : ${c.prospectStage}`
-    if (c.partnerStage) statut += ` · partenaire : ${c.partnerStage}`
-    lines.push(`Statut : ${statut}`)
-    if (c.market) lines.push(`Marché (proximité) : ${({ CHAUD: 'chaud', TIEDE: 'tiède', FROID: 'froid' } as Record<string, string>)[c.market] ?? c.market}`)
-    if (c.personality) lines.push(`Couleur (Big Al) : ${c.personality}`)
-    if (q) {
-      const ql = [q.situation && `situation: ${q.situation}`, q.interests && `intérêts: ${q.interests}`, q.motivation && `motivation: ${q.motivation}`, q.insatisfaction && `insatisfaction: ${q.insatisfaction}`, q.reseau && `réseau: ${q.reseau}`, q.ouverture && `ouverture: ${q.ouverture}`].filter(Boolean).join(' · ')
-      if (ql) lines.push(`Qualification : ${ql}`)
-    }
-    if (typeof c.exposures === 'number' && c.exposures > 0) lines.push(`Expositions : ${c.exposures}`)
-    if (c.note) lines.push(`Note : ${c.note}`)
-    if (c.atlasMemory) lines.push(`Ta mémoire sur lui : ${c.atlasMemory}`)
-    if (interactions.length) {
-      const il = interactions.map((i) => `${i.type.toLowerCase()}${i.outcome ? ` (${i.outcome.toLowerCase()})` : ''} le ${i.createdAt.toLocaleDateString('fr-FR')}`).join(' · ')
-      lines.push(`Dernières interactions : ${il}`)
     }
     return lines.join('\n')
   } catch {
