@@ -11,7 +11,7 @@ import { useEffect, useState } from 'react'
 const INK = '#1C1E21'
 const ORANGE = '#F97316'
 
-export function AtlineSplash({ minDuration = 3400 }: { minDuration?: number }) {
+export function AtlineSplash({ minDuration = 1700 }: { minDuration?: number }) {
   const [phase, setPhase] = useState<'show' | 'fade' | 'gone'>('show')
 
   useEffect(() => {
@@ -40,26 +40,26 @@ export function AtlineSplash({ minDuration = 3400 }: { minDuration?: number }) {
         transition: 'opacity 0.5s ease',
       }}
     >
-      <svg style={{ width: '84vw', maxWidth: 440, height: 'auto' }} viewBox="28 12 276 96" xmlns="http://www.w3.org/2000/svg" aria-label="atline">
+      <svg style={{ width: '84vw', maxWidth: 440, height: 'auto' }} viewBox="28 12 276 144" xmlns="http://www.w3.org/2000/svg" aria-label="atline">
         <clipPath id="atl-cb">
           <rect x="28" y="48" height="32" width="0">
-            <animate attributeName="width" values="0;0;42;42" keyTimes="0;0.11;0.17;1" dur="4s" repeatCount="indefinite" />
+            <animate attributeName="width" values="0;0;42;42" keyTimes="0;0.11;0.17;1" dur="2s" repeatCount="indefinite" />
           </rect>
         </clipPath>
         <clipPath id="atl-stream">
           <rect x="90" y="34" height="76" width="0">
-            <animate attributeName="width" values="0;0;200;200" keyTimes="0;0.21;0.42;1" dur="4s" repeatCount="indefinite" />
+            <animate attributeName="width" values="0;0;200;200" keyTimes="0;0.21;0.42;1" dur="2s" repeatCount="indefinite" />
           </rect>
         </clipPath>
 
         <g transform="translate(22,6)">
           {/* A — se dessine */}
           <path d="M16,92 L50,16 L84,92" fill="none" stroke={INK} strokeWidth="13" strokeLinejoin="round" strokeLinecap="round" strokeDasharray="167" strokeDashoffset="167">
-            <animate attributeName="stroke-dashoffset" values="167;83.5;0;0" keyTimes="0;0.08;0.16;1" dur="4s" repeatCount="indefinite" calcMode="spline" keySplines="0 0 1 1;0 0 1 1;0 0 1 1" />
+            <animate attributeName="stroke-dashoffset" values="167;83.5;0;0" keyTimes="0;0.08;0.16;1" dur="2s" repeatCount="indefinite" calcMode="spline" keySplines="0 0 1 1;0 0 1 1;0 0 1 1" />
           </path>
           <polygon points="28,64 28,77 68,54.9 68,49.9" fill={INK} clipPath="url(#atl-cb)" />
           <circle cx="68" cy="52.4" r="2.6" fill={INK} opacity="0">
-            <animate attributeName="opacity" values="0;0;1;1;1" keyTimes="0;0.16;0.18;0.9;1" dur="4s" repeatCount="indefinite" />
+            <animate attributeName="opacity" values="0;0;1;1;1" keyTimes="0;0.16;0.18;0.9;1" dur="2s" repeatCount="indefinite" />
           </circle>
 
           {/* "tline" vectorisé — révélé en streaming */}
@@ -71,32 +71,32 @@ export function AtlineSplash({ minDuration = 3400 }: { minDuration?: number }) {
 
           {/* pulse de régénération sur le A */}
           <circle cx="81.5" cy="47" r="7" fill="none" stroke={INK} strokeWidth="2" opacity="0">
-            <animate attributeName="r" values="7;7;20;20" keyTimes="0;0.685;0.85;1" dur="4s" repeatCount="indefinite" />
-            <animate attributeName="opacity" values="0;0;0.5;0;0" keyTimes="0;0.685;0.715;0.86;1" dur="4s" repeatCount="indefinite" />
+            <animate attributeName="r" values="7;7;20;20" keyTimes="0;0.685;0.85;1" dur="2s" repeatCount="indefinite" />
+            <animate attributeName="opacity" values="0;0;0.5;0;0" keyTimes="0;0.685;0.715;0.86;1" dur="2s" repeatCount="indefinite" />
           </circle>
           <circle cx="81.5" cy="47" r="7" fill={INK} opacity="0">
-            <animate attributeName="opacity" values="0;0;1;1" keyTimes="0;0.675;0.715;1" dur="4s" repeatCount="indefinite" />
-            <animate attributeName="r" values="0;0;10;7;7" keyTimes="0;0.675;0.72;0.78;1" dur="4s" repeatCount="indefinite" />
+            <animate attributeName="opacity" values="0;0;1;1" keyTimes="0;0.675;0.715;1" dur="2s" repeatCount="indefinite" />
+            <animate attributeName="r" values="0;0;10;7;7" keyTimes="0;0.675;0.72;0.78;1" dur="2s" repeatCount="indefinite" />
           </circle>
 
           {/* traînée */}
           <circle r="5" fill={INK} opacity="0">
-            <animateMotion dur="4s" repeatCount="indefinite" keyPoints="0;0;0.1008;0.1008;0.784;0.902;0.9714;1;1" keyTimes="0;0.18;0.22;0.43;0.59;0.625;0.65;0.675;1" calcMode="spline" keySplines="0 0 1 1;0.3 0 0.3 1;0 0 1 1;0.3 0 0.2 1;0.4 0 0.5 1;0.4 0 0.5 1;0.3 0 0.3 1;0 0 1 1" path="M68,52.4 L81.5,47 L180,45 L163,46 L173,46 L169,47" />
-            <animate attributeName="opacity" values="0;0;0.3;0;0" keyTimes="0;0.45;0.55;0.60;1" dur="4s" repeatCount="indefinite" />
+            <animateMotion dur="2s" repeatCount="indefinite" keyPoints="0;0;0.1008;0.1008;0.784;0.902;0.9714;1;1" keyTimes="0;0.18;0.22;0.43;0.59;0.625;0.65;0.675;1" calcMode="spline" keySplines="0 0 1 1;0.3 0 0.3 1;0 0 1 1;0.3 0 0.2 1;0.4 0 0.5 1;0.4 0 0.5 1;0.3 0 0.3 1;0 0 1 1" path="M68,52.4 L81.5,47 L180,45 L163,46 L173,46 L169,47" />
+            <animate attributeName="opacity" values="0;0;0.3;0;0" keyTimes="0;0.45;0.55;0.60;1" dur="2s" repeatCount="indefinite" />
           </circle>
 
           {/* onde orange au i */}
           <circle cx="169" cy="47" r="8" fill="none" stroke={ORANGE} strokeWidth="2" opacity="0">
-            <animate attributeName="r" values="8;8;24;24" keyTimes="0;0.685;0.86;1" dur="4s" repeatCount="indefinite" />
-            <animate attributeName="opacity" values="0;0;0.6;0;0" keyTimes="0;0.685;0.715;0.88;1" dur="4s" repeatCount="indefinite" />
+            <animate attributeName="r" values="8;8;24;24" keyTimes="0;0.685;0.86;1" dur="2s" repeatCount="indefinite" />
+            <animate attributeName="opacity" values="0;0;0.6;0;0" keyTimes="0;0.685;0.715;0.88;1" dur="2s" repeatCount="indefinite" />
           </circle>
 
           {/* nœud qui voyage A→i, ink → orange, et se cale (devient le point du i) */}
           <circle r="7" fill={INK}>
-            <animateMotion dur="4s" repeatCount="indefinite" keyPoints="0;0;0.1008;0.1008;0.784;0.902;0.9714;1;1" keyTimes="0;0.17;0.21;0.42;0.58;0.615;0.64;0.665;1" calcMode="spline" keySplines="0 0 1 1;0.3 0 0.3 1;0 0 1 1;0.3 0 0.2 1;0.4 0 0.5 1;0.4 0 0.5 1;0.3 0 0.3 1;0 0 1 1" path="M68,52.4 L81.5,47 L180,45 L163,46 L173,46 L169,47" />
-            <animate attributeName="fill" values={`${INK};${INK};#FFFFFF;${ORANGE};${ORANGE}`} keyTimes="0;0.66;0.68;0.72;1" dur="4s" repeatCount="indefinite" />
-            <animate attributeName="opacity" values="0;0;1;1;1" keyTimes="0;0.17;0.20;0.9;1" dur="4s" repeatCount="indefinite" />
-            <animate attributeName="r" values="0;0;7;7;10.5;6.5;6.5" keyTimes="0;0.17;0.21;0.655;0.685;0.74;1" dur="4s" repeatCount="indefinite" />
+            <animateMotion dur="2s" repeatCount="indefinite" keyPoints="0;0;0.1008;0.1008;0.784;0.902;0.9714;1;1" keyTimes="0;0.17;0.21;0.42;0.58;0.615;0.64;0.665;1" calcMode="spline" keySplines="0 0 1 1;0.3 0 0.3 1;0 0 1 1;0.3 0 0.2 1;0.4 0 0.5 1;0.4 0 0.5 1;0.3 0 0.3 1;0 0 1 1" path="M68,52.4 L81.5,47 L180,45 L163,46 L173,46 L169,47" />
+            <animate attributeName="fill" values={`${INK};${INK};#FFFFFF;${ORANGE};${ORANGE}`} keyTimes="0;0.66;0.68;0.72;1" dur="2s" repeatCount="indefinite" />
+            <animate attributeName="opacity" values="0;0;1;1;1" keyTimes="0;0.17;0.20;0.9;1" dur="2s" repeatCount="indefinite" />
+            <animate attributeName="r" values="0;0;7;7;10.5;6.5;6.5" keyTimes="0;0.17;0.21;0.655;0.685;0.74;1" dur="2s" repeatCount="indefinite" />
           </circle>
         </g>
       </svg>
