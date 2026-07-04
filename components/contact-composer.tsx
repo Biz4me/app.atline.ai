@@ -9,7 +9,13 @@ import { Sparkles, ArrowUp, X, Loader2 } from 'lucide-react'
 type Msg = { from: 'user' | 'atlas'; text: string }
 const stripMarkers = (s: string) => s.replace(/\s*\[\[[A-Z]+\]\][\s\S]*$/, '')
 
-export function ContactComposer({ contactId, contactName }: { contactId: string; contactName: string }) {
+export function ContactComposer({ contactId, contactName, loadConversationId, onLoaded, onConversationsChanged }: {
+  contactId: string
+  contactName: string
+  loadConversationId?: string | null
+  onLoaded?: () => void
+  onConversationsChanged?: () => void
+}) {
   const [messages, setMessages] = useState<Msg[]>([])
   const [input, setInput] = useState('')
   const [streaming, setStreaming] = useState(false)
@@ -21,6 +27,26 @@ export function ContactComposer({ contactId, contactName }: { contactId: string;
   useEffect(() => {
     if (open) scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' })
   }, [messages, open])
+
+  // Rouvrir une conversation passée (tap sur « Échanges avec Atlas » de la fiche).
+  useEffect(() => {
+    if (!loadConversationId) return
+    let cancelled = false
+    ;(async () => {
+      try {
+        const r = await fetch(`/api/atlas/conversations/${loadConversationId}`)
+        if (!r.ok || cancelled) return
+        const d = await r.json()
+        if (cancelled) return
+        convRef.current = loadConversationId
+        setMessages((d.messages ?? []).map((m: { role: string; content: string }) => ({ from: m.role === 'USER' ? 'user' : 'atlas', text: stripMarkers(m.content).trim() })))
+        setOpen(true)
+      } finally {
+        if (!cancelled) onLoaded?.()
+      }
+    })()
+    return () => { cancelled = true }
+  }, [loadConversationId, onLoaded])
 
   const send = async () => {
     const q = input.trim()
@@ -67,6 +93,7 @@ export function ContactComposer({ contactId, contactName }: { contactId: string;
       setMessages((m) => { const c = [...m]; c[c.length - 1] = { from: 'atlas', text: 'Souci de connexion, réessaie dans un moment.' }; return c })
     } finally {
       setStreaming(false)
+      onConversationsChanged?.()   // la fiche rafraîchit la liste « Échanges avec Atlas »
     }
   }
 

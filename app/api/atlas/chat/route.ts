@@ -142,7 +142,7 @@ export async function POST(req: NextRequest) {
   }
   if (!conversationId) {
     const conv = await db.atlasConversation.create({
-      data: { userId, title: convTitle(query), context: 'parcours' },
+      data: { userId, title: convTitle(query), context: body.contactId ? 'contact' : 'parcours', ...(body.contactId ? { contactId: body.contactId } : {}) },
       select: { id: true },
     })
     conversationId = conv.id

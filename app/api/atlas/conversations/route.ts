@@ -10,11 +10,13 @@ export async function GET(req: NextRequest) {
   const userId = token?.id as string | undefined
   if (!userId) return NextResponse.json({ error: 'non authentifié' }, { status: 401 })
 
+  // ?contactId= → conversations d'un contact précis ; sinon historique principal (hors contact).
+  const contactId = req.nextUrl.searchParams.get('contactId')
   const convs = await db.atlasConversation.findMany({
-    where: { userId },
+    where: contactId ? { userId, contactId } : { userId, contactId: null },
     orderBy: { updatedAt: 'desc' },
     select: { id: true, title: true, updatedAt: true },
-    take: 100,
+    take: contactId ? 30 : 100,
   })
   return NextResponse.json(convs)
 }

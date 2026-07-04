@@ -264,6 +264,8 @@ export default function ContactDetailPage({ params }: { params: Promise<{ id: st
   const [evalOpen, setEvalOpen] = useState(false)
   const [memDraft, setMemDraft] = useState('')
   const [memEditing, setMemEditing] = useState(false)
+  const [contactConvs, setContactConvs] = useState<{ id: string; title: string | null; updatedAt: string }[]>([])
+  const [openConvId, setOpenConvId] = useState<string | null>(null)
   const [newTag, setNewTag] = useState('')
   const [interactions, setInteractions] = useState<Interaction[]>([])
   const [appointments, setAppointments] = useState<Appt[]>([])
@@ -292,6 +294,13 @@ export default function ContactDetailPage({ params }: { params: Promise<{ id: st
   }, [id])
 
   useEffect(() => { load() }, [load])
+
+  // Conversations Atlas passées sur ce contact (rangées ici, hors historique principal).
+  const refreshConvs = useCallback(() => {
+    fetch(`/api/atlas/conversations?contactId=${id}`).then((r) => (r.ok ? r.json() : [])).then(setContactConvs).catch(() => {})
+  }, [id])
+  const clearOpenConv = useCallback(() => setOpenConvId(null), [])
+  useEffect(() => { refreshConvs() }, [refreshConvs])
 
   const save = useCallback(async (patch: Record<string, unknown>, msg?: string) => {
     const res = await fetch(`/api/contacts/${id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(patch) })
@@ -611,6 +620,21 @@ export default function ContactDetailPage({ params }: { params: Promise<{ id: st
           </div>
         </Section>
 
+        {/* ÉCHANGES AVEC ATLAS — conversations passées sur ce contact (rouvrir dans le composeur) */}
+        {contactConvs.length > 0 && (
+          <Section title="Échanges avec Atlas">
+            <div className="flex flex-col">
+              {contactConvs.map((cv) => (
+                <button key={cv.id} type="button" onClick={() => setOpenConvId(cv.id)} className="flex items-center gap-3 rounded-xl px-1 py-2.5 text-left active:bg-muted">
+                  <Sparkles className="size-4 shrink-0 stroke-[1.5] text-primary" />
+                  <span className="min-w-0 flex-1 truncate text-sm text-foreground">{cv.title || 'Échange'}</span>
+                  <span className="shrink-0 text-[10px] text-muted-foreground">{new Date(cv.updatedAt).toLocaleDateString('fr-FR')}</span>
+                </button>
+              ))}
+            </div>
+          </Section>
+        )}
+
         {/* À VENIR (RDV + relances programmées) */}
         {(appointments.length > 0 || relances.length > 0) && (
           <Section title="À venir">
@@ -696,7 +720,7 @@ export default function ContactDetailPage({ params }: { params: Promise<{ id: st
       )}
 
       {/* Composeur Atlas scopé sur ce contact (Phase B) */}
-      <ContactComposer contactId={id} contactName={c.name || pf.firstName} />
+      <ContactComposer contactId={id} contactName={c.name || pf.firstName} loadConversationId={openConvId} onLoaded={clearOpenConv} onConversationsChanged={refreshConvs} />
     </div>
   )
 }
