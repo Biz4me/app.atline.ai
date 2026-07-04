@@ -55,7 +55,7 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="fr" suppressHydrationWarning>
+    <html lang="fr" suppressHydrationWarning style={{ backgroundColor: '#f5f4f1' }}>
       <head>
         <link rel="preconnect" href="https://api.fontshare.com" />
         <link rel="stylesheet" href={cabinetGroteskHref} />
