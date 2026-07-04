@@ -81,6 +81,28 @@ async function buildAtlasSnapshot(userId: string): Promise<string> {
   }
 }
 
+// Phase C / T3 — Atlas réécrit son bloc mémoire d'un contact (MemGPT-style) à partir de l'échange.
+// Utilisé par la fiche (contactId explicite) ET l'accueil (contacts résolus par l'outil get_contact).
+async function reflectContactMemory(userId: string, contactId: string, query: string, answer: string) {
+  try {
+    const cur = await db.contact.findFirst({ where: { id: contactId, userId }, select: { name: true, atlasMemory: true } })
+    if (!cur) return
+    const mr = await fetch(`${ATLAS_URL}/api/atlas/contact-memory`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ contact_name: cur.name, current_memory: cur.atlasMemory ?? '', exchange: `Utilisateur: ${query}\nAtlas: ${answer}` }),
+    })
+    if (mr.ok) {
+      const { memory } = await mr.json()
+      if (typeof memory === 'string' && memory.trim()) {
+        await db.contact.update({ where: { id: contactId }, data: { atlasMemory: memory.trim(), atlasMemoryAt: new Date() } })
+      }
+    }
+  } catch {
+    /* mémoire best-effort */
+  }
+}
+
 export async function POST(req: NextRequest) {
   // user_id réel depuis la session NextAuth — jamais fourni par le client.
   const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET })
@@ -178,6 +200,7 @@ export async function POST(req: NextRequest) {
       /* flux interrompu : on sauvegarde ce qu'on a */
     }
     let full = ''
+    const resolved: string[] = []
     for (const line of raw.split('\n')) {
       if (!line.startsWith('data: ')) continue
       const p = line.slice(6).trim()
@@ -185,6 +208,7 @@ export async function POST(req: NextRequest) {
       try {
         const d = JSON.parse(p)
         if (d.text) full += d.text
+        else if (Array.isArray(d.resolved_contacts)) resolved.push(...d.resolved_contacts.filter((x: unknown): x is string => typeof x === 'string'))
       } catch {
         /* ligne SSE partielle, ignorée */
       }
@@ -200,27 +224,12 @@ export async function POST(req: NextRequest) {
       /* persistance best-effort */
     }
 
-    // Phase C — Atlas réécrit son bloc mémoire du contact (MemGPT-style), en tâche de fond.
-    if (body.contactId && full.trim()) {
-      try {
-        const cur = await db.contact.findFirst({ where: { id: body.contactId, userId }, select: { name: true, atlasMemory: true } })
-        if (cur) {
-          const answer = full.replace(/\s*\[\[[A-Z]+\]\][\s\S]*$/, '').trim()
-          const mr = await fetch(`${ATLAS_URL}/api/atlas/contact-memory`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ contact_name: cur.name, current_memory: cur.atlasMemory ?? '', exchange: `Utilisateur: ${query}\nAtlas: ${answer}` }),
-          })
-          if (mr.ok) {
-            const { memory } = await mr.json()
-            if (typeof memory === 'string' && memory.trim()) {
-              await db.contact.update({ where: { id: body.contactId }, data: { atlasMemory: memory.trim(), atlasMemoryAt: new Date() } })
-            }
-          }
-        }
-      } catch {
-        /* mémoire best-effort */
-      }
+    // Phase C / T3 — write-back mémoire pour les contacts concernés (en tâche de fond) :
+    // fiche = contactId explicite ; accueil = contacts résolus par l'outil (contact CONFIRMÉ uniquement).
+    const answer = full.replace(/\s*\[\[[A-Z]+\]\][\s\S]*$/, '').trim()
+    if (answer) {
+      const toReflect = [...new Set([body.contactId, ...resolved].filter((x): x is string => !!x))]
+      for (const cid2 of toReflect) await reflectContactMemory(userId, cid2, query, answer)
     }
   })()
 

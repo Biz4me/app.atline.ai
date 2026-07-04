@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { SendHorizontal, Mic, History, Plus, X, ChevronDown, MoreHorizontal, Pencil, Trash2, Paperclip, FileText, Users, Loader2, Zap, Target, SquarePen, UserRound, Compass } from 'lucide-react'
+import { SendHorizontal, Mic, History, Plus, X, ChevronDown, MoreHorizontal, Pencil, Trash2, Paperclip, FileText, Users, Loader2, Zap, Target, SquarePen, UserRound, Compass, Sparkles } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
 import { AppComposer } from '@/components/mobile/app-composer'
@@ -115,6 +115,7 @@ export default function AtlasPage() {
   const headerRef = useRef<HTMLDivElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const [streaming, setStreaming] = useState(false)
+  const [toolHint, setToolHint] = useState('')   // « Atlas regarde la fiche de … » pendant un appel d'outil
   // true tant qu'on charge une conversation depuis l'URL → évite le flash de l'état vide
   const [loadingConv, setLoadingConv] = useState<boolean>(!!c)
   const [showScrollBtn, setShowScrollBtn] = useState(false)
@@ -478,6 +479,7 @@ TECHNIQUE (invisible pour moi, ne l'explique jamais)${NB}: le jour où je VALIDE
     if (!q || streaming) return
 
     setMsgs((prev) => [...prev, { from: 'user', text: display ?? q }, { from: 'atlas', text: '' }])
+    setToolHint('')
     setInput('')
     setStreaming(true)
     atBottomRef.current = true
@@ -548,7 +550,8 @@ TECHNIQUE (invisible pour moi, ne l'explique jamais)${NB}: le jour où je VALIDE
           if (payload === '[DONE]') continue
           try {
             const data = JSON.parse(payload)
-            if (data.text) { full += data.text; if (sessionKind && markerIdx < 0) { const k = full.indexOf(MARK); if (k >= 0) markerIdx = k } }
+            if (data.text) { setToolHint(''); full += data.text; if (sessionKind && markerIdx < 0) { const k = full.indexOf(MARK); if (k >= 0) markerIdx = k } }
+            else if (data.tool === 'get_contact' && data.name) setToolHint(`Je regarde la fiche de ${data.name}…`)
           } catch {
             /* ligne SSE incomplète, ignorée */
           }
@@ -1113,7 +1116,9 @@ TECHNIQUE (invisible pour moi, ne l'explique jamais)${NB}: le jour où je VALIDE
                 ) : m.navCard ? (
                   <AtlasNavCard route={m.navCard.route} label={m.navCard.label} />
                 ) : m.text === '' ? (
-                  <TypingDots />
+                  toolHint && i === msgs.length - 1 ? (
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground"><Sparkles className="size-3.5 animate-pulse text-primary" />{toolHint}</div>
+                  ) : <TypingDots />
                 ) : (
                   <div className="flex w-full flex-col gap-2.5 text-lg leading-[1.65] text-foreground lg:text-sm">
                     {frText(m.text).split(/\n{2,}/).map((para, j) => (
