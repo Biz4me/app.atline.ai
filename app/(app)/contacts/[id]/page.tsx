@@ -523,16 +523,13 @@ export default function ContactDetailPage({ params }: { params: Promise<{ id: st
         {/* Prochain pas — simplifié, à la charte (carte standard, accent Atlas discret) */}
         {nextStep && (
           <div className="rounded-2xl border border-border bg-surface p-4">
-            <div className="mb-1 flex items-center gap-1.5">
-              <Sparkles className="size-3.5 stroke-[1.5] text-primary" />
-              <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Prochain pas · Atlas</p>
-            </div>
+            <p className="mb-1 text-xs font-bold uppercase tracking-widest text-muted-foreground">Prochain pas</p>
             <p className="text-base font-bold text-foreground">{nextStep.headline}</p>
             <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">{nextStep.reason}</p>
             {nextStep.action === 'MESSAGE' && nextStep.channel && (
               <button type="button" onClick={() => setCompose({ channel: nextStep.channel!, label: CHANNEL_LABEL[nextStep.channel!] ?? 'Message', auto: true })}
                 className="mt-3 flex w-full items-center justify-center gap-1.5 rounded-xl bg-primary py-2.5 text-xs font-bold text-primary-foreground active:opacity-90">
-                <Sparkles className="size-3.5 stroke-[1.5]" />Voir le message d'Atlas
+                Voir le message
               </button>
             )}
             {nextStep.action === 'EDIT' && (
@@ -545,10 +542,7 @@ export default function ContactDetailPage({ params }: { params: Promise<{ id: st
         {(c.atlasMemory || memEditing) && (
           <div className="rounded-2xl border border-border bg-surface p-4">
             <div className="mb-1 flex items-center justify-between gap-2">
-              <span className="flex items-center gap-1.5">
-                <Sparkles className="size-3.5 stroke-[1.5] text-primary" />
-                <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Ce qu&apos;Atlas retient</p>
-              </span>
+              <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">À retenir</p>
               {memEditing ? (
                 <button type="button" onClick={() => { save({ atlasMemory: memDraft.trim() }, 'Mémoire mise à jour'); setMemEditing(false) }} className="rounded-lg bg-primary px-3 py-1 text-xs font-bold text-primary-foreground">Enregistrer</button>
               ) : (
