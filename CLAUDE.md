@@ -314,4 +314,26 @@ git add prisma/migrations/ prisma/schema.prisma && git commit -m "..." && git pu
 
 ### État actuel
 - `prisma/migrations/0001_baseline/` — 84 tables, 59 enums (snapshot initial)
-- Prochaine migration : `0002_...`
+- Dernière migration : `0020_add_contact_atlas_memory` (Contact.atlasMemory + atlasMemoryAt). Prochaine : `0021_...`
+
+---
+
+## Journal — 4 juillet 2026 : Fiche contact + Mémoire par contact + Accueil contact-aware
+
+> Détail complet : `C:\Users\haure\Projets\atline.ai production\Recap_2026-07-04_Fiche_Contact_Memoire.md`
+
+### Modèle contact DOUBLE-TRACK (structurant)
+Prospect/Client/Partenaire ne sont PAS un axe exclusif. **2 axes orthogonaux** : (1) Produit = `isClient` binaire ; (2) Opportunité = tunnel `Nouveau→Invitation→Présentation→Suivi→Closing→Démarrage→Formation→Actif→Leader`. Un contact peut être **Client ET en recrutement**. Segment = **label dérivé** (priorité Partenaire > en recrutement > Client > Prospect). Fix PATCH : poser `prospectStage` sur un CLIENT garde son statut client. Liste `/contacts` = 3 déroulants (segment dérivé · marché · stade adaptatif).
+
+### Fiche `/contacts/[id]`
+Plein écran (`navHidden` sur `/contacts/`), en-tête statut + croix (pas de flèche retour). Formulaire replié dans « Détails » (Enregistrer contextuel, pas flottant). Curseur unique du tunnel + « Réengager ». Pastilles statut gris (segment retiré, déjà dans le header). Conversions = liens ghost. **Composeur fiche = `components/contact-composer.tsx`, aligné sur `AppComposer`.**
+
+### Mémoire par contact (4 couches ; A/B/C déployées)
+Faits (Postgres) + Qualification explicite + **bloc `Contact.atlasMemory` auto-édité (MemGPT-style)** + Mem0 (différé). Endpoint service `POST /api/atlas/contact-memory` (réflexion haiku) réécrit le carnet ; le proxy le régénère après chaque chat contact. Carte « À retenir » éditable. Snapshot contact = `lib/contact-snapshot.ts` (`buildContactSnapshot`). Conversations rattachées via `AtlasConversation.contactId` (hors historique principal).
+
+### Option C — accueil contact-aware (tool-use)
+Boucle tool-use **dans le service**, exécution par **callback vers l'app** (endpoint interne `POST /api/internal/contact-lookup`, protégé `INTERNAL_API_SECRET`, `APP_URL` côté service). Outil `get_contact(nom)` → snapshot → réponse. Events SSE `{tool}` (indicateur front) + `{resolved_contacts}` (write-back Phase C sûr, contact confirmé). `use_tools` désactivé si `contact_snapshot` (fiche). 4 repos évalués (hermes/Letta/Mem0/Honcho), aucun adopté.
+
+### Convention
+- **Composeur** : toute surface de chat réutilise/aligne sur `components/mobile/app-composer.tsx` (rounded-[26px], textarea auto-grow, text-lg lg:text-sm, SendHorizontal).
+- **« Atlas » cité avec parcimonie** dans l'UI (l'app EST Atlas). Score contact = interne (moteur de plan), pas affiché.
