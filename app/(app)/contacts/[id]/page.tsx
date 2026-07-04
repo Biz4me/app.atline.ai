@@ -358,9 +358,7 @@ export default function ContactDetailPage({ params }: { params: Promise<{ id: st
   const showOppCursor = isProspect || isPartner || recruiting
   const oppStages = isPartner ? PARTNER_STAGES : PROSPECT_STAGES
   const oppCurrent = isPartner ? c.partnerStage : c.prospectStage
-  const recruitingLabel = PROSPECT_STAGES.find((s) => s.id === c.prospectStage)?.label ?? ''
-  // Ligne de statut fusionnée + compteur « Détails »
-  const segmentLabel = isPartner ? 'Partenaire' : isClient ? (recruiting ? 'Client · en recrutement' : 'Client') : 'Prospect'
+  // Pastilles de statut + compteur « Détails »
   const stadeLabel = showOppCursor ? (oppStages.find((s) => s.id === oppCurrent)?.label ?? null) : null
   const marketLabel = qual.market ? ({ CHAUD: 'Marché chaud', TIEDE: 'Marché tiède', FROID: 'Marché froid' } as Record<string, string>)[qual.market] : null
   const detailsFilled = pfNf([pf.firstName, pf.lastName, pf.gender, pf.birthDate, pf.profession, pf.education]) + pfNf([pf.phone, pf.email, pf.address, pf.postal, pf.city, pf.country]) + [qual.personality, qual.market, qual.situation, qual.interests, qual.motivation, qual.insatisfaction, qual.reseau, qual.ouverture].filter((v) => v && String(v).trim()).length
@@ -379,11 +377,12 @@ export default function ContactDetailPage({ params }: { params: Promise<{ id: st
         <div className="flex flex-col items-center gap-2.5">
           <div className="grid size-20 place-items-center rounded-full text-2xl font-bold text-white" style={{ backgroundColor: perso?.hex ?? c.accent }}>{c.initials}</div>
           <p className="text-lg font-semibold text-foreground">{c.name || 'Contact'}</p>
-          {/* Statut fusionné : segment · stade · marché · couleur — tout d'un coup d'œil */}
+          {/* Statut d'un coup d'œil — le segment est déjà dans le header, pastilles gris uniforme */}
           <div className="flex flex-wrap items-center justify-center gap-1.5">
-            <span className="rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-semibold text-primary">{segmentLabel}</span>
+            {recruiting && <span className="rounded-full bg-muted px-2.5 py-0.5 text-xs font-medium text-muted-foreground">En recrutement</span>}
             {stadeLabel && <span className="rounded-full bg-muted px-2.5 py-0.5 text-xs font-medium text-muted-foreground">{stadeLabel}</span>}
             {marketLabel && <span className="rounded-full bg-muted px-2.5 py-0.5 text-xs font-medium text-muted-foreground">{marketLabel}</span>}
+            {(isProspect || recruiting) && <span className="rounded-full bg-muted px-2.5 py-0.5 text-xs font-medium text-muted-foreground">{c.exposures} exposition{c.exposures > 1 ? 's' : ''}</span>}
             {perso && <span className="flex items-center gap-1 rounded-full bg-muted px-2.5 py-0.5 text-xs font-medium text-muted-foreground"><span className="size-2 rounded-full" style={{ backgroundColor: perso.hex }} />{perso.label}</span>}
           </div>
         </div>
@@ -516,9 +515,8 @@ export default function ContactDetailPage({ params }: { params: Promise<{ id: st
             <button type="button" onClick={() => save({ convert: 'partenaire' }, 'Converti en partenaire')} className="rounded-md px-2 py-0.5 text-sm font-semibold text-primary active:bg-primary/10">partenaire</button>
           </div>
         )}
-        {/* Signal — expositions (branché) + dernier contact ; score retiré (métrique interne) */}
+        {/* Signal — dernier contact (déclencheur de relance) ; exposition remontée dans les pastilles */}
         <p className="text-xs text-muted-foreground">
-          {isProspect && <><span className="font-semibold text-foreground">{c.exposures} exposition{c.exposures > 1 ? 's' : ''}</span> · </>}
           dernier contact : <span className="font-medium text-foreground">{c.lastContact ? new Date(c.lastContact).toLocaleDateString('fr-FR') : 'jamais'}</span>
         </p>
         {/* Prochain pas — simplifié, à la charte (carte standard, accent Atlas discret) */}
