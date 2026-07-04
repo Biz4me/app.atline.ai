@@ -67,6 +67,7 @@ type Contact = {
   kind: string; email: string; phone: string; phone2: string; address: string; address2: string; postal: string; city: string; country: string
   source: string; personality: string | null; market: string | null; qualification: Record<string, string>; prospectStage: string | null; partnerStage: string | null
   score: number; exposures: number; lastContact: string | null; note: string; tags: string[]; convertedUserId: string | null
+  atlasMemory: string
 }
 type Interaction = { id: string; type: string; direction: string; outcome: string | null; body: string | null; isExposure: boolean; createdAt: string }
 type Appt = { id: string; title: string; startAt: string; type: string; done: boolean }
@@ -539,6 +540,17 @@ export default function ContactDetailPage({ params }: { params: Promise<{ id: st
             {nextStep.action === 'EDIT' && (
               <button type="button" onClick={() => { setPfOpen((o) => ({ ...o, details: true })); window.scrollTo({ top: 0, behavior: 'smooth' }) }} className="mt-3 flex w-full items-center justify-center gap-1.5 rounded-xl bg-primary py-2.5 text-xs font-bold text-primary-foreground active:opacity-90">Compléter la fiche</button>
             )}
+          </div>
+        )}
+
+        {/* Ce qu'Atlas retient — bloc mémoire auto-édité (MemGPT-style), transparent */}
+        {c.atlasMemory && (
+          <div className="rounded-2xl border border-border bg-surface p-4">
+            <div className="mb-1 flex items-center gap-1.5">
+              <Sparkles className="size-3.5 stroke-[1.5] text-primary" />
+              <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Ce qu&apos;Atlas retient</p>
+            </div>
+            <p className="whitespace-pre-line text-sm leading-relaxed text-muted-foreground">{c.atlasMemory}</p>
           </div>
         )}
 

@@ -234,6 +234,29 @@ export async function POST(req: NextRequest) {
     } catch {
       /* persistance best-effort */
     }
+
+    // Phase C — Atlas réécrit son bloc mémoire du contact (MemGPT-style), en tâche de fond.
+    if (body.contactId && full.trim()) {
+      try {
+        const cur = await db.contact.findFirst({ where: { id: body.contactId, userId }, select: { name: true, atlasMemory: true } })
+        if (cur) {
+          const answer = full.replace(/\s*\[\[[A-Z]+\]\][\s\S]*$/, '').trim()
+          const mr = await fetch(`${ATLAS_URL}/api/atlas/contact-memory`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ contact_name: cur.name, current_memory: cur.atlasMemory ?? '', exchange: `Utilisateur: ${query}\nAtlas: ${answer}` }),
+          })
+          if (mr.ok) {
+            const { memory } = await mr.json()
+            if (typeof memory === 'string' && memory.trim()) {
+              await db.contact.update({ where: { id: body.contactId }, data: { atlasMemory: memory.trim(), atlasMemoryAt: new Date() } })
+            }
+          }
+        }
+      } catch {
+        /* mémoire best-effort */
+      }
+    }
   })()
 
   return new Response(toClient, {

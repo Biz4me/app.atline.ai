@@ -73,6 +73,7 @@ export async function GET(_: Request, ctx: { params: Promise<{ id: string }> }) 
     exposures: c.exposures,
     lastContact: c.lastContact?.toISOString() ?? null,
     note: c.note ?? '',
+    atlasMemory: c.atlasMemory ?? '',
     tags: c.tags,
     createdAt: c.createdAt.toISOString(),
     businessId: c.mlmBusinessId,
