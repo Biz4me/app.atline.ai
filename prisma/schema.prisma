@@ -87,7 +87,6 @@ model User {
 
   // Atlas
   atlasConversations       AtlasConversation[]
-  dailyPlans               DailyPlan[]
   atlasReports             AtlasReport[]
 
   // LMS
@@ -400,7 +399,6 @@ model UserMlmBusiness {
   prospectBots       ProspectBot[]
   conversations      Conversation[]
   appointments       Appointment[]
-  dailyPlans         DailyPlan[]
   atlasReports       AtlasReport[]
   atlasConversations AtlasConversation[]
   importBatches      ContactImportBatch[]
@@ -726,41 +724,6 @@ enum AtlasRole {
   ASSISTANT
 }
 
-model DailyPlan {
-  id            String          @id @default(cuid())
-  userId        String
-  user          User            @relation(fields: [userId], references: [id])
-  mlmBusinessId String
-  mlmBusiness   UserMlmBusiness @relation(fields: [mlmBusinessId], references: [id])
-  date          DateTime        @db.Date
-  generatedAt   DateTime        @default(now())
-  tasks         DailyTask[]
-
-  @@unique([userId, mlmBusinessId, date])
-}
-
-model DailyTask {
-  id                  String    @id @default(cuid())
-  planId              String
-  plan                DailyPlan @relation(fields: [planId], references: [id], onDelete: Cascade)
-  title               String
-  subtitle            String?
-  icon                String
-  color               String
-  cta                 String
-  position            Int
-  done                Boolean   @default(false)
-  doneAt              DateTime?
-  linkedContactId     String?
-  linkedModuleId      String?
-  linkedAppointmentId String?
-  linkedMlmEventId    String?
-  linkedSimPhase      String?
-  linkedPostId        String?
-  linkedReportId      String?
-  linkedBookId        String?
-  linkedBotConvId     String?
-}
 
 model AtlasReport {
   id            String          @id @default(cuid())
