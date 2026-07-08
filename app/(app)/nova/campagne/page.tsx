@@ -12,7 +12,6 @@ import {
   Video,
   CalendarClock,
   Check,
-  Lock,
   Camera,
   Globe,
   Music2,
@@ -68,12 +67,12 @@ Aide l'utilisateur à décrire la CIBLE idéale : à qui s'adresse ce produit et
 Style : chaleureux, tutoiement, phrases courtes, une question à la fois, sans jargon. Pose 1 à 2 questions max pour cerner la personne.
 Quand la cible est claire, résume-la en une phrase et termine par ce marqueur exact sur une nouvelle ligne : [[OK: <la cible en une phrase>]]`
 
-// Flow campagne complet (8 écrans), noms courts.
-const STEPS = ['Description', 'Cible', 'Réunion', 'Canaux', 'Profil', 'Contenu', 'Parcours', 'Récap']
+// Flow campagne complet (8 écrans), noms courts. Canaux en 3 : il conditionne Radar/profil/contenu.
+const STEPS = ['Description', 'Cible', 'Canaux', 'Réunion', 'Profil', 'Contenu', 'Parcours', 'Récap']
 
 type Goal = 'CLIENTS' | 'PARTENAIRES'
 type MeetingFormat = 'TETE_A_TETE' | 'GROUPE'
-type Platform = 'INSTAGRAM' | 'FACEBOOK'
+type Platform = 'INSTAGRAM' | 'TIKTOK' | 'FACEBOOK'
 
 const WEEKDAYS = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche']
 
@@ -100,7 +99,7 @@ export default function CampagnePage() {
   const [link, setLink] = useState('')
 
   // Écran 4 — Canaux
-  const [channels, setChannels] = useState<Platform[]>(['INSTAGRAM', 'FACEBOOK'])
+  const [channels, setChannels] = useState<Platform[]>(['INSTAGRAM', 'TIKTOK'])
 
   // Écran 5 — Optimise ton profil (checklist consultative, non persistée)
   const [checked, setChecked] = useState<Record<string, boolean>>({})
@@ -170,7 +169,7 @@ export default function CampagnePage() {
         if (mc.day) setDay(mc.day)
         if (mc.time) setTime(mc.time)
         if (mc.link) setLink(mc.link)
-        if (Array.isArray(c.channels)) setChannels(c.channels.filter((x: string) => x === 'INSTAGRAM' || x === 'FACEBOOK') as Platform[])
+        if (Array.isArray(c.channels)) setChannels(c.channels.filter((x: string) => ['INSTAGRAM', 'TIKTOK', 'FACEBOOK'].includes(x)) as Platform[])
         if (c.contentMode) setContentMode(c.contentMode)
         if (typeof c.cadence === 'number') setCadence(c.cadence)
       })
@@ -237,18 +236,18 @@ export default function CampagnePage() {
       if (step === 1) {
         await patch({ audience: { who, pain, desire } })
       } else if (step === 2) {
+        if (channels.length === 0) {
+          toast.error('Choisis au moins un réseau')
+          return false
+        }
+        await patch({ channels })
+      } else if (step === 3) {
         if (!meetingFormat) {
           toast.error('Choisis un format de réunion')
           return false
         }
         const meetingConfig = meetingFormat === 'GROUPE' ? { day, time, link } : {}
         await patch({ meetingFormat, offerPitch, meetingConfig })
-      } else if (step === 3) {
-        if (channels.length === 0) {
-          toast.error('Choisis au moins un réseau')
-          return false
-        }
-        await patch({ channels })
       } else if (step === 5) {
         await patch({ contentMode, cadence })
       }
@@ -362,7 +361,7 @@ export default function CampagnePage() {
               key={`${step}-${editing ? 'e' : 'n'}`}
               seed={step === 0 ? seed : cibleSeed(productName, who)}
               onCapture={step === 0 ? setProductName : setWho}
-              chipLabel={`Configurer la ${STEPS[step + 1].toLowerCase()}`}
+              chipLabel={`Configurer : ${STEPS[step + 1]}`}
               onChip={next}
               storageKey={`nova_chat_${forId}_${step}`}
             />
@@ -372,7 +371,7 @@ export default function CampagnePage() {
         <>
       <div className="flex-1 overflow-y-auto px-4 py-5 pb-32">
         {/* Écran 3 — La réunion */}
-        {step === 2 && (
+        {step === 3 && (
           <Step
             title="Comment se passe la rencontre ?"
             subtitle="C'est le rendez-vous vers lequel Nova conduit chaque prospect."
@@ -458,10 +457,10 @@ export default function CampagnePage() {
         )}
 
         {/* Écran 4 — Canaux */}
-        {step === 3 && (
+        {step === 2 && (
           <Step
             title="Où veux-tu publier ?"
-            subtitle="On démarre sur le duo qui capte le mieux les leads. Tu pourras en ajouter."
+            subtitle="Instagram capte les leads, TikTok apporte la portée. Nova surveillera les tendances sur tes réseaux."
           >
             <div className="flex flex-col gap-3">
               <ChannelCard
@@ -469,22 +468,22 @@ export default function CampagnePage() {
                 onClick={() => toggleChannel('INSTAGRAM')}
                 icon={Camera}
                 title="Instagram"
-                desc="Reels et messages privés : le moteur de la capture."
+                desc="Le moteur de capture : Reels, DM, messages depuis les commentaires."
+              />
+              <ChannelCard
+                active={channels.includes('TIKTOK')}
+                onClick={() => toggleChannel('TIKTOK')}
+                icon={Music2}
+                title="TikTok"
+                desc="Le moteur de portée : audience froide, viralité. Renvoie vers ton Instagram."
               />
               <ChannelCard
                 active={channels.includes('FACEBOOK')}
                 onClick={() => toggleChannel('FACEBOOK')}
                 icon={Globe}
                 title="Facebook"
-                desc="Ton réseau proche et les groupes de ta thématique."
-              />
-              <ChannelCard
-                active={false}
-                onClick={() => toast('TikTok — bientôt disponible')}
-                icon={Music2}
-                title="TikTok"
-                desc="Portée à froid maximale."
-                soon
+                desc="Utile surtout pour une audience plus âgée ou locale."
+                optional
               />
             </div>
           </Step>
@@ -625,7 +624,9 @@ export default function CampagnePage() {
                 icon={Radio}
                 label="Canaux"
                 value={
-                  channels.map((c) => (c === 'INSTAGRAM' ? 'Instagram' : 'Facebook')).join(' · ') || '—'
+                  channels
+                    .map((c) => (c === 'INSTAGRAM' ? 'Instagram' : c === 'TIKTOK' ? 'TikTok' : 'Facebook'))
+                    .join(' · ') || '—'
                 }
               />
               <RecapRow
@@ -747,14 +748,14 @@ function ChannelCard({
   icon: Icon,
   title,
   desc,
-  soon,
+  optional,
 }: {
   active: boolean
   onClick: () => void
   icon: typeof Camera
   title: string
   desc: string
-  soon?: boolean
+  optional?: boolean
 }) {
   return (
     <button
@@ -763,7 +764,6 @@ function ChannelCard({
       className={cn(
         'flex items-center gap-3 rounded-2xl border bg-surface p-4 text-left shadow-card transition-colors',
         active ? 'border-transparent' : 'border-border active:bg-muted',
-        soon && 'opacity-60',
       )}
       style={active ? { borderColor: NOVA, boxShadow: `0 0 0 1px ${NOVA}` } : undefined}
     >
@@ -776,10 +776,9 @@ function ChannelCard({
       <span className="flex-1">
         <span className="flex items-center gap-2">
           <span className="text-sm font-bold text-foreground">{title}</span>
-          {soon && (
-            <span className="flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-[10px] font-semibold text-muted-foreground">
-              <Lock className="size-2.5" />
-              Bientôt
+          {optional && (
+            <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-semibold text-muted-foreground">
+              Optionnel
             </span>
           )}
         </span>
