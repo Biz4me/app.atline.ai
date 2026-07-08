@@ -68,7 +68,7 @@ Style : chaleureux, tutoiement, phrases courtes, une question à la fois, sans j
 Quand la cible est claire, résume-la en une phrase et termine par ce marqueur exact sur une nouvelle ligne : [[OK: <la cible en une phrase>]]`
 
 // Flow campagne complet (8 écrans), noms courts. Canaux en 3 : il conditionne Radar/profil/contenu.
-const STEPS = ['Description', 'Cible', 'Canaux', 'Réunion', 'Profil', 'Contenu', 'Parcours', 'Récap']
+const STEPS = ['Description', 'Cible', 'Canaux', 'Radar', 'Réunion', 'Profil', 'Contenu', 'Parcours', 'Récap']
 
 type Goal = 'CLIENTS' | 'PARTENAIRES'
 type MeetingFormat = 'TETE_A_TETE' | 'GROUPE'
@@ -241,14 +241,14 @@ export default function CampagnePage() {
           return false
         }
         await patch({ channels })
-      } else if (step === 3) {
+      } else if (step === 4) {
         if (!meetingFormat) {
           toast.error('Choisis un format de réunion')
           return false
         }
         const meetingConfig = meetingFormat === 'GROUPE' ? { day, time, link } : {}
         await patch({ meetingFormat, offerPitch, meetingConfig })
-      } else if (step === 5) {
+      } else if (step === 6) {
         await patch({ contentMode, cadence })
       }
       return true
@@ -270,7 +270,7 @@ export default function CampagnePage() {
   }
 
   async function next() {
-    if (step <= 5) {
+    if (step < STEPS.length - 1) {
       const ok = await persist()
       if (!ok) return
     }
@@ -370,8 +370,25 @@ export default function CampagnePage() {
       ) : (
         <>
       <div className="flex-1 overflow-y-auto px-4 py-5 pb-32">
-        {/* Écran 3 — La réunion */}
+        {/* Écran 4 — Radar : aperçu des tendances de la niche (démo ; Apify branché plus tard) */}
         {step === 3 && (
+          <Step
+            title="Ce qui cartonne dans ta niche"
+            subtitle={`Nova a repéré ces formats qui marchent sur ${channels.map((c) => (c === 'INSTAGRAM' ? 'Instagram' : c === 'TIKTOK' ? 'TikTok' : 'Facebook')).join(' et ') || 'tes réseaux'}. On s'en inspirera pour créer ton contenu.`}
+          >
+            <div className="flex flex-col gap-3">
+              {RADAR_DEMO.map((t) => (
+                <TrendCard key={t.title} {...t} />
+              ))}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Aperçu — la veille des tendances en temps réel arrive bientôt.
+            </p>
+          </Step>
+        )}
+
+        {/* Écran 5 — La réunion */}
+        {step === 4 && (
           <Step
             title="Comment se passe la rencontre ?"
             subtitle="C'est le rendez-vous vers lequel Nova conduit chaque prospect."
@@ -490,7 +507,7 @@ export default function CampagnePage() {
         )}
 
         {/* Écran 5 — Optimise ton profil */}
-        {step === 4 && (
+        {step === 5 && (
           <Step
             title="Prépare tes profils"
             subtitle="Un visiteur qui clique doit comprendre en 3 secondes. Coche au fur et à mesure."
@@ -514,7 +531,7 @@ export default function CampagnePage() {
         )}
 
         {/* Écran 6 — Contenu */}
-        {step === 5 && (
+        {step === 6 && (
           <Step
             title="Comment tu crées ?"
             subtitle="Nova écrit tout. À toi de dire si tu apparais à l'écran ou non."
@@ -583,7 +600,7 @@ export default function CampagnePage() {
         )}
 
         {/* Écran 7 — Parcours du lead */}
-        {step === 6 && (
+        {step === 7 && (
           <Step
             title="Ce qui se passe ensuite"
             subtitle="Atlas s'occupe de tout jusqu'à la réunion. Toi, tu animes et tu closes."
@@ -597,7 +614,7 @@ export default function CampagnePage() {
         )}
 
         {/* Écran 8 — Récap */}
-        {step === 7 && (
+        {step === 8 && (
           <Step
             title="Prêt à lancer ?"
             subtitle="Vérifie ta campagne. Tu pourras tout modifier ensuite."
@@ -741,6 +758,29 @@ const PROFILE_TIPS: { id: string; icon: typeof ImageIcon; title: string; desc: s
   { id: 'feed', icon: Grid3x3, title: 'Un feed cohérent', desc: 'Mêmes couleurs, même ton : on te reconnaît d\'un coup d\'œil.' },
   { id: 'epingle', icon: Sparkles, title: 'Un post épinglé qui présente ton offre', desc: 'Le premier réflexe d\'un curieux, c\'est de scroller ton profil.' },
 ]
+
+// Démo Radar : remplacé par la vraie recherche Apify (tendances de la niche) plus tard.
+const RADAR_DEMO: { platform: string; title: string; hook: string; views: string }[] = [
+  { platform: 'TikTok', title: 'Avant / Après', hook: 'Transformation en 15 s, gros texte, son tendance.', views: '2,4 M' },
+  { platform: 'Instagram', title: 'Les 3 erreurs à éviter', hook: '« Arrête de faire ça… » face caméra, format liste.', views: '1,1 M' },
+  { platform: 'TikTok', title: 'Ma routine en POV', hook: '3 gestes filmés à la première personne, rythme rapide.', views: '890 k' },
+  { platform: 'Instagram', title: 'Témoignage client', hook: 'Avis authentique en story, sous-titres gros.', views: '540 k' },
+]
+
+function TrendCard({ platform, title, hook, views }: { platform: string; title: string; hook: string; views: string }) {
+  return (
+    <div className="rounded-2xl border border-border bg-surface p-4 shadow-card">
+      <div className="flex items-center gap-2">
+        <span className="rounded-full px-2 py-0.5 text-[10px] font-semibold" style={{ background: `${NOVA}1a`, color: NOVA }}>
+          {platform}
+        </span>
+        <span className="flex-1 truncate text-sm font-bold text-foreground">{title}</span>
+        <span className="shrink-0 text-xs font-semibold text-muted-foreground">{views} vues</span>
+      </div>
+      <p className="mt-1 text-xs text-muted-foreground">{hook}</p>
+    </div>
+  )
+}
 
 function ChannelCard({
   active,
