@@ -35,7 +35,8 @@ import { NovaChat } from '@/components/nova/nova-chat'
 import { VideoRecorder } from '@/components/nova/video-recorder'
 
 const NOVA = '#8B5CF6'
-const WKEY = 'nova_wizard' // clé sessionStorage de reprise (état du wizard)
+const WKEY = 'nova_wizard_v2' // clé sessionStorage de reprise (v2 = purge des états d'avant le nouveau flow)
+const CHATKEY = 'nova_chat_v2' // préfixe des conversations sauvegardées (v2 pour ignorer les anciennes)
 
 // Écran 1 — consigne de Nova : cadrer la campagne sur un PRODUIT/SERVICE (les réseaux pénalisent
 // le contenu "opportunité/MLM"). Nova réoriente si besoin, puis pose [[OK: …]] quand c'est verrouillé.
@@ -212,7 +213,7 @@ export default function CampagnePage() {
       sessionStorage.removeItem(WKEY)
       for (let i = sessionStorage.length - 1; i >= 0; i--) {
         const k = sessionStorage.key(i)
-        if (k && k.startsWith(`nova_chat_${forId}_`)) sessionStorage.removeItem(k)
+        if (k && k.startsWith(`${CHATKEY}_${forId}_`)) sessionStorage.removeItem(k)
       }
     } catch {}
   }
@@ -412,7 +413,7 @@ export default function CampagnePage() {
               onChip={next}
               extraLabel={step === 5 ? 'Filmer ta vidéo' : undefined}
               onExtra={step === 5 ? () => setRecorderOpen(true) : undefined}
-              storageKey={`nova_chat_${forId}_${step}`}
+              storageKey={`${CHATKEY}_${forId}_${step}`}
             />
           )}
         </div>
