@@ -40,9 +40,11 @@ export const RAIL = NAV_GROUPS.map((g) => ({
 }))
 
 // Tiroir mobile : items marqués 'drawer', à plat (label mobile prioritaire)
-export const DRAWER_SECTIONS: NavItem[] = ALL_PAGES
-  .filter((i) => i.mobile === 'drawer')
-  .map((i) => ({ href: i.href, label: i.mobileLabel ?? i.label, icon: i.icon }))
+// + raccourci Nova (agent) pour lancer une campagne en un tap (mobile uniquement, desktop a son rail d'agents)
+export const DRAWER_SECTIONS: NavItem[] = [
+  ...ALL_PAGES.filter((i) => i.mobile === 'drawer').map((i) => ({ href: i.href, label: i.mobileLabel ?? i.label, icon: i.icon })),
+  { href: '/nova', label: 'Nova', icon: SquarePen },
+]
 
 // Agents IA — composeur (bas) + switcher (badge)
 export const AGENTS: { href: string; label: string; sub: string; icon: LucideIcon; color: string }[] = [
