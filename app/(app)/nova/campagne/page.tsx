@@ -21,6 +21,14 @@ import {
   AtSign,
   Link2,
   Grid3x3,
+  MessageCircle,
+  Filter,
+  CalendarCheck,
+  Handshake,
+  RefreshCw,
+  Target,
+  Megaphone,
+  Radio,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
@@ -137,9 +145,18 @@ export default function CampagnePage() {
     }
     if (step < STEPS.length - 1) {
       setStep((s) => s + 1)
-    } else {
-      toast.success('Campagne enregistrée')
+      return
+    }
+    // Récap → lancer
+    setSaving(true)
+    try {
+      await patch({ status: 'ACTIVE' })
+      toast.success('Campagne lancée')
       router.push('/nova')
+    } catch {
+      toast.error('Lancement impossible, réessaie')
+    } finally {
+      setSaving(false)
     }
   }
 
@@ -457,19 +474,65 @@ export default function CampagnePage() {
           </Step>
         )}
 
-        {/* Écrans 7-8 — à venir */}
-        {step > 5 && (
-          <Step title={STEPS[step]} subtitle="Cet écran arrive bientôt.">
-            <div className="flex flex-col items-center gap-3 rounded-2xl border border-dashed border-border py-16 text-center">
-              <span
-                className="flex size-12 items-center justify-center rounded-full"
-                style={{ background: `${NOVA}1a`, color: NOVA }}
-              >
-                <Sparkles className="size-6" />
-              </span>
-              <p className="text-sm font-semibold text-foreground">« {STEPS[step]} » en construction</p>
-              <p className="max-w-xs text-xs text-muted-foreground">
-                Ta campagne est déjà enregistrée. On branche cet écran dans la prochaine étape.
+        {/* Écran 7 — Parcours du lead */}
+        {step === 6 && (
+          <Step
+            title="Ce qui se passe ensuite"
+            subtitle="Atlas s'occupe de tout jusqu'à la réunion. Toi, tu animes et tu closes."
+          >
+            <div className="flex flex-col">
+              {JOURNEY.map((s, i) => (
+                <JourneyStep key={s.title} {...s} last={i === JOURNEY.length - 1} />
+              ))}
+            </div>
+          </Step>
+        )}
+
+        {/* Écran 8 — Récap */}
+        {step === 7 && (
+          <Step
+            title="Prêt à lancer ?"
+            subtitle="Vérifie ta campagne. Tu pourras tout modifier ensuite."
+          >
+            <div className="flex flex-col gap-2.5">
+              <RecapRow
+                icon={Target}
+                label="Objectif"
+                value={goal === 'PARTENAIRES' ? 'Recruter des partenaires' : 'Trouver des clients'}
+              />
+              <RecapRow icon={Users} label="Cible" value={who || 'Non précisée'} />
+              <RecapRow
+                icon={CalendarCheck}
+                label="Réunion"
+                value={
+                  meetingFormat === 'GROUPE'
+                    ? `En groupe — ${day} à ${time}`
+                    : meetingFormat === 'TETE_A_TETE'
+                      ? 'En tête-à-tête — sur rendez-vous'
+                      : 'Non définie'
+                }
+              />
+              <RecapRow
+                icon={Radio}
+                label="Canaux"
+                value={
+                  channels.map((c) => (c === 'INSTAGRAM' ? 'Instagram' : 'Facebook')).join(' · ') || '—'
+                }
+              />
+              <RecapRow
+                icon={contentMode === 'FACELESS' ? Wand2 : Video}
+                label="Contenu"
+                value={`${contentMode === 'FACELESS' ? 'Sans te montrer' : 'Face caméra'} · ${cadence}/sem`}
+              />
+            </div>
+            <div
+              className="flex items-start gap-2.5 rounded-2xl border p-3.5"
+              style={{ borderColor: `${NOVA}45`, background: `${NOVA}0f` }}
+            >
+              <Megaphone className="mt-0.5 size-4 shrink-0" style={{ color: NOVA }} />
+              <p className="text-xs text-muted-foreground">
+                En lançant, Nova commence à produire ton contenu et à publier au rythme choisi. Tu gardes
+                la main sur chaque publication.
               </p>
             </div>
           </Step>
@@ -488,7 +551,7 @@ export default function CampagnePage() {
           className="w-full rounded-xl py-3.5 text-sm font-bold text-white transition-transform active:scale-[0.98] disabled:opacity-50"
           style={{ background: NOVA }}
         >
-          {saving ? 'Enregistrement…' : step === STEPS.length - 1 ? 'Terminer' : 'Continuer'}
+          {saving ? 'Enregistrement…' : step === STEPS.length - 1 ? 'Lancer la campagne' : 'Continuer'}
         </button>
       </div>
     </div>
@@ -664,6 +727,82 @@ const CADENCES = [
   { value: 5, label: 'Régulier' },
   { value: 7, label: 'Intense' },
 ]
+
+const ATLAS = '#F97316'
+
+const JOURNEY: { icon: typeof MessageCircle; title: string; desc: string; actor: 'Atlas' | 'Toi' }[] = [
+  { icon: MessageCircle, title: 'Un curieux se manifeste', desc: 'Il commente ou t\'écrit — Atlas engage la conversation en privé.', actor: 'Atlas' },
+  { icon: Filter, title: 'Atlas qualifie', desc: 'Il cerne son besoin et sa maturité, sans être insistant.', actor: 'Atlas' },
+  { icon: CalendarCheck, title: 'Il s\'inscrit à la réunion', desc: 'Atlas l\'invite et le place sur ton créneau.', actor: 'Atlas' },
+  { icon: Handshake, title: 'La réunion', desc: 'Tu présentes, tu réponds, tu closes en direct.', actor: 'Toi' },
+  { icon: RefreshCw, title: 'Le suivi', desc: 'Tu notes le résultat ; Atlas relance ceux qui hésitent.', actor: 'Toi' },
+]
+
+function JourneyStep({
+  icon: Icon,
+  title,
+  desc,
+  actor,
+  last,
+}: {
+  icon: typeof MessageCircle
+  title: string
+  desc: string
+  actor: 'Atlas' | 'Toi'
+  last: boolean
+}) {
+  const color = actor === 'Atlas' ? ATLAS : NOVA
+  return (
+    <div className="flex gap-3">
+      <div className="flex flex-col items-center">
+        <span
+          className="flex size-9 shrink-0 items-center justify-center rounded-full"
+          style={{ background: `${color}1a`, color }}
+        >
+          <Icon className="size-4 stroke-[1.5]" />
+        </span>
+        {!last && <span className="my-1 w-px flex-1 bg-border" />}
+      </div>
+      <div className={cn('flex-1', !last && 'pb-4')}>
+        <div className="flex items-center gap-2">
+          <span className="text-sm font-bold text-foreground">{title}</span>
+          <span
+            className="rounded-full px-2 py-0.5 text-[10px] font-semibold"
+            style={{ background: `${color}1a`, color }}
+          >
+            {actor}
+          </span>
+        </div>
+        <p className="text-xs text-muted-foreground">{desc}</p>
+      </div>
+    </div>
+  )
+}
+
+function RecapRow({
+  icon: Icon,
+  label,
+  value,
+}: {
+  icon: typeof Target
+  label: string
+  value: string
+}) {
+  return (
+    <div className="flex items-center gap-3 rounded-2xl border border-border bg-surface p-3.5">
+      <span
+        className="flex size-9 shrink-0 items-center justify-center rounded-lg"
+        style={{ background: `${NOVA}1a`, color: NOVA }}
+      >
+        <Icon className="size-4 stroke-[1.5]" />
+      </span>
+      <div className="flex-1">
+        <p className="eyebrow">{label}</p>
+        <p className="text-sm font-semibold text-foreground line-clamp-2">{value}</p>
+      </div>
+    </div>
+  )
+}
 
 function ModeCard({
   active,
