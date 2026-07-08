@@ -18,136 +18,138 @@ datasource db {
 // ============================================================
 
 model User {
-  id               String         @id @default(cuid())
-  username         String         @unique
-  email            String         @unique
-  emailVerified    DateTime?
-  passwordHash     String?
-  firstName        String
-  lastName         String
-  phone            String?
-  phone2           String?
-  gender           String?
-  address          String?
-  address2         String?
-  postal           String?
-  city             String?
-  country          String         @default("France")
-  photoUrl         String?
-  plan             Plan           @default(DISTRIBUTEUR)
-  planBillingCycle BillingCycle   @default(MONTHLY)
-  planStartedAt    DateTime?
-  planExpiresAt    DateTime?
-  trialEndsAt      DateTime?
-  stripeCustomerId String?        @unique
-  kind             UserKind       @default(LICENSEE)
-  role             UserRole       @default(USER)
-  status           UserStatus     @default(ACTIVE)
-  lastLoginAt      DateTime?
-  level            Int            @default(1)
-  locale           String         @default("fr")
-  lat              Float?
-  lng              Float?
-  bio              String?
-  socials          Json?
-  coaching         Json?
-  birthDate        DateTime?
-  hubVisible       Boolean        @default(false)
-  onboardingCompleted Boolean     @default(false)
-  onboardingStep   Int            @default(0)
-  onboardingFlow   OnboardingFlow?
-  personality      PersonalityType?
-  profession       String?
-  education        String?
-  createdAt        DateTime       @default(now())
-  updatedAt        DateTime       @updatedAt
+  id                  String           @id @default(cuid())
+  username            String           @unique
+  email               String           @unique
+  emailVerified       DateTime?
+  passwordHash        String?
+  firstName           String
+  lastName            String
+  phone               String?
+  phone2              String?
+  gender              String?
+  address             String?
+  address2            String?
+  postal              String?
+  city                String?
+  country             String           @default("France")
+  photoUrl            String?
+  plan                Plan             @default(DISTRIBUTEUR)
+  planBillingCycle    BillingCycle     @default(MONTHLY)
+  planStartedAt       DateTime?
+  planExpiresAt       DateTime?
+  trialEndsAt         DateTime?
+  stripeCustomerId    String?          @unique
+  kind                UserKind         @default(LICENSEE)
+  role                UserRole         @default(USER)
+  status              UserStatus       @default(ACTIVE)
+  lastLoginAt         DateTime?
+  level               Int              @default(1)
+  locale              String           @default("fr")
+  lat                 Float?
+  lng                 Float?
+  bio                 String?
+  socials             Json?
+  coaching            Json?
+  birthDate           DateTime?
+  hubVisible          Boolean          @default(false)
+  onboardingCompleted Boolean          @default(false)
+  onboardingStep      Int              @default(0)
+  onboardingFlow      OnboardingFlow?
+  personality         PersonalityType?
+  profession          String?
+  education           String?
+  createdAt           DateTime         @default(now())
+  updatedAt           DateTime         @updatedAt
 
   // Auth
-  preferences              UserPreferences?
-  accounts                 Account[]
-  sessions                 Session[]
-  passwordResetTokens      PasswordResetToken[]
-  emailVerificationTokens  EmailVerificationToken[]
+  preferences             UserPreferences?
+  accounts                Account[]
+  sessions                Session[]
+  passwordResetTokens     PasswordResetToken[]
+  emailVerificationTokens EmailVerificationToken[]
 
   // Abonnement & parrainage
-  subscription             StripeSubscription?
-  userReferralsGiven       UserReferral[]       @relation("UserReferralGiver")
-  userReferralsReceived    UserReferral[]       @relation("UserReferralReceiver")
-  supportTickets           SupportTicket[]
-  ticketMessages           TicketMessage[]
+  subscription          StripeSubscription?
+  userReferralsGiven    UserReferral[]      @relation("UserReferralGiver")
+  userReferralsReceived UserReferral[]      @relation("UserReferralReceiver")
+  supportTickets        SupportTicket[]
+  ticketMessages        TicketMessage[]
 
   // MLM & CRM
-  mlmBusinesses            UserMlmBusiness[]
-  contacts                 Contact[]
-  importBatches            ContactImportBatch[]
+  mlmBusinesses UserMlmBusiness[]
+  contacts      Contact[]
+  importBatches ContactImportBatch[]
 
   // Agenda
-  appointments             Appointment[]
-  calComConnection         CalComConnection?
+  appointments     Appointment[]
+  calComConnection CalComConnection?
 
   // Atlas
-  atlasConversations       AtlasConversation[]
-  atlasReports             AtlasReport[]
+  atlasConversations AtlasConversation[]
+  atlasReports       AtlasReport[]
 
   // LMS
-  lmsProgress              UserLmsProgress[]
-  lessonProgress           UserLessonProgress[]
-  quizAttempts             UserQuizAttempt[]
-  certificates             Certificate[]
+  lmsProgress    UserLmsProgress[]
+  lessonProgress UserLessonProgress[]
+  quizAttempts   UserQuizAttempt[]
+  certificates   Certificate[]
 
   // Bibliothèque
-  bookInteractions         UserBookInteraction[]
+  bookInteractions UserBookInteraction[]
 
   // ARIA
-  simSessions              SimSession[]
+  simSessions SimSession[]
 
   // Nova
-  contentPillars           ContentPillar[]
-  contentPosts             ContentPost[]
-  contentIdeas             ContentIdea[]
-  socialAccounts           SocialAccount[]
-  socialInboxItems         SocialInboxItem[]
+  contentPillars   ContentPillar[]
+  contentPosts     ContentPost[]
+  contentIdeas     ContentIdea[]
+  socialAccounts   SocialAccount[]
+  socialInboxItems SocialInboxItem[]
+  campaigns        Campaign[]
+  leads            Lead[]
 
   // Forum
-  forumThreads             ForumThread[]
-  forumPosts               ForumPost[]
-  forumPostLikes           ForumPostLike[]
-  forumSaved               ForumSaved[]
-  forumReports             ForumReport[]
-  contentReports           ContentReport[]
+  forumThreads   ForumThread[]
+  forumPosts     ForumPost[]
+  forumPostLikes ForumPostLike[]
+  forumSaved     ForumSaved[]
+  forumReports   ForumReport[]
+  contentReports ContentReport[]
 
   // Réseau Atline
-  atlineReferralsGiven     AtlineReferral[]     @relation("AtlineReferralReferrer")
-  atlineReferralsReceived  AtlineReferral[]     @relation("AtlineReferralReferred")
-  placements               Placement[]          @relation("PlacementFilleul")
-  placementsRequested      Placement[]          @relation("PlacementRequestedBy")
-  placementsTargeted       Placement[]          @relation("PlacementTargetParent")
-  placementsExecuted       Placement[]          @relation("PlacementPlacedBy")
-  commissions              AtlineCommission[]   @relation("CommissionReceiver")
-  commissionsSource        AtlineCommission[]   @relation("CommissionSource")
-  license                  AtlineLicense?
-  licenseeProducts         LicenseeProductCatalog[]
-  appClients               AppClient[]
+  atlineReferralsGiven    AtlineReferral[]         @relation("AtlineReferralReferrer")
+  atlineReferralsReceived AtlineReferral[]         @relation("AtlineReferralReferred")
+  placements              Placement[]              @relation("PlacementFilleul")
+  placementsRequested     Placement[]              @relation("PlacementRequestedBy")
+  placementsTargeted      Placement[]              @relation("PlacementTargetParent")
+  placementsExecuted      Placement[]              @relation("PlacementPlacedBy")
+  commissions             AtlineCommission[]       @relation("CommissionReceiver")
+  commissionsSource       AtlineCommission[]       @relation("CommissionSource")
+  license                 AtlineLicense?
+  licenseeProducts        LicenseeProductCatalog[]
+  appClients              AppClient[]
 
   // Boîte à outils & messagerie
-  toolboxLinks             ToolboxLink[]
-  toolboxSupports          ToolboxSupport[]
-  conversations            Conversation[]
-  prospectBots             ProspectBot[]
+  toolboxLinks    ToolboxLink[]
+  toolboxSupports ToolboxSupport[]
+  conversations   Conversation[]
+  prospectBots    ProspectBot[]
 
   // Notifications
-  notifications            Notification[]
-  pushTokens               PushToken[]
+  notifications Notification[]
+  pushTokens    PushToken[]
 
   // Événements
-  mlmEventsRequested       MlmEvent[]           @relation("EventRequestedBy")
-  mlmEventsValidated       MlmEvent[]           @relation("EventValidatedBy")
-  eventRegistrations       EventRegistration[]
+  mlmEventsRequested MlmEvent[]          @relation("EventRequestedBy")
+  mlmEventsValidated MlmEvent[]          @relation("EventValidatedBy")
+  eventRegistrations EventRegistration[]
 
   // IA — consommation
-  aiUsageLogs              AiUsageLog[]
-  telegramLink             TelegramLink?
-  aiUsageMonthly           AiUsageMonthly[]
+  aiUsageLogs    AiUsageLog[]
+  telegramLink   TelegramLink?
+  aiUsageMonthly AiUsageMonthly[]
 }
 
 model UserPreferences {
@@ -190,8 +192,8 @@ enum OnboardingFlow {
 }
 
 enum UserKind {
-  LICENSEE  // distributeur licencié Atline — accès réseau complet + vente
-  CLIENT    // client converti depuis AppClient — accès limité + parrainage simple
+  LICENSEE // distributeur licencié Atline — accès réseau complet + vente
+  CLIENT // client converti depuis AppClient — accès limité + parrainage simple
 }
 
 // ============================================================
@@ -292,7 +294,7 @@ enum SubStatus {
 model ReferralConfig {
   id                     String   @id @default(cuid())
   active                 Boolean  @default(true)
-  category  String   @default("coaching")
+  category               String   @default("coaching")
   referrerRewardMonths   Int      @default(1)
   referredDiscountPct    Int      @default(50)
   referredDiscountMonths Int      @default(1)
@@ -326,15 +328,15 @@ enum ReferralRewardStatus {
 // ============================================================
 
 model SupportTicket {
-  id        String         @id @default(cuid())
+  id        String          @id @default(cuid())
   userId    String
-  user      User           @relation(fields: [userId], references: [id])
+  user      User            @relation(fields: [userId], references: [id])
   subject   String
-  priority  TicketPriority @default(NORMAL)
-  status    TicketStatus   @default(OPEN)
+  priority  TicketPriority  @default(NORMAL)
+  status    TicketStatus    @default(OPEN)
   messages  TicketMessage[]
-  createdAt DateTime       @default(now())
-  updatedAt DateTime       @updatedAt
+  createdAt DateTime        @default(now())
+  updatedAt DateTime        @updatedAt
 }
 
 model TicketMessage {
@@ -366,27 +368,27 @@ enum TicketStatus {
 // ============================================================
 
 model UserMlmBusiness {
-  id            String   @id @default(cuid())
-  userId        String
-  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  mlmName       String
-  mlmSlug       String
-  role          String
-  rank          String?
-  goal          String?
-  objectif      Json?
-  produit       String?
-  audience      String?
-  story         String?  // narratif « ma rencontre / ma conviction » — rempli en session Atlas
-  startDate     String?  // date de démarrage, granularité mois : « YYYY-MM »
-  sponsorName   String?  // prénom du parrain (upline direct)
-  structure     Json?    // structure de départ (baseline) : { directs, total, clients }
-  color         String
-  initials      String
-  active        Boolean  @default(true)
-  category  String   @default("coaching")
-  position      Int
-  createdAt     DateTime @default(now())
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  mlmName     String
+  mlmSlug     String
+  role        String
+  rank        String?
+  goal        String?
+  objectif    Json?
+  produit     String?
+  audience    String?
+  story       String? // narratif « ma rencontre / ma conviction » — rempli en session Atlas
+  startDate   String? // date de démarrage, granularité mois : « YYYY-MM »
+  sponsorName String? // prénom du parrain (upline direct)
+  structure   Json? // structure de départ (baseline) : { directs, total, clients }
+  color       String
+  initials    String
+  active      Boolean  @default(true)
+  category    String   @default("coaching")
+  position    Int
+  createdAt   DateTime @default(now())
 
   contacts           Contact[]
   contentPillars     ContentPillar[]
@@ -394,6 +396,8 @@ model UserMlmBusiness {
   contentIdeas       ContentIdea[]
   socialAccounts     SocialAccount[]
   socialInboxItems   SocialInboxItem[]
+  campaigns          Campaign[]
+  leads              Lead[]
   toolboxLinks       ToolboxLink[]
   toolboxSupports    ToolboxSupport[]
   prospectBots       ProspectBot[]
@@ -407,12 +411,12 @@ model UserMlmBusiness {
 }
 
 model MlmCatalog {
-  id      String  @id @default(cuid())
-  name    String  @unique
-  slug    String  @unique
-  country String  @default("FR")
-  active  Boolean @default(true)
-  category  String   @default("coaching")
+  id       String  @id @default(cuid())
+  name     String  @unique
+  slug     String  @unique
+  country  String  @default("FR")
+  active   Boolean @default(true)
+  category String  @default("coaching")
 }
 
 // ============================================================
@@ -420,49 +424,49 @@ model MlmCatalog {
 // ============================================================
 
 model Contact {
-  id            String          @id @default(cuid())
-  userId        String
-  user          User            @relation(fields: [userId], references: [id])
-  mlmBusinessId String
-  mlmBusiness   UserMlmBusiness @relation(fields: [mlmBusinessId], references: [id])
-  kind          ContactKind
-  name          String
-  firstName     String?
-  lastName      String?
-  gender        String?
-  initials      String?
-  accent        String?
-  email         String?
-  phone         String?
-  phone2        String?
-  address       String?
-  address2      String?
-  postal        String?
-  city          String?
-  country       String?
-  source        ContactSource?
-  isPersonal    Boolean         @default(false)
+  id              String           @id @default(cuid())
+  userId          String
+  user            User             @relation(fields: [userId], references: [id])
+  mlmBusinessId   String
+  mlmBusiness     UserMlmBusiness  @relation(fields: [mlmBusinessId], references: [id])
+  kind            ContactKind
+  name            String
+  firstName       String?
+  lastName        String?
+  gender          String?
+  initials        String?
+  accent          String?
+  email           String?
+  phone           String?
+  phone2          String?
+  address         String?
+  address2        String?
+  postal          String?
+  city            String?
+  country         String?
+  source          ContactSource?
+  isPersonal      Boolean          @default(false)
   convertedUserId String?
-  personality   PersonalityType?
-  market        MarketTemp?
-  qualification Json?
-  profession    String?
-  education     String?
-  birthDate     DateTime?
-  prospectStage ProspectStage?
-  clientStage   ClientStage?
-  partnerStage  PartnerStage?
-  score         Int?
-  exposures     Int             @default(0)
-  tags          String[]
-  lastContact   DateTime?
-  note          String?
-  atlasMemory   String?         // bloc mémoire auto-édité par Atlas (MemGPT-style) — ce qu'il a appris sur ce contact
-  atlasMemoryAt DateTime?       // dernière mise à jour du bloc mémoire
-  lat           Float?
-  lng           Float?
-  createdAt     DateTime        @default(now())
-  updatedAt     DateTime        @updatedAt
+  personality     PersonalityType?
+  market          MarketTemp?
+  qualification   Json?
+  profession      String?
+  education       String?
+  birthDate       DateTime?
+  prospectStage   ProspectStage?
+  clientStage     ClientStage?
+  partnerStage    PartnerStage?
+  score           Int?
+  exposures       Int              @default(0)
+  tags            String[]
+  lastContact     DateTime?
+  note            String?
+  atlasMemory     String? // bloc mémoire auto-édité par Atlas (MemGPT-style) — ce qu'il a appris sur ce contact
+  atlasMemoryAt   DateTime? // dernière mise à jour du bloc mémoire
+  lat             Float?
+  lng             Float?
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
 
   partnerExtra       PartnerExtra?
   clientExtra        ClientExtra?
@@ -474,16 +478,16 @@ model Contact {
 
 // Journal des actions CRM (appel/sms/email/…) — fondation des actions, nourrit exposures + lastContact + historique
 model Interaction {
-  id        String          @id @default(cuid())
-  contactId String
-  contact   Contact         @relation(fields: [contactId], references: [id], onDelete: Cascade)
-  userId    String
-  type      InteractionType
-  direction String          @default("OUT") // OUT = sortant, IN = entrant
-  outcome   String? // POSITIF · NEUTRE · NEGATIF · SANS_REPONSE
-  body      String? // texte du message / note
-  isExposure Boolean        @default(true) // compte comme une exposition Worre
-  createdAt DateTime        @default(now())
+  id         String          @id @default(cuid())
+  contactId  String
+  contact    Contact         @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  userId     String
+  type       InteractionType
+  direction  String          @default("OUT") // OUT = sortant, IN = entrant
+  outcome    String? // POSITIF · NEUTRE · NEGATIF · SANS_REPONSE
+  body       String? // texte du message / note
+  isExposure Boolean         @default(true) // compte comme une exposition Worre
+  createdAt  DateTime        @default(now())
 
   @@index([contactId])
 }
@@ -505,13 +509,13 @@ model PartnerExtra {
 }
 
 model ClientExtra {
-  id          String   @id @default(cuid())
-  contactId   String   @unique
-  contact     Contact  @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  id          String    @id @default(cuid())
+  contactId   String    @unique
+  contact     Contact   @relation(fields: [contactId], references: [id], onDelete: Cascade)
   panier      Float?
   frequency   String?
   lastBuy     DateTime?
-  reassortDue Boolean  @default(false)
+  reassortDue Boolean   @default(false)
 }
 
 model ContactImportBatch {
@@ -648,14 +652,14 @@ model Appointment {
 }
 
 model CalComConnection {
-  id           String   @id @default(cuid())
-  userId       String   @unique
-  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id           String    @id @default(cuid())
+  userId       String    @unique
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   calComUserId String
   bookingUrl   String
-  connected    Boolean  @default(false)
+  connected    Boolean   @default(false)
   connectedAt  DateTime?
-  updatedAt    DateTime @updatedAt
+  updatedAt    DateTime  @updatedAt
 }
 
 // Connexion calendrier Google (flux OAuth dédié, séparé du login) — Phase 2 agenda
@@ -701,8 +705,8 @@ model AtlasConversation {
   contactId     String?
   contact       Contact?         @relation(fields: [contactId], references: [id])
   title         String?
-  context       String?          // "parcours" | "contact" | "reseau" | "messagerie"
-  summary       String?          // résumé auto-généré pour l'historique
+  context       String? // "parcours" | "contact" | "reseau" | "messagerie"
+  summary       String? // résumé auto-généré pour l'historique
   messages      AtlasMessage[]
   appointments  Appointment[]
   createdAt     DateTime         @default(now())
@@ -723,7 +727,6 @@ enum AtlasRole {
   USER
   ASSISTANT
 }
-
 
 model AtlasReport {
   id            String          @id @default(cuid())
@@ -764,42 +767,42 @@ model LmsCourse {
 }
 
 model LmsModule {
-  id          String             @id @default(cuid())
-  courseId    String
-  course      LmsCourse          @relation(fields: [courseId], references: [id], onDelete: Cascade)
-  position    Int                @default(0)
-  title       String
-  description String?
-  published   Boolean            @default(false)
-  aiGenerated Boolean            @default(false)
-  lessons     LmsLesson[]
-  resources   LmsResource[]
-  progress    UserLmsProgress[]
+  id           String            @id @default(cuid())
+  courseId     String
+  course       LmsCourse         @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  position     Int               @default(0)
+  title        String
+  description  String?
+  published    Boolean           @default(false)
+  aiGenerated  Boolean           @default(false)
+  lessons      LmsLesson[]
+  resources    LmsResource[]
+  progress     UserLmsProgress[]
   certificates Certificate[]
-  createdAt   DateTime           @default(now())
-  updatedAt   DateTime           @updatedAt
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
 
   @@unique([courseId, position])
 }
 
 model LmsLesson {
-  id            String               @id @default(cuid())
-  moduleId      String
-  module        LmsModule            @relation(fields: [moduleId], references: [id], onDelete: Cascade)
-  position      Int
-  kind          LessonKind
-  type          LessonType?
-  title         String
-  content       Json?
-  durationMin   Int?
-  summary       String?
-  passThreshold Int?
-  intro         String?
-  aiGenerated   Boolean              @default(false)
-  published     Boolean              @default(false)
-  questions     LmsQuestion[]
+  id             String               @id @default(cuid())
+  moduleId       String
+  module         LmsModule            @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+  position       Int
+  kind           LessonKind
+  type           LessonType?
+  title          String
+  content        Json?
+  durationMin    Int?
+  summary        String?
+  passThreshold  Int?
+  intro          String?
+  aiGenerated    Boolean              @default(false)
+  published      Boolean              @default(false)
+  questions      LmsQuestion[]
   lessonProgress UserLessonProgress[]
-  quizAttempts  UserQuizAttempt[]
+  quizAttempts   UserQuizAttempt[]
 
   @@unique([moduleId, position])
 }
@@ -823,18 +826,18 @@ model LmsQuestion {
 }
 
 model LmsResource {
-  id        String     @id @default(cuid())
+  id        String      @id @default(cuid())
   moduleId  String?
-  module    LmsModule? @relation(fields: [moduleId], references: [id])
+  module    LmsModule?  @relation(fields: [moduleId], references: [id])
   title     String
   category  ResourceCat
   format    String
   meta      String?
   icon      String
   color     String
-  locked    Boolean    @default(false)
+  locked    Boolean     @default(false)
   fileUrl   String?
-  createdAt DateTime   @default(now())
+  createdAt DateTime    @default(now())
 }
 
 model UserLmsProgress {
@@ -924,19 +927,19 @@ enum ModuleStatus {
 // ============================================================
 
 model MlmBook {
-  id               String       @id @default(cuid())
-  rang             Int          @unique
+  id               String                @id @default(cuid())
+  rang             Int                   @unique
   priority         BookPriority
   auteur           String
   titreFR          String
   titreEN          String?
   theme            String
-  dispoFR          Boolean      @default(true)
+  dispoFR          Boolean               @default(true)
   format           String
   note             Int
   amazonUrl        String?
   audibleUrl       String?
-  ragStatus        RagStatus    @default(A_INDEXER)
+  ragStatus        RagStatus             @default(A_INDEXER)
   ragIndexedAt     DateTime?
   qdrantCollection String?
   interactions     UserBookInteraction[]
@@ -1049,6 +1052,8 @@ model ContentPost {
   mlmBusiness   UserMlmBusiness @relation(fields: [mlmBusinessId], references: [id])
   pillarId      String?
   pillar        ContentPillar?  @relation(fields: [pillarId], references: [id])
+  campaignId    String?
+  campaign      Campaign?       @relation(fields: [campaignId], references: [id])
   platform      SocialPlatform
   caption       String
   mediaUrl      String?
@@ -1132,6 +1137,48 @@ model SocialInboxItem {
   createdAt      DateTime        @default(now())
 }
 
+model Campaign {
+  id            String           @id @default(cuid())
+  userId        String
+  user          User             @relation(fields: [userId], references: [id])
+  mlmBusinessId String
+  mlmBusiness   UserMlmBusiness  @relation(fields: [mlmBusinessId], references: [id])
+  name          String           @default("Nouvelle campagne")
+  goal          CampaignGoal
+  audience      Json? // { who, pain, desire }
+  offerPitch    String? // pitch d'inscription à la réunion (offre-first / BOFU)
+  meetingFormat MeetingFormat?
+  meetingConfig Json? // { recurring, day, time, medium, link }
+  channels      SocialPlatform[]
+  contentMode   ContentMode      @default(FACELESS)
+  cadence       Int              @default(5) // posts / semaine
+  status        CampaignStatus   @default(BROUILLON)
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+  posts         ContentPost[]
+  leads         Lead[]
+}
+
+model Lead {
+  id            String          @id @default(cuid())
+  campaignId    String
+  campaign      Campaign        @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  userId        String
+  user          User            @relation(fields: [userId], references: [id])
+  mlmBusinessId String
+  mlmBusiness   UserMlmBusiness @relation(fields: [mlmBusinessId], references: [id])
+  sourceChannel SocialPlatform?
+  maturity      LeadMaturity    @default(CURIEUX)
+  intent        String? // produit / activité (routage)
+  meetingStatus MeetingStatus?
+  outcome       LeadOutcome? // renseigné par le distributeur après la réunion
+  brief         String? // brief Atlas au hand-off
+  conversation  Json? // ref / fil Atlas
+  contactId     String? // promotion lead -> contact
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+}
+
 enum SocialPlatform {
   INSTAGRAM
   LINKEDIN
@@ -1166,19 +1213,61 @@ enum ProspectScore {
   FROID
 }
 
+enum CampaignGoal {
+  CLIENTS
+  PARTENAIRES
+}
+
+enum MeetingFormat {
+  TETE_A_TETE
+  GROUPE
+}
+
+enum ContentMode {
+  FACE
+  FACELESS
+}
+
+enum CampaignStatus {
+  BROUILLON
+  ACTIVE
+  PAUSE
+  TERMINEE
+}
+
+enum LeadMaturity {
+  CURIEUX
+  QUALIFIE
+  PRET
+}
+
+enum MeetingStatus {
+  INSCRIT
+  RAPPELE
+  PRESENT
+  NO_SHOW
+}
+
+enum LeadOutcome {
+  INTERESSE
+  CONVERTI
+  PAS_INTERESSE
+  NO_SHOW
+}
+
 // ============================================================
 // §12 — FORUM / COMMUNAUTÉ
 // ============================================================
 
 model ForumSpace {
-  id      String      @id @default(cuid())
+  id      String        @id @default(cuid())
   type    SpaceType
   mlmSlug String?
   threads ForumThread[]
 }
 
 model ForumCategory {
-  id          String      @id @default(cuid())
+  id          String        @id @default(cuid())
   spaceType   SpaceType
   slug        String
   label       String
@@ -1215,15 +1304,15 @@ model ForumThread {
 }
 
 model ForumPost {
-  id        String      @id @default(cuid())
+  id        String          @id @default(cuid())
   threadId  String
-  thread    ForumThread @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  thread    ForumThread     @relation(fields: [threadId], references: [id], onDelete: Cascade)
   authorId  String
-  author    User        @relation(fields: [authorId], references: [id])
+  author    User            @relation(fields: [authorId], references: [id])
   content   String
-  likes     Int         @default(0)
-  createdAt DateTime    @default(now())
-  updatedAt DateTime    @updatedAt
+  likes     Int             @default(0)
+  createdAt DateTime        @default(now())
+  updatedAt DateTime        @updatedAt
   postLikes ForumPostLike[]
   reports   ForumReport[]
 }
@@ -1300,51 +1389,51 @@ model AtlineReferral {
 }
 
 model Placement {
-  id             String          @id @default(cuid())
+  id             String           @id @default(cuid())
   filleulId      String
-  filleul        User            @relation("PlacementFilleul",      fields: [filleulId],      references: [id])
+  filleul        User             @relation("PlacementFilleul", fields: [filleulId], references: [id])
   requestedById  String
-  requestedBy    User            @relation("PlacementRequestedBy",  fields: [requestedById],  references: [id])
+  requestedBy    User             @relation("PlacementRequestedBy", fields: [requestedById], references: [id])
   targetParentId String
-  targetParent   User            @relation("PlacementTargetParent", fields: [targetParentId], references: [id])
-  status         PlacementStatus @default(PENDING)
+  targetParent   User             @relation("PlacementTargetParent", fields: [targetParentId], references: [id])
+  status         PlacementStatus  @default(PENDING)
   expiresAt      DateTime
   placedById     String?
-  placedBy       User?           @relation("PlacementPlacedBy",     fields: [placedById],     references: [id])
+  placedBy       User?            @relation("PlacementPlacedBy", fields: [placedById], references: [id])
   placedAt       DateTime?
   method         PlacementMethod?
-  createdAt      DateTime        @default(now())
+  createdAt      DateTime         @default(now())
 }
 
 model AtlineCommission {
-  id                  String           @id @default(cuid())
-  userId              String
-  user                User             @relation("CommissionReceiver", fields: [userId],       references: [id])
-  productId           String
-  product             AtlineProduct    @relation(fields: [productId], references: [id])
-  sourceUserId        String?
-  sourceUser          User?            @relation("CommissionSource",   fields: [sourceUserId], references: [id])
-  sourceClientId      String?
-  sourceClient        AppClient?       @relation(fields: [sourceClientId], references: [id])
-  type                CommissionType
-  level               Int
-  rate                Float
-  amount              Float
-  month               DateTime         @db.Date
+  id                 String           @id @default(cuid())
+  userId             String
+  user               User             @relation("CommissionReceiver", fields: [userId], references: [id])
+  productId          String
+  product            AtlineProduct    @relation(fields: [productId], references: [id])
+  sourceUserId       String?
+  sourceUser         User?            @relation("CommissionSource", fields: [sourceUserId], references: [id])
+  sourceClientId     String?
+  sourceClient       AppClient?       @relation(fields: [sourceClientId], references: [id])
+  type               CommissionType
+  level              Int
+  rate               Float
+  amount             Float
+  month              DateTime         @db.Date
   // Éligibilité par palier de plan — règle métier : receiver.planTier >= source.planTier
-  status              CommissionStatus @default(ELIGIBLE)
-  blockedReason       String?          // renseigné si status = BLOCKED (ex: "plan_tier_insuffisant")
-  receiverPlanAtTime  Plan             // plan du licencié au moment de la commission
-  sourcePlanAtTime    Plan?            // plan de la source (filleul) au moment de la commission
-  paidAt              DateTime?
-  createdAt           DateTime         @default(now())
+  status             CommissionStatus @default(ELIGIBLE)
+  blockedReason      String? // renseigné si status = BLOCKED (ex: "plan_tier_insuffisant")
+  receiverPlanAtTime Plan // plan du licencié au moment de la commission
+  sourcePlanAtTime   Plan? // plan de la source (filleul) au moment de la commission
+  paidAt             DateTime?
+  createdAt          DateTime         @default(now())
 }
 
 enum CommissionStatus {
-  ELIGIBLE   // commission créée et éligible — sera versée
-  PAID       // versée
-  BLOCKED    // bloquée — plan du licencié inférieur au plan de la source
-  CANCELLED  // annulée (remboursement, résiliation dans la période)
+  ELIGIBLE // commission créée et éligible — sera versée
+  PAID // versée
+  BLOCKED // bloquée — plan du licencié inférieur au plan de la source
+  CANCELLED // annulée (remboursement, résiliation dans la période)
 }
 
 model CommissionConfig {
@@ -1361,12 +1450,12 @@ model CommissionConfig {
 }
 
 model AtlineLicense {
-  id          String   @id @default(cuid())
-  userId      String   @unique
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  active      Boolean  @default(true)
-  category  String   @default("coaching")
-  activatedAt DateTime @default(now())
+  id          String    @id @default(cuid())
+  userId      String    @unique
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  active      Boolean   @default(true)
+  category    String    @default("coaching")
+  activatedAt DateTime  @default(now())
   expiresAt   DateTime?
 }
 
@@ -1394,17 +1483,17 @@ enum CommissionType {
 // ============================================================
 
 model AtlineProduct {
-  id             String         @id @default(cuid())
+  id             String                   @id @default(cuid())
   name           String
-  slug           String         @unique
+  slug           String                   @unique
   description    String?
   type           ProductType
   priceMonthly   Float
-  commissionRate Float          @default(0.15)
+  commissionRate Float                    @default(0.15)
   appStoreUrl    String?
   playStoreUrl   String?
-  status         ProductStatus  @default(PRECREATION)
-  createdAt      DateTime       @default(now())
+  status         ProductStatus            @default(PRECREATION)
+  createdAt      DateTime                 @default(now())
   commissions    AtlineCommission[]
   catalogEntries LicenseeProductCatalog[]
   appClients     AppClient[]
@@ -1417,33 +1506,33 @@ model LicenseeProductCatalog {
   productId  String
   product    AtlineProduct @relation(fields: [productId], references: [id])
   active     Boolean       @default(true)
-  category  String   @default("coaching")
+  category   String        @default("coaching")
   grantedAt  DateTime      @default(now())
 
   @@unique([licenseeId, productId])
 }
 
 model AppClient {
-  id                 String        @id @default(cuid())
-  email              String        @unique
+  id                 String             @id @default(cuid())
+  email              String             @unique
   firstName          String
   lastName           String
   phone              String?
-  locale             String        @default("fr")
-  country            String        @default("France")
+  locale             String             @default("fr")
+  country            String             @default("France")
   productId          String
-  product            AtlineProduct @relation(fields: [productId], references: [id])
+  product            AtlineProduct      @relation(fields: [productId], references: [id])
   licenceeId         String
-  licencee           User          @relation(fields: [licenceeId], references: [id])
+  licencee           User               @relation(fields: [licenceeId], references: [id])
   referrerId         String?
-  referrer           AppClient?    @relation("AppClientReferral", fields: [referrerId], references: [id])
-  referredClients    AppClient[]   @relation("AppClientReferral")
-  stripeCustomerId   String?       @unique
-  subscriptionStatus SubStatus     @default(TRIALING)
-  convertedToUserId  String?       @unique
+  referrer           AppClient?         @relation("AppClientReferral", fields: [referrerId], references: [id])
+  referredClients    AppClient[]        @relation("AppClientReferral")
+  stripeCustomerId   String?            @unique
+  subscriptionStatus SubStatus          @default(TRIALING)
+  convertedToUserId  String?            @unique
   convertedAt        DateTime?
-  createdAt          DateTime      @default(now())
-  updatedAt          DateTime      @updatedAt
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
   commissions        AtlineCommission[]
 }
 
@@ -1528,14 +1617,14 @@ model Conversation {
 }
 
 model DirectMessage {
-  id               String       @id @default(cuid())
-  conversationId   String
-  conversation     Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
-  role             ConvRole
-  content          String
-  channel          MsgChannel   @default(IN_APP)
-  atlasSuggestion  String?
-  createdAt        DateTime     @default(now())
+  id              String       @id @default(cuid())
+  conversationId  String
+  conversation    Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  role            ConvRole
+  content         String
+  channel         MsgChannel   @default(IN_APP)
+  atlasSuggestion String?
+  createdAt       DateTime     @default(now())
 }
 
 enum ConvRole {
@@ -1558,17 +1647,17 @@ enum MsgChannel {
 // ============================================================
 
 model ProspectBot {
-  id              String          @id @default(cuid())
+  id              String              @id @default(cuid())
   userId          String
-  user            User            @relation(fields: [userId], references: [id])
+  user            User                @relation(fields: [userId], references: [id])
   canal           BotCanal
-  tokenUnique     String          @unique
+  tokenUnique     String              @unique
   mlmBusinessId   String
-  mlmBusiness     UserMlmBusiness @relation(fields: [mlmBusinessId], references: [id])
-  active          Boolean         @default(true)
-  category  String   @default("coaching")
+  mlmBusiness     UserMlmBusiness     @relation(fields: [mlmBusinessId], references: [id])
+  active          Boolean             @default(true)
+  category        String              @default("coaching")
   botName         String?
-  createdAt       DateTime        @default(now())
+  createdAt       DateTime            @default(now())
   conversations   BotConversation[]
   landingSessions BotLandingSession[]
 
@@ -1576,14 +1665,14 @@ model ProspectBot {
 }
 
 model BotLandingSession {
-  id           String       @id @default(cuid())
+  id           String           @id @default(cuid())
   botId        String
-  bot          ProspectBot  @relation(fields: [botId], references: [id])
-  sessionKey   String       @unique
+  bot          ProspectBot      @relation(fields: [botId], references: [id])
+  sessionKey   String           @unique
   canal        BotCanal
   expiresAt    DateTime
-  resolved     Boolean      @default(false)
-  createdAt    DateTime     @default(now())
+  resolved     Boolean          @default(false)
+  createdAt    DateTime         @default(now())
   conversation BotConversation?
 }
 
@@ -1701,9 +1790,9 @@ enum ArticleStatus {
 // ============================================================
 
 model MlmEvent {
-  id                 String      @id @default(cuid())
+  id                 String              @id @default(cuid())
   requestedById      String
-  requestedBy        User        @relation("EventRequestedBy", fields: [requestedById], references: [id])
+  requestedBy        User                @relation("EventRequestedBy", fields: [requestedById], references: [id])
   mlmSlug            String
   type               EventType
   title              String
@@ -1716,14 +1805,14 @@ model MlmEvent {
   onlineUrl          String?
   maxAttendees       Int?
   registrationUrl    String?
-  highlightedByAtlas Boolean     @default(false)
-  atlineOnly         Boolean     @default(false)
-  status             EventStatus @default(PENDING)
+  highlightedByAtlas Boolean             @default(false)
+  atlineOnly         Boolean             @default(false)
+  status             EventStatus         @default(PENDING)
   validatedById      String?
-  validatedBy        User?       @relation("EventValidatedBy", fields: [validatedById], references: [id])
+  validatedBy        User?               @relation("EventValidatedBy", fields: [validatedById], references: [id])
   validatedAt        DateTime?
-  createdAt          DateTime    @default(now())
-  updatedAt          DateTime    @updatedAt
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
   registrations      EventRegistration[]
 }
 
@@ -1793,7 +1882,7 @@ model AiProviderConfig {
   model       String
   priority    Int      @default(1)
   active      Boolean  @default(true)
-  category  String   @default("coaching")
+  category    String   @default("coaching")
   maxTokens   Int?
   temperature Float?
   extraParams Json?
@@ -1872,15 +1961,15 @@ model RagTag {
 
 // Bibliothèque audio — plusieurs versions par entité (leçon ou livre)
 model AudioAsset {
-  id        String   @id @default(cuid())
-  kind      String   // "lesson" | "book"
-  entityId  String   // lessonId ou slug source_file
-  source    String   // "generated" | "uploaded"
-  filePath  String   // chemin absolu sur le VPS
-  sizeBytes Int?
-  model     String?  // modèle LLM utilisé pour la réécriture
-  voiceId   String?  // voice ID Cartesia utilisé
-  label       String?  // label libre (ex: "Marc v2")
+  id          String   @id @default(cuid())
+  kind        String // "lesson" | "book"
+  entityId    String // lessonId ou slug source_file
+  source      String // "generated" | "uploaded"
+  filePath    String // chemin absolu sur le VPS
+  sizeBytes   Int?
+  model       String? // modèle LLM utilisé pour la réécriture
+  voiceId     String? // voice ID Cartesia utilisé
+  label       String? // label libre (ex: "Marc v2")
   isActive    Boolean  @default(false) // version jouée par défaut dans l'admin
   isPublished Boolean  @default(false) // visible dans l'app utilisateur
   createdAt   DateTime @default(now())
