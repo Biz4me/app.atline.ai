@@ -37,15 +37,24 @@ const NOVA = '#8B5CF6'
 
 // Écran 1 — consigne de Nova : cadrer la campagne sur un PRODUIT/SERVICE (les réseaux pénalisent
 // le contenu "opportunité/MLM"). Nova réoriente si besoin, puis pose [[OK: …]] quand c'est verrouillé.
-const PRODUIT_SEED = `Tu es Nova, l'assistante réseaux sociaux d'Atline. On démarre ensemble la création d'une campagne de contenu.
-Ton rôle sur cet écran : aider l'utilisateur à choisir LE produit ou service qu'il veut mettre en avant.
-Règle importante : s'il parle de mettre en avant son "business", son "opportunité", sa "société" ou de "recruter des partenaires", explique-lui avec bienveillance que les réseaux sociaux pénalisent ce type de contenu (portée réduite, risque de blocage de compte). Oriente-le vers un produit ou un service concret. Rassure-le : en créant du volume autour d'un produit qui plaît, il attirera naturellement des partenaires de toute façon.
-Style : chaleureux, tutoiement, phrases courtes, UNE question à la fois, aucun jargon.
-Commence maintenant : présente-toi en une phrase et demande quel produit ou service il veut mettre en avant.
-Quand le produit ou service est clair et confirmé par l'utilisateur, termine ton message par ce marqueur exact sur une nouvelle ligne : [[OK: <le produit ou service en quelques mots>]]`
+const GARDE_FOU = `Règle : s'il parle de mettre en avant son business, son opportunité ou de recruter des partenaires, explique-lui gentiment que les réseaux pénalisent ce type de contenu (portée réduite, risque de blocage) et oriente-le vers un produit ou service concret ; rassure-le que le volume amènera des partenaires de toute façon.`
 
-// Flow campagne complet (8 écrans). Écrans 4-8 = à venir (skeleton branché sur du réel pour 1-3).
-const STEPS = ['Objectif', 'Persona', 'Réunion', 'Canaux', 'Profil', 'Contenu', 'Parcours', 'Récap']
+const PRODUIT_SEED = `Tu es Nova, l'assistante réseaux sociaux d'Atline. On crée une campagne de contenu ensemble.
+Ton rôle sur cette étape : aider l'utilisateur à choisir LE produit ou service à mettre en avant.
+${GARDE_FOU}
+Style : chaleureux, tutoiement, phrases courtes, une question à la fois, sans jargon.
+Commence : présente-toi en une phrase courte et demande quel produit ou service il veut mettre en avant.
+Quand le produit ou service est clair et confirmé, termine par ce marqueur exact sur une nouvelle ligne : [[OK: <le produit ou service en quelques mots>]]`
+
+const editSeed = (produit: string) => `Tu es Nova, l'assistante réseaux sociaux d'Atline. On modifie une campagne existante.
+Cette campagne met déjà en avant : « ${produit} ».
+Salue en une phrase courte, rappelle ce produit, et demande si l'utilisateur veut le changer ou continuer tel quel.
+${GARDE_FOU}
+Termine ton message par ce marqueur exact sur une nouvelle ligne pour permettre de continuer : [[OK: ${produit}]]
+Si l'utilisateur donne un nouveau produit, confirme-le et termine par [[OK: le nouveau produit]].`
+
+// Flow campagne complet (8 écrans), noms courts.
+const STEPS = ['Description', 'Cible', 'Réunion', 'Canaux', 'Profil', 'Contenu', 'Parcours', 'Récap']
 
 type Goal = 'CLIENTS' | 'PARTENAIRES'
 type MeetingFormat = 'TETE_A_TETE' | 'GROUPE'
@@ -87,9 +96,15 @@ export default function CampagnePage() {
 
   // Mode édition : ?id=… → charge la campagne et préremplit tout (les PATCH ciblent l'existant).
   const [loadedStatus, setLoadedStatus] = useState<string | null>(null)
+  const [editing, setEditing] = useState(false)
+  const [loaded, setLoaded] = useState(false) // le chat écran 1 n'apparaît qu'une fois la campagne connue
   useEffect(() => {
     const id = new URLSearchParams(window.location.search).get('id')
-    if (!id) return
+    if (!id) {
+      setLoaded(true)
+      return
+    }
+    setEditing(true)
     fetch(`/api/nova/campaigns/${id}`)
       .then((r) => (r.ok ? r.json() : null))
       .then((d) => {
@@ -113,9 +128,11 @@ export default function CampagnePage() {
         if (typeof c.cadence === 'number') setCadence(c.cadence)
       })
       .catch(() => {})
+      .finally(() => setLoaded(true))
   }, [])
 
   const launched = !!loadedStatus && loadedStatus !== 'BROUILLON'
+  const seed = editing && productName ? editSeed(productName) : PRODUIT_SEED
 
   function toggleChannel(p: Platform) {
     setChannels((c) => (c.includes(p) ? c.filter((x) => x !== p) : [...c, p]))
@@ -236,10 +253,15 @@ export default function CampagnePage() {
           </span>
         </div>
         <div className="mt-3 flex gap-1.5">
-          {STEPS.map((_, i) => (
-            <span
+          {STEPS.map((label, i) => (
+            <button
               key={i}
-              className="h-1.5 flex-1 rounded-full transition-colors"
+              type="button"
+              // En édition : chaque segment est cliquable → on saute direct à l'étape à modifier.
+              onClick={editing ? () => setStep(i) : undefined}
+              disabled={!editing}
+              aria-label={label}
+              className={cn('h-1.5 flex-1 rounded-full transition-colors', editing && 'cursor-pointer')}
               style={{ background: i <= step ? NOVA : 'var(--border)' }}
             />
           ))}
@@ -248,30 +270,15 @@ export default function CampagnePage() {
 
       {step === 0 ? (
         <div className="flex min-h-0 flex-1 flex-col">
-          <div className="px-4 pt-4">
-            <h2 className="font-display text-2xl font-semibold text-foreground text-balance">
-              Que veux-tu mettre en avant ?
-            </h2>
-            <p className="mt-1 text-sm text-muted-foreground text-pretty">
-              Dis à Nova le produit ou le service de ta campagne.
-            </p>
-          </div>
-          <NovaChat seed={PRODUIT_SEED} onCapture={setProductName} />
-          {productName && (
-            <div
-              className="fixed inset-x-0 z-[49] px-4"
-              style={{ bottom: 'calc(max(20px, env(safe-area-inset-bottom)) + 64px)' }}
-            >
-              <button
-                type="button"
-                onClick={next}
-                disabled={saving}
-                className="mx-auto flex w-full max-w-md items-center justify-center rounded-full py-3 text-sm font-bold text-white shadow-lg transition-transform active:scale-[0.98] disabled:opacity-50"
-                style={{ background: NOVA }}
-              >
-                {saving ? 'Enregistrement…' : `Continuer avec « ${productName} »`}
-              </button>
-            </div>
+          <p className="eyebrow px-6 pt-2">{STEPS[0]}</p>
+          {loaded && (
+            <NovaChat
+              key={editing ? 'edit' : 'new'}
+              seed={seed}
+              onCapture={setProductName}
+              chipLabel={`Configurer la ${STEPS[1].toLowerCase()}`}
+              onChip={next}
+            />
           )}
         </div>
       ) : (

@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
+import { ArrowRight } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { AppComposer } from '@/components/mobile/app-composer'
 
@@ -22,13 +23,18 @@ const capture = (t: string) => {
 export function NovaChat({
   seed,
   onCapture,
+  chipLabel,
+  onChip,
 }: {
   seed: string
   onCapture?: (value: string) => void
+  chipLabel?: string
+  onChip?: () => void
 }) {
   const [messages, setMessages] = useState<Msg[]>([])
   const [input, setInput] = useState('')
   const [busy, setBusy] = useState(false)
+  const [chip, setChip] = useState(false)
   const historyRef = useRef<Msg[]>([]) // ce que voit le service (seed inclus en 1er)
   const scrollRef = useRef<HTMLDivElement>(null)
   const started = useRef(false)
@@ -42,7 +48,7 @@ export function NovaChat({
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' })
-  }, [messages, busy])
+  }, [messages, busy, chip])
 
   async function send(text: string, hidden = false) {
     setBusy(true)
@@ -101,7 +107,10 @@ export function NovaChat({
 
     historyRef.current = [...priorHistory, { role: 'user', content: text }, { role: 'assistant', content: acc }]
     const cap = capture(acc)
-    if (cap && onCapture) onCapture(cap)
+    if (cap) {
+      if (onCapture) onCapture(cap)
+      setChip(true)
+    }
     setBusy(false)
   }
 
@@ -138,6 +147,19 @@ export function NovaChat({
               )}
             </div>
           ))}
+
+          {/* Chip « étape suivante » posé dans le fil quand Nova a verrouillé la valeur */}
+          {chip && chipLabel && onChip && (
+            <button
+              type="button"
+              onClick={onChip}
+              className="flex items-center gap-1.5 self-start rounded-full px-4 py-2 text-sm font-semibold text-white shadow-sm transition-transform active:scale-[0.98]"
+              style={{ background: NOVA }}
+            >
+              {chipLabel}
+              <ArrowRight className="size-4" />
+            </button>
+          )}
         </div>
       </div>
 
