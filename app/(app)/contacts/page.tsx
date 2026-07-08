@@ -94,13 +94,6 @@ function sourceColor(s: string) {
   return sourceColors[s.toLowerCase()] ?? 'text-muted-foreground'
 }
 
-const discHex: Record<string, string> = {
-  D: '#dc2626',
-  I: '#f4b342',
-  S: '#22c55e',
-  C: '#3b82f6',
-}
-
 /* ── Adaptateur API → forme UI ───────────────────────────────── */
 // personality (4 couleurs Big Al) → lettre dont discColors donne la bonne teinte d'avatar
 const PERSONALITY_DISC: Record<string, DiscType> = { ROUGE: 'D', JAUNE: 'I', VERT: 'S', BLEU: 'C' }
@@ -771,7 +764,7 @@ function ContactsContent() {
                             'rounded-full px-2.5 py-0.5 text-xs font-medium',
                             c.stade === 'invitation'   && 'bg-[#3b82f6]/10 text-[#3b82f6]',
                             c.stade === 'présentation' && 'bg-[#f4b342]/10 text-[#f4b342]',
-                            c.stade === 'suivi'        && 'bg-[#dc2626]/10 text-[#dc2626]',
+                            c.stade === 'suivi'        && 'bg-[#ef4444]/10 text-[#ef4444]',
                             c.stade === 'closing'      && 'bg-[#22c55e]/10 text-[#22c55e]',
                             c.stade === 'démarré'      && 'bg-[#14B8A6]/10 text-[#14B8A6]',
                           )}>

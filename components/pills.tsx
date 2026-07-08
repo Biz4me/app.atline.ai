@@ -1,11 +1,11 @@
 import { cn } from '@/lib/utils'
 import type { ContactStage, Platform, DiscType } from '@/lib/types'
-import { stageLabels, platformLabels, discLabels } from '@/lib/data'
+import { stageLabels, platformLabels, discLabels, discColors } from '@/lib/data'
 import { Camera, Briefcase, Globe, MessageCircle } from 'lucide-react'
 
 const stageStyles: Record<ContactStage, string> = {
   nouveau:    'bg-muted text-muted-foreground',
-  closing:    'bg-[#dc2626]/10 text-[#dc2626]',
+  closing:    'bg-[#ef4444]/10 text-[#ef4444]',
   prospect:   'bg-info/10 text-info',
   client:     'bg-success/10 text-success',
   partenaire: 'bg-[#14B8A6]/10 text-[#14B8A6]',
@@ -57,15 +57,8 @@ export function PlatformBadge({
   )
 }
 
-const discHex: Record<DiscType, string> = {
-  D: '#dc2626',
-  I: '#f4b342',
-  S: '#22c55e',
-  C: '#3b82f6',
-}
-
 export function DiscBadge({ disc, className }: { disc: DiscType; className?: string }) {
-  const color = discHex[disc]
+  const color = discColors[disc]
   return (
     <span
       className={cn(
