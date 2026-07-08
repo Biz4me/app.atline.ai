@@ -62,13 +62,7 @@ export default function NovaPage() {
 
   return (
     <div className="px-4 pt-4 lg:px-8 lg:pt-6 lg:max-w-3xl lg:mx-auto">
-      {campaigns === null ? (
-        <div className="flex flex-col gap-3">
-          {[0, 1].map((i) => (
-            <div key={i} className="h-28 animate-pulse rounded-2xl bg-muted" />
-          ))}
-        </div>
-      ) : campaigns.length === 0 ? (
+      {campaigns === null ? null : campaigns.length === 0 ? (
         <EmptyState onCreate={() => router.push('/nova/campagne')} />
       ) : (
         <div className="flex flex-col gap-3">
