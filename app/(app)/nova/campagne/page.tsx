@@ -16,6 +16,7 @@ import {
   Camera,
   Globe,
   Music2,
+  Wand2,
   Image as ImageIcon,
   AtSign,
   Link2,
@@ -62,6 +63,10 @@ export default function CampagnePage() {
   // Écran 5 — Optimise ton profil (checklist consultative, non persistée)
   const [checked, setChecked] = useState<Record<string, boolean>>({})
 
+  // Écran 6 — Contenu
+  const [contentMode, setContentMode] = useState<'FACE' | 'FACELESS'>('FACELESS')
+  const [cadence, setCadence] = useState(5)
+
   function toggleChannel(p: Platform) {
     setChannels((c) => (c.includes(p) ? c.filter((x) => x !== p) : [...c, p]))
   }
@@ -104,6 +109,8 @@ export default function CampagnePage() {
           return false
         }
         await patch({ channels })
+      } else if (step === 5) {
+        await patch({ contentMode, cadence })
       }
       return true
     } catch {
@@ -124,7 +131,7 @@ export default function CampagnePage() {
   }
 
   async function next() {
-    if (step <= 3) {
+    if (step <= 5) {
       const ok = await persist()
       if (!ok) return
     }
@@ -381,8 +388,77 @@ export default function CampagnePage() {
           </Step>
         )}
 
-        {/* Écrans 6-8 — à venir */}
-        {step > 4 && (
+        {/* Écran 6 — Contenu */}
+        {step === 5 && (
+          <Step
+            title="Comment tu crées ?"
+            subtitle="Nova écrit tout. À toi de dire si tu apparais à l'écran ou non."
+          >
+            <div className="flex flex-col gap-5">
+              <div className="flex flex-col gap-3">
+                <ModeCard
+                  active={contentMode === 'FACELESS'}
+                  onClick={() => setContentMode('FACELESS')}
+                  icon={Wand2}
+                  title="Sans te montrer"
+                  desc="Nova génère visuels et textes. Publié tout seul, zéro effort."
+                  badge="Automatique"
+                />
+                <ModeCard
+                  active={contentMode === 'FACE'}
+                  onClick={() => setContentMode('FACE')}
+                  icon={Video}
+                  title="Face caméra"
+                  desc="Nova écrit ton script, tu te filmes. Atlas te rappelle de tourner."
+                  badge="Plus de lien"
+                />
+              </div>
+
+              <div>
+                <p className="eyebrow mb-2">Rythme de publication</p>
+                <div className="grid grid-cols-3 gap-2">
+                  {CADENCES.map((c) => (
+                    <button
+                      key={c.value}
+                      type="button"
+                      onClick={() => setCadence(c.value)}
+                      className={cn(
+                        'flex flex-col items-center gap-0.5 rounded-xl border bg-surface py-3 transition-colors',
+                        cadence === c.value ? 'border-transparent' : 'border-border active:bg-muted',
+                      )}
+                      style={
+                        cadence === c.value
+                          ? { borderColor: NOVA, boxShadow: `0 0 0 1px ${NOVA}` }
+                          : undefined
+                      }
+                    >
+                      <span className="text-base font-bold text-foreground">{c.value}</span>
+                      <span className="text-[10px] font-semibold text-muted-foreground">{c.label}</span>
+                    </button>
+                  ))}
+                </div>
+                <p className="mt-1.5 text-xs text-muted-foreground">Publications par semaine.</p>
+              </div>
+
+              <div>
+                <p className="eyebrow mb-2">Ton mix de contenu</p>
+                <div className="flex h-2.5 overflow-hidden rounded-full">
+                  <span style={{ width: '70%', background: NOVA }} />
+                  <span style={{ width: '20%', background: `${NOVA}8c` }} />
+                  <span style={{ width: '10%', background: `${NOVA}45` }} />
+                </div>
+                <div className="mt-2 flex flex-col gap-1.5">
+                  <MixRow op="" label="Attirer" pct="70%" desc="Du contenu qui capte les inconnus." />
+                  <MixRow op="8c" label="Nourrir" pct="20%" desc="Tu crées le lien et la confiance." />
+                  <MixRow op="45" label="Convertir" pct="10%" desc="Tu invites à la réunion." />
+                </div>
+              </div>
+            </div>
+          </Step>
+        )}
+
+        {/* Écrans 7-8 — à venir */}
+        {step > 5 && (
           <Step title={STEPS[step]} subtitle="Cet écran arrive bientôt.">
             <div className="flex flex-col items-center gap-3 rounded-2xl border border-dashed border-border py-16 text-center">
               <span
@@ -580,6 +656,73 @@ function ChannelCard({
       </span>
       {active && <Check className="size-5" style={{ color: NOVA }} />}
     </button>
+  )
+}
+
+const CADENCES = [
+  { value: 3, label: 'Tranquille' },
+  { value: 5, label: 'Régulier' },
+  { value: 7, label: 'Intense' },
+]
+
+function ModeCard({
+  active,
+  onClick,
+  icon: Icon,
+  title,
+  desc,
+  badge,
+}: {
+  active: boolean
+  onClick: () => void
+  icon: typeof Wand2
+  title: string
+  desc: string
+  badge: string
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={cn(
+        'flex items-center gap-3 rounded-2xl border bg-surface p-4 text-left shadow-card transition-colors',
+        active ? 'border-transparent' : 'border-border active:bg-muted',
+      )}
+      style={active ? { borderColor: NOVA, boxShadow: `0 0 0 1px ${NOVA}` } : undefined}
+    >
+      <span
+        className="flex size-11 shrink-0 items-center justify-center rounded-xl"
+        style={{ background: `${NOVA}1a`, color: NOVA }}
+      >
+        <Icon className="size-5 stroke-[1.5]" />
+      </span>
+      <span className="flex-1">
+        <span className="flex items-center gap-2">
+          <span className="text-sm font-bold text-foreground">{title}</span>
+          <span
+            className="rounded-full px-2 py-0.5 text-[10px] font-semibold"
+            style={{ background: `${NOVA}1a`, color: NOVA }}
+          >
+            {badge}
+          </span>
+        </span>
+        <span className="block text-xs text-muted-foreground">{desc}</span>
+      </span>
+      {active && <Check className="size-5" style={{ color: NOVA }} />}
+    </button>
+  )
+}
+
+function MixRow({ op, label, pct, desc }: { op: string; label: string; pct: string; desc: string }) {
+  return (
+    <div className="flex items-center gap-2">
+      <span className="size-2.5 shrink-0 rounded-full" style={{ background: `${NOVA}${op}` }} />
+      <span className="text-xs font-bold text-foreground">{label}</span>
+      <span className="text-xs font-semibold" style={{ color: NOVA }}>
+        {pct}
+      </span>
+      <span className="text-xs text-muted-foreground">— {desc}</span>
+    </div>
   )
 }
 
