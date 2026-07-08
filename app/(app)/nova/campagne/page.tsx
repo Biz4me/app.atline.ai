@@ -243,7 +243,7 @@ export default function CampagnePage() {
   }
 
   return (
-    <div className="flex min-h-dvh flex-col">
+    <div className="flex h-dvh flex-col overflow-hidden">
       {/* Header + progress */}
       <header
         className="sticky top-0 z-30 bg-background/90 px-4 py-3 backdrop-blur"
@@ -296,7 +296,7 @@ export default function CampagnePage() {
         </div>
       ) : (
         <>
-      <div className="flex-1 px-4 py-5 pb-32">
+      <div className="flex-1 overflow-y-auto px-4 py-5 pb-32">
         {/* Écran 3 — La réunion */}
         {step === 2 && (
           <Step
