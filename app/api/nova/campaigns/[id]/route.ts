@@ -46,3 +46,13 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
   const campaign = await db.campaign.update({ where: { id }, data })
   return NextResponse.json({ campaign })
 }
+
+export async function DELETE(_req: Request, ctx: { params: Promise<{ id: string }> }) {
+  const userId = await currentUserId()
+  if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const { id } = await ctx.params
+  const owned = await db.campaign.findFirst({ where: { id, userId }, select: { id: true } })
+  if (!owned) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+  await db.campaign.delete({ where: { id } }) // Lead en cascade ; ContentPost.campaignId → null
+  return NextResponse.json({ ok: true })
+}

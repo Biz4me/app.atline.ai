@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import {
   ChevronLeft,
@@ -85,6 +85,38 @@ export default function CampagnePage() {
   const [contentMode, setContentMode] = useState<'FACE' | 'FACELESS'>('FACELESS')
   const [cadence, setCadence] = useState(5)
 
+  // Mode édition : ?id=… → charge la campagne et préremplit tout (les PATCH ciblent l'existant).
+  const [loadedStatus, setLoadedStatus] = useState<string | null>(null)
+  useEffect(() => {
+    const id = new URLSearchParams(window.location.search).get('id')
+    if (!id) return
+    fetch(`/api/nova/campaigns/${id}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        const c = d?.campaign
+        if (!c) return
+        setCampaignId(c.id)
+        setLoadedStatus(c.status)
+        if (c.name && c.name !== 'Nouvelle campagne') setProductName(c.name)
+        const a = c.audience || {}
+        setWho(a.who || '')
+        setPain(a.pain || '')
+        setDesire(a.desire || '')
+        if (c.meetingFormat) setMeetingFormat(c.meetingFormat)
+        if (c.offerPitch) setOfferPitch(c.offerPitch)
+        const mc = c.meetingConfig || {}
+        if (mc.day) setDay(mc.day)
+        if (mc.time) setTime(mc.time)
+        if (mc.link) setLink(mc.link)
+        if (Array.isArray(c.channels)) setChannels(c.channels.filter((x: string) => x === 'INSTAGRAM' || x === 'FACEBOOK') as Platform[])
+        if (c.contentMode) setContentMode(c.contentMode)
+        if (typeof c.cadence === 'number') setCadence(c.cadence)
+      })
+      .catch(() => {})
+  }, [])
+
+  const launched = !!loadedStatus && loadedStatus !== 'BROUILLON'
+
   function toggleChannel(p: Platform) {
     setChannels((c) => (c.includes(p) ? c.filter((x) => x !== p) : [...c, p]))
   }
@@ -162,14 +194,14 @@ export default function CampagnePage() {
       setStep((s) => s + 1)
       return
     }
-    // Récap → lancer
+    // Récap → lancer (nouvelle) ou enregistrer (édition d'une campagne déjà lancée)
     setSaving(true)
     try {
-      await patch({ status: 'ACTIVE' })
-      toast.success('Campagne lancée')
+      await patch({ status: launched ? loadedStatus : 'ACTIVE' })
+      toast.success(launched ? 'Campagne mise à jour' : 'Campagne lancée')
       router.push('/nova')
     } catch {
-      toast.error('Lancement impossible, réessaie')
+      toast.error('Enregistrement impossible, réessaie')
     } finally {
       setSaving(false)
     }
@@ -196,7 +228,9 @@ export default function CampagnePage() {
           >
             <ChevronLeft className="size-5" />
           </button>
-          <h1 className="font-display text-lg font-semibold">Nouvelle campagne</h1>
+          <h1 className="font-display text-lg font-semibold">
+            {loadedStatus ? 'Modifier la campagne' : 'Nouvelle campagne'}
+          </h1>
           <span className="ml-auto text-xs font-semibold text-muted-foreground">
             {step + 1} / {STEPS.length}
           </span>
@@ -570,7 +604,13 @@ export default function CampagnePage() {
           className="w-full rounded-xl py-3.5 text-sm font-bold text-white transition-transform active:scale-[0.98] disabled:opacity-50"
           style={{ background: NOVA }}
         >
-          {saving ? 'Enregistrement…' : step === STEPS.length - 1 ? 'Lancer la campagne' : 'Continuer'}
+          {saving
+            ? 'Enregistrement…'
+            : step === STEPS.length - 1
+              ? launched
+                ? 'Enregistrer'
+                : 'Lancer la campagne'
+              : 'Continuer'}
         </button>
       </div>
         </>

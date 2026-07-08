@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Plus, Users, UserPlus, Radio, Sparkles } from 'lucide-react'
+import { Plus, Users, UserPlus, Radio, Sparkles, MoreVertical, Pencil, Trash2 } from 'lucide-react'
+import { toast } from 'sonner'
 
 const NOVA = '#8B5CF6'
 
@@ -42,6 +43,22 @@ export default function NovaPage() {
     return () => window.removeEventListener('agent:new', onNew)
   }, [router])
 
+  async function remove(id: string, name: string) {
+    if (!window.confirm(`Supprimer la campagne « ${name} » ? Cette action est définitive.`)) return
+    setCampaigns((cs) => (cs ? cs.filter((c) => c.id !== id) : cs)) // optimiste
+    try {
+      const res = await fetch(`/api/nova/campaigns/${id}`, { method: 'DELETE' })
+      if (!res.ok) throw new Error()
+      toast.success('Campagne supprimée')
+    } catch {
+      toast.error('Suppression impossible')
+      fetch('/api/nova/campaigns')
+        .then((r) => (r.ok ? r.json() : { campaigns: [] }))
+        .then((d) => setCampaigns(d.campaigns ?? []))
+        .catch(() => {})
+    }
+  }
+
   return (
     <div className="px-4 pt-4 lg:px-8 lg:pt-6 lg:max-w-3xl lg:mx-auto">
       {campaigns === null ? (
@@ -65,7 +82,12 @@ export default function NovaPage() {
             Nouvelle campagne
           </button>
           {campaigns.map((c) => (
-            <CampaignCard key={c.id} campaign={c} />
+            <CampaignCard
+              key={c.id}
+              campaign={c}
+              onEdit={() => router.push(`/nova/campagne?id=${c.id}`)}
+              onDelete={() => remove(c.id, c.name)}
+            />
           ))}
         </div>
       )}
@@ -101,7 +123,16 @@ function EmptyState({ onCreate }: { onCreate: () => void }) {
   )
 }
 
-function CampaignCard({ campaign }: { campaign: Campaign }) {
+function CampaignCard({
+  campaign,
+  onEdit,
+  onDelete,
+}: {
+  campaign: Campaign
+  onEdit: () => void
+  onDelete: () => void
+}) {
+  const [menu, setMenu] = useState(false)
   const s = STATUS[campaign.status]
   const GoalIcon = campaign.goal === 'PARTENAIRES' ? UserPlus : Users
   const goalLabel = campaign.goal === 'PARTENAIRES' ? 'Partenaires' : 'Clients'
@@ -131,6 +162,46 @@ function CampaignCard({ campaign }: { campaign: Campaign }) {
             </span>
           </div>
           <p className="text-xs text-muted-foreground">Objectif {goalLabel.toLowerCase()}</p>
+        </div>
+
+        <div className="relative -mr-1 -mt-1 shrink-0">
+          <button
+            type="button"
+            onClick={() => setMenu((v) => !v)}
+            aria-label="Options"
+            className="flex size-8 items-center justify-center rounded-full text-muted-foreground active:bg-muted"
+          >
+            <MoreVertical className="size-4.5 stroke-[1.5]" />
+          </button>
+          {menu && (
+            <>
+              <div className="fixed inset-0 z-40" onClick={() => setMenu(false)} />
+              <div className="absolute right-0 top-9 z-50 w-40 overflow-hidden rounded-xl border border-border bg-surface py-1 shadow-lg">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMenu(false)
+                    onEdit()
+                  }}
+                  className="flex w-full items-center gap-2.5 px-3 py-2 text-left text-sm text-foreground active:bg-muted"
+                >
+                  <Pencil className="size-4 text-muted-foreground" />
+                  Modifier
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMenu(false)
+                    onDelete()
+                  }}
+                  className="flex w-full items-center gap-2.5 px-3 py-2 text-left text-sm text-destructive active:bg-muted"
+                >
+                  <Trash2 className="size-4" />
+                  Supprimer
+                </button>
+              </div>
+            </>
+          )}
         </div>
       </div>
 
