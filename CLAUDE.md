@@ -184,7 +184,6 @@ text: 'Pour l\'instant'              // crash
 |-----------|---------|------|
 | AppShell | `components/app-shell.tsx` | Layout global |
 | DesktopSidebar | `components/desktop-sidebar.tsx` | Nav gauche desktop |
-| BottomNav | `components/bottom-nav.tsx` | Nav mobile (icônes sans labels) |
 | BusinessSwitcher | `components/business-switcher.tsx` | Switcher MLM mobile + slide-in |
 | Card | `components/card.tsx` | Carte de base |
 
