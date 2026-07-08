@@ -5,7 +5,6 @@ import { useRouter } from 'next/navigation'
 import {
   ChevronLeft,
   Users,
-  UserPlus,
   Sparkles,
   User,
   UsersRound,
@@ -32,8 +31,18 @@ import {
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
+import { NovaChat } from '@/components/nova/nova-chat'
 
 const NOVA = '#8B5CF6'
+
+// Écran 1 — consigne de Nova : cadrer la campagne sur un PRODUIT/SERVICE (les réseaux pénalisent
+// le contenu "opportunité/MLM"). Nova réoriente si besoin, puis pose [[OK: …]] quand c'est verrouillé.
+const PRODUIT_SEED = `Tu es Nova, l'assistante réseaux sociaux d'Atline. On démarre ensemble la création d'une campagne de contenu.
+Ton rôle sur cet écran : aider l'utilisateur à choisir LE produit ou service qu'il veut mettre en avant.
+Règle importante : s'il parle de mettre en avant son "business", son "opportunité", sa "société" ou de "recruter des partenaires", explique-lui avec bienveillance que les réseaux sociaux pénalisent ce type de contenu (portée réduite, risque de blocage de compte). Oriente-le vers un produit ou un service concret. Rassure-le : en créant du volume autour d'un produit qui plaît, il attirera naturellement des partenaires de toute façon.
+Style : chaleureux, tutoiement, phrases courtes, UNE question à la fois, aucun jargon.
+Commence maintenant : présente-toi en une phrase et demande quel produit ou service il veut mettre en avant.
+Quand le produit ou service est clair et confirmé par l'utilisateur, termine ton message par ce marqueur exact sur une nouvelle ligne : [[OK: <le produit ou service en quelques mots>]]`
 
 // Flow campagne complet (8 écrans). Écrans 4-8 = à venir (skeleton branché sur du réel pour 1-3).
 const STEPS = ['Objectif', 'Persona', 'Réunion', 'Canaux', 'Profil', 'Contenu', 'Parcours', 'Récap']
@@ -50,8 +59,9 @@ export default function CampagnePage() {
   const [saving, setSaving] = useState(false)
   const [campaignId, setCampaignId] = useState<string | null>(null)
 
-  // Écran 1 — Objectif
-  const [goal, setGoal] = useState<Goal | null>('PARTENAIRES')
+  // Écran 1 — Produit/service à mettre en avant (chat avec Nova). Objectif = CLIENTS (produit) pour la phase 1.
+  const goal: Goal = 'CLIENTS'
+  const [productName, setProductName] = useState('')
 
   // Écran 2 — Persona
   const [who, setWho] = useState('')
@@ -83,8 +93,8 @@ export default function CampagnePage() {
     setSaving(true)
     try {
       if (step === 0) {
-        if (!goal) {
-          toast.error('Choisis un objectif')
+        if (!productName) {
+          toast.error('Dis à Nova quel produit tu veux mettre en avant')
           return false
         }
         if (!campaignId) {
@@ -96,8 +106,13 @@ export default function CampagnePage() {
           if (!res.ok) throw new Error()
           const { campaign } = await res.json()
           setCampaignId(campaign.id)
+          await fetch(`/api/nova/campaigns/${campaign.id}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name: productName }),
+          })
         } else {
-          await patch({ goal })
+          await patch({ name: productName })
         }
         return true
       }
@@ -197,33 +212,37 @@ export default function CampagnePage() {
         </div>
       </header>
 
-      <div className="flex-1 px-4 py-5 pb-32">
-        {/* Écran 1 — Objectif */}
-        {step === 0 && (
-          <Step
-            title="Que veux-tu développer ?"
-            subtitle="Une campagne = un objectif. Tu pourras en créer une autre plus tard."
-          >
-            <div className="flex flex-col gap-3">
-              <GoalCard
-                active={goal === 'PARTENAIRES'}
-                onClick={() => setGoal('PARTENAIRES')}
-                icon={UserPlus}
-                title="Recruter des partenaires"
-                desc="Attirer des personnes qui veulent se lancer avec toi."
-              />
-              <GoalCard
-                active={goal === 'CLIENTS'}
-                onClick={() => toast('Objectif Clients — bientôt disponible')}
-                icon={Users}
-                title="Trouver des clients"
-                desc="Faire découvrir tes produits et remplir tes réunions."
-                soon
-              />
+      {step === 0 ? (
+        <div className="flex min-h-0 flex-1 flex-col">
+          <div className="px-4 pt-4">
+            <h2 className="font-display text-2xl font-semibold text-foreground text-balance">
+              Que veux-tu mettre en avant ?
+            </h2>
+            <p className="mt-1 text-sm text-muted-foreground text-pretty">
+              Dis à Nova le produit ou le service de ta campagne.
+            </p>
+          </div>
+          <NovaChat seed={PRODUIT_SEED} onCapture={setProductName} />
+          {productName && (
+            <div
+              className="border-t border-border bg-background/95 p-4 backdrop-blur"
+              style={{ paddingBottom: 'max(1rem, env(safe-area-inset-bottom))' }}
+            >
+              <button
+                type="button"
+                onClick={next}
+                disabled={saving}
+                className="w-full rounded-xl py-3.5 text-sm font-bold text-white transition-transform active:scale-[0.98] disabled:opacity-50"
+                style={{ background: NOVA }}
+              >
+                {saving ? 'Enregistrement…' : `Continuer avec « ${productName} »`}
+              </button>
             </div>
-          </Step>
-        )}
-
+          )}
+        </div>
+      ) : (
+        <>
+      <div className="flex-1 px-4 py-5 pb-32">
         {/* Écran 2 — Persona */}
         {step === 1 && (
           <Step
@@ -554,6 +573,8 @@ export default function CampagnePage() {
           {saving ? 'Enregistrement…' : step === STEPS.length - 1 ? 'Lancer la campagne' : 'Continuer'}
         </button>
       </div>
+        </>
+      )}
     </div>
   )
 }
@@ -575,55 +596,6 @@ function Step({
       </div>
       {children}
     </div>
-  )
-}
-
-function GoalCard({
-  active,
-  onClick,
-  icon: Icon,
-  title,
-  desc,
-  soon,
-}: {
-  active: boolean
-  onClick: () => void
-  icon: typeof Users
-  title: string
-  desc: string
-  soon?: boolean
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={cn(
-        'flex items-center gap-3 rounded-2xl border bg-surface p-4 text-left shadow-card transition-colors',
-        active ? 'border-transparent' : 'border-border active:bg-muted',
-        soon && 'opacity-60',
-      )}
-      style={active ? { borderColor: NOVA, boxShadow: `0 0 0 1px ${NOVA}` } : undefined}
-    >
-      <span
-        className="flex size-11 shrink-0 items-center justify-center rounded-xl"
-        style={{ background: `${NOVA}1a`, color: NOVA }}
-      >
-        <Icon className="size-5 stroke-[1.5]" />
-      </span>
-      <span className="flex-1">
-        <span className="flex items-center gap-2">
-          <span className="text-sm font-bold text-foreground">{title}</span>
-          {soon && (
-            <span className="flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-[10px] font-semibold text-muted-foreground">
-              <Lock className="size-2.5" />
-              Bientôt
-            </span>
-          )}
-        </span>
-        <span className="block text-xs text-muted-foreground">{desc}</span>
-      </span>
-      {active && <Check className="size-5" style={{ color: NOVA }} />}
-    </button>
   )
 }
 
