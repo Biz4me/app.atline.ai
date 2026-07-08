@@ -25,11 +25,13 @@ export function NovaChat({
   onCapture,
   chipLabel,
   onChip,
+  storageKey,
 }: {
   seed: string
   onCapture?: (value: string) => void
   chipLabel?: string
   onChip?: () => void
+  storageKey?: string
 }) {
   const [messages, setMessages] = useState<Msg[]>([])
   const [input, setInput] = useState('')
@@ -42,9 +44,32 @@ export function NovaChat({
   useEffect(() => {
     if (started.current) return
     started.current = true
+    // Restauration au refresh : on reprend la conversation en cours si elle existe.
+    if (storageKey) {
+      try {
+        const raw = sessionStorage.getItem(storageKey)
+        if (raw) {
+          const s = JSON.parse(raw)
+          if (Array.isArray(s.messages) && s.messages.length) {
+            setMessages(s.messages)
+            historyRef.current = Array.isArray(s.history) ? s.history : []
+            setChip(!!s.chip)
+            return
+          }
+        }
+      } catch {}
+    }
     void send(seed, true)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  // Sauvegarde la conversation (survit au rafraîchissement)
+  useEffect(() => {
+    if (!storageKey || !started.current) return
+    try {
+      sessionStorage.setItem(storageKey, JSON.stringify({ messages, history: historyRef.current, chip }))
+    } catch {}
+  }, [messages, chip, storageKey])
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' })

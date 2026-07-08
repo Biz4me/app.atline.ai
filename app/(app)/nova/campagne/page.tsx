@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import {
   ChevronLeft,
+  ChevronRight,
   Users,
   Sparkles,
   User,
@@ -34,6 +35,7 @@ import { cn } from '@/lib/utils'
 import { NovaChat } from '@/components/nova/nova-chat'
 
 const NOVA = '#8B5CF6'
+const WKEY = 'nova_wizard' // clé sessionStorage de reprise (état du wizard)
 
 // Écran 1 — consigne de Nova : cadrer la campagne sur un PRODUIT/SERVICE (les réseaux pénalisent
 // le contenu "opportunité/MLM"). Nova réoriente si besoin, puis pose [[OK: …]] quand c'est verrouillé.
@@ -111,13 +113,45 @@ export default function CampagnePage() {
   const [loadedStatus, setLoadedStatus] = useState<string | null>(null)
   const [editing, setEditing] = useState(false)
   const [loaded, setLoaded] = useState(false) // le chat écran 1 n'apparaît qu'une fois la campagne connue
+  const [forId, setForId] = useState('') // clé de persistance : 'new' ou l'id édité
+
   useEffect(() => {
     const id = new URLSearchParams(window.location.search).get('id')
+    const fid = id || 'new'
+    setForId(fid)
+    if (id) setEditing(true)
+
+    // 1) Reprise après refresh : on restaure l'état en cours (étape + champs) s'il colle au contexte.
+    try {
+      const raw = sessionStorage.getItem(WKEY)
+      const s = raw ? JSON.parse(raw) : null
+      if (s && s.forId === fid) {
+        setStep(s.step ?? 0)
+        setCampaignId(s.campaignId ?? null)
+        setLoadedStatus(s.loadedStatus ?? null)
+        setProductName(s.productName ?? '')
+        setWho(s.who ?? '')
+        setPain(s.pain ?? '')
+        setDesire(s.desire ?? '')
+        if (s.meetingFormat) setMeetingFormat(s.meetingFormat)
+        setOfferPitch(s.offerPitch ?? '')
+        setDay(s.day ?? 'Mardi')
+        setTime(s.time ?? '19:00')
+        setLink(s.link ?? '')
+        if (Array.isArray(s.channels)) setChannels(s.channels)
+        if (s.contentMode) setContentMode(s.contentMode)
+        if (typeof s.cadence === 'number') setCadence(s.cadence)
+        setLoaded(true)
+        return
+      }
+      if (raw) sessionStorage.removeItem(WKEY) // contexte différent → on repart propre
+    } catch {}
+
+    // 2) Pas de reprise : nouvelle campagne, ou chargement d'une campagne à éditer.
     if (!id) {
       setLoaded(true)
       return
     }
-    setEditing(true)
     fetch(`/api/nova/campaigns/${id}`)
       .then((r) => (r.ok ? r.json() : null))
       .then((d) => {
@@ -143,6 +177,27 @@ export default function CampagnePage() {
       .catch(() => {})
       .finally(() => setLoaded(true))
   }, [])
+
+  // Sauvegarde l'avancement (survit au rafraîchissement)
+  useEffect(() => {
+    if (!loaded || !forId) return
+    try {
+      sessionStorage.setItem(
+        WKEY,
+        JSON.stringify({ forId, step, campaignId, loadedStatus, productName, who, pain, desire, meetingFormat, offerPitch, day, time, link, channels, contentMode, cadence }),
+      )
+    } catch {}
+  }, [loaded, forId, step, campaignId, loadedStatus, productName, who, pain, desire, meetingFormat, offerPitch, day, time, link, channels, contentMode, cadence])
+
+  function clearPersistence() {
+    try {
+      sessionStorage.removeItem(WKEY)
+      for (let i = sessionStorage.length - 1; i >= 0; i--) {
+        const k = sessionStorage.key(i)
+        if (k && k.startsWith(`nova_chat_${forId}_`)) sessionStorage.removeItem(k)
+      }
+    } catch {}
+  }
 
   const launched = !!loadedStatus && loadedStatus !== 'BROUILLON'
   const seed = editing && productName ? editSeed(productName) : PRODUIT_SEED
@@ -228,6 +283,7 @@ export default function CampagnePage() {
     setSaving(true)
     try {
       await patch({ status: launched ? loadedStatus : 'ACTIVE' })
+      clearPersistence()
       toast.success(launched ? 'Campagne mise à jour' : 'Campagne lancée')
       router.push('/nova')
     } catch {
@@ -237,9 +293,8 @@ export default function CampagnePage() {
     }
   }
 
-  function back() {
-    if (step === 0) router.back()
-    else setStep((s) => s - 1)
+  function exit() {
+    router.push('/nova')
   }
 
   return (
@@ -252,8 +307,8 @@ export default function CampagnePage() {
         <div className="flex items-center gap-3">
           <button
             type="button"
-            onClick={back}
-            aria-label="Retour"
+            onClick={exit}
+            aria-label="Fermer"
             className="-ml-1 flex size-9 items-center justify-center rounded-full text-fg-2 active:bg-muted"
           >
             <ChevronLeft className="size-5" />
@@ -261,9 +316,6 @@ export default function CampagnePage() {
           <h1 className="font-display text-lg font-semibold">
             {loadedStatus ? 'Modifier la campagne' : 'Nouvelle campagne'}
           </h1>
-          <span className="ml-auto text-xs font-semibold text-muted-foreground">
-            {step + 1} / {STEPS.length}
-          </span>
         </div>
         <div className="mt-3 flex gap-1.5">
           {STEPS.map((label, i) => (
@@ -279,18 +331,40 @@ export default function CampagnePage() {
             />
           ))}
         </div>
+        {/* Titre d'étape centré + flèches avant/après */}
+        <div className="mt-2 flex items-center justify-center gap-4">
+          <button
+            type="button"
+            onClick={() => setStep((s) => Math.max(0, s - 1))}
+            disabled={step === 0}
+            aria-label="Étape précédente"
+            className="flex size-8 items-center justify-center rounded-full text-muted-foreground active:bg-muted disabled:opacity-30"
+          >
+            <ChevronLeft className="size-5" />
+          </button>
+          <span className="min-w-[104px] text-center text-sm font-bold text-foreground">{STEPS[step]}</span>
+          <button
+            type="button"
+            onClick={() => setStep((s) => Math.min(STEPS.length - 1, s + 1))}
+            disabled={step === STEPS.length - 1}
+            aria-label="Étape suivante"
+            className="flex size-8 items-center justify-center rounded-full text-muted-foreground active:bg-muted disabled:opacity-30"
+          >
+            <ChevronRight className="size-5" />
+          </button>
+        </div>
       </header>
 
       {step <= 1 ? (
         <div className="flex min-h-0 flex-1 flex-col">
-          <p className="eyebrow px-6 pt-2">{STEPS[step]}</p>
-          {loaded && (
+          {loaded && forId && (
             <NovaChat
               key={`${step}-${editing ? 'e' : 'n'}`}
               seed={step === 0 ? seed : cibleSeed(productName, who)}
               onCapture={step === 0 ? setProductName : setWho}
               chipLabel={`Configurer la ${STEPS[step + 1].toLowerCase()}`}
               onChip={next}
+              storageKey={`nova_chat_${forId}_${step}`}
             />
           )}
         </div>
