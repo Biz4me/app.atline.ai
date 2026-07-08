@@ -59,6 +59,13 @@ export default function RootLayout({
       <head>
         <link rel="preconnect" href="https://api.fontshare.com" />
         <link rel="stylesheet" href={cabinetGroteskHref} />
+        {/* Splash une seule fois par session : au refresh, l'attribut est posé avant le 1er paint (CSS le masque) */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html:
+              "try{var k='atl_splash_seen';if(sessionStorage.getItem(k)){document.documentElement.setAttribute('data-atl-splash-seen','1')}else{sessionStorage.setItem(k,'1')}}catch(e){}",
+          }}
+        />
       </head>
       <body className="font-sans antialiased">
         <ThemeProvider attribute="class" defaultTheme="light" disableTransitionOnChange>

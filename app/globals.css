@@ -257,6 +257,11 @@
   animation: slide-in-right 0.25s ease-out;
 }
 
+/* Splash Atline : une seule fois par session — masqué au refresh avant le 1er paint */
+html[data-atl-splash-seen] .atline-splash {
+  display: none !important;
+}
+
 /* Indicateur de frappe Atlas — 3 points en cascade */
 @keyframes atlas-typing {
   0%, 60%, 100% { opacity: 0.25; transform: translateY(0); }

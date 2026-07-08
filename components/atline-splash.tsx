@@ -30,6 +30,11 @@ export function AtlineSplash({ minDuration = 1800 }: { minDuration?: number }) {
   }, [])
 
   useEffect(() => {
+    // Déjà affiché dans cette session (le script pré-hydratation a posé l'attribut) → on saute.
+    if (document.documentElement.hasAttribute('data-atl-splash-seen')) {
+      setPhase('gone')
+      return
+    }
     const t = setTimeout(() => setPhase('fade'), minDuration)
     return () => clearTimeout(t)
   }, [minDuration])
@@ -39,6 +44,7 @@ export function AtlineSplash({ minDuration = 1800 }: { minDuration?: number }) {
   return (
     <div
       aria-hidden
+      className="atline-splash"
       onTransitionEnd={() => {
         if (phase === 'fade') setPhase('gone')
       }}
