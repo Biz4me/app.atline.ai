@@ -13,6 +13,13 @@ import {
   CalendarClock,
   Check,
   Lock,
+  Camera,
+  Globe,
+  Music2,
+  Image as ImageIcon,
+  AtSign,
+  Link2,
+  Grid3x3,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
@@ -24,6 +31,7 @@ const STEPS = ['Objectif', 'Persona', 'Réunion', 'Canaux', 'Profil', 'Contenu',
 
 type Goal = 'CLIENTS' | 'PARTENAIRES'
 type MeetingFormat = 'TETE_A_TETE' | 'GROUPE'
+type Platform = 'INSTAGRAM' | 'FACEBOOK'
 
 const WEEKDAYS = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche']
 
@@ -47,6 +55,16 @@ export default function CampagnePage() {
   const [day, setDay] = useState('Mardi')
   const [time, setTime] = useState('19:00')
   const [link, setLink] = useState('')
+
+  // Écran 4 — Canaux
+  const [channels, setChannels] = useState<Platform[]>(['INSTAGRAM', 'FACEBOOK'])
+
+  // Écran 5 — Optimise ton profil (checklist consultative, non persistée)
+  const [checked, setChecked] = useState<Record<string, boolean>>({})
+
+  function toggleChannel(p: Platform) {
+    setChannels((c) => (c.includes(p) ? c.filter((x) => x !== p) : [...c, p]))
+  }
 
   async function persist(): Promise<boolean> {
     setSaving(true)
@@ -80,6 +98,12 @@ export default function CampagnePage() {
         }
         const meetingConfig = meetingFormat === 'GROUPE' ? { day, time, link } : {}
         await patch({ meetingFormat, offerPitch, meetingConfig })
+      } else if (step === 3) {
+        if (channels.length === 0) {
+          toast.error('Choisis au moins un réseau')
+          return false
+        }
+        await patch({ channels })
       }
       return true
     } catch {
@@ -100,7 +124,7 @@ export default function CampagnePage() {
   }
 
   async function next() {
-    if (step <= 2) {
+    if (step <= 3) {
       const ok = await persist()
       if (!ok) return
     }
@@ -300,8 +324,65 @@ export default function CampagnePage() {
           </Step>
         )}
 
-        {/* Écrans 4-8 — à venir */}
-        {step > 2 && (
+        {/* Écran 4 — Canaux */}
+        {step === 3 && (
+          <Step
+            title="Où veux-tu publier ?"
+            subtitle="On démarre sur le duo qui capte le mieux les leads. Tu pourras en ajouter."
+          >
+            <div className="flex flex-col gap-3">
+              <ChannelCard
+                active={channels.includes('INSTAGRAM')}
+                onClick={() => toggleChannel('INSTAGRAM')}
+                icon={Camera}
+                title="Instagram"
+                desc="Reels et messages privés : le moteur de la capture."
+              />
+              <ChannelCard
+                active={channels.includes('FACEBOOK')}
+                onClick={() => toggleChannel('FACEBOOK')}
+                icon={Globe}
+                title="Facebook"
+                desc="Ton réseau proche et les groupes de ta thématique."
+              />
+              <ChannelCard
+                active={false}
+                onClick={() => toast('TikTok — bientôt disponible')}
+                icon={Music2}
+                title="TikTok"
+                desc="Portée à froid maximale."
+                soon
+              />
+            </div>
+          </Step>
+        )}
+
+        {/* Écran 5 — Optimise ton profil */}
+        {step === 4 && (
+          <Step
+            title="Prépare tes profils"
+            subtitle="Un visiteur qui clique doit comprendre en 3 secondes. Coche au fur et à mesure."
+          >
+            <div className="flex flex-col gap-2.5">
+              {PROFILE_TIPS.map((tip) => (
+                <ChecklistItem
+                  key={tip.id}
+                  icon={tip.icon}
+                  title={tip.title}
+                  desc={tip.desc}
+                  done={!!checked[tip.id]}
+                  onToggle={() => setChecked((c) => ({ ...c, [tip.id]: !c[tip.id] }))}
+                />
+              ))}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Facultatif — mais ça change tout sur le taux de clic. Tu peux y revenir plus tard.
+            </p>
+          </Step>
+        )}
+
+        {/* Écrans 6-8 — à venir */}
+        {step > 4 && (
           <Step title={STEPS[step]} subtitle="Cet écran arrive bientôt.">
             <div className="flex flex-col items-center gap-3 rounded-2xl border border-dashed border-border py-16 text-center">
               <span
@@ -441,6 +522,102 @@ function FormatCard({
         <span className="block text-xs text-muted-foreground">{desc}</span>
       </span>
       {active && <Check className="size-5" style={{ color: NOVA }} />}
+    </button>
+  )
+}
+
+const PROFILE_TIPS: { id: string; icon: typeof ImageIcon; title: string; desc: string }[] = [
+  { id: 'photo', icon: ImageIcon, title: 'Photo de profil nette', desc: 'Ton visage ou ton logo, lumineux et reconnaissable.' },
+  { id: 'bio', icon: AtSign, title: 'Une bio qui parle à ta cible', desc: 'Qui tu aides, à quoi, en une ligne. Pas de jargon.' },
+  { id: 'lien', icon: Link2, title: 'Le lien vers ta réunion en bio', desc: 'Le seul call-to-action : là où tout le trafic atterrit.' },
+  { id: 'feed', icon: Grid3x3, title: 'Un feed cohérent', desc: 'Mêmes couleurs, même ton : on te reconnaît d\'un coup d\'œil.' },
+  { id: 'epingle', icon: Sparkles, title: 'Un post épinglé qui présente ton offre', desc: 'Le premier réflexe d\'un curieux, c\'est de scroller ton profil.' },
+]
+
+function ChannelCard({
+  active,
+  onClick,
+  icon: Icon,
+  title,
+  desc,
+  soon,
+}: {
+  active: boolean
+  onClick: () => void
+  icon: typeof Camera
+  title: string
+  desc: string
+  soon?: boolean
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={cn(
+        'flex items-center gap-3 rounded-2xl border bg-surface p-4 text-left shadow-card transition-colors',
+        active ? 'border-transparent' : 'border-border active:bg-muted',
+        soon && 'opacity-60',
+      )}
+      style={active ? { borderColor: NOVA, boxShadow: `0 0 0 1px ${NOVA}` } : undefined}
+    >
+      <span
+        className="flex size-11 shrink-0 items-center justify-center rounded-xl"
+        style={{ background: `${NOVA}1a`, color: NOVA }}
+      >
+        <Icon className="size-5 stroke-[1.5]" />
+      </span>
+      <span className="flex-1">
+        <span className="flex items-center gap-2">
+          <span className="text-sm font-bold text-foreground">{title}</span>
+          {soon && (
+            <span className="flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-[10px] font-semibold text-muted-foreground">
+              <Lock className="size-2.5" />
+              Bientôt
+            </span>
+          )}
+        </span>
+        <span className="block text-xs text-muted-foreground">{desc}</span>
+      </span>
+      {active && <Check className="size-5" style={{ color: NOVA }} />}
+    </button>
+  )
+}
+
+function ChecklistItem({
+  icon: Icon,
+  title,
+  desc,
+  done,
+  onToggle,
+}: {
+  icon: typeof ImageIcon
+  title: string
+  desc: string
+  done: boolean
+  onToggle: () => void
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onToggle}
+      className="flex items-center gap-3 rounded-2xl border border-border bg-surface p-3.5 text-left transition-colors active:bg-muted"
+    >
+      <span
+        className="flex size-9 shrink-0 items-center justify-center rounded-lg"
+        style={{ background: `${NOVA}1a`, color: NOVA }}
+      >
+        <Icon className="size-4 stroke-[1.5]" />
+      </span>
+      <span className="flex-1">
+        <span className="block text-sm font-semibold text-foreground">{title}</span>
+        <span className="block text-xs text-muted-foreground">{desc}</span>
+      </span>
+      <span
+        className="flex size-6 shrink-0 items-center justify-center rounded-full border transition-colors"
+        style={done ? { background: NOVA, borderColor: NOVA } : { borderColor: 'var(--border)' }}
+      >
+        {done && <Check className="size-4 text-white" />}
+      </span>
     </button>
   )
 }
