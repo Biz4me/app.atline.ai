@@ -2,8 +2,9 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Plus, Users, UserPlus, Radio, Sparkles, MoreVertical, Pencil, Trash2 } from 'lucide-react'
+import { Plus, Sparkles, MoreVertical, Pencil, Trash2, ChevronDown } from 'lucide-react'
 import { toast } from 'sonner'
+import { cn } from '@/lib/utils'
 
 const NOVA = '#8B5CF6'
 
@@ -15,7 +16,7 @@ type Campaign = {
   channels: string[]
   cadence: number
   createdAt: string
-  _count?: { leads: number; posts: number }
+  stats?: { posts: number; leads: number; inscrits: number; convertis: number }
 }
 
 const STATUS: Record<Campaign['status'], { label: string; color: string }> = {
@@ -123,6 +124,12 @@ function EmptyState({ onCreate }: { onCreate: () => void }) {
   )
 }
 
+function initialsOf(name: string) {
+  const parts = name.trim().split(/\s+/).filter(Boolean).slice(0, 2)
+  const ini = parts.map((w) => w[0]).join('').toUpperCase()
+  return ini || 'C'
+}
+
 function CampaignCard({
   campaign,
   onEdit,
@@ -133,45 +140,50 @@ function CampaignCard({
   onDelete: () => void
 }) {
   const [menu, setMenu] = useState(false)
+  const [open, setOpen] = useState(false)
   const s = STATUS[campaign.status]
-  const GoalIcon = campaign.goal === 'PARTENAIRES' ? UserPlus : Users
-  const goalLabel = campaign.goal === 'PARTENAIRES' ? 'Partenaires' : 'Clients'
-  const channels = campaign.channels
-    .map((c) => (c === 'INSTAGRAM' ? 'Instagram' : c === 'FACEBOOK' ? 'Facebook' : c))
-    .join(' · ')
-  const leads = campaign._count?.leads ?? 0
+  const st = campaign.stats ?? { posts: 0, leads: 0, inscrits: 0, convertis: 0 }
 
   return (
-    <div className="rounded-2xl border border-border bg-surface p-4 shadow-card">
-      <div className="flex items-start gap-3">
-        <span
-          className="flex size-10 shrink-0 items-center justify-center rounded-xl"
-          style={{ background: `${NOVA}1a`, color: NOVA }}
+    <div className="overflow-hidden rounded-2xl border border-border bg-surface shadow-card">
+      <div className="flex items-center gap-3 p-4">
+        {/* Avatar = initiales du nom de la campagne */}
+        <button
+          type="button"
+          onClick={() => setOpen((v) => !v)}
+          className="flex min-w-0 flex-1 items-center gap-3 text-left"
         >
-          <GoalIcon className="size-5 stroke-[1.5]" />
-        </span>
-        <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2">
-            <p className="truncate text-sm font-bold text-foreground">{campaign.name}</p>
-            <span
-              className="flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold"
-              style={{ background: `${s.color}1a`, color: s.color }}
-            >
-              <span className="size-1.5 rounded-full" style={{ background: s.color }} />
-              {s.label}
+          <span
+            className="flex size-10 shrink-0 items-center justify-center rounded-xl text-sm font-bold text-white"
+            style={{ background: NOVA }}
+          >
+            {initialsOf(campaign.name)}
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="flex items-center gap-2">
+              <span className="truncate text-sm font-bold text-foreground">{campaign.name}</span>
+              <span
+                className="flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold"
+                style={{ background: `${s.color}1a`, color: s.color }}
+              >
+                <span className="size-1.5 rounded-full" style={{ background: s.color }} />
+                {s.label}
+              </span>
             </span>
-          </div>
-          <p className="text-xs text-muted-foreground">Objectif {goalLabel.toLowerCase()}</p>
-        </div>
+          </span>
+          <ChevronDown
+            className={cn('size-4 shrink-0 text-muted-foreground transition-transform', open && 'rotate-180')}
+          />
+        </button>
 
-        <div className="relative -mr-1 -mt-1 shrink-0">
+        <div className="relative shrink-0">
           <button
             type="button"
             onClick={() => setMenu((v) => !v)}
             aria-label="Options"
             className="flex size-8 items-center justify-center rounded-full text-muted-foreground active:bg-muted"
           >
-            <MoreVertical className="size-4.5 stroke-[1.5]" />
+            <MoreVertical className="size-[18px] stroke-[1.5]" />
           </button>
           {menu && (
             <>
@@ -205,19 +217,28 @@ function CampaignCard({
         </div>
       </div>
 
-      <div className="mt-3 flex items-center gap-4 border-t border-border pt-3 text-xs text-muted-foreground">
-        {channels && (
-          <span className="flex items-center gap-1.5">
-            <Radio className="size-3.5" style={{ color: NOVA }} />
-            {channels}
-          </span>
-        )}
-        <span className="flex items-center gap-1.5">
-          <Users className="size-3.5" style={{ color: NOVA }} />
-          {leads} lead{leads > 1 ? 's' : ''}
-        </span>
-        <span className="ml-auto font-semibold">{campaign.cadence}/sem</span>
-      </div>
+      {open && (
+        <div className="border-t border-border px-4 pb-4 pt-3">
+          <p className="eyebrow mb-2">Résultats</p>
+          <div className="grid grid-cols-4 gap-2">
+            <Kpi value={st.posts} label="Publications" />
+            <Kpi value={st.leads} label="Leads" />
+            <Kpi value={st.inscrits} label="Inscrits" />
+            <Kpi value={st.convertis} label="Convertis" />
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+function Kpi({ value, label }: { value: number; label: string }) {
+  return (
+    <div className="flex flex-col items-center gap-0.5 rounded-xl bg-muted/60 py-3">
+      <span className="text-lg font-bold" style={{ color: NOVA }}>
+        {value}
+      </span>
+      <span className="text-center text-[10px] font-semibold text-muted-foreground">{label}</span>
     </div>
   )
 }

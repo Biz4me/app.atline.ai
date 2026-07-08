@@ -19,7 +19,30 @@ export async function GET() {
     orderBy: { createdAt: 'desc' },
     include: { _count: { select: { leads: true, posts: true } } },
   })
-  return NextResponse.json({ campaigns })
+
+  // KPI de résultats par campagne : inscrits (à une réunion) et convertis.
+  const ids = campaigns.map((c) => c.id)
+  const inscrits: Record<string, number> = {}
+  const convertis: Record<string, number> = {}
+  if (ids.length) {
+    const [insc, conv] = await Promise.all([
+      db.lead.groupBy({ by: ['campaignId'], where: { campaignId: { in: ids }, meetingStatus: { not: null } }, _count: { _all: true } }),
+      db.lead.groupBy({ by: ['campaignId'], where: { campaignId: { in: ids }, outcome: 'CONVERTI' }, _count: { _all: true } }),
+    ])
+    insc.forEach((r) => (inscrits[r.campaignId] = r._count._all))
+    conv.forEach((r) => (convertis[r.campaignId] = r._count._all))
+  }
+
+  const out = campaigns.map((c) => ({
+    ...c,
+    stats: {
+      posts: c._count.posts,
+      leads: c._count.leads,
+      inscrits: inscrits[c.id] ?? 0,
+      convertis: convertis[c.id] ?? 0,
+    },
+  }))
+  return NextResponse.json({ campaigns: out })
 }
 
 export async function POST(req: Request) {
