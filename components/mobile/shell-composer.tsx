@@ -14,6 +14,8 @@ export function ShellComposer() {
 
   // La page Atlas rend son propre composeur (câblé au chat)
   if (pathname === '/atlas' || pathname.startsWith('/atlas/')) return null
+  // Nova = environnement agent (cockpit campagnes + wizard), pas de composeur Atlas ici
+  if (pathname === '/nova' || pathname.startsWith('/nova/')) return null
 
   const submit = () => {
     const q = value.trim()
