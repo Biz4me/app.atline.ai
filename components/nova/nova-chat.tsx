@@ -25,12 +25,16 @@ export function NovaChat({
   onCapture,
   chipLabel,
   onChip,
+  extraLabel,
+  onExtra,
   storageKey,
 }: {
   seed: string
   onCapture?: (value: string) => void
   chipLabel?: string
   onChip?: () => void
+  extraLabel?: string
+  onExtra?: () => void
   storageKey?: string
 }) {
   const [messages, setMessages] = useState<Msg[]>([])
@@ -173,17 +177,31 @@ export function NovaChat({
             </div>
           ))}
 
-          {/* Chip « étape suivante » posé dans le fil quand Nova a verrouillé la valeur */}
-          {chip && chipLabel && onChip && (
-            <button
-              type="button"
-              onClick={onChip}
-              className="flex items-center gap-1.5 self-start rounded-full px-4 py-2 text-sm font-semibold text-white shadow-sm transition-transform active:scale-[0.98]"
-              style={{ background: NOVA }}
-            >
-              {chipLabel}
-              <ArrowRight className="size-4" />
-            </button>
+          {/* Actions posées dans le fil quand Nova a verrouillé la valeur */}
+          {chip && (
+            <div className="flex flex-wrap items-center gap-2">
+              {extraLabel && onExtra && (
+                <button
+                  type="button"
+                  onClick={onExtra}
+                  className="flex items-center gap-1.5 rounded-full border px-4 py-2 text-sm font-semibold transition-colors active:bg-muted"
+                  style={{ borderColor: NOVA, color: NOVA }}
+                >
+                  {extraLabel}
+                </button>
+              )}
+              {chipLabel && onChip && (
+                <button
+                  type="button"
+                  onClick={onChip}
+                  className="flex items-center gap-1.5 rounded-full px-4 py-2 text-sm font-semibold text-white shadow-sm transition-transform active:scale-[0.98]"
+                  style={{ background: NOVA }}
+                >
+                  {chipLabel}
+                  <ArrowRight className="size-4" />
+                </button>
+              )}
+            </div>
           )}
         </div>
       </div>

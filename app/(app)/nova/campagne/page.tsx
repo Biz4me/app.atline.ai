@@ -32,6 +32,7 @@ import {
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 import { NovaChat } from '@/components/nova/nova-chat'
+import { VideoRecorder } from '@/components/nova/video-recorder'
 
 const NOVA = '#8B5CF6'
 const WKEY = 'nova_wizard' // clé sessionStorage de reprise (état du wizard)
@@ -122,6 +123,7 @@ export default function CampagnePage() {
   // Écran Conversion (BOFU) — contenu de conversion rédigé par Nova, sauvé en ContentPost
   const [bofu, setBofu] = useState('')
   const [bofuPostId, setBofuPostId] = useState<string | null>(null)
+  const [recorderOpen, setRecorderOpen] = useState(false) // enregistreur vidéo Face
 
   // Mode édition : ?id=… → charge la campagne et préremplit tout (les PATCH ciblent l'existant).
   const [loadedStatus, setLoadedStatus] = useState<string | null>(null)
@@ -408,6 +410,8 @@ export default function CampagnePage() {
               onCapture={step === 0 ? setProductName : step === 1 ? setWho : setBofu}
               chipLabel={`Configurer : ${STEPS[step + 1]}`}
               onChip={next}
+              extraLabel={step === 5 ? 'Filmer ta vidéo' : undefined}
+              onExtra={step === 5 ? () => setRecorderOpen(true) : undefined}
               storageKey={`nova_chat_${forId}_${step}`}
             />
           )}
@@ -734,6 +738,16 @@ export default function CampagnePage() {
       </div>
         </>
       )}
+
+      <VideoRecorder
+        open={recorderOpen}
+        onClose={() => setRecorderOpen(false)}
+        script={bofu}
+        campaignId={campaignId}
+        postId={bofuPostId}
+        platform={channels[0]}
+        onSaved={setBofuPostId}
+      />
     </div>
   )
 }

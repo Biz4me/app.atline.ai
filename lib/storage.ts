@@ -13,6 +13,7 @@ const MIME: Record<string, string> = {
   ppt: 'application/vnd.ms-powerpoint', pptx: 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
   xls: 'application/vnd.ms-excel', xlsx: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
   txt: 'text/plain', csv: 'text/csv',
+  webm: 'video/webm', mp4: 'video/mp4', mov: 'video/quicktime', m4v: 'video/x-m4v',
 }
 
 export function mimeFor(format: string): string {
