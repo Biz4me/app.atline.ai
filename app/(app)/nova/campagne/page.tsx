@@ -53,6 +53,19 @@ ${GARDE_FOU}
 Termine ton message par ce marqueur exact sur une nouvelle ligne pour permettre de continuer : [[OK: ${produit}]]
 Si l'utilisateur donne un nouveau produit, confirme-le et termine par [[OK: le nouveau produit]].`
 
+// Écran 2 — Cible : Nova aide à décrire à qui s'adresse le produit.
+const cibleSeed = (produit: string, existante: string) =>
+  existante
+    ? `Tu es Nova, l'assistante réseaux sociaux d'Atline. On affine la CIBLE d'une campagne qui met en avant « ${produit} ».
+La cible actuelle est : « ${existante} ».
+Salue court, rappelle-la, et demande si on la garde ou on l'ajuste. Tutoiement, phrases courtes.
+Termine ton message par ce marqueur exact sur une nouvelle ligne : [[OK: ${existante}]]
+Si l'utilisateur la précise, confirme et termine par [[OK: la nouvelle cible en une phrase]].`
+    : `Tu es Nova, l'assistante réseaux sociaux d'Atline. La campagne met en avant « ${produit} ».
+Aide l'utilisateur à décrire la CIBLE idéale : à qui s'adresse ce produit et ce qu'elle recherche.
+Style : chaleureux, tutoiement, phrases courtes, une question à la fois, sans jargon. Pose 1 à 2 questions max pour cerner la personne.
+Quand la cible est claire, résume-la en une phrase et termine par ce marqueur exact sur une nouvelle ligne : [[OK: <la cible en une phrase>]]`
+
 // Flow campagne complet (8 écrans), noms courts.
 const STEPS = ['Description', 'Cible', 'Réunion', 'Canaux', 'Profil', 'Contenu', 'Parcours', 'Récap']
 
@@ -268,15 +281,15 @@ export default function CampagnePage() {
         </div>
       </header>
 
-      {step === 0 ? (
+      {step <= 1 ? (
         <div className="flex min-h-0 flex-1 flex-col">
-          <p className="eyebrow px-6 pt-2">{STEPS[0]}</p>
+          <p className="eyebrow px-6 pt-2">{STEPS[step]}</p>
           {loaded && (
             <NovaChat
-              key={editing ? 'edit' : 'new'}
-              seed={seed}
-              onCapture={setProductName}
-              chipLabel={`Configurer la ${STEPS[1].toLowerCase()}`}
+              key={`${step}-${editing ? 'e' : 'n'}`}
+              seed={step === 0 ? seed : cibleSeed(productName, who)}
+              onCapture={step === 0 ? setProductName : setWho}
+              chipLabel={`Configurer la ${STEPS[step + 1].toLowerCase()}`}
               onChip={next}
             />
           )}
@@ -284,44 +297,6 @@ export default function CampagnePage() {
       ) : (
         <>
       <div className="flex-1 px-4 py-5 pb-32">
-        {/* Écran 2 — Persona */}
-        {step === 1 && (
-          <Step
-            title="Qui veux-tu attirer ?"
-            subtitle="Plus c'est précis, plus le contenu de Nova touche juste."
-          >
-            <div className="flex flex-col gap-4">
-              <Field
-                label="Qui sont ces personnes ?"
-                value={who}
-                onChange={setWho}
-                placeholder="Ex. des mamans actives entre 30 et 45 ans qui cherchent un revenu complémentaire"
-              />
-              <Field
-                label="Quel est leur frein aujourd'hui ?"
-                value={pain}
-                onChange={setPain}
-                placeholder="Ex. elles manquent de temps et n'osent pas se lancer seules"
-              />
-              <Field
-                label="Que veulent-elles atteindre ?"
-                value={desire}
-                onChange={setDesire}
-                placeholder="Ex. gagner en liberté financière tout en gardant leur job"
-              />
-              <button
-                type="button"
-                onClick={() => toast('Affinage par Atlas — bientôt disponible')}
-                className="flex items-center justify-center gap-2 rounded-xl border border-dashed py-2.5 text-sm font-semibold transition-colors active:bg-muted"
-                style={{ borderColor: NOVA, color: NOVA }}
-              >
-                <Sparkles className="size-4" />
-                Affiner avec Atlas
-              </button>
-            </div>
-          </Step>
-        )}
-
         {/* Écran 3 — La réunion */}
         {step === 2 && (
           <Step
@@ -923,28 +898,3 @@ function ChecklistItem({
   )
 }
 
-function Field({
-  label,
-  value,
-  onChange,
-  placeholder,
-}: {
-  label: string
-  value: string
-  onChange: (v: string) => void
-  placeholder: string
-}) {
-  return (
-    <label className="flex flex-col gap-1.5">
-      <span className="text-sm font-semibold text-foreground">{label}</span>
-      <textarea
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        rows={2}
-        placeholder={placeholder}
-        className="w-full resize-none rounded-2xl border border-border bg-surface p-3 text-sm outline-none focus:ring-2"
-        style={{ ['--tw-ring-color' as string]: NOVA }}
-      />
-    </label>
-  )
-}
