@@ -2,15 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import {
-  ChevronLeft,
-  Plus,
-  SquarePen,
-  Users,
-  UserPlus,
-  Radio,
-  Sparkles,
-} from 'lucide-react'
+import { Plus, Users, UserPlus, Radio, Sparkles } from 'lucide-react'
 
 const NOVA = '#8B5CF6'
 
@@ -43,60 +35,41 @@ export default function NovaPage() {
       .catch(() => setCampaigns([]))
   }, [])
 
-  return (
-    <>
-      <header className="sticky top-0 z-30 flex items-center gap-3 bg-background/90 px-4 pt-[max(0.75rem,env(safe-area-inset-top))] pb-3 backdrop-blur lg:px-6 lg:py-0 lg:h-[68px]">
-        <button
-          type="button"
-          onClick={() => router.back()}
-          className="-ml-1 flex size-9 items-center justify-center rounded-full text-muted-foreground active:bg-muted lg:hidden"
-        >
-          <ChevronLeft className="size-5 stroke-[1.5]" />
-        </button>
-        <span
-          className="hidden lg:flex size-9 shrink-0 items-center justify-center rounded-[11px] text-white shadow-sm"
-          style={{ backgroundColor: NOVA }}
-        >
-          <SquarePen className="size-[18px] stroke-[1.5]" />
-        </span>
-        <h1 className="flex-1 font-display text-lg font-bold text-foreground lg:text-2xl">Nova</h1>
-        <button
-          type="button"
-          onClick={() => router.push('/nova/campagne')}
-          aria-label="Nouvelle campagne"
-          className="flex size-9 items-center justify-center rounded-full text-muted-foreground active:bg-muted"
-        >
-          <Plus className="size-5 stroke-[1.5]" />
-        </button>
-      </header>
+  // Cohérent avec Atlas : le « + » du top bar agent émet `agent:new` → nouvelle campagne.
+  useEffect(() => {
+    const onNew = () => router.push('/nova/campagne')
+    window.addEventListener('agent:new', onNew)
+    return () => window.removeEventListener('agent:new', onNew)
+  }, [router])
 
-      <div className="px-4 pt-4 lg:px-8 lg:pt-6 lg:max-w-3xl lg:mx-auto">
-        {campaigns === null ? (
-          <div className="flex flex-col gap-3">
-            {[0, 1].map((i) => (
-              <div key={i} className="h-28 animate-pulse rounded-2xl bg-muted" />
-            ))}
-          </div>
-        ) : campaigns.length === 0 ? (
-          <EmptyState onCreate={() => router.push('/nova/campagne')} />
-        ) : (
-          <div className="flex flex-col gap-3">
-            <button
-              type="button"
-              onClick={() => router.push('/nova/campagne')}
-              className="flex items-center justify-center gap-2 rounded-2xl py-3.5 text-sm font-bold text-white transition-transform active:scale-[0.98]"
-              style={{ background: NOVA }}
-            >
-              <Plus className="size-4" />
-              Nouvelle campagne
-            </button>
-            {campaigns.map((c) => (
-              <CampaignCard key={c.id} campaign={c} />
-            ))}
-          </div>
-        )}
-      </div>
-    </>
+  return (
+    <div className="px-4 pt-4 lg:px-8 lg:pt-6 lg:max-w-3xl lg:mx-auto">
+      {campaigns === null ? (
+        <div className="flex flex-col gap-3">
+          {[0, 1].map((i) => (
+            <div key={i} className="h-28 animate-pulse rounded-2xl bg-muted" />
+          ))}
+        </div>
+      ) : campaigns.length === 0 ? (
+        <EmptyState onCreate={() => router.push('/nova/campagne')} />
+      ) : (
+        <div className="flex flex-col gap-3">
+          {/* Mobile : création via le « + » du top bar agent. Desktop : bouton in-page (pas de « + » chrome). */}
+          <button
+            type="button"
+            onClick={() => router.push('/nova/campagne')}
+            className="hidden lg:flex items-center justify-center gap-2 rounded-2xl py-3 text-sm font-bold text-white transition-transform active:scale-[0.98]"
+            style={{ background: NOVA }}
+          >
+            <Plus className="size-4" />
+            Nouvelle campagne
+          </button>
+          {campaigns.map((c) => (
+            <CampaignCard key={c.id} campaign={c} />
+          ))}
+        </div>
+      )}
+    </div>
   )
 }
 
