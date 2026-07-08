@@ -1,7 +1,9 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { SendHorizontal } from 'lucide-react'
+import { toast } from 'sonner'
+import { cn } from '@/lib/utils'
+import { AppComposer } from '@/components/mobile/app-composer'
 
 const NOVA = '#8B5CF6'
 
@@ -16,23 +18,19 @@ const capture = (t: string) => {
 }
 
 // Une conversation avec Nova pour UNE étape du flow (AI-first, réutilisable).
-// `seed` = la consigne de Nova (envoyée en 1er tour, jamais affichée).
-// `onCapture` = appelé avec la valeur quand Nova pose le marqueur [[OK: …]].
+// Même rendu que le chat Atlas (typo + composeur flottant AppComposer), teinté Nova.
 export function NovaChat({
   seed,
   onCapture,
-  placeholder = 'Écris à Nova…',
 }: {
   seed: string
   onCapture?: (value: string) => void
-  placeholder?: string
 }) {
   const [messages, setMessages] = useState<Msg[]>([])
   const [input, setInput] = useState('')
   const [busy, setBusy] = useState(false)
   const historyRef = useRef<Msg[]>([]) // ce que voit le service (seed inclus en 1er)
   const scrollRef = useRef<HTMLDivElement>(null)
-  const taRef = useRef<HTMLTextAreaElement>(null)
   const started = useRef(false)
 
   useEffect(() => {
@@ -45,13 +43,6 @@ export function NovaChat({
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' })
   }, [messages, busy])
-
-  useEffect(() => {
-    const el = taRef.current
-    if (!el) return
-    el.style.height = 'auto'
-    el.style.height = Math.min(el.scrollHeight, 120) + 'px'
-  }, [input])
 
   async function send(text: string, hidden = false) {
     setBusy(true)
@@ -112,7 +103,6 @@ export function NovaChat({
     const cap = capture(acc)
     if (cap && onCapture) onCapture(cap)
     setBusy(false)
-    taRef.current?.focus()
   }
 
   function submit() {
@@ -124,71 +114,54 @@ export function NovaChat({
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      <div ref={scrollRef} className="flex-1 overflow-y-auto no-scrollbar px-4 py-4">
-        <div className="mx-auto flex max-w-md flex-col gap-3">
-          {messages.map((m, i) =>
-            m.role === 'user' ? (
-              <div key={i} className="self-end rounded-2xl rounded-br-md bg-muted px-4 py-2.5 text-sm text-foreground">
-                {m.content}
-              </div>
-            ) : (
-              <div key={i} className="flex gap-2.5">
-                <span
-                  className="mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-full text-xs font-bold text-white"
+      <div ref={scrollRef} className="flex-1 overflow-y-auto no-scrollbar px-6 pt-4 pb-40">
+        <div className="mx-auto flex max-w-md flex-col gap-4">
+          {messages.map((m, i) => (
+            <div key={i} className={cn('flex flex-col gap-2', m.role === 'user' ? 'items-end' : 'items-start')}>
+              {m.role === 'user' ? (
+                <div
+                  className="max-w-[82%] whitespace-pre-line rounded-2xl rounded-br-md px-3.5 py-2.5 text-lg leading-[1.4] text-white lg:text-sm"
                   style={{ background: NOVA }}
                 >
-                  N
-                </span>
-                <div className="flex-1 whitespace-pre-wrap text-sm leading-relaxed text-foreground">
-                  {m.content || (busy && i === messages.length - 1 ? <TypingDots /> : null)}
+                  {m.content}
                 </div>
-              </div>
-            ),
-          )}
+              ) : m.content === '' ? (
+                <TypingDots />
+              ) : (
+                <div className="flex w-full flex-col gap-2.5 text-lg leading-[1.65] text-foreground lg:text-sm">
+                  {m.content.split(/\n{2,}/).map((para, j) => (
+                    <p key={j} className="whitespace-pre-line">
+                      {para}
+                    </p>
+                  ))}
+                </div>
+              )}
+            </div>
+          ))}
         </div>
       </div>
 
-      <div className="px-4 pb-3">
-        <div className="mx-auto flex max-w-md items-end gap-2 rounded-[26px] border border-border bg-surface px-3 py-1.5 shadow-sm">
-          <textarea
-            ref={taRef}
-            rows={1}
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault()
-                submit()
-              }
-            }}
-            placeholder={placeholder}
-            className="flex-1 resize-none overflow-y-auto no-scrollbar bg-transparent text-base leading-[1.4] text-foreground outline-none placeholder:text-muted-foreground lg:text-sm"
-            style={{ maxHeight: 120, paddingTop: 7, paddingBottom: 7 }}
-          />
-          <button
-            type="button"
-            onClick={submit}
-            disabled={busy || !input.trim()}
-            className="flex size-9 shrink-0 items-center justify-center rounded-full text-white shadow-sm transition-opacity active:opacity-90 disabled:opacity-40"
-            style={{ background: NOVA }}
-            aria-label="Envoyer"
-          >
-            <SendHorizontal className="size-[17px] stroke-[1.5]" />
-          </button>
-        </div>
-      </div>
+      <AppComposer
+        value={input}
+        onChange={setInput}
+        onSubmit={submit}
+        onAttach={() => toast('Pièce jointe — bientôt')}
+        agentLabel="Nova"
+        accent={NOVA}
+        disabled={busy}
+      />
     </div>
   )
 }
 
 function TypingDots() {
   return (
-    <span className="inline-flex gap-1 py-1">
-      {[0, 1, 2].map((i) => (
+    <span className="flex items-center gap-1 py-1">
+      {[0, 0.2, 0.4].map((d) => (
         <span
-          key={i}
-          className="size-1.5 animate-bounce rounded-full bg-muted-foreground"
-          style={{ animationDelay: `${i * 0.15}s` }}
+          key={d}
+          className="size-2 rounded-full bg-muted-foreground/50 animate-[atlas-typing_1.2s_ease-in-out_infinite]"
+          style={{ animationDelay: `${d}s` }}
         />
       ))}
     </span>

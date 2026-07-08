@@ -259,14 +259,14 @@ export default function CampagnePage() {
           <NovaChat seed={PRODUIT_SEED} onCapture={setProductName} />
           {productName && (
             <div
-              className="border-t border-border bg-background/95 p-4 backdrop-blur"
-              style={{ paddingBottom: 'max(1rem, env(safe-area-inset-bottom))' }}
+              className="fixed inset-x-0 z-[49] px-4"
+              style={{ bottom: 'calc(max(20px, env(safe-area-inset-bottom)) + 64px)' }}
             >
               <button
                 type="button"
                 onClick={next}
                 disabled={saving}
-                className="w-full rounded-xl py-3.5 text-sm font-bold text-white transition-transform active:scale-[0.98] disabled:opacity-50"
+                className="mx-auto flex w-full max-w-md items-center justify-center rounded-full py-3 text-sm font-bold text-white shadow-lg transition-transform active:scale-[0.98] disabled:opacity-50"
                 style={{ background: NOVA }}
               >
                 {saving ? 'Enregistrement…' : `Continuer avec « ${productName} »`}
