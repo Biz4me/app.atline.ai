@@ -24,7 +24,7 @@ export async function GET() {
   })))
 }
 
-const ACCENT = ['#F97316', '#8B5CF6', '#3B82F6', '#22C55E', '#EF4444', '#EC4899', '#14B8A6']
+const ACCENT = ['#F97316', '#8B5CF6', '#3B82F6', '#22C55E', '#EF4444', '#F4B342', '#14B8A6']
 const pick = () => ACCENT[Math.floor(Math.random() * ACCENT.length)]
 const slugify = (s: string) => s.toLowerCase().normalize('NFD').replace(/[^a-z0-9]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '')
 

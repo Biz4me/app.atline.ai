@@ -124,7 +124,7 @@
   --disc-red: #dc2626;
   --disc-green: #22c55e;
   --disc-blue: #3b82f6;
-  --disc-yellow: #f59e0b;
+  --disc-yellow: #f4b342;
 }
 
 .dark {
@@ -167,7 +167,7 @@
   --disc-red: #dc2626;
   --disc-green: #22c55e;
   --disc-blue: #3b82f6;
-  --disc-yellow: #f59e0b;
+  --disc-yellow: #f4b342;
 }
 
 @layer base {

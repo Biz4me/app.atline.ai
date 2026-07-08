@@ -59,7 +59,7 @@ export function PlatformBadge({
 
 const discHex: Record<DiscType, string> = {
   D: '#dc2626',
-  I: '#f59e0b',
+  I: '#f4b342',
   S: '#22c55e',
   C: '#3b82f6',
 }

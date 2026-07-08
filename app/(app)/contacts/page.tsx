@@ -96,7 +96,7 @@ function sourceColor(s: string) {
 
 const discHex: Record<string, string> = {
   D: '#dc2626',
-  I: '#f59e0b',
+  I: '#f4b342',
   S: '#22c55e',
   C: '#3b82f6',
 }
@@ -770,7 +770,7 @@ function ContactsContent() {
                           <span className={cn(
                             'rounded-full px-2.5 py-0.5 text-xs font-medium',
                             c.stade === 'invitation'   && 'bg-[#3b82f6]/10 text-[#3b82f6]',
-                            c.stade === 'présentation' && 'bg-[#f59e0b]/10 text-[#f59e0b]',
+                            c.stade === 'présentation' && 'bg-[#f4b342]/10 text-[#f4b342]',
                             c.stade === 'suivi'        && 'bg-[#dc2626]/10 text-[#dc2626]',
                             c.stade === 'closing'      && 'bg-[#22c55e]/10 text-[#22c55e]',
                             c.stade === 'démarré'      && 'bg-[#14B8A6]/10 text-[#14B8A6]',

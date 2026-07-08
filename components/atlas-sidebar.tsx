@@ -48,7 +48,7 @@ const DISC_SCENARIOS = [
 
 const DISC_COLORS: Record<string, { hex: string; label: string }> = {
   D: { hex: '#dc2626', label: 'Rouge — Dominant' },
-  I: { hex: '#f59e0b', label: 'Jaune — Influent' },
+  I: { hex: '#f4b342', label: 'Jaune — Influent' },
   S: { hex: '#22c55e', label: 'Vert — Stable' },
   C: { hex: '#3b82f6', label: 'Bleu — Consciencieux' },
 }
