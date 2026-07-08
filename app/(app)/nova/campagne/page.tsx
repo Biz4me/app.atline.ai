@@ -67,8 +67,19 @@ Aide l'utilisateur à décrire la CIBLE idéale : à qui s'adresse ce produit et
 Style : chaleureux, tutoiement, phrases courtes, une question à la fois, sans jargon. Pose 1 à 2 questions max pour cerner la personne.
 Quand la cible est claire, résume-la en une phrase et termine par ce marqueur exact sur une nouvelle ligne : [[OK: <la cible en une phrase>]]`
 
+// Écran Conversion (BOFU) : Nova rédige le contenu qui invite à la réunion, puis on l'affine.
+const bofuSeed = (produit: string, cible: string, reunion: string, existant: string) =>
+  `Tu es Nova, l'assistante réseaux sociaux d'Atline. On crée le CONTENU DE CONVERSION de la campagne : le post court (Reel/TikTok) qui invite à la réunion.
+Contexte — produit : « ${produit || 'non précisé'} » ; cible : « ${cible || 'non précisée'} » ; réunion : ${reunion}.
+${existant ? `Un brouillon existe déjà :\n« ${existant} »\nRappelle-le, demande ce qu'on ajuste, et propose une version améliorée.` : "Propose UN brouillon : une accroche forte + 2-3 lignes qui donnent envie + un appel à l'action clair vers la réunion (ex. « commente RDV » ou « lien en bio »). Court, parlé, sans jargon."}
+Présente le brouillon, demande si ça lui va ou ce qu'il veut changer (plus court, plus direct, autre angle…). Tutoiement, chaleureux.
+Quand l'utilisateur valide, termine ton message par ce marqueur exact sur une nouvelle ligne, contenant UNIQUEMENT le texte final du post : [[OK: le texte final du post]]`
+
 // Flow campagne complet (8 écrans), noms courts. Canaux en 3 : il conditionne Radar/profil/contenu.
-const STEPS = ['Description', 'Cible', 'Canaux', 'Radar', 'Réunion', 'Profil', 'Contenu', 'Parcours', 'Récap']
+const STEPS = ['Description', 'Cible', 'Canaux', 'Radar', 'Réunion', 'Conversion', 'Profil', 'Contenu', 'Parcours', 'Récap']
+
+// Écrans en conversation avec Nova (les autres = formulaires). Conversion (BOFU) = chat aussi.
+const CHAT_STEPS = [0, 1, 5]
 
 type Goal = 'CLIENTS' | 'PARTENAIRES'
 type MeetingFormat = 'TETE_A_TETE' | 'GROUPE'
@@ -108,6 +119,10 @@ export default function CampagnePage() {
   const [contentMode, setContentMode] = useState<'FACE' | 'FACELESS'>('FACELESS')
   const [cadence, setCadence] = useState(5)
 
+  // Écran Conversion (BOFU) — contenu de conversion rédigé par Nova, sauvé en ContentPost
+  const [bofu, setBofu] = useState('')
+  const [bofuPostId, setBofuPostId] = useState<string | null>(null)
+
   // Mode édition : ?id=… → charge la campagne et préremplit tout (les PATCH ciblent l'existant).
   const [loadedStatus, setLoadedStatus] = useState<string | null>(null)
   const [editing, setEditing] = useState(false)
@@ -140,6 +155,8 @@ export default function CampagnePage() {
         if (Array.isArray(s.channels)) setChannels(s.channels)
         if (s.contentMode) setContentMode(s.contentMode)
         if (typeof s.cadence === 'number') setCadence(s.cadence)
+        setBofu(s.bofu ?? '')
+        setBofuPostId(s.bofuPostId ?? null)
         setLoaded(true)
         return
       }
@@ -183,10 +200,10 @@ export default function CampagnePage() {
     try {
       sessionStorage.setItem(
         WKEY,
-        JSON.stringify({ forId, step, campaignId, loadedStatus, productName, who, pain, desire, meetingFormat, offerPitch, day, time, link, channels, contentMode, cadence }),
+        JSON.stringify({ forId, step, campaignId, loadedStatus, productName, who, pain, desire, meetingFormat, offerPitch, day, time, link, channels, contentMode, cadence, bofu, bofuPostId }),
       )
     } catch {}
-  }, [loaded, forId, step, campaignId, loadedStatus, productName, who, pain, desire, meetingFormat, offerPitch, day, time, link, channels, contentMode, cadence])
+  }, [loaded, forId, step, campaignId, loadedStatus, productName, who, pain, desire, meetingFormat, offerPitch, day, time, link, channels, contentMode, cadence, bofu, bofuPostId])
 
   function clearPersistence() {
     try {
@@ -248,7 +265,20 @@ export default function CampagnePage() {
         }
         const meetingConfig = meetingFormat === 'GROUPE' ? { day, time, link } : {}
         await patch({ meetingFormat, offerPitch, meetingConfig })
-      } else if (step === 6) {
+      } else if (step === 5) {
+        // BOFU : crée/met à jour le contenu de conversion (ContentPost)
+        if (bofu) {
+          const res = await fetch('/api/nova/content', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ campaignId, postId: bofuPostId, caption: bofu, platform: channels[0] }),
+          })
+          if (res.ok) {
+            const { post } = await res.json()
+            if (post?.id) setBofuPostId(post.id)
+          }
+        }
+      } else if (step === 7) {
         await patch({ contentMode, cadence })
       }
       return true
@@ -354,13 +384,28 @@ export default function CampagnePage() {
         </div>
       </header>
 
-      {step <= 1 ? (
+      {CHAT_STEPS.includes(step) ? (
         <div className="flex min-h-0 flex-1 flex-col">
           {loaded && forId && (
             <NovaChat
               key={`${step}-${editing ? 'e' : 'n'}`}
-              seed={step === 0 ? seed : cibleSeed(productName, who)}
-              onCapture={step === 0 ? setProductName : setWho}
+              seed={
+                step === 0
+                  ? seed
+                  : step === 1
+                    ? cibleSeed(productName, who)
+                    : bofuSeed(
+                        productName,
+                        who,
+                        meetingFormat === 'GROUPE'
+                          ? `réunion de groupe${offerPitch ? ` — « ${offerPitch} »` : ''}`
+                          : meetingFormat === 'TETE_A_TETE'
+                            ? `rendez-vous individuel${offerPitch ? ` — « ${offerPitch} »` : ''}`
+                            : 'une réunion (format à préciser)',
+                        bofu,
+                      )
+              }
+              onCapture={step === 0 ? setProductName : step === 1 ? setWho : setBofu}
               chipLabel={`Configurer : ${STEPS[step + 1]}`}
               onChip={next}
               storageKey={`nova_chat_${forId}_${step}`}
@@ -507,7 +552,7 @@ export default function CampagnePage() {
         )}
 
         {/* Écran 5 — Optimise ton profil */}
-        {step === 5 && (
+        {step === 6 && (
           <Step
             title="Prépare tes profils"
             subtitle="Un visiteur qui clique doit comprendre en 3 secondes. Coche au fur et à mesure."
@@ -531,7 +576,7 @@ export default function CampagnePage() {
         )}
 
         {/* Écran 6 — Contenu */}
-        {step === 6 && (
+        {step === 7 && (
           <Step
             title="Comment tu crées ?"
             subtitle="Nova écrit tout. À toi de dire si tu apparais à l'écran ou non."
@@ -600,7 +645,7 @@ export default function CampagnePage() {
         )}
 
         {/* Écran 7 — Parcours du lead */}
-        {step === 7 && (
+        {step === 8 && (
           <Step
             title="Ce qui se passe ensuite"
             subtitle="Atlas s'occupe de tout jusqu'à la réunion. Toi, tu animes et tu closes."
@@ -614,7 +659,7 @@ export default function CampagnePage() {
         )}
 
         {/* Écran 8 — Récap */}
-        {step === 8 && (
+        {step === 9 && (
           <Step
             title="Prêt à lancer ?"
             subtitle="Vérifie ta campagne. Tu pourras tout modifier ensuite."
