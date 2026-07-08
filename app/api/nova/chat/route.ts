@@ -4,9 +4,8 @@ import { getToken } from 'next-auth/jwt'
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
-// Chat Nova : réutilise le cerveau d'Atlas (FastAPI :8100) avec une consigne « tu es Nova »
-// passée en premier tour. On ne persiste PAS dans l'historique Atlas — le wizard tient la
-// conversation en mémoire ; seule la campagne est sauvegardée (via /api/nova/campaigns).
+// Chat Nova : endpoint dédié du service IA (persona Nova + doctrine campagne), PAS Atlas.
+// Le wizard tient la conversation en mémoire ; seule la campagne est sauvegardée (/api/nova/campaigns).
 const ATLAS_URL = process.env.ATLAS_URL || 'http://127.0.0.1:8100'
 
 export async function POST(req: NextRequest) {
@@ -25,16 +24,13 @@ export async function POST(req: NextRequest) {
 
   let resp: Response
   try {
-    resp = await fetch(`${ATLAS_URL}/api/atlas/chat`, {
+    resp = await fetch(`${ATLAS_URL}/api/nova/chat`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         query,
         user_id: userId,
-        mlm_actif: body.mlm_actif ?? 'Atline',
         conversation_history: Array.isArray(body.history) ? body.history : [],
-        user_snapshot: '',
-        contact_snapshot: '',
       }),
     })
   } catch {
