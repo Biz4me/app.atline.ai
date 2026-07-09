@@ -16,16 +16,7 @@ import {
   Camera,
   Globe,
   Music2,
-  Wand2,
-  Image as ImageIcon,
-  AtSign,
-  Link2,
-  Grid3x3,
-  MessageCircle,
-  Filter,
   CalendarCheck,
-  Handshake,
-  RefreshCw,
   Target,
   Megaphone,
   Radio,
@@ -104,7 +95,9 @@ Style chaleureux, tutoiement, concret. Puis demande s'il veut ajuster (plus cour
 Quand il valide, dans ce même message : dis-lui qu'il peut maintenant soit **se filmer** avec ce script, soit faire **générer la vidéo par l'IA** (n'emploie jamais les mots « face » ni « faceless », uniquement du français). Puis termine par ce marqueur exact sur une nouvelle ligne, contenant UNIQUEMENT le texte de la publication : [[OK: le texte de la publication]]`
 
 // Flow campagne complet, noms courts. Canaux en 3 (conditionne Radar/profil/contenu), Publication en 5 (après Radar).
-const STEPS = ['Description', 'Cible', 'Canaux', 'Radar', 'Publication', 'Nourrir', 'Réunion', 'Invitation', 'Profil', 'Contenu', 'Parcours', 'Récap']
+// 3 phases claires : CADRER (le fond) · CRÉER (le contenu du tunnel, d'un seul tenant) · LANCER.
+const STEPS = ['Produit', 'Cible', 'Canaux', 'Radar', 'Publication', 'Nourrir', 'Réunion', 'Invitation', 'Récap']
+const PHASE_OF = (s: number) => (s <= 2 ? 'Cadrer' : s <= 7 ? 'Créer' : 'Lancer')
 
 // Écrans en conversation avec Nova (les autres = formulaires).
 // 0 Description · 1 Cible · 4 Publication (attirer, inspiré du Radar) · 6 Conversion (BOFU).
@@ -115,7 +108,6 @@ type NovaPromptCfg = { prompt: string; model: string; temperature: number; maxTo
 const STEP_PROMPT_KEY: Record<number, string> = { 0: 'description', 1: 'cible', 4: 'publication', 5: 'nourrir', 7: 'invitation' }
 const fillTpl = (tpl: string, vars: Record<string, string>) => tpl.replace(/\{\{(\w+)\}\}/g, (_, k) => vars[k] ?? '')
 
-type Goal = 'CLIENTS' | 'PARTENAIRES'
 type Platform = 'INSTAGRAM' | 'TIKTOK' | 'FACEBOOK'
 type Trend = { platform: string; hook: string; views: number; likes?: number; url?: string; author?: string; cover?: string }
 
@@ -127,8 +119,7 @@ export default function CampagnePage() {
   const [saving, setSaving] = useState(false)
   const [campaignId, setCampaignId] = useState<string | null>(null)
 
-  // Écran 1 — Produit/service à mettre en avant (chat avec Nova). Objectif = CLIENTS (produit) pour la phase 1.
-  const goal: Goal = 'CLIENTS'
+  // Écran 1 — Produit/service à mettre en avant (chat avec Nova).
   const [productName, setProductName] = useState('')
 
   // Écran 2 — Persona
@@ -145,17 +136,10 @@ export default function CampagnePage() {
   const [time, setTime] = useState('19:00')
   const [link, setLink] = useState('')
 
-  // Écran 4 — Canaux
+  // Canaux
   const [channels, setChannels] = useState<Platform[]>(['INSTAGRAM', 'TIKTOK'])
 
-  // Écran 5 — Optimise ton profil (checklist consultative, non persistée)
-  const [checked, setChecked] = useState<Record<string, boolean>>({})
-
-  // Écran 6 — Contenu
-  const [contentMode, setContentMode] = useState<'FACE' | 'FACELESS'>('FACELESS')
-  const [cadence, setCadence] = useState(5)
-
-  // Écran Conversion (BOFU) — contenu de conversion rédigé par Nova, sauvé en ContentPost
+  // Invitation (finalité MOFU) — contenu qui invite à la réunion, sauvé en ContentPost
   const [bofu, setBofu] = useState('')
   const [bofuPostId, setBofuPostId] = useState<string | null>(null)
   const [recorderOpen, setRecorderOpen] = useState(false) // enregistreur vidéo Face
@@ -288,8 +272,6 @@ export default function CampagnePage() {
         setTime(s.time ?? '19:00')
         setLink(s.link ?? '')
         if (Array.isArray(s.channels)) setChannels(s.channels)
-        if (s.contentMode) setContentMode(s.contentMode)
-        if (typeof s.cadence === 'number') setCadence(s.cadence)
         setBofu(s.bofu ?? '')
         setBofuPostId(s.bofuPostId ?? null)
         setPubText(s.pubText ?? '')
@@ -328,8 +310,6 @@ export default function CampagnePage() {
         if (mc.link) setLink(mc.link)
         if (typeof mc.allowOneOnOne === 'boolean') setAllowOneOnOne(mc.allowOneOnOne)
         if (Array.isArray(c.channels)) setChannels(c.channels.filter((x: string) => ['INSTAGRAM', 'TIKTOK', 'FACEBOOK'].includes(x)) as Platform[])
-        if (c.contentMode) setContentMode(c.contentMode)
-        if (typeof c.cadence === 'number') setCadence(c.cadence)
         if (Array.isArray(c.radarTrends) && c.radarTrends.length) setRadarTrends(c.radarTrends)
         // Restaure les contenus : postId + texte + vidéo déjà générée/filmée (sinon « Revoir ma vidéo » disparaît)
         const vs = new Set<number>()
@@ -360,10 +340,10 @@ export default function CampagnePage() {
     try {
       sessionStorage.setItem(
         WKEY,
-        JSON.stringify({ forId, step, campaignId, loadedStatus, productName, who, pain, desire, allowOneOnOne, offerPitch, day, time, link, channels, contentMode, cadence, bofu, bofuPostId, pubText, pubPostId, nourri, nourriPostId, selectedTrend, videoSteps: [...videoSteps] }),
+        JSON.stringify({ forId, step, campaignId, loadedStatus, productName, who, pain, desire, allowOneOnOne, offerPitch, day, time, link, channels, bofu, bofuPostId, pubText, pubPostId, nourri, nourriPostId, selectedTrend, videoSteps: [...videoSteps] }),
       )
     } catch {}
-  }, [loaded, forId, step, campaignId, loadedStatus, productName, who, pain, desire, allowOneOnOne, offerPitch, day, time, link, channels, contentMode, cadence, bofu, bofuPostId, pubText, pubPostId, nourri, nourriPostId, selectedTrend, videoSteps])
+  }, [loaded, forId, step, campaignId, loadedStatus, productName, who, pain, desire, allowOneOnOne, offerPitch, day, time, link, channels, bofu, bofuPostId, pubText, pubPostId, nourri, nourriPostId, selectedTrend, videoSteps])
 
   function clearPersistence() {
     try {
@@ -433,7 +413,7 @@ export default function CampagnePage() {
           const res = await fetch('/api/nova/campaigns', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ goal }),
+            body: JSON.stringify({ goal: 'CLIENTS' }), // campagne produit ; champ conservé côté modèle
           })
           if (!res.ok) throw new Error()
           const { campaign } = await res.json()
@@ -503,8 +483,6 @@ export default function CampagnePage() {
             if (post?.id) setBofuPostId(post.id)
           }
         }
-      } else if (step === 9) {
-        await patch({ contentMode, cadence })
       }
       return true
     } catch {
@@ -591,8 +569,11 @@ export default function CampagnePage() {
             />
           ))}
         </div>
-        {/* Le nom de l'étape = le titre ; les flèches naviguent entre les étapes */}
-        <div className="mt-3 flex items-center justify-center gap-3">
+        {/* Phase (Cadrer/Créer/Lancer) + nom de l'étape = le titre ; les flèches naviguent */}
+        <p className="mt-3 text-center text-[10px] font-bold uppercase tracking-[0.14em]" style={{ color: NOVA }}>
+          {PHASE_OF(step)}
+        </p>
+        <div className="mt-1 flex items-center justify-center gap-3">
           <button
             type="button"
             onClick={() => setStep((s) => Math.max(0, s - 1))}
@@ -853,131 +834,12 @@ export default function CampagnePage() {
           </Step>
         )}
 
-        {/* Écran 5 — Optimise ton profil */}
+        {/* Écran 8 — Récap (Lancer) */}
         {step === 8 && (
-          <Step
-            title="Prépare tes profils"
-            subtitle="Un visiteur qui clique doit comprendre en 3 secondes. Coche au fur et à mesure."
-          >
+          <Step title="Prêt à lancer ?" subtitle="Vérifie, puis lance. Tout reste modifiable ensuite.">
             <div className="flex flex-col gap-2.5">
-              {PROFILE_TIPS.map((tip) => (
-                <ChecklistItem
-                  key={tip.id}
-                  icon={tip.icon}
-                  title={tip.title}
-                  desc={tip.desc}
-                  done={!!checked[tip.id]}
-                  onToggle={() => setChecked((c) => ({ ...c, [tip.id]: !c[tip.id] }))}
-                />
-              ))}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              Facultatif — mais ça change tout sur le taux de clic. Tu peux y revenir plus tard.
-            </p>
-          </Step>
-        )}
-
-        {/* Écran 6 — Contenu */}
-        {step === 9 && (
-          <Step
-            title="Comment tu crées ?"
-            subtitle="Nova écrit tout. À toi de dire si tu apparais à l'écran ou non."
-          >
-            <div className="flex flex-col gap-5">
-              <div className="flex flex-col gap-3">
-                <ModeCard
-                  active={contentMode === 'FACELESS'}
-                  onClick={() => setContentMode('FACELESS')}
-                  icon={Wand2}
-                  title="Sans te montrer"
-                  desc="Nova génère visuels et textes. Publié tout seul, zéro effort."
-                  badge="Automatique"
-                />
-                <ModeCard
-                  active={contentMode === 'FACE'}
-                  onClick={() => setContentMode('FACE')}
-                  icon={Video}
-                  title="Face caméra"
-                  desc="Nova écrit ton script, tu te filmes. Atlas te rappelle de tourner."
-                  badge="Plus de lien"
-                />
-              </div>
-
-              <div>
-                <p className="eyebrow mb-2">Rythme de publication</p>
-                <div className="grid grid-cols-3 gap-2">
-                  {CADENCES.map((c) => (
-                    <button
-                      key={c.value}
-                      type="button"
-                      onClick={() => setCadence(c.value)}
-                      className={cn(
-                        'flex flex-col items-center gap-0.5 rounded-xl border bg-surface py-3 transition-colors',
-                        cadence === c.value ? 'border-transparent' : 'border-border active:bg-muted',
-                      )}
-                      style={
-                        cadence === c.value
-                          ? { borderColor: NOVA, boxShadow: `0 0 0 1px ${NOVA}` }
-                          : undefined
-                      }
-                    >
-                      <span className="text-base font-bold text-foreground">{c.value}</span>
-                      <span className="text-[10px] font-semibold text-muted-foreground">{c.label}</span>
-                    </button>
-                  ))}
-                </div>
-                <p className="mt-1.5 text-xs text-muted-foreground">Publications par semaine.</p>
-              </div>
-
-              <div>
-                <p className="eyebrow mb-2">Ton mix de contenu</p>
-                <div className="flex h-2.5 overflow-hidden rounded-full">
-                  <span style={{ width: '70%', background: NOVA }} />
-                  <span style={{ width: '20%', background: `${NOVA}8c` }} />
-                  <span style={{ width: '10%', background: `${NOVA}45` }} />
-                </div>
-                <div className="mt-2 flex flex-col gap-1.5">
-                  <MixRow op="" label="Attirer" pct="70%" desc="Du contenu qui capte les inconnus." />
-                  <MixRow op="8c" label="Nourrir" pct="20%" desc="Tu crées le lien et la confiance." />
-                  <MixRow op="45" label="Convertir" pct="10%" desc="Tu invites à la réunion." />
-                </div>
-              </div>
-            </div>
-          </Step>
-        )}
-
-        {/* Écran 7 — Parcours du lead */}
-        {step === 10 && (
-          <Step
-            title="Ce qui se passe ensuite"
-            subtitle="Atlas s'occupe de tout jusqu'à la réunion. Toi, tu animes et tu closes."
-          >
-            <div className="flex flex-col">
-              {JOURNEY.map((s, i) => (
-                <JourneyStep key={s.title} {...s} last={i === JOURNEY.length - 1} />
-              ))}
-            </div>
-          </Step>
-        )}
-
-        {/* Écran 8 — Récap */}
-        {step === 11 && (
-          <Step
-            title="Prêt à lancer ?"
-            subtitle="Vérifie ta campagne. Tu pourras tout modifier ensuite."
-          >
-            <div className="flex flex-col gap-2.5">
-              <RecapRow
-                icon={Target}
-                label="Objectif"
-                value={goal === 'PARTENAIRES' ? 'Recruter des partenaires' : 'Trouver des clients'}
-              />
+              <RecapRow icon={Target} label="Produit" value={productName || 'Non précisé'} />
               <RecapRow icon={Users} label="Cible" value={who || 'Non précisée'} />
-              <RecapRow
-                icon={CalendarCheck}
-                label="Réunion"
-                value={`Groupe — ${day} à ${time}${allowOneOnOne ? ' (+ tête-à-tête à la demande)' : ''}`}
-              />
               <RecapRow
                 icon={Radio}
                 label="Canaux"
@@ -988,9 +850,17 @@ export default function CampagnePage() {
                 }
               />
               <RecapRow
-                icon={contentMode === 'FACELESS' ? Wand2 : Video}
-                label="Contenu"
-                value={`${contentMode === 'FACELESS' ? 'Sans te montrer' : 'Face caméra'} · ${cadence}/sem`}
+                icon={CalendarCheck}
+                label="Réunion"
+                value={`Groupe — ${day} à ${time}${allowOneOnOne ? ' (+ tête-à-tête)' : ''}`}
+              />
+              <RecapRow
+                icon={Video}
+                label="Contenus prêts"
+                value={
+                  [pubText && 'Publication', nourri && 'Nourrir', bofu && 'Invitation'].filter(Boolean).join(' · ') ||
+                  'Aucun pour l’instant'
+                }
               />
             </div>
             <div
@@ -999,8 +869,7 @@ export default function CampagnePage() {
             >
               <Megaphone className="mt-0.5 size-4 shrink-0" style={{ color: NOVA }} />
               <p className="text-xs text-muted-foreground">
-                En lançant, Nova commence à produire ton contenu et à publier au rythme choisi. Tu gardes
-                la main sur chaque publication.
+                En lançant, ta campagne passe en Active. Tu retrouves tes contenus et tes vidéos dans Nova.
               </p>
             </div>
           </Step>
@@ -1072,14 +941,6 @@ export default function CampagnePage() {
 function Step({ children }: { title?: string; subtitle?: string; children: React.ReactNode }) {
   return <div className="flex flex-col gap-4">{children}</div>
 }
-
-const PROFILE_TIPS: { id: string; icon: typeof ImageIcon; title: string; desc: string }[] = [
-  { id: 'photo', icon: ImageIcon, title: 'Photo de profil nette', desc: 'Ton visage ou ton logo, lumineux et reconnaissable.' },
-  { id: 'bio', icon: AtSign, title: 'Une bio qui parle à ta cible', desc: 'Qui tu aides, à quoi, en une ligne. Pas de jargon.' },
-  { id: 'lien', icon: Link2, title: 'Le lien vers ta réunion en bio', desc: 'Le seul call-to-action : là où tout le trafic atterrit.' },
-  { id: 'feed', icon: Grid3x3, title: 'Un feed cohérent', desc: 'Mêmes couleurs, même ton : on te reconnaît d\'un coup d\'œil.' },
-  { id: 'epingle', icon: Sparkles, title: 'Un post épinglé qui présente ton offre', desc: 'Le premier réflexe d\'un curieux, c\'est de scroller ton profil.' },
-]
 
 function formatViews(n: number) {
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1).replace('.', ',')} M`
@@ -1173,63 +1034,6 @@ function ChannelCard({
   )
 }
 
-const CADENCES = [
-  { value: 3, label: 'Tranquille' },
-  { value: 5, label: 'Régulier' },
-  { value: 7, label: 'Intense' },
-]
-
-const ATLAS = '#F97316'
-
-const JOURNEY: { icon: typeof MessageCircle; title: string; desc: string; actor: 'Atlas' | 'Toi' }[] = [
-  { icon: MessageCircle, title: 'Un curieux se manifeste', desc: 'Il commente ou t\'écrit — Atlas engage la conversation en privé.', actor: 'Atlas' },
-  { icon: Filter, title: 'Atlas qualifie', desc: 'Il cerne son besoin et sa maturité, sans être insistant.', actor: 'Atlas' },
-  { icon: CalendarCheck, title: 'Il s\'inscrit à la réunion', desc: 'Atlas l\'invite et le place sur ton créneau.', actor: 'Atlas' },
-  { icon: Handshake, title: 'La réunion', desc: 'Tu présentes, tu réponds, tu closes en direct.', actor: 'Toi' },
-  { icon: RefreshCw, title: 'Le suivi', desc: 'Tu notes le résultat ; Atlas relance ceux qui hésitent.', actor: 'Toi' },
-]
-
-function JourneyStep({
-  icon: Icon,
-  title,
-  desc,
-  actor,
-  last,
-}: {
-  icon: typeof MessageCircle
-  title: string
-  desc: string
-  actor: 'Atlas' | 'Toi'
-  last: boolean
-}) {
-  const color = actor === 'Atlas' ? ATLAS : NOVA
-  return (
-    <div className="flex gap-3">
-      <div className="flex flex-col items-center">
-        <span
-          className="flex size-9 shrink-0 items-center justify-center rounded-full"
-          style={{ background: `${color}1a`, color }}
-        >
-          <Icon className="size-4 stroke-[1.5]" />
-        </span>
-        {!last && <span className="my-1 w-px flex-1 bg-border" />}
-      </div>
-      <div className={cn('flex-1', !last && 'pb-4')}>
-        <div className="flex items-center gap-2">
-          <span className="text-sm font-bold text-foreground">{title}</span>
-          <span
-            className="rounded-full px-2 py-0.5 text-[10px] font-semibold"
-            style={{ background: `${color}1a`, color }}
-          >
-            {actor}
-          </span>
-        </div>
-        <p className="text-xs text-muted-foreground">{desc}</p>
-      </div>
-    </div>
-  )
-}
-
 function RecapRow({
   icon: Icon,
   label,
@@ -1255,103 +1059,4 @@ function RecapRow({
   )
 }
 
-function ModeCard({
-  active,
-  onClick,
-  icon: Icon,
-  title,
-  desc,
-  badge,
-}: {
-  active: boolean
-  onClick: () => void
-  icon: typeof Wand2
-  title: string
-  desc: string
-  badge: string
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={cn(
-        'flex items-center gap-3 rounded-2xl border bg-surface p-4 text-left shadow-card transition-colors',
-        active ? 'border-transparent' : 'border-border active:bg-muted',
-      )}
-      style={active ? { borderColor: NOVA, boxShadow: `0 0 0 1px ${NOVA}` } : undefined}
-    >
-      <span
-        className="flex size-11 shrink-0 items-center justify-center rounded-xl"
-        style={{ background: `${NOVA}1a`, color: NOVA }}
-      >
-        <Icon className="size-5 stroke-[1.5]" />
-      </span>
-      <span className="flex-1">
-        <span className="flex items-center gap-2">
-          <span className="text-sm font-bold text-foreground">{title}</span>
-          <span
-            className="rounded-full px-2 py-0.5 text-[10px] font-semibold"
-            style={{ background: `${NOVA}1a`, color: NOVA }}
-          >
-            {badge}
-          </span>
-        </span>
-        <span className="block text-xs text-muted-foreground">{desc}</span>
-      </span>
-      {active && <Check className="size-5" style={{ color: NOVA }} />}
-    </button>
-  )
-}
-
-function MixRow({ op, label, pct, desc }: { op: string; label: string; pct: string; desc: string }) {
-  return (
-    <div className="flex items-center gap-2">
-      <span className="size-2.5 shrink-0 rounded-full" style={{ background: `${NOVA}${op}` }} />
-      <span className="text-xs font-bold text-foreground">{label}</span>
-      <span className="text-xs font-semibold" style={{ color: NOVA }}>
-        {pct}
-      </span>
-      <span className="text-xs text-muted-foreground">— {desc}</span>
-    </div>
-  )
-}
-
-function ChecklistItem({
-  icon: Icon,
-  title,
-  desc,
-  done,
-  onToggle,
-}: {
-  icon: typeof ImageIcon
-  title: string
-  desc: string
-  done: boolean
-  onToggle: () => void
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onToggle}
-      className="flex items-center gap-3 rounded-2xl border border-border bg-surface p-3.5 text-left transition-colors active:bg-muted"
-    >
-      <span
-        className="flex size-9 shrink-0 items-center justify-center rounded-lg"
-        style={{ background: `${NOVA}1a`, color: NOVA }}
-      >
-        <Icon className="size-4 stroke-[1.5]" />
-      </span>
-      <span className="flex-1">
-        <span className="block text-sm font-semibold text-foreground">{title}</span>
-        <span className="block text-xs text-muted-foreground">{desc}</span>
-      </span>
-      <span
-        className="flex size-6 shrink-0 items-center justify-center rounded-full border transition-colors"
-        style={done ? { background: NOVA, borderColor: NOVA } : { borderColor: 'var(--border)' }}
-      >
-        {done && <Check className="size-4 text-white" />}
-      </span>
-    </button>
-  )
-}
 
