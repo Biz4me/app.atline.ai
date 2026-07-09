@@ -92,9 +92,9 @@ Présente le brouillon, demande si ça lui va ou ce qu'il veut changer. Tutoieme
 Quand il valide, dis-lui qu'il peut se filmer ou faire générer la vidéo (français, jamais « face »/« faceless »), puis termine par ce marqueur exact sur une nouvelle ligne, contenant UNIQUEMENT le texte final du post : [[OK: le texte final du post]]`
 
 // Écran Publication (attirer) : Nova rédige une publication inspirée d'une tendance repérée par le Radar.
-const pubSeed = (produit: string, cible: string, trend?: Trend) =>
+const pubSeed = (produit: string, cible: string, trend?: Trend, visual?: string) =>
   `Tu es Nova, l'assistante réseaux sociaux d'Atline. On crée une publication pour ATTIRER (haut de tunnel), inspirée d'un format qui cartonne dans la niche.
-Format viral dont on s'inspire (la RECETTE, JAMAIS le contenu à l'identique) : « ${trend?.hook || 'un format performant de la niche'} »${trend?.views ? ` (${trend.views} vues sur ${trend.platform})` : ''}.
+Format viral dont on s'inspire (la RECETTE, JAMAIS le contenu à l'identique) : « ${trend?.hook || 'un format performant de la niche'} »${trend?.views ? ` (${trend.views} vues sur ${trend.platform})` : ''}.${visual ? `\nCe que montre la miniature de cette vidéo virale (reprends ce type d'accroche visuelle, texte à l'écran et cadrage) : ${visual}` : ''}
 Produit à mettre en avant : « ${produit || 'non précisé'} » ; cible : « ${cible || 'non précisée'} ».
 Donne à l'utilisateur, clairement structuré :
 1. LE TEXTE de la publication (accroche + corps + légende), adapté à sa cible et son produit ;
@@ -119,7 +119,7 @@ const fillTpl = (tpl: string, vars: Record<string, string>) => tpl.replace(/\{\{
 type Goal = 'CLIENTS' | 'PARTENAIRES'
 type MeetingFormat = 'TETE_A_TETE' | 'GROUPE'
 type Platform = 'INSTAGRAM' | 'TIKTOK' | 'FACEBOOK'
-type Trend = { platform: string; hook: string; views: number; likes?: number; url?: string; author?: string }
+type Trend = { platform: string; hook: string; views: number; likes?: number; url?: string; author?: string; cover?: string }
 
 const WEEKDAYS = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche']
 
@@ -186,6 +186,29 @@ export default function CampagnePage() {
   const [radarTrends, setRadarTrends] = useState<Trend[] | null>(null)
   const radarFired = useRef(false)
   const [selectedTrend, setSelectedTrend] = useState(0) // index de la tendance dont Nova s'inspire
+
+  // Vision : analyse de la MINIATURE de la tendance choisie (Nova « regarde » la vraie vidéo).
+  // visualReady gate le chat Publication le temps de l'analyse (ou immédiat si pas de miniature).
+  const [visualAnalysis, setVisualAnalysis] = useState('')
+  const [visualReady, setVisualReady] = useState(false)
+  const visualFor = useRef<string>('') // clé campagne+index déjà analysée
+  useEffect(() => {
+    if (step !== 4) return
+    const cover = radarTrends?.[selectedTrend]?.cover
+    if (!campaignId || !cover) {
+      setVisualReady(true)
+      return
+    }
+    const key = `${campaignId}:${selectedTrend}`
+    if (visualFor.current === key) return
+    visualFor.current = key
+    setVisualReady(false)
+    fetch(`/api/nova/campaigns/${campaignId}/trend-analysis?i=${selectedTrend}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => setVisualAnalysis(d?.analysis || ''))
+      .catch(() => {})
+      .finally(() => setVisualReady(true))
+  }, [step, campaignId, selectedTrend, radarTrends])
 
   // Écran Publication (attirer) — texte rédigé par Nova depuis la tendance choisie, sauvé en ContentPost
   const [pubText, setPubText] = useState('')
@@ -535,7 +558,15 @@ export default function CampagnePage() {
 
       {CHAT_STEPS.includes(step) ? (
         <div className="flex min-h-0 flex-1 flex-col">
-          {loaded && forId && (
+          {step === 4 && !visualReady ? (
+            <div className="flex flex-1 flex-col items-center justify-center gap-3 px-6 text-center">
+              <span className="flex size-12 items-center justify-center rounded-full" style={{ background: `${NOVA}1a`, color: NOVA }}>
+                <Loader2 className="size-6 animate-spin" />
+              </span>
+              <p className="text-sm font-semibold text-foreground">Nova regarde la vidéo virale…</p>
+              <p className="max-w-xs text-xs text-muted-foreground">Elle analyse la miniature pour s&apos;inspirer de la vraie accroche.</p>
+            </div>
+          ) : loaded && forId ? (
             <NovaChat
               key={`${step}-${editing ? 'e' : 'n'}`}
               seed={(() => {
@@ -550,15 +581,16 @@ export default function CampagnePage() {
                 const trendStr = trend
                   ? `${trend.hook}${trend.views ? ` (${trend.views.toLocaleString('fr-FR')} vues)` : ''}`
                   : ''
+                const visual = step === 4 ? visualAnalysis : ''
                 // Template admin prioritaire ; sinon fallback sur les seeds intégrés
                 const body = cfg?.prompt
-                  ? fillTpl(cfg.prompt, { produit: productName, cible: who, audience: who, trend: trendStr, reunion })
+                  ? fillTpl(cfg.prompt, { produit: productName, cible: who, audience: who, trend: trendStr, reunion, visual })
                   : step === 0
                     ? seed
                     : step === 1
                       ? cibleSeed(productName, who)
                       : step === 4
-                        ? pubSeed(productName, who, trend)
+                        ? pubSeed(productName, who, trend, visual)
                         : step === 5
                           ? nourriSeed(productName, who)
                           : inviteSeed(productName, who, reunion, bofu)
@@ -588,7 +620,7 @@ export default function CampagnePage() {
               }
               storageKey={`${CHATKEY}_${forId}_${step}`}
             />
-          )}
+          ) : null}
         </div>
       ) : (
         <>
