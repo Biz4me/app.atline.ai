@@ -297,6 +297,7 @@ export default function CampagnePage() {
         setNourri(s.nourri ?? '')
         setNourriPostId(s.nourriPostId ?? null)
         if (typeof s.selectedTrend === 'number') setSelectedTrend(s.selectedTrend)
+        if (Array.isArray(s.videoSteps)) setVideoSteps(new Set(s.videoSteps))
         setLoaded(true)
         return
       }
@@ -330,6 +331,24 @@ export default function CampagnePage() {
         if (c.contentMode) setContentMode(c.contentMode)
         if (typeof c.cadence === 'number') setCadence(c.cadence)
         if (Array.isArray(c.radarTrends) && c.radarTrends.length) setRadarTrends(c.radarTrends)
+        // Restaure les contenus : postId + texte + vidéo déjà générée/filmée (sinon « Revoir ma vidéo » disparaît)
+        const vs = new Set<number>()
+        for (const p of (d?.posts || []) as { id: string; format: string; mediaUrl: string | null; caption: string | null }[]) {
+          if (p.format === 'Attirer') {
+            setPubPostId(p.id)
+            if (p.caption) setPubText(p.caption)
+            if (p.mediaUrl) vs.add(4)
+          } else if (p.format === 'Nourrir') {
+            setNourriPostId(p.id)
+            if (p.caption) setNourri(p.caption)
+            if (p.mediaUrl) vs.add(5)
+          } else if (p.format === 'Invitation' || p.format === 'Convertir') {
+            setBofuPostId(p.id)
+            if (p.caption) setBofu(p.caption)
+            if (p.mediaUrl) vs.add(7)
+          }
+        }
+        if (vs.size) setVideoSteps(vs)
       })
       .catch(() => {})
       .finally(() => setLoaded(true))
@@ -341,10 +360,10 @@ export default function CampagnePage() {
     try {
       sessionStorage.setItem(
         WKEY,
-        JSON.stringify({ forId, step, campaignId, loadedStatus, productName, who, pain, desire, allowOneOnOne, offerPitch, day, time, link, channels, contentMode, cadence, bofu, bofuPostId, pubText, pubPostId, nourri, nourriPostId, selectedTrend }),
+        JSON.stringify({ forId, step, campaignId, loadedStatus, productName, who, pain, desire, allowOneOnOne, offerPitch, day, time, link, channels, contentMode, cadence, bofu, bofuPostId, pubText, pubPostId, nourri, nourriPostId, selectedTrend, videoSteps: [...videoSteps] }),
       )
     } catch {}
-  }, [loaded, forId, step, campaignId, loadedStatus, productName, who, pain, desire, allowOneOnOne, offerPitch, day, time, link, channels, contentMode, cadence, bofu, bofuPostId, pubText, pubPostId, nourri, nourriPostId, selectedTrend])
+  }, [loaded, forId, step, campaignId, loadedStatus, productName, who, pain, desire, allowOneOnOne, offerPitch, day, time, link, channels, contentMode, cadence, bofu, bofuPostId, pubText, pubPostId, nourri, nourriPostId, selectedTrend, videoSteps])
 
   function clearPersistence() {
     try {

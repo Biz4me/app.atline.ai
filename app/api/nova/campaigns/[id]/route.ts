@@ -28,7 +28,13 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
   const { id } = await ctx.params
   const campaign = await db.campaign.findFirst({ where: { id, userId } })
   if (!campaign) return NextResponse.json({ error: 'Not found' }, { status: 404 })
-  return NextResponse.json({ campaign })
+  // Les contenus de la campagne (pour restaurer postId/texte/vidéo à la réouverture)
+  const posts = await db.contentPost.findMany({
+    where: { campaignId: id, userId },
+    select: { id: true, format: true, mediaUrl: true, caption: true },
+    orderBy: { createdAt: 'asc' },
+  })
+  return NextResponse.json({ campaign, posts })
 }
 
 export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }> }) {
