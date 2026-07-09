@@ -229,6 +229,12 @@ export default function CampagnePage() {
   // Radar : sur l'écran, on interroge la campagne jusqu'à recevoir les tendances (ou timeout ~90s → []).
   useEffect(() => {
     if (step !== 3 || !campaignId || radarTrends) return
+    // Filet de sécurité : si la recherche n'a pas été pré-lancée (arrivée par les flèches, édition…),
+    // on la déclenche ici. Le pré-chargement à l'étape Cible reste, pour la rapidité.
+    if (!radarFired.current) {
+      radarFired.current = true
+      fetch(`/api/nova/campaigns/${campaignId}/radar`, { method: 'POST' }).catch(() => {})
+    }
     let stop = false
     let tries = 0
     const check = async (): Promise<boolean> => {
