@@ -11,7 +11,6 @@ import {
   User,
   UsersRound,
   Video,
-  CalendarClock,
   Check,
   Loader2,
   Camera,
@@ -117,7 +116,6 @@ const STEP_PROMPT_KEY: Record<number, string> = { 0: 'description', 1: 'cible', 
 const fillTpl = (tpl: string, vars: Record<string, string>) => tpl.replace(/\{\{(\w+)\}\}/g, (_, k) => vars[k] ?? '')
 
 type Goal = 'CLIENTS' | 'PARTENAIRES'
-type MeetingFormat = 'TETE_A_TETE' | 'GROUPE'
 type Platform = 'INSTAGRAM' | 'TIKTOK' | 'FACEBOOK'
 type Trend = { platform: string; hook: string; views: number; likes?: number; url?: string; author?: string; cover?: string }
 
@@ -139,7 +137,9 @@ export default function CampagnePage() {
   const [desire, setDesire] = useState('')
 
   // Écran 3 — La réunion
-  const [meetingFormat, setMeetingFormat] = useState<MeetingFormat | null>(null)
+  // Réunion : plus de choix de format par l'utilisateur. Il configure sa session de GROUPE (visio récurrente)
+  // et autorise (ou non) le tête-à-tête à la demande. Le PROSPECT choisit à l'inscription (booking, à venir).
+  const [allowOneOnOne, setAllowOneOnOne] = useState(true)
   const [offerPitch, setOfferPitch] = useState('')
   const [day, setDay] = useState('Mardi')
   const [time, setTime] = useState('19:00')
@@ -246,7 +246,7 @@ export default function CampagnePage() {
         setWho(s.who ?? '')
         setPain(s.pain ?? '')
         setDesire(s.desire ?? '')
-        if (s.meetingFormat) setMeetingFormat(s.meetingFormat)
+        if (typeof s.allowOneOnOne === 'boolean') setAllowOneOnOne(s.allowOneOnOne)
         setOfferPitch(s.offerPitch ?? '')
         setDay(s.day ?? 'Mardi')
         setTime(s.time ?? '19:00')
@@ -284,12 +284,12 @@ export default function CampagnePage() {
         setWho(a.who || '')
         setPain(a.pain || '')
         setDesire(a.desire || '')
-        if (c.meetingFormat) setMeetingFormat(c.meetingFormat)
         if (c.offerPitch) setOfferPitch(c.offerPitch)
         const mc = c.meetingConfig || {}
         if (mc.day) setDay(mc.day)
         if (mc.time) setTime(mc.time)
         if (mc.link) setLink(mc.link)
+        if (typeof mc.allowOneOnOne === 'boolean') setAllowOneOnOne(mc.allowOneOnOne)
         if (Array.isArray(c.channels)) setChannels(c.channels.filter((x: string) => ['INSTAGRAM', 'TIKTOK', 'FACEBOOK'].includes(x)) as Platform[])
         if (c.contentMode) setContentMode(c.contentMode)
         if (typeof c.cadence === 'number') setCadence(c.cadence)
@@ -305,10 +305,10 @@ export default function CampagnePage() {
     try {
       sessionStorage.setItem(
         WKEY,
-        JSON.stringify({ forId, step, campaignId, loadedStatus, productName, who, pain, desire, meetingFormat, offerPitch, day, time, link, channels, contentMode, cadence, bofu, bofuPostId, pubText, pubPostId, nourri, nourriPostId, selectedTrend }),
+        JSON.stringify({ forId, step, campaignId, loadedStatus, productName, who, pain, desire, allowOneOnOne, offerPitch, day, time, link, channels, contentMode, cadence, bofu, bofuPostId, pubText, pubPostId, nourri, nourriPostId, selectedTrend }),
       )
     } catch {}
-  }, [loaded, forId, step, campaignId, loadedStatus, productName, who, pain, desire, meetingFormat, offerPitch, day, time, link, channels, contentMode, cadence, bofu, bofuPostId, pubText, pubPostId, nourri, nourriPostId, selectedTrend])
+  }, [loaded, forId, step, campaignId, loadedStatus, productName, who, pain, desire, allowOneOnOne, offerPitch, day, time, link, channels, contentMode, cadence, bofu, bofuPostId, pubText, pubPostId, nourri, nourriPostId, selectedTrend])
 
   function clearPersistence() {
     try {
@@ -429,12 +429,12 @@ export default function CampagnePage() {
           }
         }
       } else if (step === 6) {
-        if (!meetingFormat) {
-          toast.error('Choisis un format de réunion')
+        if (!link.trim() && !allowOneOnOne) {
+          toast.error('Ajoute le lien de ta session de groupe (ou autorise le tête-à-tête)')
           return false
         }
-        const meetingConfig = meetingFormat === 'GROUPE' ? { day, time, link } : {}
-        await patch({ meetingFormat, offerPitch, meetingConfig })
+        // Format fixe = GROUPE (offre principale) ; le prospect choisira à l'inscription.
+        await patch({ meetingFormat: 'GROUPE', offerPitch, meetingConfig: { day, time, link, allowOneOnOne } })
       } else if (step === 7) {
         // Invitation (finalité MOFU) : le post qui invite à la réunion (ContentPost)
         if (bofu) {
@@ -575,12 +575,9 @@ export default function CampagnePage() {
               key={`${step}-${editing ? 'e' : 'n'}`}
               seed={(() => {
                 const cfg = novaPrompts[STEP_PROMPT_KEY[step]]
-                const reunion =
-                  meetingFormat === 'GROUPE'
-                    ? `réunion de groupe${offerPitch ? ` — « ${offerPitch} »` : ''}`
-                    : meetingFormat === 'TETE_A_TETE'
-                      ? `rendez-vous individuel${offerPitch ? ` — « ${offerPitch} »` : ''}`
-                      : 'une réunion (format à préciser)'
+                const reunion = `une session de groupe en visio${day && time ? ` (${day} à ${time})` : ''}${
+                  allowOneOnOne ? ', avec la possibilité d’un tête-à-tête pour ceux qui préfèrent' : ''
+                } — le prospect choisit à l’inscription${offerPitch ? ` — « ${offerPitch} »` : ''}`
                 const trend = radarTrends?.[selectedTrend]
                 const trendStr = trend
                   ? `${trend.hook}${trend.views ? ` (${trend.views.toLocaleString('fr-FR')} vues)` : ''}`
@@ -682,85 +679,88 @@ export default function CampagnePage() {
         {/* Écran 5 — La réunion */}
         {step === 6 && (
           <Step
-            title="Comment se passe la rencontre ?"
-            subtitle="C'est le rendez-vous vers lequel Nova conduit chaque prospect."
+            title="Ta session de groupe"
+            subtitle="Tu proposes une visio de groupe. À l'inscription, le prospect choisit d'y venir ou de demander un tête-à-tête."
           >
             <div className="flex flex-col gap-5">
-              <div className="flex flex-col gap-3">
-                <FormatCard
-                  active={meetingFormat === 'TETE_A_TETE'}
-                  onClick={() => setMeetingFormat('TETE_A_TETE')}
-                  icon={User}
-                  title="En tête-à-tête"
-                  desc="Le prospect réserve un créneau ; il choisit appel ou visio."
-                />
-                <FormatCard
-                  active={meetingFormat === 'GROUPE'}
-                  onClick={() => setMeetingFormat('GROUPE')}
-                  icon={UsersRound}
-                  title="En groupe"
-                  desc="Une visio récurrente ; les prospects s'inscrivent à la session."
-                />
-              </div>
-
-              {meetingFormat === 'GROUPE' && (
-                <div className="flex flex-col gap-3 rounded-2xl border border-border bg-surface p-4">
-                  <p className="eyebrow flex items-center gap-1.5">
-                    <CalendarClock className="size-3.5" style={{ color: NOVA }} />
-                    Session récurrente
-                  </p>
-                  <div className="grid grid-cols-2 gap-2">
-                    <label className="flex flex-col gap-1 text-xs font-semibold text-fg-2">
-                      Jour
-                      <select
-                        value={day}
-                        onChange={(e) => setDay(e.target.value)}
-                        className="rounded-xl border border-border bg-background px-3 py-2 text-sm font-normal text-foreground outline-none"
-                      >
-                        {WEEKDAYS.map((d) => (
-                          <option key={d}>{d}</option>
-                        ))}
-                      </select>
-                    </label>
-                    <label className="flex flex-col gap-1 text-xs font-semibold text-fg-2">
-                      Heure
-                      <input
-                        type="time"
-                        value={time}
-                        onChange={(e) => setTime(e.target.value)}
-                        className="rounded-xl border border-border bg-background px-3 py-2 text-sm font-normal text-foreground outline-none"
-                      />
-                    </label>
-                  </div>
+              <div className="flex flex-col gap-3 rounded-2xl border border-border bg-surface p-4">
+                <p className="eyebrow flex items-center gap-1.5">
+                  <UsersRound className="size-3.5" style={{ color: NOVA }} />
+                  Session de groupe récurrente
+                </p>
+                <div className="grid grid-cols-2 gap-2">
                   <label className="flex flex-col gap-1 text-xs font-semibold text-fg-2">
-                    Lien de la visio
-                    <div className="flex items-center gap-2 rounded-xl border border-border bg-background px-3 py-2">
-                      <Video className="size-4 shrink-0 text-muted-foreground" />
-                      <input
-                        type="url"
-                        value={link}
-                        onChange={(e) => setLink(e.target.value)}
-                        placeholder="https://zoom.us/j/…"
-                        className="w-full bg-transparent text-sm font-normal text-foreground outline-none placeholder:text-muted-foreground"
-                      />
-                    </div>
+                    Jour
+                    <select
+                      value={day}
+                      onChange={(e) => setDay(e.target.value)}
+                      className="rounded-xl border border-border bg-background px-3 py-2 text-sm font-normal text-foreground outline-none"
+                    >
+                      {WEEKDAYS.map((d) => (
+                        <option key={d}>{d}</option>
+                      ))}
+                    </select>
+                  </label>
+                  <label className="flex flex-col gap-1 text-xs font-semibold text-fg-2">
+                    Heure
+                    <input
+                      type="time"
+                      value={time}
+                      onChange={(e) => setTime(e.target.value)}
+                      className="rounded-xl border border-border bg-background px-3 py-2 text-sm font-normal text-foreground outline-none"
+                    />
                   </label>
                 </div>
-              )}
+                <label className="flex flex-col gap-1 text-xs font-semibold text-fg-2">
+                  Lien de la visio
+                  <div className="flex items-center gap-2 rounded-xl border border-border bg-background px-3 py-2">
+                    <Video className="size-4 shrink-0 text-muted-foreground" />
+                    <input
+                      type="url"
+                      value={link}
+                      onChange={(e) => setLink(e.target.value)}
+                      placeholder="https://zoom.us/j/…"
+                      className="w-full bg-transparent text-sm font-normal text-foreground outline-none placeholder:text-muted-foreground"
+                    />
+                  </div>
+                </label>
+              </div>
 
-              {meetingFormat && (
-                <div>
-                  <p className="eyebrow mb-2">Ton invitation à la réunion</p>
-                  <textarea
-                    value={offerPitch}
-                    onChange={(e) => setOfferPitch(e.target.value)}
-                    rows={4}
-                    placeholder="En une phrase : pourquoi ça vaut le coup de venir ? Ex. « 30 min pour voir comment lancer une activité qui te ressemble, sans quitter ton job. »"
-                    className="w-full resize-none rounded-2xl border border-border bg-surface p-4 text-sm outline-none focus:ring-2"
-                    style={{ ['--tw-ring-color' as string]: NOVA }}
+              {/* Le prospect choisit à l'inscription : on autorise (ou non) le tête-à-tête à la demande */}
+              <button
+                type="button"
+                onClick={() => setAllowOneOnOne((v) => !v)}
+                className="flex items-center justify-between gap-3 rounded-2xl border border-border bg-surface p-4 text-left"
+              >
+                <span className="flex items-center gap-2.5">
+                  <User className="size-4 shrink-0 text-muted-foreground" />
+                  <span className="flex flex-col">
+                    <span className="text-sm font-semibold text-foreground">Autoriser aussi le tête-à-tête</span>
+                    <span className="text-xs text-muted-foreground">Le prospect pourra demander un appel perso plutôt que le groupe.</span>
+                  </span>
+                </span>
+                <span
+                  className="relative h-6 w-10 shrink-0 rounded-full transition-colors"
+                  style={{ background: allowOneOnOne ? NOVA : 'var(--border)' }}
+                >
+                  <span
+                    className="absolute top-0.5 size-5 rounded-full bg-white transition-all"
+                    style={{ left: allowOneOnOne ? '18px' : '2px' }}
                   />
-                </div>
-              )}
+                </span>
+              </button>
+
+              <div>
+                <p className="eyebrow mb-2">Ton invitation à la réunion</p>
+                <textarea
+                  value={offerPitch}
+                  onChange={(e) => setOfferPitch(e.target.value)}
+                  rows={4}
+                  placeholder="En une phrase : pourquoi ça vaut le coup de venir ? Ex. « 30 min pour voir comment lancer une activité qui te ressemble, sans quitter ton job. »"
+                  className="w-full resize-none rounded-2xl border border-border bg-surface p-4 text-sm outline-none focus:ring-2"
+                  style={{ ['--tw-ring-color' as string]: NOVA }}
+                />
+              </div>
             </div>
           </Step>
         )}
@@ -921,13 +921,7 @@ export default function CampagnePage() {
               <RecapRow
                 icon={CalendarCheck}
                 label="Réunion"
-                value={
-                  meetingFormat === 'GROUPE'
-                    ? `En groupe — ${day} à ${time}`
-                    : meetingFormat === 'TETE_A_TETE'
-                      ? 'En tête-à-tête — sur rendez-vous'
-                      : 'Non définie'
-                }
+                value={`Groupe — ${day} à ${time}${allowOneOnOne ? ' (+ tête-à-tête à la demande)' : ''}`}
               />
               <RecapRow
                 icon={Radio}
@@ -1009,44 +1003,6 @@ export default function CampagnePage() {
 // Le titre/sous-titre vit désormais dans le header (une seule source). Step ne garde que la mise en page.
 function Step({ children }: { title?: string; subtitle?: string; children: React.ReactNode }) {
   return <div className="flex flex-col gap-4">{children}</div>
-}
-
-function FormatCard({
-  active,
-  onClick,
-  icon: Icon,
-  title,
-  desc,
-}: {
-  active: boolean
-  onClick: () => void
-  icon: typeof User
-  title: string
-  desc: string
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={cn(
-        'flex items-center gap-3 rounded-2xl border bg-surface p-4 text-left shadow-card transition-colors',
-        active ? 'border-transparent' : 'border-border active:bg-muted',
-      )}
-      style={active ? { borderColor: NOVA, boxShadow: `0 0 0 1px ${NOVA}` } : undefined}
-    >
-      <span
-        className="flex size-11 shrink-0 items-center justify-center rounded-xl"
-        style={{ background: `${NOVA}1a`, color: NOVA }}
-      >
-        <Icon className="size-5 stroke-[1.5]" />
-      </span>
-      <span className="flex-1">
-        <span className="block text-sm font-bold text-foreground">{title}</span>
-        <span className="block text-xs text-muted-foreground">{desc}</span>
-      </span>
-      {active && <Check className="size-5" style={{ color: NOVA }} />}
-    </button>
-  )
 }
 
 const PROFILE_TIPS: { id: string; icon: typeof ImageIcon; title: string; desc: string }[] = [
