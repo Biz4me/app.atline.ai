@@ -161,6 +161,42 @@ export default function CampagnePage() {
   const [recorderOpen, setRecorderOpen] = useState(false) // enregistreur vidéo Face
   const [videoSteps, setVideoSteps] = useState<Set<number>>(new Set()) // étapes dont le contenu a déjà une vidéo
   const [videoNonce, setVideoNonce] = useState(0) // anti-cache pour revoir une vidéo refaite
+  const [genVideo, setGenVideo] = useState(false) // génération vidéo IA en cours (overlay de progression)
+
+  // Vidéo faceless générée par l'IA : script → service → sauvée sur le ContentPost (comme la vidéo filmée).
+  async function generateAIVideo() {
+    if (genVideo) return
+    const script = step === 4 ? pubText : step === 5 ? nourri : bofu
+    if (!script.trim()) {
+      toast.error("Le texte n'est pas encore prêt")
+      return
+    }
+    const postId = step === 4 ? pubPostId : step === 5 ? nourriPostId : bofuPostId
+    const role = step === 4 ? 'Attirer' : step === 5 ? 'Nourrir' : 'Invitation'
+    setGenVideo(true)
+    try {
+      const r = await fetch('/api/nova/content/generate-video', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ campaignId, postId, script, platform: channels[0], role }),
+      })
+      const d = await r.json().catch(() => ({}))
+      if (!r.ok || !d?.postId) {
+        toast.error('La génération a échoué, réessaie')
+        return
+      }
+      if (step === 4) setPubPostId(d.postId)
+      else if (step === 5) setNourriPostId(d.postId)
+      else setBofuPostId(d.postId)
+      setVideoSteps((v) => new Set(v).add(step))
+      setVideoNonce((n) => n + 1)
+      toast.success('Ta vidéo est prête ✨')
+    } catch {
+      toast.error('Service vidéo indisponible')
+    } finally {
+      setGenVideo(false)
+    }
+  }
 
   // Prompts éditables en admin (accroches + règles de contenu), fallback intégré
   const [hookPrompt, setHookPrompt] = useState(
@@ -611,7 +647,7 @@ export default function CampagnePage() {
                 step === 4 || step === 5 || step === 7
                   ? [
                       { label: videoSteps.has(step) ? 'Revoir ma vidéo' : 'Me filmer', onClick: () => setRecorderOpen(true) },
-                      { label: "Vidéo générée par l'IA", onClick: () => toast("Génération vidéo — bientôt disponible") },
+                      { label: videoSteps.has(step) ? "Regénérer par l'IA" : "Vidéo générée par l'IA", onClick: generateAIVideo },
                     ]
                   : undefined
               }
@@ -996,6 +1032,19 @@ export default function CampagnePage() {
           setVideoNonce((n) => n + 1)
         }}
       />
+
+      {/* Overlay de génération vidéo IA (~30 s : images + voix off + sous-titres + montage) */}
+      {genVideo && (
+        <div className="fixed inset-0 z-[80] flex flex-col items-center justify-center gap-4 bg-background/95 px-8 text-center backdrop-blur-sm">
+          <span className="flex size-14 items-center justify-center rounded-full" style={{ background: `${NOVA}1a`, color: NOVA }}>
+            <Loader2 className="size-7 animate-spin" />
+          </span>
+          <p className="text-lg font-semibold text-foreground">Nova crée ta vidéo…</p>
+          <p className="max-w-xs text-sm text-muted-foreground">
+            Elle génère les visuels, la voix off et les sous-titres, puis monte le tout. Ça prend une trentaine de secondes.
+          </p>
+        </div>
+      )}
     </div>
   )
 }
