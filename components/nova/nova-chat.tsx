@@ -28,6 +28,9 @@ export function NovaChat({
   extras,
   quickReplies,
   storageKey,
+  model,
+  temperature,
+  maxTokens,
 }: {
   seed: string
   onCapture?: (value: string) => void
@@ -36,6 +39,9 @@ export function NovaChat({
   extras?: { label: string; onClick: () => void }[]
   quickReplies?: { label: string; message: string }[]
   storageKey?: string
+  model?: string
+  temperature?: number
+  maxTokens?: number
 }) {
   const [messages, setMessages] = useState<Msg[]>([])
   const [input, setInput] = useState('')
@@ -90,7 +96,7 @@ export function NovaChat({
       const res = await fetch('/api/nova/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ query: text, history: priorHistory }),
+        body: JSON.stringify({ query: text, history: priorHistory, model, temperature, max_tokens: maxTokens }),
       })
       if (!res.ok || !res.body) throw new Error()
       const reader = res.body.getReader()

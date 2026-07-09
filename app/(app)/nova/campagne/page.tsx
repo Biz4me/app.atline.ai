@@ -111,6 +111,11 @@ const STEPS = ['Description', 'Cible', 'Canaux', 'Radar', 'Publication', 'Nourri
 // 0 Description · 1 Cible · 4 Publication (attirer, inspiré du Radar) · 6 Conversion (BOFU).
 const CHAT_STEPS = [0, 1, 4, 5, 7]
 
+// Prompts par écran (modèle + paramètres définis en admin). Clé de prompt par étape chat.
+type NovaPromptCfg = { prompt: string; model: string; temperature: number; maxTokens: number }
+const STEP_PROMPT_KEY: Record<number, string> = { 0: 'description', 1: 'cible', 4: 'publication', 5: 'nourrir', 7: 'invitation' }
+const fillTpl = (tpl: string, vars: Record<string, string>) => tpl.replace(/\{\{(\w+)\}\}/g, (_, k) => vars[k] ?? '')
+
 type Goal = 'CLIENTS' | 'PARTENAIRES'
 type MeetingFormat = 'TETE_A_TETE' | 'GROUPE'
 type Platform = 'INSTAGRAM' | 'TIKTOK' | 'FACEBOOK'
@@ -164,12 +169,15 @@ export default function CampagnePage() {
   const [contentRules, setContentRules] = useState(
     "Règles de contenu : ne nomme JAMAIS la société ni la marque MLM (ex. Herbalife). Mets en avant le PRODUIT / le bénéfice concret, jamais l'opportunité ni le recrutement. Attirer et créer la confiance, pas vendre. Ton chaleureux, tutoiement, français.",
   )
+  // Prompts par écran (chacun avec son modèle + paramètres) définis en admin
+  const [novaPrompts, setNovaPrompts] = useState<Record<string, NovaPromptCfg>>({})
   useEffect(() => {
     fetch('/api/nova/config')
       .then((r) => (r.ok ? r.json() : null))
       .then((d) => {
         if (d?.hookPrompt) setHookPrompt(d.hookPrompt)
         if (d?.contentPrompt) setContentRules(d.contentPrompt)
+        if (d?.prompts) setNovaPrompts(d.prompts)
       })
       .catch(() => {})
   }, [])
@@ -530,28 +538,36 @@ export default function CampagnePage() {
           {loaded && forId && (
             <NovaChat
               key={`${step}-${editing ? 'e' : 'n'}`}
-              seed={
-                step === 0
-                  ? seed
-                  : step === 1
-                    ? cibleSeed(productName, who)
-                    : `${contentRules}\n\n${
-                        step === 4
-                          ? pubSeed(productName, who, radarTrends?.[selectedTrend])
-                          : step === 5
-                            ? nourriSeed(productName, who)
-                            : inviteSeed(
-                                productName,
-                                who,
-                                meetingFormat === 'GROUPE'
-                                  ? `réunion de groupe${offerPitch ? ` — « ${offerPitch} »` : ''}`
-                                  : meetingFormat === 'TETE_A_TETE'
-                                    ? `rendez-vous individuel${offerPitch ? ` — « ${offerPitch} »` : ''}`
-                                    : 'une réunion (format à préciser)',
-                                bofu,
-                              )
-                      }`
-              }
+              seed={(() => {
+                const cfg = novaPrompts[STEP_PROMPT_KEY[step]]
+                const reunion =
+                  meetingFormat === 'GROUPE'
+                    ? `réunion de groupe${offerPitch ? ` — « ${offerPitch} »` : ''}`
+                    : meetingFormat === 'TETE_A_TETE'
+                      ? `rendez-vous individuel${offerPitch ? ` — « ${offerPitch} »` : ''}`
+                      : 'une réunion (format à préciser)'
+                const trend = radarTrends?.[selectedTrend]
+                const trendStr = trend
+                  ? `${trend.hook}${trend.views ? ` (${trend.views.toLocaleString('fr-FR')} vues)` : ''}`
+                  : ''
+                // Template admin prioritaire ; sinon fallback sur les seeds intégrés
+                const body = cfg?.prompt
+                  ? fillTpl(cfg.prompt, { produit: productName, cible: who, audience: who, trend: trendStr, reunion })
+                  : step === 0
+                    ? seed
+                    : step === 1
+                      ? cibleSeed(productName, who)
+                      : step === 4
+                        ? pubSeed(productName, who, trend)
+                        : step === 5
+                          ? nourriSeed(productName, who)
+                          : inviteSeed(productName, who, reunion, bofu)
+                const isContent = step === 4 || step === 5 || step === 7
+                return isContent ? `${contentRules}\n\n${body}` : body
+              })()}
+              model={novaPrompts[STEP_PROMPT_KEY[step]]?.model}
+              temperature={novaPrompts[STEP_PROMPT_KEY[step]]?.temperature}
+              maxTokens={novaPrompts[STEP_PROMPT_KEY[step]]?.maxTokens}
               onCapture={
                 step === 0 ? setProductName : step === 1 ? setWho : step === 4 ? setPubText : step === 5 ? setNourri : setBofu
               }

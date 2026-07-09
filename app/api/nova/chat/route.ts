@@ -13,7 +13,14 @@ export async function POST(req: NextRequest) {
   const userId = token?.id as string | undefined
   if (!userId) return NextResponse.json({ error: 'non authentifié' }, { status: 401 })
 
-  let body: { query?: string; history?: { role: string; content: string }[]; mlm_actif?: string }
+  let body: {
+    query?: string
+    history?: { role: string; content: string }[]
+    mlm_actif?: string
+    model?: string
+    temperature?: number
+    max_tokens?: number
+  }
   try {
     body = await req.json()
   } catch {
@@ -31,6 +38,10 @@ export async function POST(req: NextRequest) {
         query,
         user_id: userId,
         conversation_history: Array.isArray(body.history) ? body.history : [],
+        // Overrides par prompt (modèle + paramètres définis en admin)
+        ...(body.model ? { model: body.model } : {}),
+        ...(typeof body.temperature === 'number' ? { temperature: body.temperature } : {}),
+        ...(body.max_tokens ? { max_tokens: body.max_tokens } : {}),
       }),
     })
   } catch {
