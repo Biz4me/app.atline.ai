@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import {
   ChevronLeft,
@@ -13,6 +13,7 @@ import {
   Video,
   CalendarClock,
   Check,
+  Loader2,
   Camera,
   Globe,
   Music2,
@@ -87,6 +88,7 @@ const CHAT_STEPS = [0, 1, 5]
 type Goal = 'CLIENTS' | 'PARTENAIRES'
 type MeetingFormat = 'TETE_A_TETE' | 'GROUPE'
 type Platform = 'INSTAGRAM' | 'TIKTOK' | 'FACEBOOK'
+type Trend = { platform: string; hook: string; views: number; likes?: number; url?: string; author?: string }
 
 const WEEKDAYS = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche']
 
@@ -126,6 +128,10 @@ export default function CampagnePage() {
   const [bofu, setBofu] = useState('')
   const [bofuPostId, setBofuPostId] = useState<string | null>(null)
   const [recorderOpen, setRecorderOpen] = useState(false) // enregistreur vidéo Face
+
+  // Écran Radar — tendances trouvées par n8n/Apify (null = en cours, [] = rien, [..] = résultats)
+  const [radarTrends, setRadarTrends] = useState<Trend[] | null>(null)
+  const radarFired = useRef(false)
 
   // Mode édition : ?id=… → charge la campagne et préremplit tout (les PATCH ciblent l'existant).
   const [loadedStatus, setLoadedStatus] = useState<string | null>(null)
@@ -193,6 +199,7 @@ export default function CampagnePage() {
         if (Array.isArray(c.channels)) setChannels(c.channels.filter((x: string) => ['INSTAGRAM', 'TIKTOK', 'FACEBOOK'].includes(x)) as Platform[])
         if (c.contentMode) setContentMode(c.contentMode)
         if (typeof c.cadence === 'number') setCadence(c.cadence)
+        if (Array.isArray(c.radarTrends) && c.radarTrends.length) setRadarTrends(c.radarTrends)
       })
       .catch(() => {})
       .finally(() => setLoaded(true))
@@ -218,6 +225,39 @@ export default function CampagnePage() {
       }
     } catch {}
   }
+
+  // Radar : sur l'écran, on interroge la campagne jusqu'à recevoir les tendances (ou timeout ~90s → []).
+  useEffect(() => {
+    if (step !== 3 || !campaignId || radarTrends) return
+    let stop = false
+    let tries = 0
+    const check = async (): Promise<boolean> => {
+      try {
+        const r = await fetch(`/api/nova/campaigns/${campaignId}`)
+        if (r.ok) {
+          const { campaign } = await r.json()
+          if (Array.isArray(campaign?.radarTrends) && campaign.radarTrends.length) {
+            if (!stop) setRadarTrends(campaign.radarTrends)
+            return true
+          }
+        }
+      } catch {}
+      return false
+    }
+    void check()
+    const iv = setInterval(async () => {
+      tries++
+      const found = await check()
+      if (found || tries > 22) {
+        clearInterval(iv)
+        if (!found && !stop) setRadarTrends([])
+      }
+    }, 4000)
+    return () => {
+      stop = true
+      clearInterval(iv)
+    }
+  }, [step, campaignId, radarTrends])
 
   const launched = !!loadedStatus && loadedStatus !== 'BROUILLON'
   const seed = editing && productName ? editSeed(productName) : PRODUIT_SEED
@@ -307,6 +347,12 @@ export default function CampagnePage() {
     if (step < STEPS.length - 1) {
       const ok = await persist()
       if (!ok) return
+    }
+    // Pré-chargement Radar : dès qu'on quitte la Cible, on lance la recherche en arrière-plan
+    // pour que ce soit prêt quand on arrive à l'écran Radar (2 étapes plus loin).
+    if (step === 1 && campaignId && !radarFired.current) {
+      radarFired.current = true
+      fetch(`/api/nova/campaigns/${campaignId}/radar`, { method: 'POST' }).catch(() => {})
     }
     if (step < STEPS.length - 1) {
       setStep((s) => s + 1)
@@ -423,18 +469,45 @@ export default function CampagnePage() {
       <div className="flex-1 overflow-y-auto px-4 py-5 pb-32">
         {/* Écran 4 — Radar : aperçu des tendances de la niche (démo ; Apify branché plus tard) */}
         {step === 3 && (
-          <Step
-            title="Ce qui cartonne dans ta niche"
-            subtitle={`Nova a repéré ces formats qui marchent sur ${channels.map((c) => (c === 'INSTAGRAM' ? 'Instagram' : c === 'TIKTOK' ? 'TikTok' : 'Facebook')).join(' et ') || 'tes réseaux'}. On s'en inspirera pour créer ton contenu.`}
-          >
-            <div className="flex flex-col gap-3">
-              {RADAR_DEMO.map((t) => (
-                <TrendCard key={t.title} {...t} />
-              ))}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              Aperçu — la veille des tendances en temps réel arrive bientôt.
-            </p>
+          <Step title="" subtitle="">
+            {radarTrends === null ? (
+              <div className="flex flex-col items-center gap-3 py-16 text-center">
+                <span
+                  className="flex size-12 items-center justify-center rounded-full"
+                  style={{ background: `${NOVA}1a`, color: NOVA }}
+                >
+                  <Loader2 className="size-6 animate-spin" />
+                </span>
+                <p className="text-sm font-semibold text-foreground">Nova cherche ce qui cartonne…</p>
+                <p className="max-w-xs text-xs text-muted-foreground">
+                  Elle analyse les vidéos les plus vues de ta niche sur TikTok. Quelques secondes.
+                </p>
+              </div>
+            ) : radarTrends.length ? (
+              <>
+                <p className="text-sm text-muted-foreground text-pretty">
+                  Les vidéos les plus vues de ta niche sur TikTok. On s&apos;en inspirera pour ton contenu.
+                </p>
+                <div className="flex flex-col gap-3">
+                  {radarTrends.map((t, i) => (
+                    <TrendCard key={i} {...t} />
+                  ))}
+                </div>
+              </>
+            ) : (
+              <div className="flex flex-col items-center gap-3 py-16 text-center">
+                <span
+                  className="flex size-12 items-center justify-center rounded-full"
+                  style={{ background: `${NOVA}1a`, color: NOVA }}
+                >
+                  <Sparkles className="size-6" />
+                </span>
+                <p className="text-sm font-semibold text-foreground">Pas de tendances pour l&apos;instant</p>
+                <p className="max-w-xs text-xs text-muted-foreground">
+                  On continue — Nova s&apos;inspirera quand même des bonnes pratiques de ta niche.
+                </p>
+              </div>
+            )}
           </Step>
         )}
 
@@ -805,26 +878,32 @@ const PROFILE_TIPS: { id: string; icon: typeof ImageIcon; title: string; desc: s
   { id: 'epingle', icon: Sparkles, title: 'Un post épinglé qui présente ton offre', desc: 'Le premier réflexe d\'un curieux, c\'est de scroller ton profil.' },
 ]
 
-// Démo Radar : remplacé par la vraie recherche Apify (tendances de la niche) plus tard.
-const RADAR_DEMO: { platform: string; title: string; hook: string; views: string }[] = [
-  { platform: 'TikTok', title: 'Avant / Après', hook: 'Transformation en 15 s, gros texte, son tendance.', views: '2,4 M' },
-  { platform: 'Instagram', title: 'Les 3 erreurs à éviter', hook: '« Arrête de faire ça… » face caméra, format liste.', views: '1,1 M' },
-  { platform: 'TikTok', title: 'Ma routine en POV', hook: '3 gestes filmés à la première personne, rythme rapide.', views: '890 k' },
-  { platform: 'Instagram', title: 'Témoignage client', hook: 'Avis authentique en story, sous-titres gros.', views: '540 k' },
-]
+function formatViews(n: number) {
+  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1).replace('.', ',')} M`
+  if (n >= 1_000) return `${Math.round(n / 1_000)} k`
+  return String(n || 0)
+}
 
-function TrendCard({ platform, title, hook, views }: { platform: string; title: string; hook: string; views: string }) {
-  return (
-    <div className="rounded-2xl border border-border bg-surface p-4 shadow-card">
+// Carte d'une tendance repérée par le Radar (donnée réelle Apify/TikTok).
+function TrendCard({ platform, hook, views, author, url }: Trend) {
+  const card = (
+    <div className="rounded-2xl border border-border bg-surface p-4 shadow-card transition-colors active:bg-muted">
       <div className="flex items-center gap-2">
         <span className="rounded-full px-2 py-0.5 text-[10px] font-semibold" style={{ background: `${NOVA}1a`, color: NOVA }}>
           {platform}
         </span>
-        <span className="flex-1 truncate text-sm font-bold text-foreground">{title}</span>
-        <span className="shrink-0 text-xs font-semibold text-muted-foreground">{views} vues</span>
+        <span className="ml-auto shrink-0 text-xs font-semibold text-muted-foreground">{formatViews(views)} vues</span>
       </div>
-      <p className="mt-1 text-xs text-muted-foreground">{hook}</p>
+      <p className="mt-1.5 line-clamp-2 text-sm text-foreground">{hook || '—'}</p>
+      {author && <p className="mt-1 text-xs text-muted-foreground">@{author}</p>}
     </div>
+  )
+  return url ? (
+    <a href={url} target="_blank" rel="noreferrer">
+      {card}
+    </a>
+  ) : (
+    card
   )
 }
 

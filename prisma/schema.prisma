@@ -1152,6 +1152,7 @@ model Campaign {
   channels      SocialPlatform[]
   contentMode   ContentMode      @default(FACELESS)
   cadence       Int              @default(5) // posts / semaine
+  radarTrends   Json? // top formats viraux de la niche (renseigné par le workflow n8n/Apify)
   status        CampaignStatus   @default(BROUILLON)
   createdAt     DateTime         @default(now())
   updatedAt     DateTime         @updatedAt
