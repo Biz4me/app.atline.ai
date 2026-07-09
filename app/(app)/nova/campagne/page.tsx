@@ -92,9 +92,9 @@ Présente le brouillon, demande si ça lui va ou ce qu'il veut changer. Tutoieme
 Quand il valide, dis-lui qu'il peut se filmer ou faire générer la vidéo (français, jamais « face »/« faceless »), puis termine par ce marqueur exact sur une nouvelle ligne, contenant UNIQUEMENT le texte final du post : [[OK: le texte final du post]]`
 
 // Écran Publication (attirer) : Nova rédige une publication inspirée d'une tendance repérée par le Radar.
-const pubSeed = (produit: string, cible: string, trend?: Trend, visual?: string) =>
+const pubSeed = (produit: string, cible: string, trend?: Trend, visual?: string, transcript?: string) =>
   `Tu es Nova, l'assistante réseaux sociaux d'Atline. On crée une publication pour ATTIRER (haut de tunnel), inspirée d'un format qui cartonne dans la niche.
-Format viral dont on s'inspire (la RECETTE, JAMAIS le contenu à l'identique) : « ${trend?.hook || 'un format performant de la niche'} »${trend?.views ? ` (${trend.views} vues sur ${trend.platform})` : ''}.${visual ? `\nCe que montre la miniature de cette vidéo virale (reprends ce type d'accroche visuelle, texte à l'écran et cadrage) : ${visual}` : ''}
+Format viral dont on s'inspire (la RECETTE, JAMAIS le contenu à l'identique) : « ${trend?.hook || 'un format performant de la niche'} »${trend?.views ? ` (${trend.views} vues sur ${trend.platform})` : ''}.${visual ? `\nCe que montre la miniature de cette vidéo virale (reprends ce type d'accroche visuelle, texte à l'écran et cadrage) : ${visual}` : ''}${transcript ? `\nCE QUI EST DIT dans la vidéo virale (transcript — analyse la structure : accroche des 3 premières secondes, déroulé, appel à l'action ; réutilise la MÉCANIQUE, jamais les mots à l'identique) : « ${transcript} »` : ''}
 Produit à mettre en avant : « ${produit || 'non précisé'} » ; cible : « ${cible || 'non précisée'} ».
 Donne à l'utilisateur, clairement structuré :
 1. LE TEXTE de la publication (accroche + corps + légende), adapté à sa cible et son produit ;
@@ -187,15 +187,16 @@ export default function CampagnePage() {
   const radarFired = useRef(false)
   const [selectedTrend, setSelectedTrend] = useState(0) // index de la tendance dont Nova s'inspire
 
-  // Vision : analyse de la MINIATURE de la tendance choisie (Nova « regarde » la vraie vidéo).
-  // visualReady gate le chat Publication le temps de l'analyse (ou immédiat si pas de miniature).
+  // Nova « regarde ET écoute » la tendance choisie : VISION (miniature) + TRANSCRIPT (audio réel).
+  // visualReady gate le chat Publication le temps de l'analyse (ou immédiat si pas de tendance).
   const [visualAnalysis, setVisualAnalysis] = useState('')
+  const [trendTranscript, setTrendTranscript] = useState('')
   const [visualReady, setVisualReady] = useState(false)
   const visualFor = useRef<string>('') // clé campagne+index déjà analysée
   useEffect(() => {
     if (step !== 4) return
-    const cover = radarTrends?.[selectedTrend]?.cover
-    if (!campaignId || !cover) {
+    const trend = radarTrends?.[selectedTrend]
+    if (!campaignId || !trend?.url) {
       setVisualReady(true)
       return
     }
@@ -205,7 +206,10 @@ export default function CampagnePage() {
     setVisualReady(false)
     fetch(`/api/nova/campaigns/${campaignId}/trend-analysis?i=${selectedTrend}`)
       .then((r) => (r.ok ? r.json() : null))
-      .then((d) => setVisualAnalysis(d?.analysis || ''))
+      .then((d) => {
+        setVisualAnalysis(d?.visual || '')
+        setTrendTranscript(d?.transcript || '')
+      })
       .catch(() => {})
       .finally(() => setVisualReady(true))
   }, [step, campaignId, selectedTrend, radarTrends])
@@ -563,8 +567,8 @@ export default function CampagnePage() {
               <span className="flex size-12 items-center justify-center rounded-full" style={{ background: `${NOVA}1a`, color: NOVA }}>
                 <Loader2 className="size-6 animate-spin" />
               </span>
-              <p className="text-sm font-semibold text-foreground">Nova regarde la vidéo virale…</p>
-              <p className="max-w-xs text-xs text-muted-foreground">Elle analyse la miniature pour s&apos;inspirer de la vraie accroche.</p>
+              <p className="text-sm font-semibold text-foreground">Nova regarde et écoute la vidéo virale…</p>
+              <p className="max-w-xs text-xs text-muted-foreground">Elle analyse la miniature et transcrit l&apos;audio pour s&apos;inspirer de la vraie accroche. Ça prend quelques secondes.</p>
             </div>
           ) : loaded && forId ? (
             <NovaChat
@@ -582,15 +586,16 @@ export default function CampagnePage() {
                   ? `${trend.hook}${trend.views ? ` (${trend.views.toLocaleString('fr-FR')} vues)` : ''}`
                   : ''
                 const visual = step === 4 ? visualAnalysis : ''
+                const transcript = step === 4 ? trendTranscript : ''
                 // Template admin prioritaire ; sinon fallback sur les seeds intégrés
                 const body = cfg?.prompt
-                  ? fillTpl(cfg.prompt, { produit: productName, cible: who, audience: who, trend: trendStr, reunion, visual })
+                  ? fillTpl(cfg.prompt, { produit: productName, cible: who, audience: who, trend: trendStr, reunion, visual, transcript })
                   : step === 0
                     ? seed
                     : step === 1
                       ? cibleSeed(productName, who)
                       : step === 4
-                        ? pubSeed(productName, who, trend, visual)
+                        ? pubSeed(productName, who, trend, visual, transcript)
                         : step === 5
                           ? nourriSeed(productName, who)
                           : inviteSeed(productName, who, reunion, bofu)
