@@ -90,7 +90,7 @@ Donne à l'utilisateur, clairement structuré :
 3. Des CONSEILS de scénario (comment filmer : plan, rythme, durée, ce qui rend ce format efficace).
 Reprends la structure/accroche/rythme du format viral, mais avec SON produit — jamais une copie.
 Style chaleureux, tutoiement, concret. Puis demande s'il veut ajuster (plus court, autre angle…).
-Quand il valide, termine par ce marqueur exact sur une nouvelle ligne, contenant UNIQUEMENT le texte de la publication : [[OK: le texte de la publication]]`
+Quand il valide, dans ce même message : dis-lui qu'il peut maintenant soit **se filmer** avec ce script, soit faire **générer la vidéo par l'IA** (n'emploie jamais les mots « face » ni « faceless », uniquement du français). Puis termine par ce marqueur exact sur une nouvelle ligne, contenant UNIQUEMENT le texte de la publication : [[OK: le texte de la publication]]`
 
 // Flow campagne complet, noms courts. Canaux en 3 (conditionne Radar/profil/contenu), Publication en 5 (après Radar).
 const STEPS = ['Description', 'Cible', 'Canaux', 'Radar', 'Publication', 'Réunion', 'Conversion', 'Profil', 'Contenu', 'Parcours', 'Récap']
@@ -501,8 +501,16 @@ export default function CampagnePage() {
               onCapture={step === 0 ? setProductName : step === 1 ? setWho : step === 4 ? setPubText : setBofu}
               chipLabel={`Configurer : ${STEPS[step + 1]}`}
               onChip={next}
-              extraLabel={step === 6 ? 'Filmer ta vidéo' : undefined}
-              onExtra={step === 6 ? () => setRecorderOpen(true) : undefined}
+              extras={
+                step === 4
+                  ? [
+                      { label: 'Me filmer', onClick: () => setRecorderOpen(true) },
+                      { label: "Vidéo générée par l'IA", onClick: () => toast("Génération vidéo — bientôt disponible") },
+                    ]
+                  : step === 6
+                    ? [{ label: 'Filmer ta vidéo', onClick: () => setRecorderOpen(true) }]
+                    : undefined
+              }
               storageKey={`${CHATKEY}_${forId}_${step}`}
             />
           )}
@@ -865,11 +873,11 @@ export default function CampagnePage() {
       <VideoRecorder
         open={recorderOpen}
         onClose={() => setRecorderOpen(false)}
-        script={bofu}
+        script={step === 4 ? pubText : bofu}
         campaignId={campaignId}
-        postId={bofuPostId}
+        postId={step === 4 ? pubPostId : bofuPostId}
         platform={channels[0]}
-        onSaved={setBofuPostId}
+        onSaved={step === 4 ? setPubPostId : setBofuPostId}
       />
     </div>
   )

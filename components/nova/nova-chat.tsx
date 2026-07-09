@@ -25,16 +25,14 @@ export function NovaChat({
   onCapture,
   chipLabel,
   onChip,
-  extraLabel,
-  onExtra,
+  extras,
   storageKey,
 }: {
   seed: string
   onCapture?: (value: string) => void
   chipLabel?: string
   onChip?: () => void
-  extraLabel?: string
-  onExtra?: () => void
+  extras?: { label: string; onClick: () => void }[]
   storageKey?: string
 }) {
   const [messages, setMessages] = useState<Msg[]>([])
@@ -180,16 +178,17 @@ export function NovaChat({
           {/* Actions posées dans le fil quand Nova a verrouillé la valeur */}
           {chip && (
             <div className="flex flex-wrap items-center gap-2">
-              {extraLabel && onExtra && (
+              {extras?.map((a) => (
                 <button
+                  key={a.label}
                   type="button"
-                  onClick={onExtra}
+                  onClick={a.onClick}
                   className="flex items-center gap-1.5 rounded-full border px-4 py-2 text-sm font-semibold transition-colors active:bg-muted"
                   style={{ borderColor: NOVA, color: NOVA }}
                 >
-                  {extraLabel}
+                  {a.label}
                 </button>
-              )}
+              ))}
               {chipLabel && onChip && (
                 <button
                   type="button"
