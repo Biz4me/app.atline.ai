@@ -72,12 +72,24 @@ Style : chaleureux, tutoiement, phrases courtes, une question à la fois, sans j
 Quand la cible est claire, résume-la en une phrase et termine par ce marqueur exact sur une nouvelle ligne : [[OK: <la cible en une phrase>]]`
 
 // Écran Conversion (BOFU) : Nova rédige le contenu qui invite à la réunion, puis on l'affine.
-const bofuSeed = (produit: string, cible: string, reunion: string, existant: string) =>
-  `Tu es Nova, l'assistante réseaux sociaux d'Atline. On crée le CONTENU DE CONVERSION de la campagne : le post court (Reel/TikTok) qui invite à la réunion.
+// Écran Nourrir (MOFU) : contenu éducatif/valeur qui installe la confiance (entre attirer et l'invitation).
+const nourriSeed = (produit: string, cible: string) =>
+  `Tu es Nova, l'assistante réseaux sociaux d'Atline. On crée un contenu pour NOURRIR (milieu de tunnel) : un post éducatif / de valeur qui installe la CONFIANCE, sans rien vendre ni inviter à la réunion (ça viendra après).
+Produit : « ${produit || 'non précisé'} » ; cible : « ${cible || 'non précisée'} ».
+Choisis UN angle qui rassure et apporte de la valeur (ex. « les 3 erreurs à éviter », une coulisse, un mythe démonté, une preuve/résultat, un conseil actionnable). Donne :
+1. LE TEXTE du post (accroche + valeur concrète + légende) ;
+2. LE SCRIPT (ce qu'il dit/montre étape par étape) ;
+3. Des CONSEILS de scénario (plan, rythme, durée).
+Pas d'appel à la réunion ici : le but est de gagner la confiance. Style chaleureux, tutoiement, concret. Demande s'il veut ajuster.
+Quand il valide, dis-lui qu'il peut se filmer ou faire générer la vidéo (français, jamais « face »/« faceless »), puis termine par ce marqueur exact sur une nouvelle ligne, contenant UNIQUEMENT le texte du post : [[OK: le texte du post]]`
+
+// Écran Invitation (finalité du MOFU) : le post qui donne envie de S'INSCRIRE à la réunion (PAS de vente — la vente se fait en live dans la réunion).
+const inviteSeed = (produit: string, cible: string, reunion: string, existant: string) =>
+  `Tu es Nova, l'assistante réseaux sociaux d'Atline. On crée l'INVITATION à la réunion : le post court (Reel/TikTok) qui donne envie de s'y inscrire. C'est la FINALITÉ du nourrissage — pas de vente, juste l'invitation à venir.
 Contexte — produit : « ${produit || 'non précisé'} » ; cible : « ${cible || 'non précisée'} » ; réunion : ${reunion}.
-${existant ? `Un brouillon existe déjà :\n« ${existant} »\nRappelle-le, demande ce qu'on ajuste, et propose une version améliorée.` : "Propose UN brouillon : une accroche forte + 2-3 lignes qui donnent envie + un appel à l'action clair vers la réunion (ex. « commente RDV » ou « lien en bio »). Court, parlé, sans jargon."}
-Présente le brouillon, demande si ça lui va ou ce qu'il veut changer (plus court, plus direct, autre angle…). Tutoiement, chaleureux.
-Quand l'utilisateur valide, termine ton message par ce marqueur exact sur une nouvelle ligne, contenant UNIQUEMENT le texte final du post : [[OK: le texte final du post]]`
+${existant ? `Un brouillon existe déjà :\n« ${existant} »\nRappelle-le, demande ce qu'on ajuste, et propose une version améliorée.` : "Propose UN brouillon : une accroche forte + 2-3 lignes qui donnent envie + un appel à l'action clair pour s'inscrire à la réunion (ex. « commente RDV » ou « lien en bio »). Court, parlé, sans jargon."}
+Présente le brouillon, demande si ça lui va ou ce qu'il veut changer. Tutoiement, chaleureux.
+Quand il valide, dis-lui qu'il peut se filmer ou faire générer la vidéo (français, jamais « face »/« faceless »), puis termine par ce marqueur exact sur une nouvelle ligne, contenant UNIQUEMENT le texte final du post : [[OK: le texte final du post]]`
 
 // Écran Publication (attirer) : Nova rédige une publication inspirée d'une tendance repérée par le Radar.
 const pubSeed = (produit: string, cible: string, trend?: Trend) =>
@@ -93,11 +105,11 @@ Style chaleureux, tutoiement, concret. Puis demande s'il veut ajuster (plus cour
 Quand il valide, dans ce même message : dis-lui qu'il peut maintenant soit **se filmer** avec ce script, soit faire **générer la vidéo par l'IA** (n'emploie jamais les mots « face » ni « faceless », uniquement du français). Puis termine par ce marqueur exact sur une nouvelle ligne, contenant UNIQUEMENT le texte de la publication : [[OK: le texte de la publication]]`
 
 // Flow campagne complet, noms courts. Canaux en 3 (conditionne Radar/profil/contenu), Publication en 5 (après Radar).
-const STEPS = ['Description', 'Cible', 'Canaux', 'Radar', 'Publication', 'Réunion', 'Conversion', 'Profil', 'Contenu', 'Parcours', 'Récap']
+const STEPS = ['Description', 'Cible', 'Canaux', 'Radar', 'Publication', 'Nourrir', 'Réunion', 'Invitation', 'Profil', 'Contenu', 'Parcours', 'Récap']
 
 // Écrans en conversation avec Nova (les autres = formulaires).
 // 0 Description · 1 Cible · 4 Publication (attirer, inspiré du Radar) · 6 Conversion (BOFU).
-const CHAT_STEPS = [0, 1, 4, 6]
+const CHAT_STEPS = [0, 1, 4, 5, 7]
 
 type Goal = 'CLIENTS' | 'PARTENAIRES'
 type MeetingFormat = 'TETE_A_TETE' | 'GROUPE'
@@ -152,6 +164,10 @@ export default function CampagnePage() {
   const [pubText, setPubText] = useState('')
   const [pubPostId, setPubPostId] = useState<string | null>(null)
 
+  // Écran Nourrir (MOFU) — contenu éducatif/valeur qui installe la confiance
+  const [nourri, setNourri] = useState('')
+  const [nourriPostId, setNourriPostId] = useState<string | null>(null)
+
   // Mode édition : ?id=… → charge la campagne et préremplit tout (les PATCH ciblent l'existant).
   const [loadedStatus, setLoadedStatus] = useState<string | null>(null)
   const [editing, setEditing] = useState(false)
@@ -188,6 +204,8 @@ export default function CampagnePage() {
         setBofuPostId(s.bofuPostId ?? null)
         setPubText(s.pubText ?? '')
         setPubPostId(s.pubPostId ?? null)
+        setNourri(s.nourri ?? '')
+        setNourriPostId(s.nourriPostId ?? null)
         if (typeof s.selectedTrend === 'number') setSelectedTrend(s.selectedTrend)
         setLoaded(true)
         return
@@ -233,10 +251,10 @@ export default function CampagnePage() {
     try {
       sessionStorage.setItem(
         WKEY,
-        JSON.stringify({ forId, step, campaignId, loadedStatus, productName, who, pain, desire, meetingFormat, offerPitch, day, time, link, channels, contentMode, cadence, bofu, bofuPostId, pubText, pubPostId, selectedTrend }),
+        JSON.stringify({ forId, step, campaignId, loadedStatus, productName, who, pain, desire, meetingFormat, offerPitch, day, time, link, channels, contentMode, cadence, bofu, bofuPostId, pubText, pubPostId, nourri, nourriPostId, selectedTrend }),
       )
     } catch {}
-  }, [loaded, forId, step, campaignId, loadedStatus, productName, who, pain, desire, meetingFormat, offerPitch, day, time, link, channels, contentMode, cadence, bofu, bofuPostId, pubText, pubPostId, selectedTrend])
+  }, [loaded, forId, step, campaignId, loadedStatus, productName, who, pain, desire, meetingFormat, offerPitch, day, time, link, channels, contentMode, cadence, bofu, bofuPostId, pubText, pubPostId, nourri, nourriPostId, selectedTrend])
 
   function clearPersistence() {
     try {
@@ -344,26 +362,39 @@ export default function CampagnePage() {
           }
         }
       } else if (step === 5) {
+        // Nourrir (MOFU) : crée/met à jour le contenu de valeur (ContentPost)
+        if (nourri) {
+          const res = await fetch('/api/nova/content', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ campaignId, postId: nourriPostId, caption: nourri, platform: channels[0], role: 'Nourrir' }),
+          })
+          if (res.ok) {
+            const { post } = await res.json()
+            if (post?.id) setNourriPostId(post.id)
+          }
+        }
+      } else if (step === 6) {
         if (!meetingFormat) {
           toast.error('Choisis un format de réunion')
           return false
         }
         const meetingConfig = meetingFormat === 'GROUPE' ? { day, time, link } : {}
         await patch({ meetingFormat, offerPitch, meetingConfig })
-      } else if (step === 6) {
-        // BOFU : crée/met à jour le contenu de conversion (ContentPost)
+      } else if (step === 7) {
+        // Invitation (finalité MOFU) : le post qui invite à la réunion (ContentPost)
         if (bofu) {
           const res = await fetch('/api/nova/content', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ campaignId, postId: bofuPostId, caption: bofu, platform: channels[0], role: 'Convertir' }),
+            body: JSON.stringify({ campaignId, postId: bofuPostId, caption: bofu, platform: channels[0], role: 'Invitation' }),
           })
           if (res.ok) {
             const { post } = await res.json()
             if (post?.id) setBofuPostId(post.id)
           }
         }
-      } else if (step === 8) {
+      } else if (step === 9) {
         await patch({ contentMode, cadence })
       }
       return true
@@ -487,29 +518,31 @@ export default function CampagnePage() {
                     ? cibleSeed(productName, who)
                     : step === 4
                       ? pubSeed(productName, who, radarTrends?.[selectedTrend])
-                      : bofuSeed(
-                          productName,
-                          who,
-                          meetingFormat === 'GROUPE'
-                            ? `réunion de groupe${offerPitch ? ` — « ${offerPitch} »` : ''}`
-                            : meetingFormat === 'TETE_A_TETE'
-                              ? `rendez-vous individuel${offerPitch ? ` — « ${offerPitch} »` : ''}`
-                              : 'une réunion (format à préciser)',
-                          bofu,
-                        )
+                      : step === 5
+                        ? nourriSeed(productName, who)
+                        : inviteSeed(
+                            productName,
+                            who,
+                            meetingFormat === 'GROUPE'
+                              ? `réunion de groupe${offerPitch ? ` — « ${offerPitch} »` : ''}`
+                              : meetingFormat === 'TETE_A_TETE'
+                                ? `rendez-vous individuel${offerPitch ? ` — « ${offerPitch} »` : ''}`
+                                : 'une réunion (format à préciser)',
+                            bofu,
+                          )
               }
-              onCapture={step === 0 ? setProductName : step === 1 ? setWho : step === 4 ? setPubText : setBofu}
+              onCapture={
+                step === 0 ? setProductName : step === 1 ? setWho : step === 4 ? setPubText : step === 5 ? setNourri : setBofu
+              }
               chipLabel={`Configurer : ${STEPS[step + 1]}`}
               onChip={next}
               extras={
-                step === 4
+                step === 4 || step === 5 || step === 7
                   ? [
                       { label: 'Me filmer', onClick: () => setRecorderOpen(true) },
                       { label: "Vidéo générée par l'IA", onClick: () => toast("Génération vidéo — bientôt disponible") },
                     ]
-                  : step === 6
-                    ? [{ label: 'Filmer ta vidéo', onClick: () => setRecorderOpen(true) }]
-                    : undefined
+                  : undefined
               }
               storageKey={`${CHATKEY}_${forId}_${step}`}
             />
@@ -568,7 +601,7 @@ export default function CampagnePage() {
         )}
 
         {/* Écran 5 — La réunion */}
-        {step === 5 && (
+        {step === 6 && (
           <Step
             title="Comment se passe la rencontre ?"
             subtitle="C'est le rendez-vous vers lequel Nova conduit chaque prospect."
@@ -687,7 +720,7 @@ export default function CampagnePage() {
         )}
 
         {/* Écran 5 — Optimise ton profil */}
-        {step === 7 && (
+        {step === 8 && (
           <Step
             title="Prépare tes profils"
             subtitle="Un visiteur qui clique doit comprendre en 3 secondes. Coche au fur et à mesure."
@@ -711,7 +744,7 @@ export default function CampagnePage() {
         )}
 
         {/* Écran 6 — Contenu */}
-        {step === 8 && (
+        {step === 9 && (
           <Step
             title="Comment tu crées ?"
             subtitle="Nova écrit tout. À toi de dire si tu apparais à l'écran ou non."
@@ -780,7 +813,7 @@ export default function CampagnePage() {
         )}
 
         {/* Écran 7 — Parcours du lead */}
-        {step === 9 && (
+        {step === 10 && (
           <Step
             title="Ce qui se passe ensuite"
             subtitle="Atlas s'occupe de tout jusqu'à la réunion. Toi, tu animes et tu closes."
@@ -794,7 +827,7 @@ export default function CampagnePage() {
         )}
 
         {/* Écran 8 — Récap */}
-        {step === 10 && (
+        {step === 11 && (
           <Step
             title="Prêt à lancer ?"
             subtitle="Vérifie ta campagne. Tu pourras tout modifier ensuite."
@@ -873,11 +906,11 @@ export default function CampagnePage() {
       <VideoRecorder
         open={recorderOpen}
         onClose={() => setRecorderOpen(false)}
-        script={step === 4 ? pubText : bofu}
+        script={step === 4 ? pubText : step === 5 ? nourri : bofu}
         campaignId={campaignId}
-        postId={step === 4 ? pubPostId : bofuPostId}
+        postId={step === 4 ? pubPostId : step === 5 ? nourriPostId : bofuPostId}
         platform={channels[0]}
-        onSaved={step === 4 ? setPubPostId : setBofuPostId}
+        onSaved={step === 4 ? setPubPostId : step === 5 ? setNourriPostId : setBofuPostId}
       />
     </div>
   )
