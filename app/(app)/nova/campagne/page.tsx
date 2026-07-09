@@ -546,6 +546,17 @@ export default function CampagnePage() {
                     ]
                   : undefined
               }
+              quickReplies={
+                step === 4 || step === 5 || step === 7
+                  ? [
+                      {
+                        label: 'Générateur d’accroches',
+                        message:
+                          "Propose-moi 8 accroches courtes et percutantes pour ce contenu, faites pour GÉNÉRER DES LEADS (donner envie de commenter ou d'écrire en DM), pas juste des vues. Inspire-toi des formats qui cartonnent dans la niche. Numérote-les.",
+                      },
+                    ]
+                  : undefined
+              }
               storageKey={`${CHATKEY}_${forId}_${step}`}
             />
           )}

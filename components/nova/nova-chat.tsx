@@ -26,6 +26,7 @@ export function NovaChat({
   chipLabel,
   onChip,
   extras,
+  quickReplies,
   storageKey,
 }: {
   seed: string
@@ -33,6 +34,7 @@ export function NovaChat({
   chipLabel?: string
   onChip?: () => void
   extras?: { label: string; onClick: () => void }[]
+  quickReplies?: { label: string; message: string }[]
   storageKey?: string
 }) {
   const [messages, setMessages] = useState<Msg[]>([])
@@ -204,6 +206,22 @@ export function NovaChat({
           )}
         </div>
       </div>
+
+      {quickReplies && quickReplies.length > 0 && !busy && (
+        <div className="lg:hidden flex gap-2 overflow-x-auto no-scrollbar px-4 pb-2">
+          {quickReplies.map((q) => (
+            <button
+              key={q.label}
+              type="button"
+              onClick={() => void send(q.message)}
+              className="shrink-0 rounded-full border px-3.5 py-1.5 text-xs font-semibold transition-colors active:bg-muted"
+              style={{ borderColor: NOVA, color: NOVA }}
+            >
+              {q.label}
+            </button>
+          ))}
+        </div>
+      )}
 
       <AppComposer
         value={input}
