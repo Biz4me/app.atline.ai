@@ -83,6 +83,20 @@ const STEPS = ['Description', 'Cible', 'Canaux', 'Radar', 'Réunion', 'Conversio
 // Écrans en conversation avec Nova (les autres = formulaires). Conversion (BOFU) = chat aussi.
 const CHAT_STEPS = [0, 1, 5]
 
+// Sous-titre affiché sous le navigateur d'étapes (une phrase par page).
+const SUBTITLES = [
+  'Le produit ou service à mettre en avant',
+  "À qui tu t'adresses",
+  'Où tu publies',
+  'Ce qui cartonne dans ta niche',
+  'Le rendez-vous où tu convertis',
+  'Le post qui invite à ta réunion',
+  'Prépare tes profils',
+  'Comment ton contenu est créé',
+  'Ce qui se passe après',
+  'Vérifie et lance',
+]
+
 type Goal = 'CLIENTS' | 'PARTENAIRES'
 type MeetingFormat = 'TETE_A_TETE' | 'GROUPE'
 type Platform = 'INSTAGRAM' | 'TIKTOK' | 'FACEBOOK'
@@ -385,6 +399,7 @@ export default function CampagnePage() {
             <ChevronRight className="size-5" />
           </button>
         </div>
+        <p className="mt-1 text-center text-xs text-muted-foreground text-pretty">{SUBTITLES[step]}</p>
       </header>
 
       {CHAT_STEPS.includes(step) ? (
@@ -753,24 +768,9 @@ export default function CampagnePage() {
   )
 }
 
-function Step({
-  title,
-  subtitle,
-  children,
-}: {
-  title: string
-  subtitle: string
-  children: React.ReactNode
-}) {
-  return (
-    <div className="flex flex-col gap-4">
-      <div>
-        <h2 className="font-display text-2xl font-semibold text-foreground text-balance">{title}</h2>
-        <p className="mt-1 text-sm text-muted-foreground text-pretty">{subtitle}</p>
-      </div>
-      {children}
-    </div>
-  )
+// Le titre/sous-titre vit désormais dans le header (une seule source). Step ne garde que la mise en page.
+function Step({ children }: { title?: string; subtitle?: string; children: React.ReactNode }) {
+  return <div className="flex flex-col gap-4">{children}</div>
 }
 
 function FormatCard({
