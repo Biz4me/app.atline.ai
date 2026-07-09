@@ -31,6 +31,7 @@ export async function POST(req: Request) {
   })
   if (!campaign) return NextResponse.json({ error: 'Campagne introuvable' }, { status: 404 })
 
+  const role = typeof body?.role === 'string' ? body.role : 'Convertir' // rôle funnel : Attirer / Nourrir / Convertir
   const post = await db.contentPost.create({
     data: {
       userId,
@@ -40,7 +41,7 @@ export async function POST(req: Request) {
       caption,
       status: 'BROUILLON',
       novaGenerated: true,
-      format: 'Convertir', // rôle funnel (BOFU)
+      format: role,
     },
   })
   return NextResponse.json({ post: { id: post.id } })

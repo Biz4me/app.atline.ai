@@ -79,11 +79,25 @@ ${existant ? `Un brouillon existe déjà :\n« ${existant} »\nRappelle-le, dema
 Présente le brouillon, demande si ça lui va ou ce qu'il veut changer (plus court, plus direct, autre angle…). Tutoiement, chaleureux.
 Quand l'utilisateur valide, termine ton message par ce marqueur exact sur une nouvelle ligne, contenant UNIQUEMENT le texte final du post : [[OK: le texte final du post]]`
 
-// Flow campagne complet (8 écrans), noms courts. Canaux en 3 : il conditionne Radar/profil/contenu.
-const STEPS = ['Description', 'Cible', 'Canaux', 'Radar', 'Réunion', 'Conversion', 'Profil', 'Contenu', 'Parcours', 'Récap']
+// Écran Publication (attirer) : Nova rédige une publication inspirée d'une tendance repérée par le Radar.
+const pubSeed = (produit: string, cible: string, trend?: Trend) =>
+  `Tu es Nova, l'assistante réseaux sociaux d'Atline. On crée une publication pour ATTIRER (haut de tunnel), inspirée d'un format qui cartonne dans la niche.
+Format viral dont on s'inspire (la RECETTE, JAMAIS le contenu à l'identique) : « ${trend?.hook || 'un format performant de la niche'} »${trend?.views ? ` (${trend.views} vues sur ${trend.platform})` : ''}.
+Produit à mettre en avant : « ${produit || 'non précisé'} » ; cible : « ${cible || 'non précisée'} ».
+Donne à l'utilisateur, clairement structuré :
+1. LE TEXTE de la publication (accroche + corps + légende), adapté à sa cible et son produit ;
+2. LE SCRIPT (ce qu'il dit ou montre à l'écran, étape par étape) ;
+3. Des CONSEILS de scénario (comment filmer : plan, rythme, durée, ce qui rend ce format efficace).
+Reprends la structure/accroche/rythme du format viral, mais avec SON produit — jamais une copie.
+Style chaleureux, tutoiement, concret. Puis demande s'il veut ajuster (plus court, autre angle…).
+Quand il valide, termine par ce marqueur exact sur une nouvelle ligne, contenant UNIQUEMENT le texte de la publication : [[OK: le texte de la publication]]`
 
-// Écrans en conversation avec Nova (les autres = formulaires). Conversion (BOFU) = chat aussi.
-const CHAT_STEPS = [0, 1, 5]
+// Flow campagne complet, noms courts. Canaux en 3 (conditionne Radar/profil/contenu), Publication en 5 (après Radar).
+const STEPS = ['Description', 'Cible', 'Canaux', 'Radar', 'Publication', 'Réunion', 'Conversion', 'Profil', 'Contenu', 'Parcours', 'Récap']
+
+// Écrans en conversation avec Nova (les autres = formulaires).
+// 0 Description · 1 Cible · 4 Publication (attirer, inspiré du Radar) · 6 Conversion (BOFU).
+const CHAT_STEPS = [0, 1, 4, 6]
 
 type Goal = 'CLIENTS' | 'PARTENAIRES'
 type MeetingFormat = 'TETE_A_TETE' | 'GROUPE'
@@ -132,6 +146,11 @@ export default function CampagnePage() {
   // Écran Radar — tendances trouvées par n8n/Apify (null = en cours, [] = rien, [..] = résultats)
   const [radarTrends, setRadarTrends] = useState<Trend[] | null>(null)
   const radarFired = useRef(false)
+  const [selectedTrend, setSelectedTrend] = useState(0) // index de la tendance dont Nova s'inspire
+
+  // Écran Publication (attirer) — texte rédigé par Nova depuis la tendance choisie, sauvé en ContentPost
+  const [pubText, setPubText] = useState('')
+  const [pubPostId, setPubPostId] = useState<string | null>(null)
 
   // Mode édition : ?id=… → charge la campagne et préremplit tout (les PATCH ciblent l'existant).
   const [loadedStatus, setLoadedStatus] = useState<string | null>(null)
@@ -167,6 +186,9 @@ export default function CampagnePage() {
         if (typeof s.cadence === 'number') setCadence(s.cadence)
         setBofu(s.bofu ?? '')
         setBofuPostId(s.bofuPostId ?? null)
+        setPubText(s.pubText ?? '')
+        setPubPostId(s.pubPostId ?? null)
+        if (typeof s.selectedTrend === 'number') setSelectedTrend(s.selectedTrend)
         setLoaded(true)
         return
       }
@@ -211,10 +233,10 @@ export default function CampagnePage() {
     try {
       sessionStorage.setItem(
         WKEY,
-        JSON.stringify({ forId, step, campaignId, loadedStatus, productName, who, pain, desire, meetingFormat, offerPitch, day, time, link, channels, contentMode, cadence, bofu, bofuPostId }),
+        JSON.stringify({ forId, step, campaignId, loadedStatus, productName, who, pain, desire, meetingFormat, offerPitch, day, time, link, channels, contentMode, cadence, bofu, bofuPostId, pubText, pubPostId, selectedTrend }),
       )
     } catch {}
-  }, [loaded, forId, step, campaignId, loadedStatus, productName, who, pain, desire, meetingFormat, offerPitch, day, time, link, channels, contentMode, cadence, bofu, bofuPostId])
+  }, [loaded, forId, step, campaignId, loadedStatus, productName, who, pain, desire, meetingFormat, offerPitch, day, time, link, channels, contentMode, cadence, bofu, bofuPostId, pubText, pubPostId, selectedTrend])
 
   function clearPersistence() {
     try {
@@ -309,26 +331,39 @@ export default function CampagnePage() {
         }
         await patch({ channels })
       } else if (step === 4) {
+        // Publication (attirer) : crée/met à jour le ContentPost inspiré de la tendance
+        if (pubText) {
+          const res = await fetch('/api/nova/content', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ campaignId, postId: pubPostId, caption: pubText, platform: channels[0], role: 'Attirer' }),
+          })
+          if (res.ok) {
+            const { post } = await res.json()
+            if (post?.id) setPubPostId(post.id)
+          }
+        }
+      } else if (step === 5) {
         if (!meetingFormat) {
           toast.error('Choisis un format de réunion')
           return false
         }
         const meetingConfig = meetingFormat === 'GROUPE' ? { day, time, link } : {}
         await patch({ meetingFormat, offerPitch, meetingConfig })
-      } else if (step === 5) {
+      } else if (step === 6) {
         // BOFU : crée/met à jour le contenu de conversion (ContentPost)
         if (bofu) {
           const res = await fetch('/api/nova/content', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ campaignId, postId: bofuPostId, caption: bofu, platform: channels[0] }),
+            body: JSON.stringify({ campaignId, postId: bofuPostId, caption: bofu, platform: channels[0], role: 'Convertir' }),
           })
           if (res.ok) {
             const { post } = await res.json()
             if (post?.id) setBofuPostId(post.id)
           }
         }
-      } else if (step === 7) {
+      } else if (step === 8) {
         await patch({ contentMode, cadence })
       }
       return true
@@ -450,22 +485,24 @@ export default function CampagnePage() {
                   ? seed
                   : step === 1
                     ? cibleSeed(productName, who)
-                    : bofuSeed(
-                        productName,
-                        who,
-                        meetingFormat === 'GROUPE'
-                          ? `réunion de groupe${offerPitch ? ` — « ${offerPitch} »` : ''}`
-                          : meetingFormat === 'TETE_A_TETE'
-                            ? `rendez-vous individuel${offerPitch ? ` — « ${offerPitch} »` : ''}`
-                            : 'une réunion (format à préciser)',
-                        bofu,
-                      )
+                    : step === 4
+                      ? pubSeed(productName, who, radarTrends?.[selectedTrend])
+                      : bofuSeed(
+                          productName,
+                          who,
+                          meetingFormat === 'GROUPE'
+                            ? `réunion de groupe${offerPitch ? ` — « ${offerPitch} »` : ''}`
+                            : meetingFormat === 'TETE_A_TETE'
+                              ? `rendez-vous individuel${offerPitch ? ` — « ${offerPitch} »` : ''}`
+                              : 'une réunion (format à préciser)',
+                          bofu,
+                        )
               }
-              onCapture={step === 0 ? setProductName : step === 1 ? setWho : setBofu}
+              onCapture={step === 0 ? setProductName : step === 1 ? setWho : step === 4 ? setPubText : setBofu}
               chipLabel={`Configurer : ${STEPS[step + 1]}`}
               onChip={next}
-              extraLabel={step === 5 ? 'Filmer ta vidéo' : undefined}
-              onExtra={step === 5 ? () => setRecorderOpen(true) : undefined}
+              extraLabel={step === 6 ? 'Filmer ta vidéo' : undefined}
+              onExtra={step === 6 ? () => setRecorderOpen(true) : undefined}
               storageKey={`${CHATKEY}_${forId}_${step}`}
             />
           )}
@@ -492,11 +529,16 @@ export default function CampagnePage() {
             ) : radarTrends.length ? (
               <>
                 <p className="text-sm text-muted-foreground text-pretty">
-                  Les vidéos les plus vues de ta niche sur TikTok. On s&apos;en inspirera pour ton contenu.
+                  Choisis le format dont Nova va s&apos;inspirer pour ta publication.
                 </p>
                 <div className="flex flex-col gap-3">
                   {radarTrends.map((t, i) => (
-                    <TrendCard key={i} {...t} />
+                    <TrendCard
+                      key={i}
+                      trend={t}
+                      selected={selectedTrend === i}
+                      onSelect={() => setSelectedTrend(i)}
+                    />
                   ))}
                 </div>
               </>
@@ -518,7 +560,7 @@ export default function CampagnePage() {
         )}
 
         {/* Écran 5 — La réunion */}
-        {step === 4 && (
+        {step === 5 && (
           <Step
             title="Comment se passe la rencontre ?"
             subtitle="C'est le rendez-vous vers lequel Nova conduit chaque prospect."
@@ -637,7 +679,7 @@ export default function CampagnePage() {
         )}
 
         {/* Écran 5 — Optimise ton profil */}
-        {step === 6 && (
+        {step === 7 && (
           <Step
             title="Prépare tes profils"
             subtitle="Un visiteur qui clique doit comprendre en 3 secondes. Coche au fur et à mesure."
@@ -661,7 +703,7 @@ export default function CampagnePage() {
         )}
 
         {/* Écran 6 — Contenu */}
-        {step === 7 && (
+        {step === 8 && (
           <Step
             title="Comment tu crées ?"
             subtitle="Nova écrit tout. À toi de dire si tu apparais à l'écran ou non."
@@ -730,7 +772,7 @@ export default function CampagnePage() {
         )}
 
         {/* Écran 7 — Parcours du lead */}
-        {step === 8 && (
+        {step === 9 && (
           <Step
             title="Ce qui se passe ensuite"
             subtitle="Atlas s'occupe de tout jusqu'à la réunion. Toi, tu animes et tu closes."
@@ -744,7 +786,7 @@ export default function CampagnePage() {
         )}
 
         {/* Écran 8 — Récap */}
-        {step === 9 && (
+        {step === 10 && (
           <Step
             title="Prêt à lancer ?"
             subtitle="Vérifie ta campagne. Tu pourras tout modifier ensuite."
@@ -890,26 +932,42 @@ function formatViews(n: number) {
   return String(n || 0)
 }
 
-// Carte d'une tendance repérée par le Radar (donnée réelle Apify/TikTok).
-function TrendCard({ platform, hook, views, author, url }: Trend) {
-  const card = (
-    <div className="rounded-2xl border border-border bg-surface p-4 shadow-card transition-colors active:bg-muted">
+// Carte d'une tendance repérée par le Radar (donnée réelle Apify/TikTok) — sélectionnable.
+function TrendCard({ trend, selected, onSelect }: { trend: Trend; selected: boolean; onSelect: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onSelect}
+      className={cn(
+        'rounded-2xl border bg-surface p-4 text-left shadow-card transition-colors',
+        selected ? 'border-transparent' : 'border-border active:bg-muted',
+      )}
+      style={selected ? { borderColor: NOVA, boxShadow: `0 0 0 1px ${NOVA}` } : undefined}
+    >
       <div className="flex items-center gap-2">
         <span className="rounded-full px-2 py-0.5 text-[10px] font-semibold" style={{ background: `${NOVA}1a`, color: NOVA }}>
-          {platform}
+          {trend.platform}
         </span>
-        <span className="ml-auto shrink-0 text-xs font-semibold text-muted-foreground">{formatViews(views)} vues</span>
+        <span className="ml-auto shrink-0 text-xs font-semibold text-muted-foreground">{formatViews(trend.views)} vues</span>
+        {selected && <Check className="size-4 shrink-0" style={{ color: NOVA }} />}
       </div>
-      <p className="mt-1.5 line-clamp-2 text-sm text-foreground">{hook || '—'}</p>
-      {author && <p className="mt-1 text-xs text-muted-foreground">@{author}</p>}
-    </div>
-  )
-  return url ? (
-    <a href={url} target="_blank" rel="noreferrer">
-      {card}
-    </a>
-  ) : (
-    card
+      <p className="mt-1.5 line-clamp-2 text-sm text-foreground">{trend.hook || '—'}</p>
+      <div className="mt-1 flex items-center gap-2 text-xs text-muted-foreground">
+        {trend.author && <span>@{trend.author}</span>}
+        {trend.url && (
+          <a
+            href={trend.url}
+            target="_blank"
+            rel="noreferrer"
+            onClick={(e) => e.stopPropagation()}
+            className="ml-auto font-semibold"
+            style={{ color: NOVA }}
+          >
+            Voir ↗
+          </a>
+        )}
+      </div>
+    </button>
   )
 }
 
