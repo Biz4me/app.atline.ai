@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import {
   ChevronLeft,
   ChevronRight,
+  X,
   Users,
   Sparkles,
   User,
@@ -82,20 +83,6 @@ const STEPS = ['Description', 'Cible', 'Canaux', 'Radar', 'Réunion', 'Conversio
 
 // Écrans en conversation avec Nova (les autres = formulaires). Conversion (BOFU) = chat aussi.
 const CHAT_STEPS = [0, 1, 5]
-
-// Sous-titre affiché sous le navigateur d'étapes (une phrase par page).
-const SUBTITLES = [
-  'Le produit ou service à mettre en avant',
-  "À qui tu t'adresses",
-  'Où tu publies',
-  'Ce qui cartonne dans ta niche',
-  'Le rendez-vous où tu convertis',
-  'Le post qui invite à ta réunion',
-  'Prépare tes profils',
-  'Comment ton contenu est créé',
-  'Ce qui se passe après',
-  'Vérifie et lance',
-]
 
 type Goal = 'CLIENTS' | 'PARTENAIRES'
 type MeetingFormat = 'TETE_A_TETE' | 'GROUPE'
@@ -350,18 +337,18 @@ export default function CampagnePage() {
         className="sticky top-0 z-30 bg-background/90 px-4 py-3 backdrop-blur"
         style={{ paddingTop: 'max(0.75rem, env(safe-area-inset-top))' }}
       >
-        <div className="flex items-center gap-3">
+        <div className="flex items-center justify-between">
           <button
             type="button"
             onClick={exit}
             aria-label="Fermer"
             className="-ml-1 flex size-9 items-center justify-center rounded-full text-fg-2 active:bg-muted"
           >
-            <ChevronLeft className="size-5" />
+            <X className="size-5" />
           </button>
-          <h1 className="font-display text-lg font-semibold">
-            {loadedStatus ? 'Modifier la campagne' : 'Nouvelle campagne'}
-          </h1>
+          <span className="text-xs font-semibold text-muted-foreground">
+            {step + 1} / {STEPS.length}
+          </span>
         </div>
         <div className="mt-3 flex gap-1.5">
           {STEPS.map((label, i) => (
@@ -377,8 +364,8 @@ export default function CampagnePage() {
             />
           ))}
         </div>
-        {/* Titre d'étape centré + flèches avant/après */}
-        <div className="mt-2 flex items-center justify-center gap-4">
+        {/* Le nom de l'étape = le titre ; les flèches naviguent entre les étapes */}
+        <div className="mt-3 flex items-center justify-center gap-3">
           <button
             type="button"
             onClick={() => setStep((s) => Math.max(0, s - 1))}
@@ -388,7 +375,7 @@ export default function CampagnePage() {
           >
             <ChevronLeft className="size-5" />
           </button>
-          <span className="min-w-[104px] text-center text-sm font-bold text-foreground">{STEPS[step]}</span>
+          <h1 className="min-w-[150px] text-center font-display text-lg font-bold text-foreground">{STEPS[step]}</h1>
           <button
             type="button"
             onClick={() => setStep((s) => Math.min(STEPS.length - 1, s + 1))}
@@ -399,7 +386,6 @@ export default function CampagnePage() {
             <ChevronRight className="size-5" />
           </button>
         </div>
-        <p className="mt-1 text-center text-xs text-muted-foreground text-pretty">{SUBTITLES[step]}</p>
       </header>
 
       {CHAT_STEPS.includes(step) ? (
