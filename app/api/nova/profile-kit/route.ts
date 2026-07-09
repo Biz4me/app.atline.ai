@@ -20,15 +20,27 @@ export async function POST() {
     ? await db.userMlmBusiness.findFirst({ where: { id: prefs.activeCompanyId, userId } })
     : await db.userMlmBusiness.findFirst({ where: { userId }, orderBy: { position: 'asc' } })
 
+  // ⚠️ On NE passe PAS le nom de la société MLM (le contenu ne doit jamais la nommer).
   const contexte = [
-    biz?.mlmName && `activité : ${biz.mlmName}`,
     biz?.produit && `produit/offre : ${biz.produit}`,
     biz?.audience && `audience : ${biz.audience}`,
   ]
     .filter(Boolean)
-    .join(' ; ') || 'activité de marketing de réseau (peu de détails renseignés)'
+    .join(' ; ') || 'produit/service (peu de détails renseignés)'
+
+  // Règles de contenu éditables en admin (fallback intégré) — jamais nommer la société.
+  let rules =
+    'Ne nomme JAMAIS la société ni la marque MLM (ex. Herbalife). Mets en avant le PRODUIT / le bénéfice concret, jamais l\'opportunité ni le recrutement. Attirer et créer la confiance, pas vendre.'
+  try {
+    const cr = await fetch('http://127.0.0.1:3060/api/internal/nova/config', { cache: 'no-store', signal: AbortSignal.timeout(2000) })
+    if (cr.ok) {
+      const cd = await cr.json()
+      if (typeof cd.content_prompt === 'string' && cd.content_prompt.trim()) rules = cd.content_prompt.trim()
+    }
+  } catch {}
 
   const prompt = `Tu génères le CONTENU de profil réseaux sociaux d'un distributeur, prêt à copier-coller.
+${rules}
 Contexte — ${contexte}.
 Réponds UNIQUEMENT avec un objet JSON valide, sans aucun texte autour, de cette forme exacte :
 {"instagram":{"bio":"...","handles":["@...","@..."],"linkCta":"...","content":"..."},"tiktok":{"bio":"...","handles":["@...","@..."],"linkCta":"...","content":"..."}}

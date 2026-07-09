@@ -157,15 +157,19 @@ export default function CampagnePage() {
   const [videoSteps, setVideoSteps] = useState<Set<number>>(new Set()) // étapes dont le contenu a déjà une vidéo
   const [videoNonce, setVideoNonce] = useState(0) // anti-cache pour revoir une vidéo refaite
 
-  // Prompt du générateur d'accroches (éditable en admin, fallback intégré)
+  // Prompts éditables en admin (accroches + règles de contenu), fallback intégré
   const [hookPrompt, setHookPrompt] = useState(
     "Propose-moi 8 accroches courtes et percutantes pour ce contenu, faites pour GÉNÉRER DES LEADS (donner envie de commenter ou d'écrire en DM), pas juste des vues. Inspire-toi des formats qui cartonnent dans la niche. Numérote-les.",
+  )
+  const [contentRules, setContentRules] = useState(
+    "Règles de contenu : ne nomme JAMAIS la société ni la marque MLM (ex. Herbalife). Mets en avant le PRODUIT / le bénéfice concret, jamais l'opportunité ni le recrutement. Attirer et créer la confiance, pas vendre. Ton chaleureux, tutoiement, français.",
   )
   useEffect(() => {
     fetch('/api/nova/config')
       .then((r) => (r.ok ? r.json() : null))
       .then((d) => {
         if (d?.hookPrompt) setHookPrompt(d.hookPrompt)
+        if (d?.contentPrompt) setContentRules(d.contentPrompt)
       })
       .catch(() => {})
   }, [])
@@ -531,20 +535,22 @@ export default function CampagnePage() {
                   ? seed
                   : step === 1
                     ? cibleSeed(productName, who)
-                    : step === 4
-                      ? pubSeed(productName, who, radarTrends?.[selectedTrend])
-                      : step === 5
-                        ? nourriSeed(productName, who)
-                        : inviteSeed(
-                            productName,
-                            who,
-                            meetingFormat === 'GROUPE'
-                              ? `réunion de groupe${offerPitch ? ` — « ${offerPitch} »` : ''}`
-                              : meetingFormat === 'TETE_A_TETE'
-                                ? `rendez-vous individuel${offerPitch ? ` — « ${offerPitch} »` : ''}`
-                                : 'une réunion (format à préciser)',
-                            bofu,
-                          )
+                    : `${contentRules}\n\n${
+                        step === 4
+                          ? pubSeed(productName, who, radarTrends?.[selectedTrend])
+                          : step === 5
+                            ? nourriSeed(productName, who)
+                            : inviteSeed(
+                                productName,
+                                who,
+                                meetingFormat === 'GROUPE'
+                                  ? `réunion de groupe${offerPitch ? ` — « ${offerPitch} »` : ''}`
+                                  : meetingFormat === 'TETE_A_TETE'
+                                    ? `rendez-vous individuel${offerPitch ? ` — « ${offerPitch} »` : ''}`
+                                    : 'une réunion (format à préciser)',
+                                bofu,
+                              )
+                      }`
               }
               onCapture={
                 step === 0 ? setProductName : step === 1 ? setWho : step === 4 ? setPubText : step === 5 ? setNourri : setBofu
