@@ -154,6 +154,18 @@ function CampaignCard({
   const s = STATUS[campaign.status]
   const st = campaign.stats ?? { posts: 0, leads: 0, inscrits: 0, convertis: 0 }
 
+  // Contenus de la campagne (chargés à la première ouverture) → on affiche les vidéos
+  const [posts, setPosts] = useState<{ id: string; format: string; mediaUrl: string | null }[] | null>(null)
+  useEffect(() => {
+    if (!open || posts !== null) return
+    fetch(`/api/nova/campaigns/${campaign.id}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => setPosts(d?.posts ?? []))
+      .catch(() => setPosts([]))
+  }, [open, posts, campaign.id])
+  const videos = (posts ?? []).filter((p) => p.mediaUrl)
+  const roleLabel = (f: string) => (f === 'Attirer' ? 'Publication' : f === 'Nourrir' ? 'Nourrir' : 'Invitation')
+
   return (
     <div className="overflow-hidden rounded-2xl border border-border bg-surface shadow-card">
       <div className="flex items-center gap-3 p-4">
@@ -236,6 +248,26 @@ function CampaignCard({
             <Kpi value={st.inscrits} label="Inscrits" />
             <Kpi value={st.convertis} label="Convertis" />
           </div>
+
+          {videos.length > 0 && (
+            <>
+              <p className="eyebrow mb-2 mt-4">Mes vidéos</p>
+              <div className="flex gap-3 overflow-x-auto no-scrollbar pb-1">
+                {videos.map((v) => (
+                  <div key={v.id} className="flex shrink-0 flex-col gap-1">
+                    <video
+                      src={`/api/nova/content/${v.id}/video`}
+                      controls
+                      playsInline
+                      preload="metadata"
+                      className="aspect-[9/16] h-44 rounded-xl bg-black object-cover"
+                    />
+                    <span className="text-center text-[10px] font-semibold text-muted-foreground">{roleLabel(v.format)}</span>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
         </div>
       )}
     </div>
