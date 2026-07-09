@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Plus, Sparkles, MoreVertical, Pencil, Trash2, ChevronDown } from 'lucide-react'
+import { Plus, Sparkles, MoreVertical, Pencil, Trash2, ChevronDown, ChevronRight, AtSign } from 'lucide-react'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 
@@ -62,6 +62,22 @@ export default function NovaPage() {
 
   return (
     <div className="px-4 pt-4 lg:px-8 lg:pt-6 lg:max-w-3xl lg:mx-auto">
+      {/* Accès compte (niveau user) : ce qu'il faut mettre sur ses réseaux */}
+      <button
+        type="button"
+        onClick={() => router.push('/nova/comptes')}
+        className="mb-3 flex w-full items-center gap-3 rounded-2xl border border-border bg-surface p-3.5 shadow-card transition-colors active:bg-muted"
+      >
+        <span className="flex size-9 items-center justify-center rounded-xl" style={{ background: `${NOVA}1a`, color: NOVA }}>
+          <AtSign className="size-[18px] stroke-[1.5]" />
+        </span>
+        <span className="flex-1 text-left">
+          <span className="block text-sm font-bold text-foreground">Mes comptes</span>
+          <span className="block text-xs text-muted-foreground">Prépare ton Instagram et ton TikTok</span>
+        </span>
+        <ChevronRight className="size-4 shrink-0 text-muted-foreground" />
+      </button>
+
       {campaigns === null ? null : campaigns.length === 0 ? (
         <EmptyState onCreate={() => router.push('/nova/campagne')} />
       ) : (
