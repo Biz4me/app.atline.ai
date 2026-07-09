@@ -157,6 +157,19 @@ export default function CampagnePage() {
   const [videoSteps, setVideoSteps] = useState<Set<number>>(new Set()) // étapes dont le contenu a déjà une vidéo
   const [videoNonce, setVideoNonce] = useState(0) // anti-cache pour revoir une vidéo refaite
 
+  // Prompt du générateur d'accroches (éditable en admin, fallback intégré)
+  const [hookPrompt, setHookPrompt] = useState(
+    "Propose-moi 8 accroches courtes et percutantes pour ce contenu, faites pour GÉNÉRER DES LEADS (donner envie de commenter ou d'écrire en DM), pas juste des vues. Inspire-toi des formats qui cartonnent dans la niche. Numérote-les.",
+  )
+  useEffect(() => {
+    fetch('/api/nova/config')
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (d?.hookPrompt) setHookPrompt(d.hookPrompt)
+      })
+      .catch(() => {})
+  }, [])
+
   // Écran Radar — tendances trouvées par n8n/Apify (null = en cours, [] = rien, [..] = résultats)
   const [radarTrends, setRadarTrends] = useState<Trend[] | null>(null)
   const radarFired = useRef(false)
@@ -548,13 +561,7 @@ export default function CampagnePage() {
               }
               quickReplies={
                 step === 4 || step === 5 || step === 7
-                  ? [
-                      {
-                        label: 'Générateur d’accroches',
-                        message:
-                          "Propose-moi 8 accroches courtes et percutantes pour ce contenu, faites pour GÉNÉRER DES LEADS (donner envie de commenter ou d'écrire en DM), pas juste des vues. Inspire-toi des formats qui cartonnent dans la niche. Numérote-les.",
-                      },
-                    ]
+                  ? [{ label: 'Générateur d’accroches', message: hookPrompt }]
                   : undefined
               }
               storageKey={`${CHATKEY}_${forId}_${step}`}
