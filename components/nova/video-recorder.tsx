@@ -6,6 +6,8 @@ import { X, Video, Square, RotateCcw, Check, Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
 
 const NOVA = '#8B5CF6'
+const CW = 720 // portrait 9:16 (short TikTok/Insta)
+const CH = 1280
 
 function pickMime(): string {
   if (typeof MediaRecorder === 'undefined') return ''
@@ -13,7 +15,8 @@ function pickMime(): string {
   return cands.find((m) => MediaRecorder.isTypeSupported(m)) || ''
 }
 
-// Enregistreur vidéo Face : caméra in-app + téléprompteur (le script) → upload sur le ContentPost.
+// Enregistreur vidéo Face : caméra in-app + téléprompteur, sortie forcée en PORTRAIT (canvas 9:16).
+// La vidéo est stockée dans l'app (sur le ContentPost), pas dans la galerie du téléphone.
 export function VideoRecorder({
   open,
   onClose,
@@ -22,6 +25,7 @@ export function VideoRecorder({
   postId,
   platform,
   onSaved,
+  existingUrl,
 }: {
   open: boolean
   onClose: () => void
@@ -30,46 +34,80 @@ export function VideoRecorder({
   postId: string | null
   platform?: string
   onSaved: (id: string) => void
+  existingUrl?: string
 }) {
-  const videoRef = useRef<HTMLVideoElement>(null)
+  const rawRef = useRef<HTMLVideoElement>(null)
+  const canvasRef = useRef<HTMLCanvasElement>(null)
   const promptRef = useRef<HTMLDivElement>(null)
   const streamRef = useRef<MediaStream | null>(null)
   const recRef = useRef<MediaRecorder | null>(null)
   const chunksRef = useRef<Blob[]>([])
+  const rafRef = useRef(0)
   const scrollTimer = useRef<ReturnType<typeof setInterval> | null>(null)
 
+  const [camera, setCamera] = useState(false)
   const [ready, setReady] = useState(false)
   const [recording, setRecording] = useState(false)
   const [elapsed, setElapsed] = useState(0)
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
   const [blob, setBlob] = useState<Blob | null>(null)
   const [saving, setSaving] = useState(false)
+  const [saved, setSaved] = useState(false)
   const [err, setErr] = useState('')
+
+  function loop() {
+    const canvas = canvasRef.current
+    const raw = rawRef.current
+    if (canvas && raw && raw.videoWidth) {
+      const ctx = canvas.getContext('2d')
+      if (ctx) {
+        const vw = raw.videoWidth
+        const vh = raw.videoHeight
+        const scale = Math.max(CW / vw, CH / vh) // cover
+        const dw = vw * scale
+        const dh = vh * scale
+        ctx.drawImage(raw, (CW - dw) / 2, (CH - dh) / 2, dw, dh) // pixels NON miroir (sortie correcte)
+      }
+    }
+    rafRef.current = requestAnimationFrame(loop)
+  }
+
+  function startCamera() {
+    setErr('')
+    navigator.mediaDevices
+      ?.getUserMedia({ video: { facingMode: 'user', width: { ideal: CW }, height: { ideal: CH } }, audio: true })
+      .then((s) => {
+        streamRef.current = s
+        setCamera(true)
+        if (rawRef.current) {
+          rawRef.current.srcObject = s
+          rawRef.current.play().catch(() => {})
+        }
+        setReady(true)
+        rafRef.current = requestAnimationFrame(loop)
+      })
+      .catch(() => setErr('Accès caméra refusé. Autorise la caméra et le micro dans ton navigateur.'))
+  }
+
+  function stopAll() {
+    cancelAnimationFrame(rafRef.current)
+    streamRef.current?.getTracks().forEach((t) => t.stop())
+    streamRef.current = null
+    if (scrollTimer.current) clearInterval(scrollTimer.current)
+    setCamera(false)
+    setReady(false)
+    setRecording(false)
+  }
 
   useEffect(() => {
     if (!open) return
-    let cancelled = false
-    navigator.mediaDevices
-      ?.getUserMedia({ video: { facingMode: 'user', width: { ideal: 1080 }, height: { ideal: 1920 } }, audio: true })
-      .then((s) => {
-        if (cancelled) {
-          s.getTracks().forEach((t) => t.stop())
-          return
-        }
-        streamRef.current = s
-        if (videoRef.current) {
-          videoRef.current.srcObject = s
-          videoRef.current.play().catch(() => {})
-        }
-        setReady(true)
-      })
-      .catch(() => setErr('Accès caméra refusé. Autorise la caméra et le micro dans ton navigateur.'))
-    return () => {
-      cancelled = true
-      streamRef.current?.getTracks().forEach((t) => t.stop())
-      streamRef.current = null
-      if (scrollTimer.current) clearInterval(scrollTimer.current)
-    }
+    setSaved(false)
+    setPreviewUrl(null)
+    setBlob(null)
+    setErr('')
+    if (!existingUrl) startCamera() // s'il y a déjà une vidéo, on la montre d'abord (pas besoin de la caméra)
+    return () => stopAll()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open])
 
   useEffect(() => {
@@ -81,11 +119,14 @@ export function VideoRecorder({
   if (!open || typeof window === 'undefined') return null
 
   function start() {
+    const canvas = canvasRef.current
     const s = streamRef.current
-    if (!s) return
+    if (!canvas || !s) return
     chunksRef.current = []
+    const cstream = canvas.captureStream(30) // on enregistre le CANVAS portrait, pas la caméra brute
+    s.getAudioTracks().forEach((t) => cstream.addTrack(t))
     const mime = pickMime()
-    const rec = new MediaRecorder(s, mime ? { mimeType: mime } : undefined)
+    const rec = new MediaRecorder(cstream, mime ? { mimeType: mime } : undefined)
     rec.ondataavailable = (e) => {
       if (e.data.size) chunksRef.current.push(e.data)
     }
@@ -98,7 +139,6 @@ export function VideoRecorder({
     recRef.current = rec
     setElapsed(0)
     setRecording(true)
-    // Téléprompteur : défilement doux pendant l'enregistrement
     if (promptRef.current) promptRef.current.scrollTop = 0
     scrollTimer.current = setInterval(() => {
       if (promptRef.current) promptRef.current.scrollTop += 1
@@ -115,7 +155,9 @@ export function VideoRecorder({
     if (previewUrl) URL.revokeObjectURL(previewUrl)
     setPreviewUrl(null)
     setBlob(null)
+    setSaved(false)
     setElapsed(0)
+    if (!camera) startCamera()
   }
 
   async function save() {
@@ -135,12 +177,12 @@ export function VideoRecorder({
       if (!pid) throw new Error()
       const ext = blob.type.includes('mp4') ? 'mp4' : 'webm'
       const fd = new FormData()
-      fd.append('file', new File([blob], `bofu.${ext}`, { type: blob.type }))
+      fd.append('file', new File([blob], `video.${ext}`, { type: blob.type }))
       const up = await fetch(`/api/nova/content/${pid}/video`, { method: 'POST', body: fd })
       if (!up.ok) throw new Error()
       onSaved(pid)
-      toast.success('Vidéo enregistrée')
-      onClose()
+      setSaved(true)
+      toast.success('Vidéo enregistrée dans ta campagne')
     } catch {
       toast.error("Échec de l'enregistrement")
     } finally {
@@ -150,6 +192,8 @@ export function VideoRecorder({
 
   const mm = String(Math.floor(elapsed / 60)).padStart(2, '0')
   const ss = String(elapsed % 60).padStart(2, '0')
+  const showNew = !!previewUrl
+  const showExisting = !previewUrl && !!existingUrl
 
   return createPortal(
     <div className="fixed inset-0 z-[80] flex flex-col bg-black">
@@ -166,15 +210,20 @@ export function VideoRecorder({
             {mm}:{ss}
           </span>
         )}
+        {saved && !recording && <span className="text-xs font-semibold text-white/80">Enregistrée dans l&apos;app ✓</span>}
         <span className="w-9" />
       </div>
 
-      <div className="relative flex-1 overflow-hidden">
-        {previewUrl ? (
-          <video src={previewUrl} controls playsInline className="size-full object-contain" />
+      <div className="relative flex flex-1 items-center justify-center overflow-hidden">
+        {showNew ? (
+          <video src={previewUrl!} controls playsInline className="max-h-full max-w-full" />
+        ) : showExisting ? (
+          <video src={existingUrl} controls playsInline className="max-h-full max-w-full" />
         ) : (
           <>
-            <video ref={videoRef} muted playsInline className="size-full object-cover [transform:scaleX(-1)]" />
+            <video ref={rawRef} muted playsInline className="hidden" />
+            {/* pixels non-miroir (sortie correcte), affichage miroir (naturel) */}
+            <canvas ref={canvasRef} width={CW} height={CH} className="h-full w-auto [transform:scaleX(-1)]" />
             {script && (
               <div
                 ref={promptRef}
@@ -192,7 +241,7 @@ export function VideoRecorder({
         className="flex items-center justify-center gap-6 px-4 py-6"
         style={{ paddingBottom: 'max(1.5rem, env(safe-area-inset-bottom))' }}
       >
-        {previewUrl ? (
+        {showNew && !saved ? (
           <>
             <button onClick={retake} className="flex items-center gap-2 rounded-full bg-white/10 px-5 py-3 text-sm font-semibold text-white">
               <RotateCcw className="size-4" />
@@ -206,6 +255,21 @@ export function VideoRecorder({
             >
               {saving ? <Loader2 className="size-4 animate-spin" /> : <Check className="size-4" />}
               Utiliser
+            </button>
+          </>
+        ) : showNew || showExisting ? (
+          <>
+            <button onClick={retake} className="flex items-center gap-2 rounded-full bg-white/10 px-5 py-3 text-sm font-semibold text-white">
+              <RotateCcw className="size-4" />
+              Refaire
+            </button>
+            <button
+              onClick={onClose}
+              className="flex items-center gap-2 rounded-full px-6 py-3 text-sm font-bold text-white"
+              style={{ background: NOVA }}
+            >
+              <Check className="size-4" />
+              Terminé
             </button>
           </>
         ) : recording ? (

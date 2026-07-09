@@ -154,6 +154,8 @@ export default function CampagnePage() {
   const [bofu, setBofu] = useState('')
   const [bofuPostId, setBofuPostId] = useState<string | null>(null)
   const [recorderOpen, setRecorderOpen] = useState(false) // enregistreur vidéo Face
+  const [videoSteps, setVideoSteps] = useState<Set<number>>(new Set()) // étapes dont le contenu a déjà une vidéo
+  const [videoNonce, setVideoNonce] = useState(0) // anti-cache pour revoir une vidéo refaite
 
   // Écran Radar — tendances trouvées par n8n/Apify (null = en cours, [] = rien, [..] = résultats)
   const [radarTrends, setRadarTrends] = useState<Trend[] | null>(null)
@@ -539,7 +541,7 @@ export default function CampagnePage() {
               extras={
                 step === 4 || step === 5 || step === 7
                   ? [
-                      { label: 'Me filmer', onClick: () => setRecorderOpen(true) },
+                      { label: videoSteps.has(step) ? 'Revoir ma vidéo' : 'Me filmer', onClick: () => setRecorderOpen(true) },
                       { label: "Vidéo générée par l'IA", onClick: () => toast("Génération vidéo — bientôt disponible") },
                     ]
                   : undefined
@@ -910,7 +912,18 @@ export default function CampagnePage() {
         campaignId={campaignId}
         postId={step === 4 ? pubPostId : step === 5 ? nourriPostId : bofuPostId}
         platform={channels[0]}
-        onSaved={step === 4 ? setPubPostId : step === 5 ? setNourriPostId : setBofuPostId}
+        existingUrl={
+          videoSteps.has(step)
+            ? `/api/nova/content/${step === 4 ? pubPostId : step === 5 ? nourriPostId : bofuPostId}/video?t=${videoNonce}`
+            : undefined
+        }
+        onSaved={(pid) => {
+          if (step === 4) setPubPostId(pid)
+          else if (step === 5) setNourriPostId(pid)
+          else setBofuPostId(pid)
+          setVideoSteps((v) => new Set(v).add(step))
+          setVideoNonce((n) => n + 1)
+        }}
       />
     </div>
   )
