@@ -12,6 +12,7 @@ export const maxDuration = 240
 //  - RÉCENTES : fenêtre 3 mois ; élargie à 6 mois seulement s'il n'y a rien à 3 mois.
 // Garde le top N par vues, avec la miniature (cover) pour la vision.
 const APIFY_TOKEN = process.env.APIFY_TOKEN
+const ATLAS_URL = process.env.ATLAS_URL || 'http://127.0.0.1:8100'
 const MIN_LIKES = 30000
 const TOP_N = 4
 const DAY = 86_400_000
@@ -40,9 +41,25 @@ export async function POST(_req: Request, ctx: { params: Promise<{ id: string }>
   if (!campaign) return NextResponse.json({ error: 'Not found' }, { status: 404 })
   if (campaign.radarTrends) return NextResponse.json({ status: 'ready' })
 
-  const query = (campaign.name || '').trim()
-  if (!query || query === 'Nouvelle campagne') return NextResponse.json({ status: 'no-query' })
+  const product = (campaign.name || '').trim()
+  if (!product || product === 'Nouvelle campagne') return NextResponse.json({ status: 'no-query' })
   if (!APIFY_TOKEN) return NextResponse.json({ status: 'disabled' })
+
+  // Le Radar cherche sur la THÉMATIQUE LARGE du produit (ex. « perte de poids »), pas le nom exact
+  // du produit ni la cible. On dérive la niche via le service ; fallback = le produit tel quel.
+  let query = product
+  try {
+    const tr = await fetch(`${ATLAS_URL}/api/nova/theme`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ product }),
+      signal: AbortSignal.timeout(12000),
+    })
+    if (tr.ok) {
+      const t = ((await tr.json())?.theme || '').trim()
+      if (t) query = t
+    }
+  } catch {}
 
   let items: ApifyItem[] = []
   try {
