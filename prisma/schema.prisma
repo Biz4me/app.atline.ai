@@ -88,6 +88,7 @@ model User {
   // Atlas
   atlasConversations AtlasConversation[]
   atlasReports       AtlasReport[]
+  atlasFacts         AtlasFact[]
 
   // LMS
   lmsProgress    UserLmsProgress[]
@@ -153,14 +154,16 @@ model User {
 }
 
 model UserPreferences {
-  id              String  @id @default(cuid())
-  userId          String  @unique
-  user            User    @relation(fields: [userId], references: [id], onDelete: Cascade)
-  emailNotif      Boolean @default(true)
-  weeklyDigest    Boolean @default(true)
-  mentions        Boolean @default(false)
-  theme           String  @default("dark")
+  id              String    @id @default(cuid())
+  userId          String    @unique
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  emailNotif      Boolean   @default(true)
+  weeklyDigest    Boolean   @default(true)
+  mentions        Boolean   @default(false)
+  theme           String    @default("dark")
   activeCompanyId String?
+  atlasProfile    String? // profil vivant ≤250 mots réécrit par Atlas (UserModel dialectique)
+  atlasProfileAt  DateTime?
 }
 
 enum Plan {
@@ -697,20 +700,44 @@ enum AppointmentOutcome {
 // ============================================================
 
 model AtlasConversation {
-  id            String           @id @default(cuid())
-  userId        String
-  user          User             @relation(fields: [userId], references: [id])
-  mlmBusinessId String?
-  mlmBusiness   UserMlmBusiness? @relation(fields: [mlmBusinessId], references: [id])
-  contactId     String?
-  contact       Contact?         @relation(fields: [contactId], references: [id])
-  title         String?
-  context       String? // "parcours" | "contact" | "reseau" | "messagerie"
-  summary       String? // résumé auto-généré pour l'historique
-  messages      AtlasMessage[]
-  appointments  Appointment[]
-  createdAt     DateTime         @default(now())
-  updatedAt     DateTime         @updatedAt
+  id              String           @id @default(cuid())
+  userId          String
+  user            User             @relation(fields: [userId], references: [id])
+  mlmBusinessId   String?
+  mlmBusiness     UserMlmBusiness? @relation(fields: [mlmBusinessId], references: [id])
+  contactId       String?
+  contact         Contact?         @relation(fields: [contactId], references: [id])
+  title           String?
+  context         String? // "parcours" | "contact" | "reseau" | "messagerie"
+  summary         String? // résumé roulant (compaction : couvre les messages anciens hors fenêtre)
+  summarizedCount Int              @default(0) // nb de messages couverts par le résumé
+  messages        AtlasMessage[]
+  appointments    Appointment[]
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+}
+
+// Mémoire vivante d'Atlas — faits atomiques (style Memory Kernel) sur l'utilisateur
+// (contactId null) ou sur un contact. Jamais de DELETE : un fait contredit passe en
+// status=superseded, relié au nouveau. Vocabulaire fermé (prédicats/catégories côté service).
+model AtlasFact {
+  id             String   @id @default(cuid())
+  userId         String
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  contactId      String? // null = fait sur l'utilisateur lui-même
+  predicate      String // vise | prefere | bloque_sur | a_decide | ...
+  object         String // forme canonique courte
+  category       String // objectif | preference | emotion | decision | ...
+  status         String   @default("active") // active | superseded
+  confidence     Float    @default(0.75) // 0.55 déduit · 0.75 explicite · 0.9 correction
+  supportCount   Int      @default(1) // ré-observations compatibles
+  importance     Float    @default(0.5)
+  supersededById String?
+  lastSeenAt     DateTime @default(now())
+  createdAt      DateTime @default(now())
+
+  @@index([userId, contactId, status])
+  @@index([userId, status, importance])
 }
 
 model AtlasMessage {

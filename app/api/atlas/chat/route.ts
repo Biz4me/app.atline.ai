@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getToken } from 'next-auth/jwt'
 import { db } from '@/lib/db'
 import { buildContactSnapshot } from '@/lib/contact-snapshot'
+import { buildUserModel, contactFactLines, reflectUserMemory, reflectContactMemory } from '@/lib/atlas-memory'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -81,27 +82,10 @@ async function buildAtlasSnapshot(userId: string): Promise<string> {
   }
 }
 
-// Phase C / T3 — Atlas réécrit son bloc mémoire d'un contact (MemGPT-style) à partir de l'échange.
-// Utilisé par la fiche (contactId explicite) ET l'accueil (contacts résolus par l'outil get_contact).
-async function reflectContactMemory(userId: string, contactId: string, query: string, answer: string) {
-  try {
-    const cur = await db.contact.findFirst({ where: { id: contactId, userId }, select: { name: true, atlasMemory: true } })
-    if (!cur) return
-    const mr = await fetch(`${ATLAS_URL}/api/atlas/contact-memory`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ contact_name: cur.name, current_memory: cur.atlasMemory ?? '', exchange: `Utilisateur: ${query}\nAtlas: ${answer}` }),
-    })
-    if (mr.ok) {
-      const { memory } = await mr.json()
-      if (typeof memory === 'string' && memory.trim()) {
-        await db.contact.update({ where: { id: contactId }, data: { atlasMemory: memory.trim(), atlasMemoryAt: new Date() } })
-      }
-    }
-  } catch {
-    /* mémoire best-effort */
-  }
-}
+// Compaction : fenêtre de messages envoyée au service + résumé roulant pour l'au-delà.
+const HISTORY_WINDOW = 24
+// On régénère le résumé quand ce retard (messages non couverts, hors fenêtre) est atteint.
+const SUMMARY_LAG = 12
 
 export async function POST(req: NextRequest) {
   // user_id réel depuis la session NextAuth — jamais fourni par le client.
@@ -136,28 +120,44 @@ export async function POST(req: NextRequest) {
   }
   const cid = conversationId
 
-  // Historique DB (avant d'ajouter le message courant) → contexte conversationnel
-  const prior = await db.atlasMessage.findMany({
-    where: { conversationId: cid },
-    orderBy: { createdAt: 'asc' },
-    select: { role: true, content: true },
-  })
-  const conversation_history = prior.map((m) => ({
+  // Historique BORNÉ : fenêtre des derniers messages + résumé roulant pour le plus ancien
+  // (la fenêtre ne grossit plus avec la conversation → latence et coût stables).
+  const [totalPrior, lastMsgs, convMeta] = await Promise.all([
+    db.atlasMessage.count({ where: { conversationId: cid } }),
+    db.atlasMessage.findMany({
+      where: { conversationId: cid },
+      orderBy: { createdAt: 'desc' },
+      take: HISTORY_WINDOW,
+      select: { role: true, content: true },
+    }),
+    db.atlasConversation.findFirst({ where: { id: cid }, select: { summary: true, summarizedCount: true } }),
+  ])
+  const conversation_history = lastMsgs.reverse().map((m) => ({
     role: m.role === 'USER' ? 'user' : 'assistant',
     content: m.content,
   }))
+  const history_summary = totalPrior > HISTORY_WINDOW ? (convMeta?.summary ?? '') : ''
 
   // Sauver le message utilisateur
   await db.atlasMessage.create({
     data: { conversationId: cid, role: 'USER', content: query, qdrantChunks: [] },
   })
 
-  // Instantané données user — uniquement en chat normal (pas en session ni en rédaction de message).
+  // Instantané données user + mémoire vivante — uniquement en chat normal (pas en session/rédaction).
   const isSession = query.startsWith('[SESSION')
   const isDraft = query.includes('Rédige UN message prêt à envoyer') || query.startsWith('Tu es Atlas, coach en marketing de réseau. Rédige')
-  const user_snapshot = isSession || isDraft ? '' : await buildAtlasSnapshot(userId)
-  // Contexte contact : uniquement si la fiche passe un contactId (composeur scopé).
-  const contact_snapshot = body.contactId && !isSession && !isDraft ? await buildContactSnapshot(userId, body.contactId) : ''
+  const [user_snapshot, user_model] = isSession || isDraft
+    ? ['', '']
+    : await Promise.all([buildAtlasSnapshot(userId), buildUserModel(userId)])
+  // Contexte contact : snapshot + faits atomiques retenus sur lui.
+  let contact_snapshot = ''
+  if (body.contactId && !isSession && !isDraft) {
+    const [snap, factLines] = await Promise.all([
+      buildContactSnapshot(userId, body.contactId),
+      contactFactLines(userId, body.contactId),
+    ])
+    contact_snapshot = factLines ? `${snap}\n\nFaits retenus sur ce contact :\n${factLines}` : snap
+  }
 
   // Appel FastAPI
   let resp: Response
@@ -170,6 +170,8 @@ export async function POST(req: NextRequest) {
         user_id: userId,
         mlm_actif: body.mlm_actif ?? 'Atline',
         conversation_history,
+        history_summary,
+        user_model,
         user_snapshot,
         contact_snapshot,
       }),
@@ -224,12 +226,50 @@ export async function POST(req: NextRequest) {
       /* persistance best-effort */
     }
 
-    // Phase C / T3 — write-back mémoire pour les contacts concernés (en tâche de fond) :
-    // fiche = contactId explicite ; accueil = contacts résolus par l'outil (contact CONFIRMÉ uniquement).
+    // Write-back mémoire (tâche de fond) :
+    // 1) contacts concernés (fiche = contactId explicite ; accueil = contacts résolus par l'outil)
+    // 2) mémoire vivante de l'UTILISATEUR (profil dialectique + faits atomiques)
     const answer = full.replace(/\s*\[\[[A-Z]+\]\][\s\S]*$/, '').trim()
     if (answer) {
       const toReflect = [...new Set([body.contactId, ...resolved].filter((x): x is string => !!x))]
       for (const cid2 of toReflect) await reflectContactMemory(userId, cid2, query, answer)
+      if (!isSession && !isDraft) await reflectUserMemory(userId, query, answer)
+    }
+
+    // 3) résumé roulant : quand assez de messages sont sortis de la fenêtre, on compacte.
+    try {
+      const total = await db.atlasMessage.count({ where: { conversationId: cid } })
+      const covered = convMeta?.summarizedCount ?? 0
+      const target = total - HISTORY_WINDOW // on résume tout ce qui est hors fenêtre
+      if (target - covered >= SUMMARY_LAG) {
+        const older = await db.atlasMessage.findMany({
+          where: { conversationId: cid },
+          orderBy: { createdAt: 'asc' },
+          skip: covered,
+          take: target - covered,
+          select: { role: true, content: true },
+        })
+        const sr = await fetch(`${ATLAS_URL}/api/atlas/summarize`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            prior_summary: convMeta?.summary ?? '',
+            messages: older.map((m) => ({ role: m.role === 'USER' ? 'user' : 'assistant', content: m.content })),
+          }),
+          signal: AbortSignal.timeout(30000),
+        })
+        if (sr.ok) {
+          const { summary } = await sr.json()
+          if (typeof summary === 'string' && summary.trim()) {
+            await db.atlasConversation.update({
+              where: { id: cid },
+              data: { summary: summary.trim(), summarizedCount: target },
+            })
+          }
+        }
+      }
+    } catch {
+      /* compaction best-effort */
     }
   })()
 
