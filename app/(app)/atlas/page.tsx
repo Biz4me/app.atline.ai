@@ -384,7 +384,22 @@ TECHNIQUE (invisible pour moi, ne l'explique jamais)${NB}: le jour où je VALIDE
     if (last) {
       setLoadingConv(true)
       router.replace(`/atlas?c=${last}`)
+      return
     }
+    // Pas de pointeur local (autre appareil, stockage vidé, pointeur perdu) →
+    // filet de sécurité : reprend la conversation la plus récente si elle date de < 48 h.
+    ;(async () => {
+      try {
+        const r = await fetch('/api/atlas/conversations')
+        if (!r.ok) return
+        const list: { id: string; updatedAt: string }[] = await r.json()
+        const latest = Array.isArray(list) ? list[0] : null
+        if (latest?.id && Date.now() - new Date(latest.updatedAt).getTime() < 48 * 3600 * 1000) {
+          setLoadingConv(true)
+          router.replace(`/atlas?c=${latest.id}`)
+        }
+      } catch { /* ignore */ }
+    })()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
@@ -940,18 +955,20 @@ TECHNIQUE (invisible pour moi, ne l'explique jamais)${NB}: le jour où je VALIDE
     return () => { window.removeEventListener('agent:history', onHist); window.removeEventListener('agent:new', onNew) }
   }, [])
 
-  // Relais du composeur global : message tapé sur une autre page → envoyé ici une fois la conv chargée
+  // Relais du composeur global : message tapé sur une autre page → envoyé ici une fois la conv chargée.
+  // ⚠️ Anti-course : au premier rendu (?c absent, redirection de reprise pas encore faite), on ATTEND —
+  // sinon le message partait sans conversationId et ouvrait une NOUVELLE conversation (perte de session perçue).
   const sendMsgRef = useRef(sendMsg); sendMsgRef.current = sendMsg
   const pendingSentRef = useRef(false)
   useEffect(() => {
     if (loadingConv || pendingSentRef.current) return
     const pending = sessionStorage.getItem('atlas_pending')
-    if (pending) {
-      pendingSentRef.current = true
-      sessionStorage.removeItem('atlas_pending')
-      sendMsgRef.current(pending)
-    }
-  }, [loadingConv])
+    if (!pending) return
+    if (!c && localStorage.getItem('atlas-last-conv')) return // la reprise (?c=…) arrive, on la laisse passer
+    pendingSentRef.current = true
+    sessionStorage.removeItem('atlas_pending')
+    sendMsgRef.current(pending)
+  }, [loadingConv, c])
 
   return (
     <div className="flex h-[calc(100dvh-60px)] overflow-hidden lg:h-[calc(100dvh-3.5rem)]">
