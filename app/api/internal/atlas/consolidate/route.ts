@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { reflect, reconcileFacts } from '@/lib/atlas-memory'
 
+const ATLAS_URL = process.env.ATLAS_URL || 'http://127.0.0.1:8100'
+
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 export const maxDuration = 300
@@ -66,5 +68,36 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  return NextResponse.json({ ok: true, users: done })
+  // Éval qualité : échantillon d'échanges du jour → juge léger (résultats dans Langfuse).
+  let judged = 0
+  try {
+    const answers = await db.atlasMessage.findMany({
+      where: { createdAt: { gte: since }, role: 'ASSISTANT' },
+      orderBy: { createdAt: 'desc' },
+      take: 8,
+      select: { content: true, conversationId: true, createdAt: true },
+    })
+    const exchanges: { query: string; answer: string }[] = []
+    for (const a of answers) {
+      const q = await db.atlasMessage.findFirst({
+        where: { conversationId: a.conversationId, role: 'USER', createdAt: { lt: a.createdAt } },
+        orderBy: { createdAt: 'desc' },
+        select: { content: true },
+      })
+      if (q) exchanges.push({ query: q.content, answer: a.content })
+    }
+    if (exchanges.length) {
+      const jr = await fetch(`${ATLAS_URL}/api/atlas/judge-batch`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ exchanges }),
+        signal: AbortSignal.timeout(60000),
+      })
+      if (jr.ok) judged = (await jr.json())?.judged ?? 0
+    }
+  } catch {
+    /* éval best-effort */
+  }
+
+  return NextResponse.json({ ok: true, users: done, judged })
 }
