@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
-import { ArrowRight } from 'lucide-react'
+import { ArrowRight, ChevronDown } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { AppComposer } from '@/components/mobile/app-composer'
 
@@ -47,9 +47,25 @@ export function NovaChat({
   const [input, setInput] = useState('')
   const [busy, setBusy] = useState(false)
   const [chip, setChip] = useState(false)
+  const [showScroll, setShowScroll] = useState(false)
   const historyRef = useRef<Msg[]>([]) // ce que voit le service (seed inclus en 1er)
   const scrollRef = useRef<HTMLDivElement>(null)
+  const atBottomRef = useRef(true) // auto-scroll poli : ne suit que si on est déjà en bas
   const started = useRef(false)
+
+  const scrollToBottom = () => setTimeout(() => scrollRef.current?.scrollTo({ top: 999999, behavior: 'smooth' }), 40)
+  const handleScroll = () => {
+    const el = scrollRef.current
+    if (!el) return
+    const atBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 48
+    atBottomRef.current = atBottom
+    setShowScroll(!atBottom)
+  }
+  const goToBottom = () => {
+    atBottomRef.current = true
+    setShowScroll(false)
+    scrollToBottom()
+  }
 
   useEffect(() => {
     if (started.current) return
@@ -87,7 +103,7 @@ export function NovaChat({
   }, [messages, chip, storageKey])
 
   useEffect(() => {
-    scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' })
+    if (atBottomRef.current) scrollToBottom()
   }, [messages, busy, chip])
 
   async function send(text: string, hidden = false) {
@@ -164,7 +180,7 @@ export function NovaChat({
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      <div ref={scrollRef} className="flex-1 overflow-y-auto no-scrollbar px-6 pt-4 pb-40">
+      <div ref={scrollRef} onScroll={handleScroll} className="flex-1 overflow-y-auto no-scrollbar px-6 pt-4 pb-40">
         <div className="mx-auto flex max-w-md flex-col gap-4">
           {messages.map((m, i) => (
             <div key={i} className={cn('flex flex-col gap-2', m.role === 'user' ? 'items-end' : 'items-start')}>
@@ -216,23 +232,38 @@ export function NovaChat({
               )}
             </div>
           )}
+
+          {/* Réponses rapides (ex. Générateur d'accroches) — DANS le fil, au-dessus du composeur
+              (avant : rangée coincée sous le composeur fixe) */}
+          {quickReplies && quickReplies.length > 0 && (
+            <div className="flex flex-wrap gap-2">
+              {quickReplies.map((q) => (
+                <button
+                  key={q.label}
+                  type="button"
+                  onClick={() => void send(q.message)}
+                  disabled={busy}
+                  className="rounded-full border px-3.5 py-1.5 text-xs font-semibold transition-colors active:bg-muted disabled:opacity-50"
+                  style={{ borderColor: NOVA, color: NOVA }}
+                >
+                  {q.label}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
       </div>
 
-      {quickReplies && quickReplies.length > 0 && !busy && (
-        <div className="lg:hidden flex gap-2 overflow-x-auto no-scrollbar px-4 pb-2">
-          {quickReplies.map((q) => (
-            <button
-              key={q.label}
-              type="button"
-              onClick={() => void send(q.message)}
-              className="shrink-0 rounded-full border px-3.5 py-1.5 text-xs font-semibold transition-colors active:bg-muted"
-              style={{ borderColor: NOVA, color: NOVA }}
-            >
-              {q.label}
-            </button>
-          ))}
-        </div>
+      {showScroll && (
+        <button
+          type="button"
+          onClick={goToBottom}
+          aria-label="Revenir en bas"
+          className="lg:hidden fixed left-1/2 z-[47] flex size-9 -translate-x-1/2 items-center justify-center rounded-full border border-border bg-background text-muted-foreground shadow-md active:bg-muted transition-colors"
+          style={{ bottom: 'calc(max(14px, env(safe-area-inset-bottom)) + 62px)' }}
+        >
+          <ChevronDown className="size-4" />
+        </button>
       )}
 
       <AppComposer
