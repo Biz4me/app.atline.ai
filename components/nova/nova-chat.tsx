@@ -54,18 +54,23 @@ export function NovaChat({
   useEffect(() => {
     if (started.current) return
     started.current = true
-    // Restauration au refresh : on reprend la conversation en cours si elle existe.
+    // Restauration au refresh : on ne reprend QUE si Nova a réellement répondu au moins une fois.
+    // Sinon (conversation « cassée » : envoi interrompu / service down au 1er tour) on renvoie le seed,
+    // au lieu de rester bloqué sur un message vide (points de saisie à l'infini).
     if (storageKey) {
       try {
         const raw = sessionStorage.getItem(storageKey)
         if (raw) {
           const s = JSON.parse(raw)
-          if (Array.isArray(s.messages) && s.messages.length) {
-            setMessages(s.messages)
+          const msgs = Array.isArray(s.messages) ? (s.messages as Msg[]) : []
+          const answered = msgs.some((m) => m.role === 'assistant' && (m.content || '').trim())
+          if (msgs.length && answered) {
+            setMessages(msgs)
             historyRef.current = Array.isArray(s.history) ? s.history : []
             setChip(!!s.chip)
             return
           }
+          sessionStorage.removeItem(storageKey) // état cassé → on repart propre
         }
       } catch {}
     }
@@ -97,6 +102,7 @@ export function NovaChat({
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ query: text, history: priorHistory, model, temperature, max_tokens: maxTokens }),
+        signal: AbortSignal.timeout(60000), // un blocage devient une erreur (pas de points à l'infini)
       })
       if (!res.ok || !res.body) throw new Error()
       const reader = res.body.getReader()
