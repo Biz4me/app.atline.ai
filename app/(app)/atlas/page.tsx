@@ -17,9 +17,10 @@ import { ChatChoices, AtlasDraftCard, type PlanItem } from '@/components/atlas-p
 import { ProfileFormCard } from '@/components/atlas-profile-form'
 import { WhyValidateCard } from '@/components/atlas-why-card'
 import { AtlasNavCard } from '@/components/atlas-nav-card'
+import { AtlasActionCard, type AtlasAction } from '@/components/atlas-action-card'
 
 type Choice = { label: string; value: string }
-type Msg = { from: 'user' | 'atlas'; text: string; chips?: string[]; choices?: Choice[]; item?: PlanItem; draft?: { contactId: string; prenom: string; channel: string; phone: string | null; email: string | null }; profileForm?: { me: Record<string, unknown> }; whyCard?: { text: string; kind: SessionKind; title: string; obj?: Objectifs; superseded?: boolean; done?: boolean }; navCard?: { route: string; label: string } }
+type Msg = { from: 'user' | 'atlas'; text: string; chips?: string[]; choices?: Choice[]; item?: PlanItem; draft?: { contactId: string; prenom: string; channel: string; phone: string | null; email: string | null }; profileForm?: { me: Record<string, unknown> }; whyCard?: { text: string; kind: SessionKind; title: string; obj?: Objectifs; superseded?: boolean; done?: boolean }; navCard?: { route: string; label: string }; actionCard?: AtlasAction }
 
 type SessionKind = 'why' | 'rencontre' | 'mindset' | 'objectifs' | 'audience' | 'parcours' | 'produit'
 type Objectifs = { mensuel: string; m3: string; m6: string; m12: string }
@@ -489,6 +490,7 @@ TECHNIQUE (invisible pour moi, ne l'explique jamais)${NB}: le jour où je VALIDE
     const sessionKind = sessionRef.current   // session active au moment de l'envoi (why/rencontre) ou null
     const MARK = SAVE_MARK
     let full = ''
+    const pendingActions: AtlasAction[] = [] // actions proposées par les outils d'Atlas (cartes à confirmer)
     let markerIdx = -1
     let shown = 0
     let streamDone = false
@@ -552,6 +554,9 @@ TECHNIQUE (invisible pour moi, ne l'explique jamais)${NB}: le jour où je VALIDE
             const data = JSON.parse(payload)
             if (data.text) { setToolHint(''); full += data.text; if (sessionKind && markerIdx < 0) { const k = full.indexOf(MARK); if (k >= 0) markerIdx = k } }
             else if (data.tool === 'get_contact' && data.name) setToolHint(`Je regarde la fiche de ${data.name}…`)
+            else if (data.tool === 'memory_search') setToolHint('Je fouille ma mémoire…')
+            else if (data.tool) setToolHint('Je prépare une action…')
+            else if (data.action_proposal?.kind) pendingActions.push(data.action_proposal as AtlasAction)
           } catch {
             /* ligne SSE incomplète, ignorée */
           }
@@ -572,6 +577,11 @@ TECHNIQUE (invisible pour moi, ne l'explique jamais)${NB}: le jour où je VALIDE
           const route = cleanOpenRoute(om[1])
           if (route) { setLastAtlas(stripOpenMarker(full).trim()); appendNavCard(route, om[2].trim()) }
         }
+      }
+      // Actions proposées par Atlas (relance, RDV, note) → cartes de confirmation dans le fil.
+      if (pendingActions.length) {
+        setMsgs((prev) => [...prev, ...pendingActions.map((a) => ({ from: 'atlas' as const, text: '', actionCard: a }))])
+        setTimeout(scrollToBottom, 80)
       }
       afterDone?.()
     } catch {
@@ -1115,6 +1125,8 @@ TECHNIQUE (invisible pour moi, ne l'explique jamais)${NB}: le jour où je VALIDE
                   <WhyValidateCard title={m.whyCard.title} text={m.whyCard.text} obj={m.whyCard.obj} superseded={m.whyCard.superseded} done={m.whyCard.done} onValidate={() => validateWhyCard(i, m.whyCard!.kind, m.whyCard!.text, m.whyCard!.obj)} />
                 ) : m.navCard ? (
                   <AtlasNavCard route={m.navCard.route} label={m.navCard.label} />
+                ) : m.actionCard ? (
+                  <AtlasActionCard action={m.actionCard} />
                 ) : m.text === '' ? (
                   toolHint && i === msgs.length - 1 ? (
                     <div className="flex items-center gap-2 text-sm text-muted-foreground"><Sparkles className="size-3.5 animate-pulse text-primary" />{toolHint}</div>

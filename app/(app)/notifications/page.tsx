@@ -1,113 +1,80 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { AppHeader } from '@/components/app-header'
 import { Card } from '@/components/card'
 import { DiscAvatar } from '@/components/disc-avatar'
-import { Bell, UserPlus, MessageCircle, TrendingUp, Award, Mic, CheckCircle2 } from 'lucide-react'
+import { Bell, Sparkles, TrendingUp, Mic, CheckCircle2, type LucideIcon } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 type Notif = {
   id: string
-  type: 'contact' | 'message' | 'commission' | 'achievement' | 'aria' | 'atlas'
   title: string
   body: string
   time: string
   read: boolean
+  go?: string
   avatar?: { first: string; last: string; disc: 'D' | 'I' | 'S' | 'C' | null }
-  icon?: typeof Bell
+  icon?: LucideIcon
   iconColor?: string
 }
 
-const notifications: Notif[] = [
-  {
-    id: 'n1',
-    type: 'contact',
-    title: 'Julie Fontaine a répondu',
-    body: "Coucou ! J'ai vu ta story sur ta routine, ça m'intéresse trop.",
-    time: 'Il y a 15 min',
-    read: false,
-    avatar: { first: 'Julie', last: 'Fontaine', disc: 'I' },
-  },
-  {
-    id: 'n2',
-    type: 'atlas',
-    title: 'Atlas · Rappel',
-    body: "Tu as 3 contacts chauds sans relance depuis 2 jours. C'est le bon moment.",
-    time: 'Il y a 1 h',
-    read: false,
-    icon: Bell,
-    iconColor: 'bg-primary/10 text-primary',
-  },
-  {
-    id: 'n3',
-    type: 'contact',
-    title: "Marc Lemaire s'est inscrit",
-    body: 'Marc a rejoint via ton lien de parrainage. Prends contact rapidement !',
-    time: 'Il y a 2 h',
-    read: false,
-    avatar: { first: 'Marc', last: 'Lemaire', disc: 'C' },
-    icon: UserPlus,
-  },
-  {
-    id: 'n4',
-    type: 'commission',
-    title: 'Nouvelle commission N1',
-    body: 'Sophie Lefèvre a généré 180 pts de volume ce mois. +27 € sur ton compte.',
-    time: 'Hier · 18:30',
-    read: true,
-    icon: TrendingUp,
-    iconColor: 'bg-success/10 text-success',
-  },
-  {
-    id: 'n5',
-    type: 'achievement',
-    title: 'Objectif atteint !',
-    body: 'Tu as complété le module "Méthode DISC" à 60%. Continue sur ta lancée !',
-    time: 'Hier · 14:00',
-    read: true,
-    icon: Award,
-    iconColor: 'bg-amber-50 text-amber-500',
-  },
-  {
-    id: 'n6',
-    type: 'aria',
-    title: 'Aria · Entraînement disponible',
-    body: "Tu n'as pas simulé d'appel depuis 3 jours. Prépare ta prochaine conversation.",
-    time: 'Il y a 2 j',
-    read: true,
-    icon: Mic,
-    iconColor: 'bg-violet-50 text-violet-600',
-  },
-  {
-    id: 'n7',
-    type: 'contact',
-    title: 'Nadia Benali',
-    body: 'Énergie incroyable dans ton dernier vocal. Je suis partante pour en savoir plus !',
-    time: 'Il y a 2 j',
-    read: true,
-    avatar: { first: 'Nadia', last: 'Benali', disc: 'I' },
-  },
-  {
-    id: 'n8',
-    type: 'commission',
-    title: 'Fast Start validé',
-    body: 'Marc Lemaire a atteint son premier palier. Bonus Fast Start de 200 € crédité.',
-    time: 'Il y a 3 j',
-    read: true,
-    icon: CheckCircle2,
-    iconColor: 'bg-success/10 text-success',
-  },
-]
+// Notifications réelles (table Notification). `icon` en base est une clé sémantique.
+type DbNotif = { id: string; icon: string; color: string; text: string; go: string; unread: boolean; createdAt: string }
+
+const ICON_META: Record<string, { title: string; icon: LucideIcon; color: string }> = {
+  atlas: { title: 'Atlas', icon: Sparkles, color: 'bg-primary/10 text-primary' },
+  aria: { title: 'Aria', icon: Mic, color: 'bg-teal-500/10 text-teal-600' },
+  nova: { title: 'Nova', icon: TrendingUp, color: 'bg-violet-500/10 text-violet-600' },
+}
+
+function frTime(iso: string): string {
+  const d = new Date(iso)
+  const mins = Math.round((Date.now() - d.getTime()) / 60000)
+  if (mins < 60) return `Il y a ${Math.max(mins, 1)} min`
+  if (mins < 24 * 60) return `Il y a ${Math.round(mins / 60)} h`
+  return new Intl.DateTimeFormat('fr-FR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }).format(d)
+}
+
+function fromDb(n: DbNotif): Notif {
+  const meta = ICON_META[n.icon] ?? { title: 'Notification', icon: Bell, color: 'bg-muted text-muted-foreground' }
+  return {
+    id: n.id,
+    title: meta.title,
+    body: n.text,
+    time: frTime(n.createdAt),
+    read: !n.unread,
+    go: n.go || undefined,
+    icon: meta.icon,
+    iconColor: meta.color,
+  }
+}
+
 
 function NotifList() {
-  const [items, setItems] = useState<Notif[]>(notifications)
+  const router = useRouter()
+  const [items, setItems] = useState<Notif[]>([])
   const [showAll, setShowAll] = useState(false)
   const unread = items.filter((n) => !n.read)
   const list = showAll ? items : unread
 
-  const markAll = () => setItems((xs) => xs.map((n) => ({ ...n, read: true })))
-  const markOne = (id: string) => setItems((xs) => xs.map((n) => (n.id === id ? { ...n, read: true } : n)))
+  useEffect(() => {
+    fetch('/api/notifications')
+      .then((r) => (r.ok ? r.json() : { notifications: [] }))
+      .then((d) => setItems(((d.notifications ?? []) as DbNotif[]).map(fromDb)))
+      .catch(() => {})
+  }, [])
+
+  const markAll = () => {
+    setItems((xs) => xs.map((n) => ({ ...n, read: true })))
+    fetch('/api/notifications', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ all: true }) }).catch(() => {})
+  }
+  const markOne = (n: Notif) => {
+    setItems((xs) => xs.map((x) => (x.id === n.id ? { ...x, read: true } : x)))
+    fetch('/api/notifications', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: n.id }) }).catch(() => {})
+    if (n.go) router.push(n.go)
+  }
 
   return (
     <div className="flex flex-col gap-4">
@@ -132,7 +99,7 @@ function NotifList() {
           <button
             key={notif.id}
             type="button"
-            onClick={() => markOne(notif.id)}
+            onClick={() => markOne(notif)}
             className={cn(
               'flex w-full items-start gap-3 px-4 py-3.5 text-left transition-colors active:bg-muted',
               !notif.read && 'bg-primary/[0.03]'
