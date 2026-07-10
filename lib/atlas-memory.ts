@@ -138,10 +138,10 @@ export async function reflectUserMemory(userId: string, query: string, answer: s
       where: { userId },
       select: { atlasProfile: true },
     })
-    const user = await db.user.findUnique({ where: { id: userId }, select: { name: true } })
+    const user = await db.user.findUnique({ where: { id: userId }, select: { firstName: true } })
     const { profile, facts } = await reflect(
       'user',
-      user?.name?.split(' ')[0] ?? '',
+      user?.firstName ?? '',
       prefs?.atlasProfile ?? '',
       `Utilisateur: ${query}\nAtlas: ${answer}`,
     )

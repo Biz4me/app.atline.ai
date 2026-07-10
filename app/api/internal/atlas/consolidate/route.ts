@@ -43,11 +43,11 @@ export async function POST(req: NextRequest) {
         .join('\n')
       const [prefs, user] = await Promise.all([
         db.userPreferences.findUnique({ where: { userId }, select: { atlasProfile: true } }),
-        db.user.findUnique({ where: { id: userId }, select: { name: true } }),
+        db.user.findUnique({ where: { id: userId }, select: { firstName: true } }),
       ])
       const { profile, facts } = await reflect(
         'user',
-        user?.name?.split(' ')[0] ?? '',
+        user?.firstName ?? '',
         prefs?.atlasProfile ?? '',
         exchange,
         true, // deep
