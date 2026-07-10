@@ -39,7 +39,7 @@ export default function NovaPage() {
 
   // Cohérent avec Atlas : le « + » du top bar agent émet `agent:new` → nouvelle campagne.
   useEffect(() => {
-    const onNew = () => router.push('/nova/campagne')
+    const onNew = () => router.push('/nova/campagne?fresh=1')
     window.addEventListener('agent:new', onNew)
     return () => window.removeEventListener('agent:new', onNew)
   }, [router])
@@ -79,13 +79,13 @@ export default function NovaPage() {
       </button>
 
       {campaigns === null ? null : campaigns.length === 0 ? (
-        <EmptyState onCreate={() => router.push('/nova/campagne')} />
+        <EmptyState onCreate={() => router.push('/nova/campagne?fresh=1')} />
       ) : (
         <div className="flex flex-col gap-3">
           {/* Mobile : création via le « + » du top bar agent. Desktop : bouton in-page (pas de « + » chrome). */}
           <button
             type="button"
-            onClick={() => router.push('/nova/campagne')}
+            onClick={() => router.push('/nova/campagne?fresh=1')}
             className="hidden lg:flex items-center justify-center gap-2 rounded-2xl py-3 text-sm font-bold text-white transition-transform active:scale-[0.98]"
             style={{ background: NOVA }}
           >

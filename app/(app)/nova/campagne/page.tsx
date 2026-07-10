@@ -249,10 +249,26 @@ export default function CampagnePage() {
   const [forId, setForId] = useState('') // clé de persistance : 'new' ou l'id édité
 
   useEffect(() => {
-    const id = new URLSearchParams(window.location.search).get('id')
+    const params = new URLSearchParams(window.location.search)
+    const id = params.get('id')
     const fid = id || 'new'
     setForId(fid)
     if (id) setEditing(true)
+
+    // 0) « Nouvelle campagne » explicite (?fresh=1) → on repart PROPRE (aucune restauration de brouillon),
+    // puis on retire le paramètre pour qu'un simple refresh restaure ensuite normalement.
+    if (params.get('fresh')) {
+      try {
+        sessionStorage.removeItem(WKEY)
+        for (let i = sessionStorage.length - 1; i >= 0; i--) {
+          const k = sessionStorage.key(i)
+          if (k && k.startsWith(CHATKEY)) sessionStorage.removeItem(k)
+        }
+      } catch {}
+      window.history.replaceState(null, '', '/nova/campagne')
+      setLoaded(true)
+      return
+    }
 
     // 1) Reprise après refresh : on restaure l'état en cours (étape + champs) s'il colle au contexte.
     try {
