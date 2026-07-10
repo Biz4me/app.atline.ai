@@ -383,7 +383,7 @@ export default function CampagnePage() {
     const iv = setInterval(async () => {
       tries++
       const found = await check()
-      if (found || tries > 22) {
+      if (found || tries > 38) {
         clearInterval(iv)
         if (!found && !stop) setRadarTrends([])
       }
