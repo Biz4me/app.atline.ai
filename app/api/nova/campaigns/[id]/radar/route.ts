@@ -39,7 +39,10 @@ export async function POST(_req: Request, ctx: { params: Promise<{ id: string }>
     select: { id: true, name: true, radarTrends: true },
   })
   if (!campaign) return NextResponse.json({ error: 'Not found' }, { status: 404 })
-  if (campaign.radarTrends) return NextResponse.json({ status: 'ready' })
+  // Déjà des tendances → on ne relance pas. Mais un résultat VIDE ([]) doit pouvoir réessayer.
+  if (Array.isArray(campaign.radarTrends) && campaign.radarTrends.length) {
+    return NextResponse.json({ status: 'ready' })
+  }
 
   const product = (campaign.name || '').trim()
   if (!product || product === 'Nouvelle campagne') return NextResponse.json({ status: 'no-query' })
@@ -88,11 +91,18 @@ export async function POST(_req: Request, ctx: { params: Promise<{ id: string }>
     const t = p.createTimeISO ? Date.parse(p.createTimeISO) : p.createTime ? p.createTime * 1000 : NaN
     return Number.isFinite(t) ? now - t : Infinity
   }
-  // ≥ 30k likes, vraie vidéo (pas slideshow). Récent : 3 mois, sinon 6 mois.
+  // Idéal : ≥ 30k likes + récent (3 mois, sinon 6 mois).
   const liked = items.filter((p) => !p.isSlideshow && (p.diggCount || 0) >= MIN_LIKES)
   const within = (days: number) => liked.filter((p) => ageMs(p) <= days * DAY)
   let pool = within(90)
   if (pool.length === 0) pool = within(180)
+  // Filet anti-radar-vide : si la niche n'a aucune vidéo ≥30k récente, on montre les meilleures
+  // vidéos RÉCENTES (≤6 mois) quand même, sinon les meilleures tout court. Jamais rien à l'écran.
+  if (pool.length === 0) {
+    const vids = items.filter((p) => !p.isSlideshow)
+    const recent = vids.filter((p) => ageMs(p) <= 180 * DAY)
+    pool = recent.length ? recent : vids
+  }
 
   const trends = pool
     .sort((a, b) => (b.playCount || 0) - (a.playCount || 0))
