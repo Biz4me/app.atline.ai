@@ -364,29 +364,41 @@ TECHNIQUE (invisible pour moi, ne l'explique jamais)${NB}: le jour où je VALIDE
     fetch('/api/me').then((r) => (r.ok ? r.json() : null)).then((u) => { if (u?.firstName) setFirstName(u.firstName) }).catch(() => {})
   }, [])
 
-  // Mémorise la conversation active pour la retrouver au retour sur Atlas
+  // Mémorise la conversation active (+ horodatage) pour la retrouver au retour sur Atlas
   useEffect(() => {
-    if (c) localStorage.setItem('atlas-last-conv', c)
+    if (c) { localStorage.setItem('atlas-last-conv', c); localStorage.setItem('atlas-last-conv-at', String(Date.now())) }
   }, [c])
 
-  // Au retour sur /atlas (sans ?c=), reprend la dernière conversation en cours — sauf si on démarre une session.
+  // Frontière de « journée » : 3 h du matin (l'heure de la consolidation nocturne d'Atlas).
+  // Avant 3 h → la journée a commencé hier 3 h. La reprise auto ne vaut QUE pour la journée
+  // en cours : chaque matin, l'app rouvre sur l'accueil (bonjour + plan du jour).
+  const dayStart = () => {
+    const d = new Date()
+    if (d.getHours() < 3) d.setDate(d.getDate() - 1)
+    d.setHours(3, 0, 0, 0)
+    return d.getTime()
+  }
+
+  // Au retour sur /atlas (sans ?c=), reprend la conversation de LA JOURNÉE — sauf si on démarre une session.
   useEffect(() => {
     if (c || sessionParam) return
     const last = localStorage.getItem('atlas-last-conv')
-    if (last) {
+    const lastAt = Number(localStorage.getItem('atlas-last-conv-at') || 0)
+    if (last && lastAt >= dayStart()) {
       setLoadingConv(true)
       router.replace(`/atlas?c=${last}`)
       return
     }
-    // Pas de pointeur local (autre appareil, stockage vidé, pointeur perdu) →
-    // filet de sécurité : reprend la conversation la plus récente si elle date de < 48 h.
+    if (last) { localStorage.removeItem('atlas-last-conv'); localStorage.removeItem('atlas-last-conv-at') }
+    // Pas de pointeur du jour (nouveau matin, autre appareil, stockage vidé) →
+    // filet de sécurité : reprend la conversation la plus récente SI elle date d'aujourd'hui.
     ;(async () => {
       try {
         const r = await fetch('/api/atlas/conversations')
         if (!r.ok) return
         const list: { id: string; updatedAt: string }[] = await r.json()
         const latest = Array.isArray(list) ? list[0] : null
-        if (latest?.id && Date.now() - new Date(latest.updatedAt).getTime() < 48 * 3600 * 1000) {
+        if (latest?.id && new Date(latest.updatedAt).getTime() >= dayStart()) {
           setLoadingConv(true)
           router.replace(`/atlas?c=${latest.id}`)
         }
