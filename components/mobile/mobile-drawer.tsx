@@ -111,18 +111,30 @@ export function MobileDrawer() {
       >
         {/* Switcher MLM — EN HAUT : le contexte se choisit AVANT ce qu'il filtre
             (tout le menu dépend du MLM actif ; le profil, lui, est global → en bas) */}
-        <button
-          type="button"
-          onClick={() => setBizOpen((o) => !o)}
-          className="flex w-full items-center gap-3 px-3 pb-2"
+        <div
+          className="flex items-center gap-1 px-3 pb-2"
           style={{ paddingTop: 'max(14px, env(safe-area-inset-top))' }}
         >
-          <span className="grid size-9 shrink-0 place-items-center rounded-full text-sm font-bold text-white" style={{ backgroundColor: current.color }}>
-            {current.initials || current.name?.charAt(0).toUpperCase()}
-          </span>
-          <span className="min-w-0 flex-1 truncate text-left text-lg font-bold text-foreground">{current.name}</span>
-          <ChevronDown className={cn('size-5 shrink-0 text-muted-foreground transition-transform', bizOpen && 'rotate-180')} />
-        </button>
+          <button type="button" onClick={() => setBizOpen((o) => !o)} className="flex min-w-0 flex-1 items-center gap-3 text-left">
+            <span className="grid size-9 shrink-0 place-items-center rounded-full text-sm font-bold text-white" style={{ backgroundColor: current.color }}>
+              {current.initials || current.name?.charAt(0).toUpperCase()}
+            </span>
+            <span className="min-w-0 flex-1 truncate text-lg font-bold text-foreground">{current.name}</span>
+            <ChevronDown className={cn('size-5 shrink-0 text-muted-foreground transition-transform', bizOpen && 'rotate-180')} />
+          </button>
+          {/* Cloche en HAUT à droite : les notifications sont du contexte, pas de l'identité */}
+          <button
+            type="button"
+            onClick={() => go('/notifications')}
+            aria-label="Notifications"
+            className="relative flex size-9 shrink-0 items-center justify-center rounded-full text-muted-foreground active:bg-muted transition-colors"
+          >
+            <Bell className="size-5 stroke-[1.5]" />
+            {unread > 0 && (
+              <span className="absolute right-0.5 top-0.5 flex size-4 items-center justify-center rounded-full bg-destructive text-[10px] font-bold text-white ring-2 ring-background">{unread > 9 ? '9+' : unread}</span>
+            )}
+          </button>
+        </div>
         {bizOpen && (
           <div className="border-b border-border px-1 pb-2">
             {all.map((b) => {
@@ -203,7 +215,7 @@ export function MobileDrawer() {
           })}
         </div>
 
-        {/* Barre du bas — identité globale : avatar profil (→ Ton compte) · cloche. Sans trait : la zone respire. */}
+        {/* Barre du bas — identité globale : l'avatar profil seul (→ Ton compte). Sans trait : la zone respire. */}
         <div
           className="flex items-center gap-2 px-3 pt-1"
           style={{ paddingBottom: 'max(20px, env(safe-area-inset-bottom))' }}
@@ -219,17 +231,6 @@ export function MobileDrawer() {
               <img src={account.photoUrl} alt="" className="size-full object-cover" />
             ) : (
               <span className="grid size-full place-items-center bg-[#3B82F6] text-sm font-medium text-white">{account.initials || 'A'}</span>
-            )}
-          </button>
-          <button
-            type="button"
-            onClick={() => go('/notifications')}
-            aria-label="Notifications"
-            className="relative flex size-9 shrink-0 items-center justify-center rounded-full text-muted-foreground active:bg-muted transition-colors"
-          >
-            <Bell className="size-5 stroke-[1.5]" />
-            {unread > 0 && (
-              <span className="absolute right-0.5 top-0.5 flex size-4 items-center justify-center rounded-full bg-destructive text-[10px] font-bold text-white ring-2 ring-background">{unread > 9 ? '9+' : unread}</span>
             )}
           </button>
         </div>
