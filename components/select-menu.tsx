@@ -24,6 +24,7 @@ export function SelectMenu({
 }) {
   const [open, setOpen] = useState(false)
   const triggerRef = useRef<HTMLButtonElement>(null)
+  const panelRef = useRef<HTMLDivElement>(null)
   const [pos, setPos] = useState<{ left: number; width: number; top?: number; bottom?: number; maxH: number; up: boolean } | null>(null)
   const selected = options.find((o) => o.value === value)
 
@@ -49,10 +50,14 @@ export function SelectMenu({
     setOpen(true)
   }
 
-  // Fermeture au scroll (panneau fixed → sinon il reste figé pendant que la page bouge)
+  // Fermeture au scroll de la PAGE (panneau fixed → sinon il reste figé pendant qu'elle bouge).
+  // Le défilement INTERNE du panneau, lui, ne doit jamais fermer (sinon menu « bloqué »).
   useEffect(() => {
     if (!open) return
-    const close = () => setOpen(false)
+    const close = (e: Event) => {
+      if (panelRef.current && e.target instanceof Node && panelRef.current.contains(e.target)) return
+      setOpen(false)
+    }
     window.addEventListener('scroll', close, true)
     return () => window.removeEventListener('scroll', close, true)
   }, [open])
@@ -68,7 +73,8 @@ export function SelectMenu({
         <>
           <div className="fixed inset-0 z-[998]" onClick={() => setOpen(false)} />
           <div
-            className="fixed z-[999] overflow-y-auto rounded-xl border border-[#e2e2e8] bg-white py-1 shadow-[0_16px_44px_rgba(0,0,0,.16)] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+            ref={panelRef}
+            className="fixed z-[999] overflow-y-auto overscroll-contain rounded-xl border border-[#e2e2e8] bg-white py-1 shadow-[0_16px_44px_rgba(0,0,0,.16)] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
             style={{ left: pos.left, width: pos.width, maxHeight: pos.maxH, ...(pos.up ? { bottom: pos.bottom } : { top: pos.top }) }}
           >
             {options.map((o) => (

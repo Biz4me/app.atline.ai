@@ -264,28 +264,10 @@ function SetupScreen({
             </p>
           )}
 
-          {/* Phase — pré-réglée par le stade du contact, modifiable d'un tap */}
-          <p className="mb-2.5 mt-1 text-xs font-bold text-foreground">Phase</p>
-          <div className="mb-4 flex flex-wrap gap-2">
-            {phases.map((p) => (
-              <button
-                key={p}
-                type="button"
-                onClick={() => setPhase(p)}
-                className={cn(
-                  'rounded-full px-3.5 py-1.5 text-xs font-semibold transition-colors',
-                  phase === p
-                    ? 'bg-primary/15 text-primary border border-primary/30'
-                    : 'border border-border bg-surface text-muted-foreground'
-                )}
-              >
-                {p}
-              </button>
-            ))}
-          </div>
-
+          {/* La PHASE n'est plus demandée : elle se déduit du stade du contact (phaseForStage)
+              et filtre la liste de scénarios ci-dessous. Une décision de moins à l'écran. */}
           {/* Scénario précis (bibliothèque partagée, filtrée par phase) — déroulant maison, Auto par défaut */}
-          <p className="mb-2.5 text-xs font-bold text-foreground">Scénario</p>
+          <p className="mb-2.5 mt-1 text-xs font-bold text-foreground">Scénario</p>
           <div className="mb-4">
             <SelectMenu
               value={scenario}
