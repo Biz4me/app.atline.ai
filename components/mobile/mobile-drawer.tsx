@@ -8,7 +8,7 @@ import { cn } from '@/lib/utils'
 import { useOverlay } from '@/components/overlay-provider'
 import { useBusiness } from '@/components/business-provider'
 import type { Business } from '@/lib/types'
-import { DRAWER_SECTIONS } from '@/components/mobile/nav-config'
+import { DRAWER_SECTIONS, AGENTS } from '@/components/mobile/nav-config'
 
 export function MobileDrawer() {
   const { openId, setOpenId } = useOverlay()
@@ -113,6 +113,27 @@ export function MobileDrawer() {
           className="flex-1 overflow-y-auto no-scrollbar px-2 py-1"
           style={{ paddingTop: 'max(14px, env(safe-area-inset-top))' }}
         >
+          {/* Les 3 agents en tête — chacun à 1 tap (le switcher du haut a disparu) */}
+          {AGENTS.map((a) => {
+            const Icon = a.icon
+            const act = isActive(a.href)
+            return (
+              <button
+                key={a.href}
+                type="button"
+                onClick={() => go(a.href)}
+                className={cn(
+                  'flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-lg',
+                  act ? 'bg-muted font-semibold text-foreground' : 'text-foreground active:bg-muted',
+                )}
+              >
+                <Icon className="size-5 shrink-0" style={{ color: a.color }} />
+                <span className="flex-1">{a.label}</span>
+                <span className="text-xs text-muted-foreground">{a.sub}</span>
+              </button>
+            )
+          })}
+          <div className="mx-3 my-2 h-px bg-border" />
           {DRAWER_SECTIONS.map((item) => {
             const Icon = item.icon
             const act = isActive(item.href)

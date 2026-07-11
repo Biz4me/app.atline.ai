@@ -3,7 +3,7 @@
 import { useRouter } from 'next/navigation'
 import {
   ArrowUpRight, ContactRound, Briefcase, BookOpen, Calendar, MessageSquare,
-  Users, Bell, CreditCard, User, LayoutDashboard, Link2, type LucideIcon,
+  Users, Bell, CreditCard, User, LayoutDashboard, Link2, Mic, SquarePen, type LucideIcon,
 } from 'lucide-react'
 
 // Carte « concierge » — Atlas a compris une intention « montre/ouvre X » et propose
@@ -14,7 +14,7 @@ import {
 export const OPEN_MARK = '[[OPEN]]'
 export const OPEN_MARK_RE = /\[\[OPEN\]\]\s*([^\n|]+?)\s*\|\s*([^\n]+)/
 // Ne jamais suivre une route arbitraire : on n'autorise que les destinations internes connues.
-const OPEN_ROUTES = ['/home', '/contacts', '/activities', '/formation', '/agenda', '/messages', '/communaute', '/notifications', '/mon-abonnement', '/profile/edit', '/settings/parrainage']
+const OPEN_ROUTES = ['/home', '/contacts', '/activities', '/formation', '/agenda', '/messages', '/communaute', '/notifications', '/mon-abonnement', '/profile/edit', '/settings/parrainage', '/aria', '/nova']
 export const cleanOpenRoute = (raw: string): string | null => {
   const r = raw.trim()
   if (!r.startsWith('/')) return null
@@ -36,6 +36,8 @@ const ICONS: { prefix: string; icon: LucideIcon }[] = [
   { prefix: '/profile', icon: User },
   { prefix: '/settings/parrainage', icon: Link2 },
   { prefix: '/home', icon: LayoutDashboard },
+  { prefix: '/aria', icon: Mic },
+  { prefix: '/nova', icon: SquarePen },
 ]
 const iconFor = (route: string): LucideIcon =>
   ICONS.find((i) => route.startsWith(i.prefix))?.icon ?? ArrowUpRight

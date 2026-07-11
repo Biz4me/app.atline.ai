@@ -3,8 +3,7 @@
 import { usePathname } from 'next/navigation'
 import { History, Plus, Menu, ChevronLeft } from 'lucide-react'
 import { useOverlay } from '@/components/overlay-provider'
-import { titleForPath, isAgentPath } from '@/components/mobile/nav-config'
-import { AgentSwitcher } from '@/components/mobile/agent-switcher'
+import { titleForPath, isAgentPath, AGENTS } from '@/components/mobile/nav-config'
 
 export function TopBar() {
   const pathname = usePathname()
@@ -35,7 +34,16 @@ export function TopBar() {
       </div>
 
       {isAgentPath(pathname) ? (
-        <AgentSwitcher />
+        // Plus de switcher : le titre porte l'agent, teinté à sa couleur (le repérage, c'est la couleur)
+        (() => {
+          const agent = AGENTS.find((a) => pathname === a.href || pathname.startsWith(a.href + '/'))
+          return (
+            <span className="flex items-center gap-2 text-lg font-semibold" style={{ color: agent?.color }}>
+              <span className="size-2 rounded-full" style={{ background: agent?.color }} />
+              {agent?.label}
+            </span>
+          )
+        })()
       ) : (
         <span className="max-w-[62%] truncate text-center text-lg font-semibold text-foreground">{titleForPath(pathname)}</span>
       )}
