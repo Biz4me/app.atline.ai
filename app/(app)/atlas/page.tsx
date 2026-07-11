@@ -16,7 +16,7 @@ const frText = (t: string) => t.replace(/ ([:;!?])/g, TH + '$1').replace(new Reg
 import { ChatChoices, AtlasDraftCard, type PlanItem } from '@/components/atlas-plan-card'
 import { ProfileFormCard } from '@/components/atlas-profile-form'
 import { WhyValidateCard } from '@/components/atlas-why-card'
-import { AtlasNavCard } from '@/components/atlas-nav-card'
+import { AtlasNavCard, OPEN_MARK, OPEN_MARK_RE, cleanOpenRoute, stripOpenMarker } from '@/components/atlas-nav-card'
 import { AtlasActionCard, type AtlasAction } from '@/components/atlas-action-card'
 
 type Choice = { label: string; value: string }
@@ -75,19 +75,7 @@ const extractSaved = (content: string): string => {
   return m ? m[1].trim() : ''
 }
 
-// Concierge de navigation : marqueur invisible [[OPEN]] route | libellé émis par Atlas
-// quand l'utilisateur veut « voir / ouvrir / trouver » une info → carte deep-link (1 tap).
-const OPEN_MARK = '[[OPEN]]'
-const OPEN_MARK_RE = /\[\[OPEN\]\]\s*([^\n|]+?)\s*\|\s*([^\n]+)/
-// Ne jamais suivre une route arbitraire : on n'autorise que les destinations internes connues.
-const OPEN_ROUTES = ['/home', '/contacts', '/activities', '/formation', '/agenda', '/messages', '/communaute', '/notifications', '/mon-abonnement', '/profile/edit', '/settings/parrainage']
-const cleanOpenRoute = (raw: string): string | null => {
-  const r = raw.trim()
-  if (!r.startsWith('/')) return null
-  const path = r.split('?')[0]
-  return OPEN_ROUTES.some((base) => path === base || path.startsWith(base + '/')) ? r : null
-}
-const stripOpenMarker = (content: string): string => content.replace(/\s*\[\[OPEN\]\][\s\S]*$/, '')
+// Concierge de navigation : helpers [[OPEN]] partagés → components/atlas-nav-card.tsx
 
 const suggestions = [
   'Comment relancer un prospect tiède ?',

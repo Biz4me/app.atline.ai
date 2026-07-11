@@ -10,6 +10,19 @@ import {
 // d'y aller en 1 tap, au lieu de naviguer 3-5 clics dans les menus.
 // Route + libellé viennent du marqueur invisible [[OPEN]] route | label émis par Atlas.
 
+// Marqueur concierge [[OPEN]] route | libellé : helpers partagés (page Atlas + panneau du composeur).
+export const OPEN_MARK = '[[OPEN]]'
+export const OPEN_MARK_RE = /\[\[OPEN\]\]\s*([^\n|]+?)\s*\|\s*([^\n]+)/
+// Ne jamais suivre une route arbitraire : on n'autorise que les destinations internes connues.
+const OPEN_ROUTES = ['/home', '/contacts', '/activities', '/formation', '/agenda', '/messages', '/communaute', '/notifications', '/mon-abonnement', '/profile/edit', '/settings/parrainage']
+export const cleanOpenRoute = (raw: string): string | null => {
+  const r = raw.trim()
+  if (!r.startsWith('/')) return null
+  const path = r.split('?')[0]
+  return OPEN_ROUTES.some((base) => path === base || path.startsWith(base + '/')) ? r : null
+}
+export const stripOpenMarker = (content: string): string => content.replace(/\s*\[\[OPEN\]\][\s\S]*$/, '')
+
 // Icône selon la destination (préfixe de route).
 const ICONS: { prefix: string; icon: LucideIcon }[] = [
   { prefix: '/contacts', icon: ContactRound },
