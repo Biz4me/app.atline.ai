@@ -113,27 +113,6 @@ export function MobileDrawer() {
           className="flex-1 overflow-y-auto no-scrollbar px-2 py-1"
           style={{ paddingTop: 'max(14px, env(safe-area-inset-top))' }}
         >
-          {/* Les 3 agents en tête — chacun à 1 tap (le switcher du haut a disparu) */}
-          {AGENTS.map((a) => {
-            const Icon = a.icon
-            const act = isActive(a.href)
-            return (
-              <button
-                key={a.href}
-                type="button"
-                onClick={() => go(a.href)}
-                className={cn(
-                  'flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-lg',
-                  act ? 'bg-muted font-semibold text-foreground' : 'text-foreground active:bg-muted',
-                )}
-              >
-                <Icon className="size-5 shrink-0" style={{ color: a.color }} />
-                <span className="flex-1">{a.label}</span>
-                <span className="text-xs text-muted-foreground">{a.sub}</span>
-              </button>
-            )
-          })}
-          <div className="mx-3 my-2 h-px bg-border" />
           {DRAWER_SECTIONS.map((item) => {
             const Icon = item.icon
             const act = isActive(item.href)
@@ -153,6 +132,27 @@ export function MobileDrawer() {
             )
           })}
         </nav>
+
+        {/* Les 3 agents — rectangles icône + nom, en bas à DROITE (zone du pouce).
+            Le nom règle la découvrabilité, le rectangle agrandit la cible, le retrait
+            (px-3) éloigne du bord droit qui ferme le tiroir. */}
+        <div className="flex flex-col items-end gap-2 px-3 pb-3">
+          {AGENTS.map((a) => {
+            const Icon = a.icon
+            return (
+              <button
+                key={a.href}
+                type="button"
+                onClick={() => go(a.href)}
+                className="flex min-w-[128px] items-center gap-2.5 rounded-xl px-3.5 py-2.5 active:opacity-80"
+                style={{ background: `${a.color}1F` }}
+              >
+                <Icon className="size-5 shrink-0" style={{ color: a.color }} />
+                <span className="text-base font-semibold" style={{ color: a.color }}>{a.label}</span>
+              </button>
+            )
+          })}
+        </div>
 
         {/* Switcher MLM — EN BAS du tiroir (façon « espace de travail »), la liste s'ouvre vers le haut */}
         <div className={cn('border-t border-border px-2', bizOpen && 'pt-2')}>
@@ -190,44 +190,42 @@ export function MobileDrawer() {
           )}
         </div>
 
-        {/* Barre du bas — switcher MLM à gauche (Atlas est déjà partout : accueil + composeur) */}
+        {/* Barre du bas — avatar profil (→ Ton compte) · cloche · … · activité MLM (tap = changer) */}
         <div
-          className="flex items-center justify-between gap-3 px-3 pt-1"
+          className="flex items-center gap-2 px-3 pt-1"
           style={{ paddingBottom: 'max(20px, env(safe-area-inset-bottom))' }}
         >
-          <button type="button" onClick={() => setBizOpen((o) => !o)} className="flex min-w-0 flex-1 items-center gap-3 rounded-xl px-1 py-2 text-left">
-            <span className="grid size-9 shrink-0 place-items-center rounded-full text-sm font-bold text-white" style={{ backgroundColor: current.color }}>
+          <button
+            type="button"
+            onClick={() => go('/settings')}
+            aria-label="Mon compte"
+            className="size-9 shrink-0 overflow-hidden rounded-full ring-2 ring-primary/60 active:opacity-90 transition-opacity"
+          >
+            {account.photoUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={account.photoUrl} alt="" className="size-full object-cover" />
+            ) : (
+              <span className="grid size-full place-items-center bg-[#3B82F6] text-sm font-medium text-white">{account.initials || 'A'}</span>
+            )}
+          </button>
+          <button
+            type="button"
+            onClick={() => go('/notifications')}
+            aria-label="Notifications"
+            className="relative flex size-9 shrink-0 items-center justify-center rounded-full text-muted-foreground active:bg-muted transition-colors"
+          >
+            <Bell className="size-5 stroke-[1.5]" />
+            {unread > 0 && (
+              <span className="absolute right-0.5 top-0.5 flex size-4 items-center justify-center rounded-full bg-destructive text-[10px] font-bold text-white ring-2 ring-background">{unread > 9 ? '9+' : unread}</span>
+            )}
+          </button>
+          <button type="button" onClick={() => setBizOpen((o) => !o)} className="ml-auto flex min-w-0 items-center gap-2 rounded-xl px-1 py-1 text-left">
+            <span className="grid size-8 shrink-0 place-items-center rounded-lg text-xs font-bold text-white" style={{ backgroundColor: current.color }}>
               {current.initials || current.name?.charAt(0).toUpperCase()}
             </span>
-            <span className="min-w-0 flex-1 truncate text-base font-bold text-foreground">{current.name}</span>
-            <ChevronDown className={cn('size-5 shrink-0 text-muted-foreground transition-transform', bizOpen ? 'rotate-0' : 'rotate-180')} />
+            <span className="max-w-[110px] truncate text-sm font-bold text-foreground">{current.name}</span>
+            <ChevronDown className={cn('size-4 shrink-0 text-muted-foreground transition-transform', bizOpen ? 'rotate-0' : 'rotate-180')} />
           </button>
-          <div className="flex shrink-0 items-center gap-2">
-            <button
-              type="button"
-              onClick={() => go('/notifications')}
-              aria-label="Notifications"
-              className="relative flex size-9 shrink-0 items-center justify-center rounded-full text-muted-foreground active:bg-muted transition-colors"
-            >
-              <Bell className="size-5 stroke-[1.5]" />
-              {unread > 0 && (
-                <span className="absolute right-0.5 top-0.5 flex size-4 items-center justify-center rounded-full bg-destructive text-[10px] font-bold text-white ring-2 ring-background">{unread > 9 ? '9+' : unread}</span>
-              )}
-            </button>
-            <button
-              type="button"
-              onClick={() => go('/settings')}
-              aria-label="Mon compte"
-              className="size-9 shrink-0 overflow-hidden rounded-full active:opacity-90 transition-opacity"
-            >
-              {account.photoUrl ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={account.photoUrl} alt="" className="size-full object-cover" />
-              ) : (
-                <span className="grid size-full place-items-center bg-[#3B82F6] text-sm font-medium text-white">{account.initials || 'A'}</span>
-              )}
-            </button>
-          </div>
         </div>
       </div>
     </div>,
