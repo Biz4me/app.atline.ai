@@ -21,6 +21,7 @@ type SimContact = {
   stage: string
   market: string | null
   personality: string | null // ROUGE | VERT | BLEU | JAUNE (Big Al)
+  gender: string | null // M | F — pilote la voix (homme/femme) de la simulation
 }
 
 // Le choix de l'utilisateur pilote RÉELLEMENT la simulation :
@@ -240,6 +241,13 @@ function SetupScreen({
                 </div>
               )}
             </div>
+          )}
+
+          {/* Genre manquant → la voix ne peut pas s'accorder au contact */}
+          {selected && !selected.gender && (
+            <p className="mb-3 rounded-xl border border-border bg-muted px-3 py-2 text-xs text-muted-foreground">
+              Renseigne le genre de {selected.firstName} sur sa fiche pour que la voix de la simulation corresponde (homme/femme).
+            </p>
           )}
 
           {/* Scénario précis (bibliothèque partagée, filtrée par phase) — Auto = mapping de la phase */}
@@ -833,7 +841,7 @@ function AriaPageContent() {
   useEffect(() => {
     fetch('/api/contacts')
       .then((r) => (r.ok ? r.json() : []))
-      .then((rows: { id: string; name: string; city: string; stage: string; market: string | null; personality: string | null }[]) => {
+      .then((rows: { id: string; name: string; city: string; stage: string; market: string | null; personality: string | null; gender: string | null }[]) => {
         const list: SimContact[] = (Array.isArray(rows) ? rows : []).map((c) => {
           const parts = (c.name || '').trim().split(/\s+/)
           return {
@@ -844,6 +852,7 @@ function AriaPageContent() {
             stage: c.stage || 'nouveau',
             market: c.market ?? null,
             personality: c.personality ?? null,
+            gender: c.gender ?? null,
           }
         })
         setContacts(list)

@@ -59,6 +59,7 @@ export async function GET(req: Request) {
     phone: c.phone ?? '',
     email: c.email ?? '',
     personality: c.personality ?? null,
+    gender: c.gender ?? null,
     score: c.score ?? null,
     lastContact: c.lastContact?.toISOString() ?? null,
     note: c.note ?? '',
