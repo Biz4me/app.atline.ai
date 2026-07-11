@@ -1109,7 +1109,8 @@ TECHNIQUE (invisible pour moi, ne l'explique jamais)${NB}: le jour où je VALIDE
                 ))}
               </div>
             )}
-            {!input.trim() && (
+            {/* Suggestions : seulement quand il n'y a PAS de cartes (sinon écran chargé, elles font doublon) */}
+            {!input.trim() && plan.length === 0 && (
               <div className="mx-auto flex w-full max-w-md flex-col gap-0.5">
                 {[
                   { icon: Zap, label: 'Mon plan du jour', run: () => showPlan() },

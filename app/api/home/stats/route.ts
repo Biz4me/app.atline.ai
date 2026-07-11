@@ -8,9 +8,12 @@ export async function GET() {
   if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   const userId = session.user.id
 
-  const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
+  const now = new Date()
+  const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000)
+  const inSevenDays = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000)
 
-  const [contactCount, simSessions, referrals, rdvCount, simCount, certCount] = await Promise.all([
+  const [contactCount, simSessions, referrals, rdvCount, simCount, certCount,
+    relancesDues, rdvWeek, tunnel, contactsWeek, lessonsTotal, lessonsDone, campaignCount, leadCount] = await Promise.all([
     db.contact.count({ where: { userId } }),
     db.simSession.findMany({
       where: { userId, score: { not: null }, startedAt: { gte: thirtyDaysAgo } },
@@ -23,6 +26,15 @@ export async function GET() {
     db.appointment.count({ where: { userId } }),
     db.simSession.count({ where: { userId } }),
     db.certificate.count({ where: { userId } }),
+    // Tableau de bord : le reste du réel
+    db.relance.count({ where: { userId, status: 'PENDING', dueAt: { lte: now } } }),
+    db.appointment.count({ where: { userId, done: false, startAt: { gte: now, lte: inSevenDays } } }),
+    db.contact.groupBy({ by: ['prospectStage'], where: { userId, kind: 'PROSPECT' }, _count: { _all: true } }),
+    db.contact.count({ where: { userId, createdAt: { gte: new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000) } } }),
+    db.lmsLesson.count(),
+    db.userLessonProgress.count({ where: { userId, done: true } }),
+    db.campaign.count({ where: { userId } }),
+    db.lead.count({ where: { campaign: { userId } } }),
   ])
 
   // Score ARIA : moyenne sur 30 jours
@@ -39,6 +51,10 @@ export async function GET() {
       })
     : 0
 
+  // Tunnel prospect condensé en 4 segments (couleurs charte côté front)
+  const stageCount = (stages: string[]) =>
+    tunnel.filter((t) => t.prospectStage && stages.includes(t.prospectStage)).reduce((s, t) => s + t._count._all, 0)
+
   return NextResponse.json({
     contacts: contactCount,
     ariaScore,
@@ -47,5 +63,16 @@ export async function GET() {
     rdv: rdvCount,
     simCount,
     certificates: certCount,
+    relancesDues,
+    rdvWeek,
+    contactsWeek,
+    tunnel: {
+      nouveau: stageCount(['NOUVEAU']),
+      invitation: stageCount(['INVITATION', 'PRESENTATION']),
+      suivi: stageCount(['SUIVI']),
+      closing: stageCount(['CLOSING']),
+    },
+    formationPct: lessonsTotal > 0 ? Math.round((lessonsDone / lessonsTotal) * 100) : 0,
+    nova: { campaigns: campaignCount, leads: leadCount },
   })
 }
