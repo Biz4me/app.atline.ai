@@ -33,8 +33,10 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
   const c = await db.contact.findFirst({ where: { id, userId: session.user.id } })
   if (!c) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
-  const { channel } = await req.json()
+  const { channel, instruction } = await req.json()
   const ch = String(channel ?? 'SMS').toUpperCase()
+  // Consigne libre de l'utilisateur (« propose-lui un RDV mardi ») — prioritaire sur l'intention du stade
+  const consigne = typeof instruction === 'string' && instruction.trim() ? instruction.trim().slice(0, 300) : ''
 
   const [user, business, lastInter] = await Promise.all([
     db.user.findUnique({ where: { id: session.user.id }, select: { firstName: true } }),
@@ -47,7 +49,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
   const histo = lastInter.length ? `Dernières interactions : ${lastInter.map(i => `${i.type.toLowerCase()}${i.outcome ? ` (${i.outcome.toLowerCase()})` : ''}`).join(', ')}.` : ''
 
   const query = `Tu es Atlas, coach en marketing de réseau. Rédige UN message prêt à envoyer, de la part de ${user?.firstName ?? 'moi'} (distributeur ${business?.mlmName ?? ''}), à ${prenom} (${kindLabel}).
-${c.kind === 'PROSPECT' ? (STAGE_INTENT[c.prospectStage ?? 'NOUVEAU'] ?? '') : ''}
+${consigne ? `CONSIGNE PRIORITAIRE de l'utilisateur : ${consigne}` : c.kind === 'PROSPECT' ? (STAGE_INTENT[c.prospectStage ?? 'NOUVEAU'] ?? '') : ''}
 ${c.personality ? (COLOR_TONE[c.personality] ?? '') : ''}
 ${CHANNEL_RULE[ch] ?? CHANNEL_RULE.SMS}
 ${c.note ? `Contexte sur ${prenom} : ${c.note}` : ''}

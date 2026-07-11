@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import {
   ChevronLeft, MessageSquare, MessageCircle, Mail, PhoneCall, Bell,
-  CalendarPlus, StickyNote, Share2, Mic, Sparkles, Search, SquarePen, Send, X,
+  CalendarPlus, StickyNote, Share2, Mic, Sparkles, Search, SquarePen, Send, X, Loader2,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
@@ -138,6 +138,7 @@ export default function MessagesPage() {
 function Thread({ contact, onBack, onOpenFiche }: { contact: ActiveContact; onBack: () => void; onOpenFiche: () => void }) {
   const [items, setItems] = useState<Interaction[] | null>(null)
   const [draft, setDraft] = useState('')
+  const [drafting, setDrafting] = useState(false)
   const channels = useMemo(() => [
     ...(contact.phone ? [{ type: 'WHATSAPP', label: 'WhatsApp' }, { type: 'SMS', label: 'SMS' }] : []),
     ...(contact.email ? [{ type: 'EMAIL', label: 'Email' }] : []),
@@ -168,8 +169,25 @@ function Thread({ contact, onBack, onOpenFiche }: { contact: ActiveContact; onBa
     } catch { toast.error("L'échange n'a pas pu être enregistré") }
   }
 
+  // Atlas rédige : le texte tapé sert de consigne (« propose-lui un RDV ») — sinon brouillon selon le stade
+  const magic = async () => {
+    if (drafting) return
+    setDrafting(true)
+    try {
+      const r = await fetch(`/api/contacts/${contact.id}/draft`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ channel, instruction: draft.trim() || undefined }),
+      })
+      const d = await r.json().catch(() => null)
+      if (r.ok && d?.message) setDraft(d.message)
+      else toast.error('Atlas est indisponible, réessaie')
+    } catch { toast.error('Atlas est indisponible, réessaie') }
+    finally { setDrafting(false) }
+  }
+
   return (
-    <div className="flex min-w-0 flex-1 flex-col">
+    // Mobile : plein écran par-dessus le chrome (sinon le composeur passe sous le pli avec le top bar)
+    <div className="fixed inset-0 z-[55] flex min-w-0 flex-col bg-background lg:static lg:z-auto lg:flex-1">
       <div className="flex shrink-0 items-center gap-3 border-b border-border px-4 py-3" style={{ paddingTop: 'max(0.75rem, env(safe-area-inset-top))' }}>
         <button type="button" onClick={onBack} className="lg:hidden flex size-9 items-center justify-center rounded-full text-muted-foreground active:bg-muted">
           <ChevronLeft className="size-5 stroke-[1.5]" />
@@ -231,14 +249,24 @@ function Thread({ contact, onBack, onOpenFiche }: { contact: ActiveContact; onBa
                 value={draft}
                 onChange={(e) => setDraft(e.target.value)}
                 onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send() } }}
-                placeholder={`Écrire à ${contact.name.split(' ')[0]}…`}
+                placeholder={`Écris ton message, ou une consigne pour Atlas (« propose un RDV »)…`}
                 className="flex-1 resize-none bg-transparent text-lg leading-[1.4] text-foreground outline-none placeholder:text-muted-foreground lg:text-sm"
                 style={{ maxHeight: 120, paddingTop: 7, paddingBottom: 7 }}
               />
               <button
                 type="button"
+                onClick={magic}
+                disabled={drafting}
+                title="Atlas rédige pour toi"
+                aria-label="Atlas rédige pour toi"
+                className="mb-[5px] flex size-9 shrink-0 items-center justify-center rounded-full text-primary transition-colors active:bg-primary/10 disabled:opacity-60"
+              >
+                {drafting ? <Loader2 className="size-[17px] animate-spin" /> : <Sparkles className="size-[17px] stroke-[1.5]" />}
+              </button>
+              <button
+                type="button"
                 onClick={send}
-                disabled={!draft.trim()}
+                disabled={!draft.trim() || drafting}
                 className="mb-[5px] flex size-9 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-sm transition-opacity hover:opacity-90 disabled:opacity-40"
               >
                 <Send className="size-[17px] stroke-[1.5]" />
