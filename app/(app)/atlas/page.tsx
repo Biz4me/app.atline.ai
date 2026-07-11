@@ -93,6 +93,10 @@ export default function AtlasPage() {
   const c = sp.get('c')
   const sessionParam = sp.get('session')
   const [msgs, setMsgs] = useState<Msg[]>([])
+  const [plan, setPlan] = useState<PlanItem[]>([]) // plan du jour en cartes sur l'écran d'accueil du fil
+  useEffect(() => {
+    fetch('/api/plan/today').then((r) => (r.ok ? r.json() : null)).then((d) => setPlan(d?.items?.slice(0, 4) ?? [])).catch(() => {})
+  }, [])
   const [input, setInput] = useState('')
   const [histMounted, setHistMounted] = useState(false)
   const [histVisible, setHistVisible] = useState(false)
@@ -1081,6 +1085,30 @@ TECHNIQUE (invisible pour moi, ne l'explique jamais)${NB}: le jour où je VALIDE
               <p className="font-display text-[27px] font-bold leading-[1.2] tracking-[-0.025em] text-foreground">{firstName ? `Bonjour ${firstName}` : 'Bonjour'}</p>
               <p className="min-h-[50px] max-w-[320px] text-lg leading-[1.4] text-muted-foreground">{typedMantra}</p>
             </div>
+            {/* Plan du jour en CARTES : 1 tap = le flux guidé existant (le fil porte ta journée) */}
+            {!input.trim() && plan.length > 0 && (
+              <div className="mx-auto mb-3 flex w-full max-w-md flex-col gap-2">
+                <p className="px-1 text-xs font-extrabold uppercase tracking-widest text-primary">Ton plan du jour</p>
+                {plan.map((it) => (
+                  <button
+                    key={`${it.action}-${it.contactId}`}
+                    type="button"
+                    onClick={() => {
+                      setMsgs((prev) => [...prev, { from: 'user', text: it.headline }])
+                      setTimeout(() => startActionFlow(it), 250)
+                    }}
+                    className="flex w-full items-center gap-3 rounded-2xl border border-border bg-surface px-3.5 py-3 text-left transition-transform active:scale-[0.99]"
+                  >
+                    <span className="w-1 self-stretch rounded-full" style={{ background: it.contactId ? it.accent : '#F97316' }} />
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate text-sm font-semibold text-foreground">{it.headline}</span>
+                      <span className="block truncate text-xs text-muted-foreground">{it.reason}</span>
+                    </span>
+                    <span className="shrink-0 text-xs font-bold text-primary">Go</span>
+                  </button>
+                ))}
+              </div>
+            )}
             {!input.trim() && (
               <div className="mx-auto flex w-full max-w-md flex-col gap-0.5">
                 {[
