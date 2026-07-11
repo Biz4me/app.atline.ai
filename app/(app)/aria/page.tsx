@@ -108,8 +108,6 @@ function SetupScreen({
   // Bibliothèque de scénarios (partagée avec l'agent vocal, éditable en admin)
   const [scenarios, setScenarios] = useState<{ id: string; label: string; phase: string }[]>([])
   const [scenario, setScenario] = useState('auto')
-  // Progression réelle (nb d'entraînements + moyenne 30 j) — mêmes stats que le tableau de bord
-  const [stats, setStats] = useState<{ simCount: number; ariaScore: number | null } | null>(null)
   useEffect(() => {
     fetch('/api/aria/sessions/last')
       .then((r) => (r.ok ? r.json() : null))
@@ -118,10 +116,6 @@ function SetupScreen({
     fetch('/api/aria/scenarios')
       .then((r) => (r.ok ? r.json() : null))
       .then((d) => setScenarios(d?.scenarios ?? []))
-      .catch(() => {})
-    fetch('/api/home/stats')
-      .then((r) => (r.ok ? r.json() : null))
-      .then((d) => { if (d) setStats({ simCount: d.simCount ?? 0, ariaScore: d.ariaScore ?? null }) })
       .catch(() => {})
   }, [])
   // Changer de phase réinitialise le scénario (la liste filtrée change) — sauf juste après « Rejouer »
@@ -191,13 +185,6 @@ function SetupScreen({
               </button>
             </div>
           )}
-          {/* Progression réelle, discrète */}
-          {stats && stats.simCount > 0 && (
-            <p className="mb-4 text-xs text-muted-foreground">
-              {stats.simCount} entraînement{stats.simCount > 1 ? 's' : ''}{stats.ariaScore != null ? ` · moyenne ${stats.ariaScore}/100 sur 30 jours` : ''}
-            </p>
-          )}
-
           <p className="mb-2.5 text-xs font-bold text-foreground">Avec qui tu t&apos;entraînes ?</p>
 
           {selected ? (
