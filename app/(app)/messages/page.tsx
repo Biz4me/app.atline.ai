@@ -139,6 +139,7 @@ function Thread({ contact, onBack, onOpenFiche }: { contact: ActiveContact; onBa
   const [items, setItems] = useState<Interaction[] | null>(null)
   const [draft, setDraft] = useState('')
   const [drafting, setDrafting] = useState(false)
+  const [proposal, setProposal] = useState<string | null>(null) // le message proposé par Atlas, en attente d'envoi
   const channels = useMemo(() => [
     ...(contact.phone ? [{ type: 'WHATSAPP', label: 'WhatsApp' }, { type: 'SMS', label: 'SMS' }] : []),
     ...(contact.email ? [{ type: 'EMAIL', label: 'Email' }] : []),
@@ -149,14 +150,32 @@ function Thread({ contact, onBack, onOpenFiche }: { contact: ActiveContact; onBa
     fetch(`/api/contacts/${contact.id}/interactions`).then((r) => (r.ok ? r.json() : [])).then((rows: Interaction[]) => setItems([...rows].reverse())).catch(() => setItems([]))
   }, [contact.id])
 
-  const send = async () => {
+  // Le composeur sert à DEMANDER : la consigne part à Atlas, qui PROPOSE le message dans le fil.
+  const ask = async () => {
     const text = draft.trim()
-    if (!text) return
-    // Ouvre le canal choisi, pré-rempli (le message part depuis TON téléphone/boîte, comme sur la fiche)
-    if (channel === 'WHATSAPP' && contact.phone) window.open(`https://wa.me/${contact.phone.replace(/[^0-9]/g, '')}?text=${encodeURIComponent(text)}`, '_blank')
-    else if (channel === 'SMS' && contact.phone) window.location.href = `sms:${contact.phone}?&body=${encodeURIComponent(text)}`
-    else if (channel === 'EMAIL' && contact.email) window.location.href = `mailto:${contact.email}?body=${encodeURIComponent(text)}`
+    if (!text || drafting) return
     setDraft('')
+    setDrafting(true)
+    try {
+      const r = await fetch(`/api/contacts/${contact.id}/draft`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ channel, instruction: text }),
+      })
+      const d = await r.json().catch(() => null)
+      if (r.ok && d?.message) setProposal(d.message)
+      else toast.error('Atlas est indisponible, réessaie')
+    } catch { toast.error('Atlas est indisponible, réessaie') }
+    finally { setDrafting(false) }
+  }
+
+  // Envoi de la proposition : ouvre le canal pré-rempli (le message part de TON téléphone/boîte) + logge
+  const sendProposal = async () => {
+    if (!proposal) return
+    if (channel === 'WHATSAPP' && contact.phone) window.open(`https://wa.me/${contact.phone.replace(/[^0-9]/g, '')}?text=${encodeURIComponent(proposal)}`, '_blank')
+    else if (channel === 'SMS' && contact.phone) window.location.href = `sms:${contact.phone}?&body=${encodeURIComponent(proposal)}`
+    else if (channel === 'EMAIL' && contact.email) window.location.href = `mailto:${contact.email}?body=${encodeURIComponent(proposal)}`
+    const text = proposal
+    setProposal(null)
     try {
       const r = await fetch(`/api/contacts/${contact.id}/interactions`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -167,22 +186,6 @@ function Thread({ contact, onBack, onOpenFiche }: { contact: ActiveContact; onBa
         toast.success('Échange enregistré')
       }
     } catch { toast.error("L'échange n'a pas pu être enregistré") }
-  }
-
-  // Atlas rédige : le texte tapé sert de consigne (« propose-lui un RDV ») — sinon brouillon selon le stade
-  const magic = async () => {
-    if (drafting) return
-    setDrafting(true)
-    try {
-      const r = await fetch(`/api/contacts/${contact.id}/draft`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ channel, instruction: draft.trim() || undefined }),
-      })
-      const d = await r.json().catch(() => null)
-      if (r.ok && d?.message) setDraft(d.message)
-      else toast.error('Atlas est indisponible, réessaie')
-    } catch { toast.error('Atlas est indisponible, réessaie') }
-    finally { setDrafting(false) }
   }
 
   return (
@@ -223,6 +226,31 @@ function Thread({ contact, onBack, onOpenFiche }: { contact: ActiveContact; onBa
             </div>
           )
         })}
+
+        {/* Proposition d'Atlas — en attente : Envoyer (canal choisi) ou nouvelle consigne pour refaire */}
+        {drafting && (
+          <div className="flex items-center gap-2 text-sm text-muted-foreground lg:text-xs">
+            <Loader2 className="size-4 animate-spin" /> Atlas prépare le message…
+          </div>
+        )}
+        {proposal && (
+          <div className="rounded-2xl border border-primary/30 bg-primary/5 p-3.5">
+            <p className="text-xs font-bold uppercase tracking-widest text-primary">Proposition</p>
+            <p className="mt-1.5 whitespace-pre-line text-lg leading-[1.5] text-foreground lg:text-sm">{proposal}</p>
+            <div className="mt-3 flex items-center gap-2">
+              <button
+                type="button"
+                onClick={sendProposal}
+                className="flex items-center gap-1.5 rounded-full bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground active:opacity-90"
+              >
+                <Send className="size-3.5" /> Envoyer par {meta(channel).label}
+              </button>
+              <button type="button" onClick={() => setProposal(null)} className="rounded-full px-3 py-2 text-sm font-medium text-muted-foreground active:bg-muted">
+                Ignorer
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       <div className="shrink-0 border-t border-border px-4 py-3 lg:px-6" style={{ paddingBottom: 'max(0.75rem, env(safe-area-inset-bottom))' }}>
@@ -248,24 +276,14 @@ function Thread({ contact, onBack, onOpenFiche }: { contact: ActiveContact; onBa
                 rows={1}
                 value={draft}
                 onChange={(e) => setDraft(e.target.value)}
-                onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send() } }}
-                placeholder={`Écris ton message, ou une consigne pour Atlas (« propose un RDV »)…`}
+                onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); ask() } }}
+                placeholder={`Dis à Atlas quoi écrire à ${contact.name.split(' ')[0]}…`}
                 className="flex-1 resize-none bg-transparent text-lg leading-[1.4] text-foreground outline-none placeholder:text-muted-foreground lg:text-sm"
                 style={{ maxHeight: 120, paddingTop: 7, paddingBottom: 7 }}
               />
               <button
                 type="button"
-                onClick={magic}
-                disabled={drafting}
-                title="Atlas rédige pour toi"
-                aria-label="Atlas rédige pour toi"
-                className="mb-[5px] flex size-9 shrink-0 items-center justify-center rounded-full text-primary transition-colors active:bg-primary/10 disabled:opacity-60"
-              >
-                {drafting ? <Loader2 className="size-[17px] animate-spin" /> : <Sparkles className="size-[17px] stroke-[1.5]" />}
-              </button>
-              <button
-                type="button"
-                onClick={send}
+                onClick={ask}
                 disabled={!draft.trim() || drafting}
                 className="mb-[5px] flex size-9 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-sm transition-opacity hover:opacity-90 disabled:opacity-40"
               >
