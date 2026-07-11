@@ -1,8 +1,8 @@
 'use client'
 
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
+import { AppHeader } from '@/components/app-header'
 import { Card } from '@/components/card'
 import {
   Settings, Bell, Briefcase, Link2, Users, Lock, KeyRound,
@@ -110,8 +110,6 @@ function AccountBody() {
 }
 
 export default function SettingsPage() {
-  const router = useRouter()
-
   return (
     <>
       {/* MOBILE ONLY — full screen overlay */}
@@ -119,20 +117,7 @@ export default function SettingsPage() {
         className="lg:hidden fixed inset-0 z-[60] mx-auto max-w-[480px] bg-background overflow-y-auto animate-slide-in-right"
         style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
       >
-        <div
-          className="sticky top-0 z-10 flex items-center justify-between bg-background/90 px-4 py-3 backdrop-blur"
-          style={{ paddingTop: 'max(0.75rem, env(safe-area-inset-top))' }}
-        >
-          <div className="size-9" />
-          <h1 className="text-lg font-semibold text-foreground">Ton compte</h1>
-          <button
-            type="button"
-            onClick={() => router.back()}
-            className="px-1 py-2 text-base font-semibold text-primary active:opacity-70"
-          >
-            Terminé
-          </button>
-        </div>
+        <AppHeader title="Ton compte" back showActions={false} />
         <div className="space-y-5 px-4 pt-3 pb-8">
           <AccountBody />
         </div>
