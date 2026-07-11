@@ -144,10 +144,16 @@ export function MobileDrawer() {
                 key={a.href}
                 type="button"
                 onClick={() => go(a.href)}
-                className="flex min-w-[128px] items-center gap-2.5 rounded-xl px-3.5 py-2.5 active:opacity-80"
-                style={{ background: `${a.color}1F` }}
+                className="flex min-w-[132px] items-center gap-2.5 rounded-2xl px-3.5 py-2.5 transition-transform active:scale-[0.96]"
+                style={{
+                  background: `linear-gradient(135deg, ${a.color}2E, ${a.color}14)`,
+                  border: `1px solid ${a.color}3D`,
+                  boxShadow: `0 2px 10px ${a.color}1F, inset 0 1px 0 rgba(255,255,255,.35)`,
+                }}
               >
-                <Icon className="size-5 shrink-0" style={{ color: a.color }} />
+                <span className="grid size-7 shrink-0 place-items-center rounded-lg bg-white/70 shadow-sm dark:bg-white/10">
+                  <Icon className="size-4" style={{ color: a.color }} />
+                </span>
                 <span className="text-base font-semibold" style={{ color: a.color }}>{a.label}</span>
               </button>
             )
