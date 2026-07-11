@@ -1,4 +1,4 @@
-import { AccessToken } from 'livekit-server-sdk'
+import { AccessToken, RoomAgentDispatch, RoomConfiguration } from 'livekit-server-sdk'
 import { NextRequest, NextResponse } from 'next/server'
 import { getToken } from 'next-auth/jwt'
 import { db } from '@/lib/db'
@@ -51,6 +51,11 @@ export async function POST(req: NextRequest) {
     { identity: userId, metadata: JSON.stringify({ color, scenario }) },
   )
   at.addGrant({ roomJoin: true, room: roomName, canPublish: true, canSubscribe: true })
+  // DISPATCH EXPLICITE : l'agent est enregistré sous un nom (aria-simulator) → LiveKit
+  // ne l'envoie dans la room QUE si on le demande. Sans ce bloc, la room reste muette.
+  at.roomConfig = new RoomConfiguration({
+    agents: [new RoomAgentDispatch({ agentName: 'aria-simulator', metadata: JSON.stringify({ color, scenario }) })],
+  })
 
   return NextResponse.json({
     token: await at.toJwt(),
