@@ -485,6 +485,72 @@ export default function ContactDetailPage({ params }: { params: Promise<{ id: st
       </div>
 
       <div className="flex flex-col gap-4 px-4 pb-24 pt-2">
+        {/* Prochain pas — simplifié, à la charte (carte standard, accent Atlas discret) */}
+        {nextStep && (
+          <div className="rounded-2xl border border-border bg-surface p-4">
+            <p className="mb-1 text-xs font-bold uppercase tracking-widest text-muted-foreground">Prochain pas</p>
+            <p className="text-base font-bold text-foreground">{nextStep.headline}</p>
+            <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">{nextStep.reason}</p>
+            {nextStep.action === 'MESSAGE' && nextStep.channel && (
+              <button type="button" onClick={() => setCompose({ channel: nextStep.channel!, label: CHANNEL_LABEL[nextStep.channel!] ?? 'Message', auto: true })}
+                className="mt-3 flex w-full items-center justify-center gap-1.5 rounded-xl bg-primary py-2.5 text-xs font-bold text-primary-foreground active:opacity-90">
+                Voir le message
+              </button>
+            )}
+            {nextStep.action === 'EDIT' && (
+              <button type="button" onClick={() => { setPfOpen((o) => ({ ...o, details: true })); window.scrollTo({ top: 0, behavior: 'smooth' }) }} className="mt-3 flex w-full items-center justify-center gap-1.5 rounded-xl bg-primary py-2.5 text-xs font-bold text-primary-foreground active:opacity-90">Compléter la fiche</button>
+            )}
+          </div>
+        )}
+
+        {/* Actions rapides (branchées à la prochaine étape : appel/message/email/SMS) */}
+        <div className="grid grid-cols-4 gap-2">
+          {[
+            { type: 'APPEL', label: 'Appel', icon: PhoneCall, href: c.phone ? `tel:${c.phone}` : '', err: 'Aucun numéro', external: false },
+            { type: 'SMS', label: 'SMS', icon: MessageSquare, href: c.phone ? `sms:${c.phone}` : '', err: 'Aucun numéro', external: false },
+            { type: 'WHATSAPP', label: 'WhatsApp', icon: MessageCircle, href: c.phone ? `https://wa.me/${c.phone.replace(/[^0-9]/g, '')}` : '', err: 'Aucun numéro', external: true },
+            { type: 'EMAIL', label: 'Email', icon: Mail, href: c.email ? `mailto:${c.email}` : '', err: 'Aucun email', external: false },
+          ].map((t) => (
+            <button key={t.type} type="button"
+              onClick={() => {
+                if (t.type === 'APPEL') { if (!c.phone) { toast.error('Aucun numéro'); return } window.location.href = `tel:${c.phone}`; setConfirm({ type: 'APPEL', label: 'Appel' }); return }
+                if (t.type === 'EMAIL' ? !c.email : !c.phone) { toast.error(t.err); return }
+                setCompose({ channel: t.type, label: t.label })
+              }}
+              className="flex flex-col items-center gap-1.5 rounded-2xl border border-border bg-surface py-3 active:bg-muted">
+              <t.icon className="size-5 stroke-[1.5] text-primary" />
+              <span className="text-xs font-medium text-foreground">{t.label}</span>
+            </button>
+          ))}
+        </div>
+        {/* Rangée secondaire compacte : planifier / relancer / répéter avec Aria */}
+        <div className="grid grid-cols-3 gap-2">
+          <button type="button" onClick={() => setSchedule('rdv')} className="flex flex-col items-center gap-1.5 rounded-2xl border border-border bg-surface py-3 active:bg-muted"><CalendarPlus className="size-5 stroke-[1.5] text-primary" /><span className="text-xs font-medium text-foreground">RDV</span></button>
+          <button type="button" onClick={() => setSchedule('relance')} className="flex flex-col items-center gap-1.5 rounded-2xl border border-border bg-surface py-3 active:bg-muted"><Bell className="size-5 stroke-[1.5] text-primary" /><span className="text-xs font-medium text-foreground">Relance</span></button>
+          <button type="button" onClick={() => router.push(`/aria?contact=${c.id}`)} className="flex flex-col items-center gap-1.5 rounded-2xl bg-[#14B8A6]/10 py-3 active:bg-[#14B8A6]/20"><Mic className="size-5 stroke-[1.5] text-[#14B8A6]" /><span className="text-xs font-medium text-[#14B8A6]">Aria</span></button>
+        </div>
+
+        {/* Ce qu'Atlas retient — bloc mémoire auto-édité (MemGPT-style), éditable/corrigeable */}
+        <div className="rounded-2xl border border-border bg-surface p-4">
+          <div className="mb-1 flex items-center justify-between gap-2">
+            <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">À retenir</p>
+            {memEditing ? (
+              <button type="button" onClick={() => { save({ atlasMemory: memDraft.trim() }, 'Mémoire mise à jour'); setMemEditing(false) }} className="rounded-lg bg-primary px-3 py-1 text-xs font-bold text-primary-foreground">Enregistrer</button>
+            ) : (
+              <button type="button" onClick={() => { setMemDraft(c.atlasMemory ?? ''); setMemEditing(true) }} className="text-xs font-medium text-primary"><Pencil className="mr-1 inline size-3" />{c.atlasMemory ? 'Corriger' : 'Ajouter une note'}</button>
+            )}
+          </div>
+          {memEditing ? (
+            <textarea value={memDraft} onChange={(e) => setMemDraft(e.target.value)} rows={4} autoFocus placeholder="Ce qu'Atlas doit retenir de ce contact… (vide = effacer)" className="w-full resize-none bg-transparent text-sm leading-relaxed text-foreground outline-none placeholder:text-muted-foreground" />
+          ) : c.atlasMemory ? (
+            <p className="whitespace-pre-line text-sm leading-relaxed text-muted-foreground">{c.atlasMemory}</p>
+          ) : (
+            <p className="text-sm leading-relaxed text-muted-foreground">Rien pour l'instant. Atlas remplit ce bloc au fil de vos échanges, et tu peux noter toi-même l'essentiel.</p>
+          )}
+        </div>
+
+        {/* Suivi (Source/Tags) retiré : Source → snapshot Atlas · Dernier contact → signal du haut · Tags → coupés */}
+
         {/* Curseur d'étape — un seul tunnel (opportunité) : prospect, partenaire, OU client re-sollicité */}
         {showOppCursor && (
           <StageCursor
@@ -519,72 +585,6 @@ export default function ContactDetailPage({ params }: { params: Promise<{ id: st
         <p className="text-xs text-muted-foreground">
           dernier contact : <span className="font-medium text-foreground">{c.lastContact ? new Date(c.lastContact).toLocaleDateString('fr-FR') : 'jamais'}</span>
         </p>
-        {/* Prochain pas — simplifié, à la charte (carte standard, accent Atlas discret) */}
-        {nextStep && (
-          <div className="rounded-2xl border border-border bg-surface p-4">
-            <p className="mb-1 text-xs font-bold uppercase tracking-widest text-muted-foreground">Prochain pas</p>
-            <p className="text-base font-bold text-foreground">{nextStep.headline}</p>
-            <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">{nextStep.reason}</p>
-            {nextStep.action === 'MESSAGE' && nextStep.channel && (
-              <button type="button" onClick={() => setCompose({ channel: nextStep.channel!, label: CHANNEL_LABEL[nextStep.channel!] ?? 'Message', auto: true })}
-                className="mt-3 flex w-full items-center justify-center gap-1.5 rounded-xl bg-primary py-2.5 text-xs font-bold text-primary-foreground active:opacity-90">
-                Voir le message
-              </button>
-            )}
-            {nextStep.action === 'EDIT' && (
-              <button type="button" onClick={() => { setPfOpen((o) => ({ ...o, details: true })); window.scrollTo({ top: 0, behavior: 'smooth' }) }} className="mt-3 flex w-full items-center justify-center gap-1.5 rounded-xl bg-primary py-2.5 text-xs font-bold text-primary-foreground active:opacity-90">Compléter la fiche</button>
-            )}
-          </div>
-        )}
-
-        {/* Ce qu'Atlas retient — bloc mémoire auto-édité (MemGPT-style), éditable/corrigeable */}
-        <div className="rounded-2xl border border-border bg-surface p-4">
-          <div className="mb-1 flex items-center justify-between gap-2">
-            <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">À retenir</p>
-            {memEditing ? (
-              <button type="button" onClick={() => { save({ atlasMemory: memDraft.trim() }, 'Mémoire mise à jour'); setMemEditing(false) }} className="rounded-lg bg-primary px-3 py-1 text-xs font-bold text-primary-foreground">Enregistrer</button>
-            ) : (
-              <button type="button" onClick={() => { setMemDraft(c.atlasMemory ?? ''); setMemEditing(true) }} className="text-xs font-medium text-primary"><Pencil className="mr-1 inline size-3" />{c.atlasMemory ? 'Corriger' : 'Ajouter une note'}</button>
-            )}
-          </div>
-          {memEditing ? (
-            <textarea value={memDraft} onChange={(e) => setMemDraft(e.target.value)} rows={4} autoFocus placeholder="Ce qu'Atlas doit retenir de ce contact… (vide = effacer)" className="w-full resize-none bg-transparent text-sm leading-relaxed text-foreground outline-none placeholder:text-muted-foreground" />
-          ) : c.atlasMemory ? (
-            <p className="whitespace-pre-line text-sm leading-relaxed text-muted-foreground">{c.atlasMemory}</p>
-          ) : (
-            <p className="text-sm leading-relaxed text-muted-foreground">Rien pour l'instant. Atlas remplit ce bloc au fil de vos échanges, et tu peux noter toi-même l'essentiel.</p>
-          )}
-        </div>
-
-        {/* Actions rapides (branchées à la prochaine étape : appel/message/email/SMS) */}
-        <div className="grid grid-cols-4 gap-2">
-          {[
-            { type: 'APPEL', label: 'Appel', icon: PhoneCall, href: c.phone ? `tel:${c.phone}` : '', err: 'Aucun numéro', external: false },
-            { type: 'SMS', label: 'SMS', icon: MessageSquare, href: c.phone ? `sms:${c.phone}` : '', err: 'Aucun numéro', external: false },
-            { type: 'WHATSAPP', label: 'WhatsApp', icon: MessageCircle, href: c.phone ? `https://wa.me/${c.phone.replace(/[^0-9]/g, '')}` : '', err: 'Aucun numéro', external: true },
-            { type: 'EMAIL', label: 'Email', icon: Mail, href: c.email ? `mailto:${c.email}` : '', err: 'Aucun email', external: false },
-          ].map((t) => (
-            <button key={t.type} type="button"
-              onClick={() => {
-                if (t.type === 'APPEL') { if (!c.phone) { toast.error('Aucun numéro'); return } window.location.href = `tel:${c.phone}`; setConfirm({ type: 'APPEL', label: 'Appel' }); return }
-                if (t.type === 'EMAIL' ? !c.email : !c.phone) { toast.error(t.err); return }
-                setCompose({ channel: t.type, label: t.label })
-              }}
-              className="flex flex-col items-center gap-1.5 rounded-2xl border border-border bg-surface py-3 active:bg-muted">
-              <t.icon className="size-5 stroke-[1.5] text-primary" />
-              <span className="text-xs font-medium text-foreground">{t.label}</span>
-            </button>
-          ))}
-        </div>
-        {/* Rangée secondaire compacte : planifier / relancer / répéter avec Aria */}
-        <div className="grid grid-cols-3 gap-2">
-          <button type="button" onClick={() => setSchedule('rdv')} className="flex flex-col items-center gap-1.5 rounded-2xl border border-border bg-surface py-3 active:bg-muted"><CalendarPlus className="size-5 stroke-[1.5] text-primary" /><span className="text-xs font-medium text-foreground">RDV</span></button>
-          <button type="button" onClick={() => setSchedule('relance')} className="flex flex-col items-center gap-1.5 rounded-2xl border border-border bg-surface py-3 active:bg-muted"><Bell className="size-5 stroke-[1.5] text-primary" /><span className="text-xs font-medium text-foreground">Relance</span></button>
-          <button type="button" onClick={() => router.push(`/aria?contact=${c.id}`)} className="flex flex-col items-center gap-1.5 rounded-2xl bg-[#14B8A6]/10 py-3 active:bg-[#14B8A6]/20"><Mic className="size-5 stroke-[1.5] text-[#14B8A6]" /><span className="text-xs font-medium text-[#14B8A6]">Aria</span></button>
-        </div>
-
-
-        {/* Suivi (Source/Tags) retiré : Source → snapshot Atlas · Dernier contact → signal du haut · Tags → coupés */}
 
         {/* ÉCHANGES AVEC ATLAS — conversations passées sur ce contact (rouvrir dans le composeur) */}
         {contactConvs.length > 0 && (

@@ -3,7 +3,7 @@
 import { createPortal } from 'react-dom'
 import { usePathname, useRouter } from 'next/navigation'
 import { useState, useEffect, useRef } from 'react'
-import { ChevronDown, Sparkles, Check, Plus, Bell } from 'lucide-react'
+import { ChevronDown, Check, Plus, Bell } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useOverlay } from '@/components/overlay-provider'
 import { useBusiness } from '@/components/business-provider'
@@ -134,7 +134,7 @@ export function MobileDrawer() {
         </nav>
 
         {/* Switcher MLM — EN BAS du tiroir (façon « espace de travail »), la liste s'ouvre vers le haut */}
-        <div className="border-t border-border px-2 pt-2">
+        <div className={cn('border-t border-border px-2', bizOpen && 'pt-2')}>
           {bizOpen && (
             <div className="px-1 pb-1">
               {all.map((b) => {
@@ -167,29 +167,21 @@ export function MobileDrawer() {
               </button>
             </div>
           )}
-          <button type="button" onClick={() => setBizOpen((o) => !o)} className="flex w-full items-center gap-3 rounded-xl px-3 py-2">
+        </div>
+
+        {/* Barre du bas — switcher MLM à gauche (Atlas est déjà partout : accueil + composeur) */}
+        <div
+          className="flex items-center justify-between gap-3 px-3 pt-1"
+          style={{ paddingBottom: 'max(20px, env(safe-area-inset-bottom))' }}
+        >
+          <button type="button" onClick={() => setBizOpen((o) => !o)} className="flex min-w-0 flex-1 items-center gap-3 rounded-xl px-1 py-2 text-left">
             <span className="grid size-9 shrink-0 place-items-center rounded-full text-sm font-bold text-white" style={{ backgroundColor: current.color }}>
               {current.initials || current.name?.charAt(0).toUpperCase()}
             </span>
-            <span className="min-w-0 flex-1 truncate text-left text-base font-bold text-foreground">{current.name}</span>
+            <span className="min-w-0 flex-1 truncate text-base font-bold text-foreground">{current.name}</span>
             <ChevronDown className={cn('size-5 shrink-0 text-muted-foreground transition-transform', bizOpen ? 'rotate-0' : 'rotate-180')} />
           </button>
-        </div>
-
-        {/* Barre du bas — alignée sur le composeur : bas 20px, marges 16px, pill 51px */}
-        <div
-          className="flex items-center justify-between gap-3 px-4 pt-2"
-          style={{ paddingBottom: 'max(20px, env(safe-area-inset-bottom))' }}
-        >
-          <button
-            type="button"
-            onClick={() => go('/atlas')}
-            className="flex h-[51px] items-center gap-2 rounded-full bg-primary pl-4 pr-5 text-primary-foreground shadow-sm active:opacity-90 transition-opacity"
-          >
-            <Sparkles className="size-5 stroke-[1.5]" />
-            <span className="text-base font-semibold">Atlas</span>
-          </button>
-          <div className="flex items-center gap-2">
+          <div className="flex shrink-0 items-center gap-2">
             <button
               type="button"
               onClick={() => go('/notifications')}
