@@ -189,42 +189,18 @@ export function MobileDrawer() {
           })}
         </nav>
 
-        {/* Les 3 agents — rectangles icône + nom, en bas à DROITE (zone du pouce).
-            Le nom règle la découvrabilité, le rectangle agrandit la cible, le retrait
-            (px-3) éloigne du bord droit qui ferme le tiroir. */}
-        <div className="flex flex-col items-end gap-2 px-3 pb-3">
-          {/* De bas en haut : Atlas, Aria, Nova — le plus utilisé au plus près du pouce */}
-          {[...AGENTS].reverse().map((a) => {
-            const Icon = a.icon
-            return (
-              <button
-                key={a.href}
-                type="button"
-                onClick={() => go(a.href)}
-                className="flex min-w-[132px] items-center gap-2.5 rounded-xl px-4 py-2.5 transition-all active:translate-y-px active:brightness-95"
-                style={{
-                  // Mat et plein, façon bouton primaire Linear : couleur franche, reflet discret, ombre neutre serrée
-                  background: `linear-gradient(180deg, rgba(255,255,255,.14), rgba(255,255,255,0) 55%), ${a.color}`,
-                  boxShadow: '0 1px 2px rgba(0,0,0,.2), inset 0 1px 0 rgba(255,255,255,.22)',
-                }}
-              >
-                <Icon className="size-5 shrink-0 text-white" />
-                <span className="text-base font-semibold text-white">{a.label}</span>
-              </button>
-            )
-          })}
-        </div>
-
-        {/* Barre du bas — identité globale : l'avatar profil seul (→ Ton compte). Sans trait : la zone respire. */}
+        {/* Zone du bas — UNE rangée alignée par le bas : avatar (identité) à gauche, pile
+            d'agents à droite. Calée sur la ligne du composeur de la page derrière :
+            même bas (max(20px, safe-area) + 3.5px) → centres avatar/Atlas/envoyer alignés. */}
         <div
-          className="flex items-center gap-2 px-3 pt-1"
-          style={{ paddingBottom: 'max(20px, env(safe-area-inset-bottom))' }}
+          className="flex items-end justify-between px-3 pt-1"
+          style={{ paddingBottom: 'max(23.5px, calc(env(safe-area-inset-bottom) + 3.5px))' }}
         >
           <button
             type="button"
             onClick={() => go('/settings')}
             aria-label="Mon compte"
-            className="size-9 shrink-0 overflow-hidden rounded-full ring-2 ring-primary/60 active:opacity-90 transition-opacity"
+            className="mb-1 size-9 shrink-0 overflow-hidden rounded-full ring-2 ring-primary/60 active:opacity-90 transition-opacity"
           >
             {account.photoUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
@@ -233,6 +209,29 @@ export function MobileDrawer() {
               <span className="grid size-full place-items-center bg-[#3B82F6] text-sm font-medium text-white">{account.initials || 'A'}</span>
             )}
           </button>
+
+          {/* Les 3 agents — rectangles icône + nom, zone du pouce, de bas en haut : Atlas, Aria, Nova */}
+          <div className="flex flex-col items-end gap-2">
+            {[...AGENTS].reverse().map((a) => {
+              const Icon = a.icon
+              return (
+                <button
+                  key={a.href}
+                  type="button"
+                  onClick={() => go(a.href)}
+                  className="flex min-w-[132px] items-center gap-2.5 rounded-xl px-4 py-2.5 transition-all active:translate-y-px active:brightness-95"
+                  style={{
+                    // Mat et plein, façon bouton primaire Linear : couleur franche, reflet discret, ombre neutre serrée
+                    background: `linear-gradient(180deg, rgba(255,255,255,.14), rgba(255,255,255,0) 55%), ${a.color}`,
+                    boxShadow: '0 1px 2px rgba(0,0,0,.2), inset 0 1px 0 rgba(255,255,255,.22)',
+                  }}
+                >
+                  <Icon className="size-5 shrink-0 text-white" />
+                  <span className="text-base font-semibold text-white">{a.label}</span>
+                </button>
+              )
+            })}
+          </div>
         </div>
       </div>
     </div>,
