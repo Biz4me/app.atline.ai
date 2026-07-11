@@ -61,46 +61,91 @@ export async function contactFactLines(userId: string, contactId: string): Promi
   }
 }
 
-// Réconciliation déterministe (style Memory Kernel, sans arbitre LLM pour l'instant).
+// Forme canonique d'un libellé : minuscules, espaces (jamais d'underscores/mots collés),
+// ponctuation légère retirée — le match exact attrape ainsi la plupart des reformulations.
+export function normalizeObject(raw: string): string {
+  return raw
+    .replace(/_/g, ' ')
+    .replace(/\s+/g, ' ')
+    .replace(/[«»"']/g, '')
+    .trim()
+    .toLowerCase()
+    .slice(0, 120)
+}
+
+// Arbitre LLM (pattern jarvis) : appelé UNIQUEMENT sur l'ambigu — même (predicate, category),
+// objet différent. « same » = même concept reformulé. En échec/doute → different (prudence).
+async function arbitrate(predicate: string, category: string, existingObject: string, newObject: string): Promise<'same' | 'different'> {
+  try {
+    const r = await fetch(`${ATLAS_URL}/api/atlas/arbitrate`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ predicate, category, existing_object: existingObject, new_object: newObject }),
+      signal: AbortSignal.timeout(8000),
+    })
+    if (!r.ok) return 'different'
+    const d = await r.json()
+    return d?.verdict === 'same' ? 'same' : 'different'
+  } catch {
+    return 'different'
+  }
+}
+
+// Réconciliation : déterministe d'abord (match exact normalisé), arbitre LLM sur l'ambigu.
 export async function reconcileFacts(userId: string, contactId: string | null, facts: ExtractedFact[]) {
   for (const f of facts) {
-    const object = (f.object || '').trim()
+    const object = normalizeObject(f.object || '')
     if (!object || !f.predicate || !f.category) continue
     try {
       const existing = await db.atlasFact.findFirst({
         where: { userId, contactId, predicate: f.predicate, category: f.category, status: 'active' },
         orderBy: { lastSeenAt: 'desc' },
       })
-      if (existing && existing.object.trim().toLowerCase() === object.toLowerCase()) {
-        // Ré-observation compatible → renforce la confiance
-        await db.atlasFact.update({
-          where: { id: existing.id },
+
+      const confirm = async (id: string, cur: { confidence: number; importance: number }) =>
+        db.atlasFact.update({
+          where: { id },
           data: {
-            confidence: Math.min(existing.confidence + 0.05, 0.99),
+            confidence: Math.min(cur.confidence + 0.05, 0.99),
             supportCount: { increment: 1 },
             lastSeenAt: new Date(),
-            importance: Math.max(existing.importance, f.importance ?? 0),
+            importance: Math.max(cur.importance, f.importance ?? 0),
           },
         })
-      } else if (existing && STABLE_CATEGORIES.has(f.category)) {
-        // Contradiction sur catégorie stable → supersession traçable (jamais de DELETE)
-        const neu = await db.atlasFact.create({
+      const create = () =>
+        db.atlasFact.create({
           data: {
             userId, contactId, predicate: f.predicate, object, category: f.category,
             importance: f.importance ?? 0.5, confidence: f.confidence ?? 0.75,
           },
         })
+
+      if (!existing) {
+        await create()
+        continue
+      }
+      if (normalizeObject(existing.object) === object) {
+        // Ré-observation identique → renforce la confiance
+        await confirm(existing.id, existing)
+        continue
+      }
+      // Ambigu : même (predicate, category), objet différent → l'arbitre tranche
+      const verdict = await arbitrate(f.predicate, f.category, existing.object, object)
+      if (verdict === 'same') {
+        // Même concept reformulé → confirmation (et on garde le libellé le plus court = plus canonique)
+        await confirm(existing.id, existing)
+        if (object.length < existing.object.length) {
+          await db.atlasFact.update({ where: { id: existing.id }, data: { object } })
+        }
+      } else if (STABLE_CATEGORIES.has(f.category)) {
+        // Vraie contradiction sur catégorie stable → supersession traçable (jamais de DELETE)
+        const neu = await create()
         await db.atlasFact.update({
           where: { id: existing.id },
           data: { status: 'superseded', supersededById: neu.id },
         })
       } else {
-        await db.atlasFact.create({
-          data: {
-            userId, contactId, predicate: f.predicate, object, category: f.category,
-            importance: f.importance ?? 0.5, confidence: f.confidence ?? 0.75,
-          },
-        })
+        await create()
       }
     } catch {
       /* un fait raté ne bloque pas les autres */
