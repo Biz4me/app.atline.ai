@@ -144,15 +144,15 @@ export function MobileDrawer() {
                 key={a.href}
                 type="button"
                 onClick={() => go(a.href)}
-                className="flex min-w-[132px] items-center gap-2.5 rounded-2xl px-4 py-2.5 transition-all active:translate-y-[2px] active:shadow-none"
+                className="flex min-w-[132px] items-center gap-2.5 rounded-xl px-4 py-2.5 transition-all active:translate-y-px active:brightness-95"
                 style={{
-                  // Bouton « physique » : reflet convexe en haut, assise sombre en bas, ombre colorée
-                  background: `linear-gradient(180deg, rgba(255,255,255,.32), rgba(255,255,255,0) 48%), linear-gradient(0deg, rgba(0,0,0,.16), rgba(0,0,0,0) 42%), ${a.color}`,
-                  boxShadow: `0 5px 14px ${a.color}5C, inset 0 1px 0 rgba(255,255,255,.5), inset 0 -2px 3px rgba(0,0,0,.2)`,
+                  // Mat et plein, façon bouton primaire Linear : couleur franche, reflet discret, ombre neutre serrée
+                  background: `linear-gradient(180deg, rgba(255,255,255,.14), rgba(255,255,255,0) 55%), ${a.color}`,
+                  boxShadow: '0 1px 2px rgba(0,0,0,.2), inset 0 1px 0 rgba(255,255,255,.22)',
                 }}
               >
-                <Icon className="size-5 shrink-0 text-white drop-shadow-[0_1px_1px_rgba(0,0,0,.25)]" />
-                <span className="text-base font-bold text-white drop-shadow-[0_1px_1px_rgba(0,0,0,.25)]">{a.label}</span>
+                <Icon className="size-5 shrink-0 text-white" />
+                <span className="text-base font-semibold text-white">{a.label}</span>
               </button>
             )
           })}
