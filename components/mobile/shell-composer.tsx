@@ -29,8 +29,9 @@ export function ShellComposer() {
 
   // La page Atlas rend son propre composeur (câblé au chat)
   if (pathname === '/atlas' || pathname.startsWith('/atlas/')) return null
-  // Nova = environnement agent (cockpit campagnes + wizard), pas de composeur Atlas ici
+  // Aria/Nova = expériences lancées (simulateur, cockpit campagnes) : « Écris à Atlas » y est un intrus
   if (pathname === '/nova' || pathname.startsWith('/nova/')) return null
+  if (pathname === '/aria' || pathname.startsWith('/aria/')) return null
 
   const scrollDown = () => setTimeout(() => scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' }), 60)
 

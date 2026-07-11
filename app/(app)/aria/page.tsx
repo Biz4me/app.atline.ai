@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { ChevronLeft, Mic, Search, X, Phone, PhoneOff, Pause, ChevronRight, MessageSquare, SendHorizontal, Loader2 } from 'lucide-react'
+import { SelectMenu } from '@/components/select-menu'
 import { cn } from '@/lib/utils'
 import { Room, RoomEvent, Track } from 'livekit-client'
 
@@ -31,6 +32,15 @@ const PHASE_PARAMS: Record<Phase, { phase: string; scenario: string; knowledge: 
   'Suivi': { phase: 'suivi', scenario: 'suivi_j3', knowledge: 'A_UN_AVIS' },
   'Démarrage': { phase: 'demarrage', scenario: 'demarrage_filleul', knowledge: 'JAMAIS_FAIT' },
   'Coaching': { phase: 'coaching', scenario: 'filleul_inactif', knowledge: 'JAMAIS_FAIT' },
+}
+
+// Le contact choisi PRÉ-SÉLECTIONNE la phase selon son stade dans le tunnel
+// (une décision de moins) — modifiable d'un tap ensuite.
+const phaseForStage = (stage: string): Phase => {
+  if (stage === 'nouveau') return 'Invitation'
+  if (stage === 'closing') return 'Démarrage'
+  if (stage === 'partenaire') return 'Coaching'
+  return 'Suivi' // prospect, client
 }
 
 function simParams(contact: SimContact, phase: Phase, chosen = 'auto') {
@@ -98,6 +108,8 @@ function SetupScreen({
   // Bibliothèque de scénarios (partagée avec l'agent vocal, éditable en admin)
   const [scenarios, setScenarios] = useState<{ id: string; label: string; phase: string }[]>([])
   const [scenario, setScenario] = useState('auto')
+  // Progression réelle (nb d'entraînements + moyenne 30 j) — mêmes stats que le tableau de bord
+  const [stats, setStats] = useState<{ simCount: number; ariaScore: number | null } | null>(null)
   useEffect(() => {
     fetch('/api/aria/sessions/last')
       .then((r) => (r.ok ? r.json() : null))
@@ -107,9 +119,36 @@ function SetupScreen({
       .then((r) => (r.ok ? r.json() : null))
       .then((d) => setScenarios(d?.scenarios ?? []))
       .catch(() => {})
+    fetch('/api/home/stats')
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => { if (d) setStats({ simCount: d.simCount ?? 0, ariaScore: d.ariaScore ?? null }) })
+      .catch(() => {})
   }, [])
-  // Changer de phase réinitialise le scénario (la liste filtrée change)
-  useEffect(() => { setScenario('auto') }, [phase])
+  // Changer de phase réinitialise le scénario (la liste filtrée change) — sauf juste après « Rejouer »
+  const skipResetRef = useRef(false)
+  useEffect(() => {
+    if (skipResetRef.current) { skipResetRef.current = false; return }
+    setScenario('auto')
+  }, [phase])
+
+  // Choisir un contact = la phase se règle toute seule sur son stade (si pas de scénario explicite)
+  const pick = (c: SimContact) => {
+    setSelected(c)
+    setDropdownOpen(false)
+    setQuery('')
+    if (scenario === 'auto') setPhase(phaseForStage(c.stage))
+  }
+
+  // « Rejouer » : re-sélectionne le scénario ET sa phase du dernier entraînement (1 tap)
+  const replay = () => {
+    if (!lastSim) return
+    const s = scenarios.find((x) => x.id === lastSim.scenario)
+    if (s) {
+      const ph = (Object.keys(PHASE_PARAMS) as Phase[]).find((k) => PHASE_PARAMS[k].phase === s.phase)
+      if (ph && ph !== phase) { skipResetRef.current = true; setPhase(ph) }
+    }
+    setScenario(lastSim.scenario)
+  }
 
   const filtered = query
     ? contacts.filter((c) =>
@@ -119,71 +158,47 @@ function SetupScreen({
 
   return (
     <div className="flex min-h-dvh flex-col bg-background">
-      <header
-        className="sticky top-0 z-30 flex items-center gap-3 bg-background/90 px-4 pt-[max(0.75rem,env(safe-area-inset-top))] pb-3 backdrop-blur lg:px-6 lg:py-0 lg:h-[68px]"
-      >
-        <button
-          type="button"
-          onClick={() => router.back()}
-          className="-ml-1 flex size-9 items-center justify-center rounded-full text-muted-foreground active:bg-muted lg:hidden"
-        >
-          <ChevronLeft className="size-5 stroke-[1.5]" />
-        </button>
+      {/* Desktop uniquement : le mobile a déjà « Aria » teinté dans le top bar global (plus de double en-tête) */}
+      <header className="sticky top-0 z-30 hidden lg:flex items-center gap-3 bg-background/90 backdrop-blur lg:px-6 lg:py-0 lg:h-[68px]">
         <span
-          className="hidden lg:flex size-9 shrink-0 items-center justify-center rounded-[11px] text-white shadow-sm"
+          className="flex size-9 shrink-0 items-center justify-center rounded-[11px] text-white shadow-sm"
           style={{ backgroundColor: '#14B8A6' }}
         >
           <Mic className="size-[18px] stroke-[1.5]" />
         </span>
-        <h1 className="flex-1 font-display text-lg font-bold text-foreground lg:text-2xl">Aria</h1>
+        <h1 className="flex-1 font-display text-2xl font-bold text-foreground">Aria</h1>
       </header>
 
       <div className="flex flex-col gap-6 px-4 pt-5 pb-10 lg:px-8 lg:max-w-2xl lg:mx-auto">
         <div className="rounded-2xl border border-border bg-surface p-5">
-          <div className="mb-5 flex items-center gap-3">
-            <span className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-primary/10">
-              <Mic className="size-5 stroke-[1.5] text-primary" />
-            </span>
-            <div>
-              <p className="text-sm font-bold text-foreground">Simulateur vocal Aria</p>
-              <p className="text-xs text-muted-foreground">Entraîne-toi face à un prospect IA</p>
-            </div>
-          </div>
-
+          {/* Reprendre là où tu en étais — score réel + rejouer en 1 tap (jamais de jargon technique) */}
           {lastSim && (
-            <div className="mb-4 flex items-start gap-2.5 rounded-2xl border border-primary/30 bg-primary/5 p-3.5">
-              <span className="flex size-8 shrink-0 items-center justify-center rounded-xl bg-primary/10">
-                <span className="font-display text-sm font-bold text-primary">A</span>
-              </span>
-              <div className="min-w-0">
-                <p className="text-xs font-bold text-foreground">
-                  Dernier entraînement : {lastSim.score}/100 · {lastSim.scenario.replace(/_/g, ' ')}
-                </p>
-                {lastSim.reco && <p className="mt-0.5 text-xs text-muted-foreground text-pretty">{lastSim.reco}</p>}
-              </div>
-            </div>
-          )}
-
-          <p className="mb-2.5 text-xs font-bold text-foreground">Phase</p>
-          <div className="mb-5 flex flex-wrap gap-2">
-            {phases.map((p) => (
+            <div className="mb-4 rounded-2xl border border-[#14B8A6]/30 bg-[#14B8A6]/5 p-3.5">
+              <p className="text-xs font-bold text-foreground">
+                Dernier entraînement : {lastSim.score}/100
+                {(() => { const l = scenarios.find((s) => s.id === lastSim.scenario)?.label; return l ? ` · ${l}` : '' })()}
+              </p>
+              <p className="mt-0.5 text-xs text-muted-foreground">Rejoue ce scénario et bats ton score.</p>
               <button
-                key={p}
                 type="button"
-                onClick={() => setPhase(p)}
+                onClick={replay}
                 className={cn(
-                  'rounded-full px-3.5 py-1.5 text-xs font-semibold transition-colors',
-                  phase === p
-                    ? 'bg-primary/15 text-primary border border-primary/30'
-                    : 'border border-border bg-surface text-muted-foreground'
+                  'mt-2.5 rounded-full px-3.5 py-1.5 text-xs font-bold transition-colors',
+                  scenario === lastSim.scenario ? 'bg-[#14B8A6] text-white' : 'bg-[#14B8A6]/15 text-[#14B8A6]',
                 )}
               >
-                {p}
+                {scenario === lastSim.scenario ? 'Scénario prêt ✓' : 'Rejouer ce scénario'}
               </button>
-            ))}
-          </div>
+            </div>
+          )}
+          {/* Progression réelle, discrète */}
+          {stats && stats.simCount > 0 && (
+            <p className="mb-4 text-xs text-muted-foreground">
+              {stats.simCount} entraînement{stats.simCount > 1 ? 's' : ''}{stats.ariaScore != null ? ` · moyenne ${stats.ariaScore}/100 sur 30 jours` : ''}
+            </p>
+          )}
 
-          <p className="mb-2.5 text-xs font-bold text-foreground">Contact à simuler</p>
+          <p className="mb-2.5 text-xs font-bold text-foreground">Avec qui tu t&apos;entraînes ?</p>
 
           {selected ? (
             <div className="mb-4 flex items-center gap-3 rounded-xl border border-border bg-muted/50 p-3">
@@ -195,6 +210,9 @@ function SetupScreen({
                 <span className={cn('text-xs font-bold', stagePillColors[selected.stage])}>
                   {stageLabel[selected.stage]}
                 </span>
+                {selected.market && (
+                  <span className="text-xs text-muted-foreground"> · marché {selected.market.toLowerCase()}</span>
+                )}
               </div>
               <button type="button" onClick={() => { setSelected(null); setQuery('') }} className="text-muted-foreground">
                 <X className="size-4" />
@@ -219,11 +237,7 @@ function SetupScreen({
                     <button
                       key={c.id}
                       type="button"
-                      onMouseDown={() => {
-                        setSelected(c)
-                        setDropdownOpen(false)
-                        setQuery('')
-                      }}
+                      onMouseDown={() => pick(c)}
                       className="flex w-full items-center gap-3 px-3.5 py-2.5 text-left transition-colors active:bg-muted hover:bg-muted"
                     >
                       <span className={cn('flex size-8 shrink-0 items-center justify-center rounded-full text-xs font-bold text-white', stageAvatarBg[c.stage])}>
@@ -250,20 +264,40 @@ function SetupScreen({
             </p>
           )}
 
-          {/* Scénario précis (bibliothèque partagée, filtrée par phase) — Auto = mapping de la phase */}
-          <p className="mb-2.5 mt-1 text-xs font-bold text-foreground">Scénario</p>
-          <select
-            value={scenario}
-            onChange={(e) => setScenario(e.target.value)}
-            className="mb-4 w-full rounded-xl border border-border bg-surface px-3 py-2.5 text-sm text-foreground outline-none"
-          >
-            <option value="auto">Automatique (selon la phase)</option>
-            {scenarios
-              .filter((s) => s.phase === PHASE_PARAMS[phase].phase)
-              .map((s) => (
-                <option key={s.id} value={s.id}>{s.label}</option>
-              ))}
-          </select>
+          {/* Phase — pré-réglée par le stade du contact, modifiable d'un tap */}
+          <p className="mb-2.5 mt-1 text-xs font-bold text-foreground">Phase</p>
+          <div className="mb-4 flex flex-wrap gap-2">
+            {phases.map((p) => (
+              <button
+                key={p}
+                type="button"
+                onClick={() => setPhase(p)}
+                className={cn(
+                  'rounded-full px-3.5 py-1.5 text-xs font-semibold transition-colors',
+                  phase === p
+                    ? 'bg-primary/15 text-primary border border-primary/30'
+                    : 'border border-border bg-surface text-muted-foreground'
+                )}
+              >
+                {p}
+              </button>
+            ))}
+          </div>
+
+          {/* Scénario précis (bibliothèque partagée, filtrée par phase) — déroulant maison, Auto par défaut */}
+          <p className="mb-2.5 text-xs font-bold text-foreground">Scénario</p>
+          <div className="mb-4">
+            <SelectMenu
+              value={scenario}
+              onChange={setScenario}
+              placeholder="Scénario"
+              className="w-full rounded-xl border border-border bg-surface px-3 py-2.5 text-sm text-foreground"
+              options={[
+                { value: 'auto', label: 'Automatique (selon la phase)' },
+                ...scenarios.filter((s) => s.phase === PHASE_PARAMS[phase].phase).map((s) => ({ value: s.id, label: s.label })),
+              ]}
+            />
+          </div>
 
           <button
             type="button"
@@ -305,7 +339,7 @@ function SetupScreen({
                 <button
                   key={c.id}
                   type="button"
-                  onClick={() => setSelected(c)}
+                  onClick={() => pick(c)}
                   className="flex items-center gap-3 rounded-2xl border border-border bg-surface p-3.5 text-left transition-colors active:bg-muted"
                 >
                   <span className={cn('flex size-10 shrink-0 items-center justify-center rounded-full text-sm font-bold text-white', stageAvatarBg[c.stage] ?? 'bg-zinc-500')}>
