@@ -27,20 +27,23 @@ export function AppHeader({
       className="sticky top-0 z-30 flex items-center gap-3 bg-background/90 px-4 py-3 backdrop-blur lg:hidden"
       style={{ paddingTop: 'max(0.75rem, env(safe-area-inset-top))' }}
     >
-      {back && (
+      {back ? (
         <button
           type="button"
           onClick={() => router.back()}
           aria-label="Retour"
-          className="-ml-1 flex size-9 items-center justify-center rounded-full text-fg-2 transition-colors active:bg-muted"
+          className="-ml-1 flex size-9 shrink-0 items-center justify-center rounded-full text-fg-2 transition-colors active:bg-muted"
         >
           <ChevronLeft className="size-5 stroke-[1.5]" />
         </button>
+      ) : (
+        <div className="-ml-1 size-9 shrink-0" />
       )}
-      {/* Un seul gabarit de titre (Title 18) — le Display 32 était disproportionné pour des pages secondaires */}
-      <h1 className="flex-1 truncate text-lg font-semibold text-foreground">
+      {/* Un seul gabarit de titre (Title 18), CENTRÉ — les cales de chaque côté garantissent le centrage */}
+      <h1 className="flex-1 truncate text-center text-lg font-semibold text-foreground">
         {title}
       </h1>
+      {!showActions && <div className="-mr-1 size-9 shrink-0" />}
       {showActions && (
         <div className="flex items-center gap-1">
           {showNova && (
@@ -67,7 +70,6 @@ export function AppHeader({
             className="relative flex size-9 items-center justify-center rounded-full text-fg-2 transition-colors active:bg-muted"
           >
             <Bell className="size-5 stroke-[1.5]" />
-            <span className="absolute right-1.5 top-1.5 size-2 rounded-full bg-primary ring-2 ring-background" />
           </Link>
           {/* Messages */}
           <Link
@@ -76,7 +78,6 @@ export function AppHeader({
             className="relative flex size-9 items-center justify-center rounded-full text-fg-2 transition-colors active:bg-muted"
           >
             <MessageCircle className="size-5 stroke-[1.5]" />
-            <span className="absolute right-1 top-1 flex size-4 items-center justify-center rounded-full bg-primary text-[10px] font-bold text-primary-foreground ring-2 ring-background">2</span>
           </Link>
           <Link href="/profile/edit" aria-label="Mon profil">
             <DiscAvatar

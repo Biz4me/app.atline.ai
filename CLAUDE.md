@@ -133,6 +133,11 @@ pm2 restart atline-app
 | DISC Bleu | Bleu | `#3B82F6` |
 | DISC Jaune | Jaune | `#F4B342` |
 
+**Notes d'application (audit 12 juil 2026) :**
+- En Tailwind v4, `red/green/blue/violet/teal/orange-500` = exactement nos hex → classes `-500` de ces familles OK. `amber-*` ≠ notre jaune → toujours `#F4B342`. `zinc/gray` → tokens (`muted`, `muted-foreground`).
+- **Exception 1 — marques sociales** : WhatsApp `#25D366`, Facebook `#1877F2`, Instagram `#E1306C`, LinkedIn `#0A66C2` autorisés UNIQUEMENT sur les logos/pastilles de ces réseaux.
+- **Exception 2 — écran d'appel Aria** : fonds sombres `#0F1012`/`#1A1A1A` autorisés (UI d'appel téléphonique volontairement sombre).
+
 ### Autres règles design
 - **Focus ring :** supprimé globalement (`outline: none` dans globals.css)
 - **Cartes :** `rounded-2xl border border-border bg-surface shadow-card`

@@ -57,10 +57,10 @@ function simParams(contact: SimContact, phase: Phase, chosen = 'auto') {
 
 const stagePillColors: Record<string, string> = {
   closing: 'bg-red-100 text-red-600',
-  prospect: 'bg-amber-100 text-amber-600',
+  prospect: 'bg-[#F4B342]/20 text-[#F4B342]',
   client: 'bg-green-100 text-green-700',
   partenaire: 'bg-blue-100 text-blue-700',
-  nouveau: 'bg-gray-100 text-gray-600',
+  nouveau: 'bg-muted text-muted-foreground',
 }
 
 const stageLabel: Record<string, string> = {
@@ -73,10 +73,10 @@ const stageLabel: Record<string, string> = {
 
 const stageAvatarBg: Record<string, string> = {
   closing: 'bg-red-500',
-  prospect: 'bg-amber-500',
+  prospect: 'bg-[#F4B342]',
   client: 'bg-green-500',
   partenaire: 'bg-blue-500',
-  nouveau: 'bg-zinc-500',
+  nouveau: 'bg-muted-foreground',
 }
 
 const worreSteps = [
@@ -311,7 +311,7 @@ function SetupScreen({
                   onClick={() => pick(c)}
                   className="flex items-center gap-3 rounded-2xl border border-border bg-surface p-3.5 text-left transition-colors active:bg-muted"
                 >
-                  <span className={cn('flex size-10 shrink-0 items-center justify-center rounded-full text-sm font-bold text-white', stageAvatarBg[c.stage] ?? 'bg-zinc-500')}>
+                  <span className={cn('flex size-10 shrink-0 items-center justify-center rounded-full text-sm font-bold text-white', stageAvatarBg[c.stage] ?? 'bg-muted-foreground')}>
                     {c.firstName[0]}{c.lastName[0] ?? ''}
                   </span>
                   <div className="flex-1 min-w-0">
@@ -745,7 +745,7 @@ function TextSimulatorScreen({
         <button type="button" onClick={onBack} className="-ml-1 flex size-9 items-center justify-center rounded-full text-muted-foreground active:bg-muted">
           <ChevronLeft className="size-5 stroke-[1.5]" />
         </button>
-        <span className={cn('flex size-9 shrink-0 items-center justify-center rounded-full text-xs font-bold text-white', stageAvatarBg[contact.stage] ?? 'bg-zinc-500')}>
+        <span className={cn('flex size-9 shrink-0 items-center justify-center rounded-full text-xs font-bold text-white', stageAvatarBg[contact.stage] ?? 'bg-muted-foreground')}>
           {contact.firstName[0]}{contact.lastName[0] ?? ''}
         </span>
         <div className="min-w-0 flex-1">

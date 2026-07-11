@@ -45,7 +45,7 @@ const plans = [
     label: 'Leader',
     price: 99,
     desc: "Pour les bâtisseurs d'équipe",
-    color: 'bg-amber-500',
+    color: 'bg-[#F4B342]',
     features: [
       'Tout le plan Pro',
       'Bot WhatsApp/Telegram',
@@ -137,7 +137,7 @@ function AbonnementContent() {
                     className={cn(
                       'mt-4 w-full rounded-xl py-2.5 text-base font-bold transition-colors active:scale-[0.98]',
                       plan.id === 'leader'
-                        ? 'bg-amber-500 text-white'
+                        ? 'bg-[#F4B342] text-white'
                         : plan.id === 'starter'
                         ? 'border border-border bg-surface text-fg-2'
                         : 'bg-primary text-primary-foreground'

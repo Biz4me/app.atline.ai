@@ -971,7 +971,7 @@ function ContactsContent() {
                       className={cn('flex w-full items-center gap-3 rounded-xl border px-3 py-2.5 text-left', c.selected ? 'border-primary/40 bg-primary/5' : 'border-border bg-background')}>
                       <span className={cn('flex size-5 shrink-0 items-center justify-center rounded-md border', c.selected ? 'border-primary bg-primary text-primary-foreground' : 'border-border')}>{c.selected && <Check className="size-3.5" />}</span>
                       <div className="min-w-0 flex-1">
-                        <p className="truncate text-sm font-medium text-foreground">{`${c.firstName} ${c.lastName}`.trim() || 'Sans nom'}{c.duplicate && <span className="ml-2 rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-bold text-amber-700">doublon</span>}</p>
+                        <p className="truncate text-sm font-medium text-foreground">{`${c.firstName} ${c.lastName}`.trim() || 'Sans nom'}{c.duplicate && <span className="ml-2 rounded bg-[#F4B342]/20 px-1.5 py-0.5 text-[10px] font-bold text-[#F4B342]">doublon</span>}</p>
                         <p className="truncate text-xs text-muted-foreground">{[c.phone, c.email].filter(Boolean).join(' · ') || '—'}</p>
                       </div>
                     </button>

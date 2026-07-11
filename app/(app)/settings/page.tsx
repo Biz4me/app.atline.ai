@@ -10,7 +10,7 @@ import {
 } from 'lucide-react'
 import { signOut } from 'next-auth/react'
 
-// « Ton compte » — UNE page qui porte tout : profil en tête, abonnement, réglages
+// « Mon compte » — UNE page qui porte tout : profil en tête, abonnement, réglages
 // groupés, activité, assistance. Fini le sommaire qui menait à 8 sous-pages à plat.
 
 const GROUPS: { title: string; items: { icon: typeof Settings; label: string; href: string }[] }[] = [
@@ -117,7 +117,7 @@ export default function SettingsPage() {
         className="lg:hidden fixed inset-0 z-[60] mx-auto max-w-[480px] bg-background overflow-y-auto animate-slide-in-right"
         style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
       >
-        <AppHeader title="Ton compte" back showActions={false} />
+        <AppHeader title="Mon compte" back showActions={false} />
         <div className="space-y-5 px-4 pt-3 pb-8">
           <AccountBody />
         </div>
