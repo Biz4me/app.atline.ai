@@ -109,7 +109,7 @@ export default function MonAbonnementPage() {
     <>
       {/* ── MOBILE ONLY ── */}
       <div className="lg:hidden">
-        <AppHeader title="Mon abonnement" showActions={false} />
+        <AppHeader title="Mon abonnement" back showActions={false} />
         <div className="px-4 pt-4">
           <Summary />
         </div>

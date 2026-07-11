@@ -34,7 +34,8 @@ export async function GET() {
   const referredIds = referrals.map((r) => r.referredId)
   const activePartners = referredIds.length > 0
     ? await db.user.count({
-        where: { id: { in: referredIds }, plan: { not: 'FREE' } },
+        // Actif = abonnement Stripe en cours (le plan seul ne dit pas si c'est payé)
+        where: { id: { in: referredIds }, subscription: { is: { status: { in: ['ACTIVE', 'TRIALING'] } } } },
       })
     : 0
 

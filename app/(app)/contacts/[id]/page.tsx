@@ -538,23 +538,23 @@ export default function ContactDetailPage({ params }: { params: Promise<{ id: st
         )}
 
         {/* Ce qu'Atlas retient — bloc mémoire auto-édité (MemGPT-style), éditable/corrigeable */}
-        {(c.atlasMemory || memEditing) && (
-          <div className="rounded-2xl border border-border bg-surface p-4">
-            <div className="mb-1 flex items-center justify-between gap-2">
-              <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">À retenir</p>
-              {memEditing ? (
-                <button type="button" onClick={() => { save({ atlasMemory: memDraft.trim() }, 'Mémoire mise à jour'); setMemEditing(false) }} className="rounded-lg bg-primary px-3 py-1 text-xs font-bold text-primary-foreground">Enregistrer</button>
-              ) : (
-                <button type="button" onClick={() => { setMemDraft(c.atlasMemory); setMemEditing(true) }} className="text-xs font-medium text-primary"><Pencil className="mr-1 inline size-3" />Corriger</button>
-              )}
-            </div>
+        <div className="rounded-2xl border border-border bg-surface p-4">
+          <div className="mb-1 flex items-center justify-between gap-2">
+            <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">À retenir</p>
             {memEditing ? (
-              <textarea value={memDraft} onChange={(e) => setMemDraft(e.target.value)} rows={4} autoFocus placeholder="Ce qu'Atlas doit retenir de ce contact… (vide = effacer)" className="w-full resize-none bg-transparent text-sm leading-relaxed text-foreground outline-none placeholder:text-muted-foreground" />
+              <button type="button" onClick={() => { save({ atlasMemory: memDraft.trim() }, 'Mémoire mise à jour'); setMemEditing(false) }} className="rounded-lg bg-primary px-3 py-1 text-xs font-bold text-primary-foreground">Enregistrer</button>
             ) : (
-              <p className="whitespace-pre-line text-sm leading-relaxed text-muted-foreground">{c.atlasMemory}</p>
+              <button type="button" onClick={() => { setMemDraft(c.atlasMemory ?? ''); setMemEditing(true) }} className="text-xs font-medium text-primary"><Pencil className="mr-1 inline size-3" />{c.atlasMemory ? 'Corriger' : 'Ajouter une note'}</button>
             )}
           </div>
-        )}
+          {memEditing ? (
+            <textarea value={memDraft} onChange={(e) => setMemDraft(e.target.value)} rows={4} autoFocus placeholder="Ce qu'Atlas doit retenir de ce contact… (vide = effacer)" className="w-full resize-none bg-transparent text-sm leading-relaxed text-foreground outline-none placeholder:text-muted-foreground" />
+          ) : c.atlasMemory ? (
+            <p className="whitespace-pre-line text-sm leading-relaxed text-muted-foreground">{c.atlasMemory}</p>
+          ) : (
+            <p className="text-sm leading-relaxed text-muted-foreground">Rien pour l'instant. Atlas remplit ce bloc au fil de vos échanges, et tu peux noter toi-même l'essentiel.</p>
+          )}
+        </div>
 
         {/* Actions rapides (branchées à la prochaine étape : appel/message/email/SMS) */}
         <div className="grid grid-cols-4 gap-2">

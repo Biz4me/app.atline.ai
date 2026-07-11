@@ -610,16 +610,7 @@ function SimulatorScreen({
               Tu pourras revoir ton débrief complet ensuite.
             </p>
 
-            {/* Score estimé */}
-            <div className="mt-5 flex items-center gap-3 rounded-xl bg-white/8 px-4 py-3">
-              <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-primary font-display text-sm font-bold text-white">
-                A
-              </span>
-              <span className="flex-1 text-sm text-white/70">Score Aria estimé</span>
-              <span className="font-display text-lg font-bold text-primary">78 / 100</span>
-            </div>
-
-            <div className="mt-4 flex gap-3">
+            <div className="mt-5 flex gap-3">
               <button
                 type="button"
                 onClick={() => setShowEndModal(false)}

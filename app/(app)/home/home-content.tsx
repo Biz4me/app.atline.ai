@@ -181,7 +181,7 @@ export function HomeContent({ mantra }: { mantra: string }) {
                 <CalendarDays className="size-4 stroke-[1.5] text-muted-foreground" />
                 <span className="text-sm font-bold text-foreground">Agenda du jour</span>
               </div>
-              <Link href="/nova" className="text-xs font-medium text-muted-foreground hover:text-foreground transition-colors">Voir tout →</Link>
+              <Link href="/agenda" className="text-xs font-medium text-muted-foreground hover:text-foreground transition-colors">Voir tout →</Link>
             </div>
             <div className="divide-y divide-border">
               {agenda.map((item) => (
