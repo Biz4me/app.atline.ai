@@ -31,7 +31,7 @@ function CopyField({ label, value }: { label: string; value: string }) {
         onClick={() => copy(value)}
         className="flex w-full items-start gap-2 rounded-xl border border-border bg-background p-3 text-left active:bg-muted"
       >
-        <span className="flex-1 whitespace-pre-line text-sm text-foreground">{value}</span>
+        <span className="flex-1 whitespace-pre-line text-lg lg:text-sm text-foreground">{value}</span>
         <Copy className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
       </button>
     </div>
@@ -72,7 +72,7 @@ export default function ComptesPage() {
       </header>
 
       <div className="px-4 pt-2 pb-24 lg:px-8 lg:pt-4 lg:max-w-3xl lg:mx-auto">
-        <p className="mb-3 text-sm text-muted-foreground text-pretty">
+        <p className="mb-3 text-lg lg:text-sm text-muted-foreground text-pretty">
           Nova te prépare le contenu de tes profils, prêt à copier-coller. Un visiteur doit comprendre en 3 secondes qui tu es et où cliquer.
         </p>
 
@@ -80,7 +80,7 @@ export default function ComptesPage() {
           type="button"
           onClick={generate}
           disabled={loading}
-          className="mb-4 flex w-full items-center justify-center gap-2 rounded-2xl py-3.5 text-sm font-bold text-white transition-transform active:scale-[0.98] disabled:opacity-60"
+          className="mb-4 flex w-full items-center justify-center gap-2 rounded-2xl py-3.5 text-lg lg:text-sm font-bold text-white transition-transform active:scale-[0.98] disabled:opacity-60"
           style={{ background: NOVA }}
         >
           {loading ? <Loader2 className="size-4 animate-spin" /> : <Sparkles className="size-4" />}
@@ -99,7 +99,7 @@ export default function ComptesPage() {
                   >
                     <p.icon className="size-5 stroke-[1.5]" />
                   </span>
-                  <span className="flex-1 text-sm font-bold text-foreground">{p.name}</span>
+                  <span className="flex-1 text-lg lg:text-sm font-bold text-foreground">{p.name}</span>
                   <button
                     type="button"
                     onClick={() => toast('Connexion des comptes — bientôt disponible')}
@@ -117,7 +117,7 @@ export default function ComptesPage() {
                       <User className="size-4 stroke-[1.5]" />
                     </span>
                     <div className="flex-1">
-                      <p className="text-sm font-semibold text-foreground">Photo de profil</p>
+                      <p className="text-lg lg:text-sm font-semibold text-foreground">Photo de profil</p>
                       <p className="text-xs text-muted-foreground">Ton visage (confiance) ou ton logo, lumineux et net.</p>
                     </div>
                   </div>

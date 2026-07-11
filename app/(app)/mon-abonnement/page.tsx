@@ -63,7 +63,7 @@ function Summary() {
         <div className="p-4">
           <div className="flex items-start justify-between">
             <div className="flex items-center gap-2.5">
-              <span className={cn('flex size-9 items-center justify-center rounded-xl text-sm font-bold text-white', p.color)}>{p.initial}</span>
+              <span className={cn('flex size-9 items-center justify-center rounded-xl text-lg lg:text-sm font-bold text-white', p.color)}>{p.initial}</span>
               <div>
                 <p className="font-display text-lg font-semibold text-foreground">{p.label}</p>
                 <p className="text-xs text-muted-foreground">{p.desc}</p>
@@ -79,13 +79,13 @@ function Summary() {
             <div className="mt-4 divide-y divide-border overflow-hidden rounded-xl border border-border">
               <div className="flex items-center gap-3 px-3.5 py-3">
                 <Calendar className="size-4 shrink-0 text-muted-foreground" />
-                <span className="flex-1 text-sm text-muted-foreground">{inTrial ? "Fin d'essai" : 'Renouvellement'}</span>
-                <span className="text-sm font-medium text-foreground">{renew ?? '—'}</span>
+                <span className="flex-1 text-lg lg:text-sm text-muted-foreground">{inTrial ? "Fin d'essai" : 'Renouvellement'}</span>
+                <span className="text-lg lg:text-sm font-medium text-foreground">{renew ?? '—'}</span>
               </div>
               <div className="flex items-center gap-3 px-3.5 py-3">
                 <CreditCard className="size-4 shrink-0 text-muted-foreground" />
-                <span className="flex-1 text-sm text-muted-foreground">Facturation</span>
-                <span className="text-sm font-medium text-foreground">{cycleYear ? 'Annuelle' : 'Mensuelle'}</span>
+                <span className="flex-1 text-lg lg:text-sm text-muted-foreground">Facturation</span>
+                <span className="text-lg lg:text-sm font-medium text-foreground">{cycleYear ? 'Annuelle' : 'Mensuelle'}</span>
               </div>
             </div>
           )}
@@ -97,7 +97,7 @@ function Summary() {
         href="/abonnement"
         className="flex items-center justify-between rounded-2xl border border-border bg-surface px-4 py-3.5 shadow-card transition-colors active:bg-muted"
       >
-        <span className="text-sm font-semibold text-foreground">Gérer mon abonnement</span>
+        <span className="text-lg lg:text-sm font-semibold text-foreground">Gérer mon abonnement</span>
         <ChevronRight className="size-4 text-muted-foreground" />
       </Link>
     </div>

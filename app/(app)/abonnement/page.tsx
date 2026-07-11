@@ -73,7 +73,7 @@ function AbonnementContent() {
           <div>
             <div className="flex items-center gap-2">
               <Crown className="size-4 text-primary" />
-              <p className="text-sm font-bold text-foreground">Plan Pro — Actif</p>
+              <p className="text-lg lg:text-sm font-bold text-foreground">Plan Pro — Actif</p>
             </div>
             <p className="mt-0.5 text-xs text-muted-foreground">Prochain renouvellement le 1 juillet 2026</p>
           </div>
@@ -105,7 +105,7 @@ function AbonnementContent() {
                       </span>
                       <p className="font-display text-lg font-semibold text-foreground">{plan.label}</p>
                     </div>
-                    <p className="mt-0.5 text-base text-muted-foreground">{plan.desc}</p>
+                    <p className="mt-0.5 text-lg lg:text-sm text-muted-foreground">{plan.desc}</p>
                   </div>
                   <div className="text-right">
                     <p className="font-display text-xl font-bold text-foreground">
@@ -119,13 +119,13 @@ function AbonnementContent() {
                   {plan.features.map((f) => (
                     <li key={f} className="flex items-center gap-2">
                       <Check className="size-3.5 shrink-0 text-success stroke-2" />
-                      <span className="text-base text-foreground">{f}</span>
+                      <span className="text-lg lg:text-sm text-foreground">{f}</span>
                     </li>
                   ))}
                   {plan.locked.map((f) => (
                     <li key={f} className="flex items-center gap-2 opacity-40">
                       <div className="size-3.5 shrink-0 rounded-full border border-border" />
-                      <span className="text-base text-muted-foreground">{f}</span>
+                      <span className="text-lg lg:text-sm text-muted-foreground">{f}</span>
                     </li>
                   ))}
                 </ul>
@@ -135,7 +135,7 @@ function AbonnementContent() {
                     type="button"
                     onClick={() => toast.info(`Passer au plan ${plan.label}`)}
                     className={cn(
-                      'mt-4 w-full rounded-xl py-2.5 text-base font-bold transition-colors active:scale-[0.98]',
+                      'mt-4 w-full rounded-xl py-2.5 text-lg lg:text-sm font-bold transition-colors active:scale-[0.98]',
                       plan.id === 'leader'
                         ? 'bg-[#F4B342] text-white'
                         : plan.id === 'starter'
@@ -165,7 +165,7 @@ function AbonnementContent() {
               <CreditCard className="size-5 stroke-[1.5] text-muted-foreground" />
             </span>
             <div className="flex-1">
-              <p className="text-sm font-semibold text-foreground">Visa •••• 4242</p>
+              <p className="text-lg lg:text-sm font-semibold text-foreground">Visa •••• 4242</p>
               <p className="text-xs text-muted-foreground">Expire 12/28</p>
             </div>
             <ChevronRight className="size-4 text-muted-foreground" />
@@ -180,14 +180,14 @@ function AbonnementContent() {
           {invoices.map((inv) => (
             <div key={inv.id} className="flex items-center px-4 py-3">
               <div className="flex-1">
-                <p className="text-sm font-semibold text-foreground">Plan Pro</p>
+                <p className="text-lg lg:text-sm font-semibold text-foreground">Plan Pro</p>
                 <p className="text-xs text-muted-foreground">{inv.date}</p>
               </div>
               <div className="flex items-center gap-3">
                 <span className="rounded-full bg-success/15 px-2 py-0.5 text-xs font-bold text-success">
                   {inv.status}
                 </span>
-                <span className="text-sm font-semibold text-foreground">{euro(inv.amount)}</span>
+                <span className="text-lg lg:text-sm font-semibold text-foreground">{euro(inv.amount)}</span>
               </div>
             </div>
           ))}
@@ -197,7 +197,7 @@ function AbonnementContent() {
       <button
         type="button"
         onClick={() => toast.info("Résilier l'abonnement")}
-        className="py-3 text-sm font-semibold text-destructive"
+        className="py-3 text-lg lg:text-sm font-semibold text-destructive"
       >
         Résilier mon abonnement
       </button>

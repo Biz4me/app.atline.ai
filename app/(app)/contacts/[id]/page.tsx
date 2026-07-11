@@ -240,7 +240,7 @@ function ComposeSheet({ contactId, channel, label, phone, email, autoDraft, onCl
           </button>
           <textarea value={msg} onChange={(e) => setMsg(e.target.value)} rows={5} autoFocus
             placeholder="Écris ton message, ou laisse Atlas le rédiger…"
-            className="w-full resize-none rounded-xl border border-border bg-background px-4 py-3 text-sm leading-relaxed text-foreground outline-none placeholder:text-muted-foreground" />
+            className="w-full resize-none rounded-xl border border-border bg-background px-4 py-3 text-lg leading-relaxed text-foreground lg:text-sm outline-none placeholder:text-muted-foreground" />
           <p className="text-[10px] leading-relaxed text-muted-foreground">Atlas adapte le message à l'étape du funnel et à la couleur du contact. Relis toujours avant d'envoyer.</p>
         </div>
       </div>
@@ -420,7 +420,7 @@ export default function ContactDetailPage({ params }: { params: Promise<{ id: st
                   <div className="flex items-center gap-2.5 px-4 py-3">
                     <button type="button" onClick={() => setDiscOpen((o) => !o)} className="flex min-w-0 flex-1 items-center gap-2.5 text-left">
                       <span className="size-6 shrink-0 rounded-full" style={{ backgroundColor: PERSO[qual.personality].hex }} />
-                      <span className="flex-1 text-sm font-medium text-foreground">Personnalité</span>
+                      <span className="flex-1 text-lg font-medium text-foreground lg:text-sm">Personnalité</span>
                       <ChevronDown className={cn('size-4 shrink-0 text-muted-foreground transition-transform', discOpen && 'rotate-180')} />
                     </button>
                     <button type="button" onClick={() => setEvalOpen(true)} className="shrink-0 text-sm font-semibold text-primary">Refaire le test</button>
@@ -430,7 +430,7 @@ export default function ContactDetailPage({ params }: { params: Promise<{ id: st
                     return (
                       <div className="border-t border-border px-4 py-3">
                         <p className="text-sm font-semibold" style={{ color: PERSO[qual.personality].hex }}>{info ? info.archetype : PERSO[qual.personality].label}</p>
-                        <p className="mt-1 text-sm leading-relaxed text-muted-foreground">{PERSO[qual.personality].approach}</p>
+                        <p className="mt-1 text-lg leading-relaxed text-muted-foreground lg:text-sm">{PERSO[qual.personality].approach}</p>
                       </div>
                     )
                   })()}
@@ -489,7 +489,7 @@ export default function ContactDetailPage({ params }: { params: Promise<{ id: st
         {nextStep && (
           <div className="rounded-2xl border border-border bg-surface p-4">
             <p className="mb-1 text-xs font-bold uppercase tracking-widest text-muted-foreground">Prochain pas</p>
-            <p className="text-base font-bold text-foreground">{nextStep.headline}</p>
+            <p className="text-lg font-bold text-foreground lg:text-sm">{nextStep.headline}</p>
             <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">{nextStep.reason}</p>
             {nextStep.action === 'MESSAGE' && nextStep.channel && (
               <button type="button" onClick={() => setCompose({ channel: nextStep.channel!, label: CHANNEL_LABEL[nextStep.channel!] ?? 'Message', auto: true })}
@@ -541,11 +541,11 @@ export default function ContactDetailPage({ params }: { params: Promise<{ id: st
             )}
           </div>
           {memEditing ? (
-            <textarea value={memDraft} onChange={(e) => setMemDraft(e.target.value)} rows={4} autoFocus placeholder="Ce qu'Atlas doit retenir de ce contact… (vide = effacer)" className="w-full resize-none bg-transparent text-sm leading-relaxed text-foreground outline-none placeholder:text-muted-foreground" />
+            <textarea value={memDraft} onChange={(e) => setMemDraft(e.target.value)} rows={4} autoFocus placeholder="Ce qu'Atlas doit retenir de ce contact… (vide = effacer)" className="w-full resize-none bg-transparent text-lg leading-relaxed text-foreground lg:text-sm outline-none placeholder:text-muted-foreground" />
           ) : c.atlasMemory ? (
-            <p className="whitespace-pre-line text-sm leading-relaxed text-muted-foreground">{c.atlasMemory}</p>
+            <p className="whitespace-pre-line text-lg leading-relaxed text-muted-foreground lg:text-sm">{c.atlasMemory}</p>
           ) : (
-            <p className="text-sm leading-relaxed text-muted-foreground">Rien pour l'instant. Atlas remplit ce bloc au fil de vos échanges, et tu peux noter toi-même l'essentiel.</p>
+            <p className="text-lg leading-relaxed text-muted-foreground lg:text-sm">Rien pour l'instant. Atlas remplit ce bloc au fil de vos échanges, et tu peux noter toi-même l'essentiel.</p>
           )}
         </div>
 
@@ -593,7 +593,7 @@ export default function ContactDetailPage({ params }: { params: Promise<{ id: st
               {contactConvs.map((cv) => (
                 <button key={cv.id} type="button" onClick={() => setOpenConvId(cv.id)} className="flex items-center gap-3 rounded-xl px-1 py-2.5 text-left active:bg-muted">
                   <Sparkles className="size-4 shrink-0 stroke-[1.5] text-primary" />
-                  <span className="min-w-0 flex-1 truncate text-sm text-foreground">{cv.title || 'Échange'}</span>
+                  <span className="min-w-0 flex-1 truncate text-lg text-foreground lg:text-sm">{cv.title || 'Échange'}</span>
                   <span className="shrink-0 text-[10px] text-muted-foreground">{new Date(cv.updatedAt).toLocaleDateString('fr-FR')}</span>
                 </button>
               ))}
@@ -609,7 +609,7 @@ export default function ContactDetailPage({ params }: { params: Promise<{ id: st
                 <div key={a.id} className="flex items-center gap-3 rounded-xl border border-border bg-background px-4 py-3">
                   <CalendarPlus className="size-4 shrink-0 stroke-[1.5] text-primary" />
                   <div className="min-w-0 flex-1">
-                    <p className="text-sm font-medium text-foreground">{a.title}</p>
+                    <p className="text-lg font-medium text-foreground lg:text-sm">{a.title}</p>
                     <p className="text-xs text-muted-foreground">{new Date(a.startAt).toLocaleString('fr-FR', { dateStyle: 'medium', timeStyle: 'short' })} · {a.type}</p>
                   </div>
                 </div>
@@ -618,7 +618,7 @@ export default function ContactDetailPage({ params }: { params: Promise<{ id: st
                 <div key={r.id} className="flex items-center gap-3 rounded-xl border border-border bg-background px-4 py-3">
                   <Bell className="size-4 shrink-0 stroke-[1.5] text-primary" />
                   <div className="min-w-0 flex-1">
-                    <p className="text-sm font-medium text-foreground">Relance · {r.channel}</p>
+                    <p className="text-lg font-medium text-foreground lg:text-sm">Relance · {r.channel}</p>
                     <p className="text-xs text-muted-foreground">{new Date(r.dueAt).toLocaleDateString('fr-FR')}{r.message ? ` · ${r.message}` : ''}</p>
                   </div>
                 </div>
@@ -643,7 +643,7 @@ export default function ContactDetailPage({ params }: { params: Promise<{ id: st
                     <li key={it.id} className="flex items-start gap-3">
                       <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground"><m.icon className="size-3.5 stroke-[1.5]" /></span>
                       <div className="min-w-0 flex-1">
-                        <p className="text-sm font-medium text-foreground">{m.label}{it.direction === 'IN' ? ' reçu' : ''}{it.outcome ? ` · ${it.outcome.toLowerCase()}` : ''}</p>
+                        <p className="text-lg font-medium text-foreground lg:text-sm">{m.label}{it.direction === 'IN' ? ' reçu' : ''}{it.outcome ? ` · ${it.outcome.toLowerCase()}` : ''}</p>
                         {it.body && <p className="truncate text-xs text-muted-foreground">{it.body}</p>}
                         <p className="mt-0.5 text-[10px] text-muted-foreground">{new Date(it.createdAt).toLocaleString('fr-FR', { dateStyle: 'medium', timeStyle: 'short' })}</p>
                       </div>
@@ -682,7 +682,7 @@ export default function ContactDetailPage({ params }: { params: Promise<{ id: st
               {[['POSITIF', '👍 Positif'], ['NEUTRE', '😐 Neutre'], ['SANS_REPONSE', '📵 Pas de réponse']].map(([o, l]) => (
                 <button key={o} type="button"
                   onClick={() => { logAction(confirm.type, { outcome: o, body: confirm.body }); setConfirm(null); toast.success('Interaction enregistrée') }}
-                  className="rounded-2xl border border-border bg-surface px-4 py-3.5 text-left text-sm font-medium text-foreground active:bg-muted">{l}</button>
+                  className="rounded-2xl border border-border bg-surface px-4 py-3.5 text-left text-lg font-medium text-foreground lg:text-sm active:bg-muted">{l}</button>
               ))}
               <button type="button" onClick={() => setConfirm(null)} className="px-4 py-2 text-sm font-medium text-muted-foreground">Pas fait / annuler</button>
             </div>

@@ -69,7 +69,7 @@ export default function ParrainagePage() {
         >
           <ChevronLeft className="size-5 stroke-[1.5]" />
         </button>
-        <h1 className="text-sm font-semibold text-foreground">Parrainage</h1>
+        <h1 className="text-lg lg:text-sm font-semibold text-foreground">Parrainage</h1>
       </div>
 
       {loading || !data ? (
@@ -84,23 +84,23 @@ export default function ParrainagePage() {
               <span className="grid size-8 place-items-center rounded-full bg-primary/10">
                 <Gift className="size-4 text-primary" />
               </span>
-              <p className="text-sm font-semibold text-foreground">Ton lien d&apos;affiliation</p>
+              <p className="text-lg lg:text-sm font-semibold text-foreground">Ton lien d&apos;affiliation</p>
             </div>
             <div className="mt-3 rounded-xl border border-border bg-background px-3.5 py-3">
-              <p className="truncate text-sm font-medium text-foreground">app.atline.ai/r/{data.code}</p>
+              <p className="truncate text-lg lg:text-sm font-medium text-foreground">app.atline.ai/r/{data.code}</p>
             </div>
             <div className="mt-3 grid grid-cols-2 gap-2.5">
               <button
                 type="button"
                 onClick={copy}
-                className="flex items-center justify-center gap-2 rounded-2xl border border-border bg-surface py-3 text-sm font-semibold text-foreground transition-transform active:scale-[0.98]"
+                className="flex items-center justify-center gap-2 rounded-2xl border border-border bg-surface py-3 text-lg lg:text-sm font-semibold text-foreground transition-transform active:scale-[0.98]"
               >
                 <Copy className="size-4" /> Copier
               </button>
               <button
                 type="button"
                 onClick={share}
-                className="flex items-center justify-center gap-2 rounded-2xl bg-primary py-3 text-sm font-semibold text-primary-foreground transition-transform active:scale-[0.98]"
+                className="flex items-center justify-center gap-2 rounded-2xl bg-primary py-3 text-lg lg:text-sm font-semibold text-primary-foreground transition-transform active:scale-[0.98]"
               >
                 <Share2 className="size-4" /> Partager
               </button>
@@ -118,7 +118,7 @@ export default function ParrainagePage() {
             </span>
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2">
-                <p className="text-sm font-semibold text-foreground">Page de capture · démo Atlas</p>
+                <p className="text-lg lg:text-sm font-semibold text-foreground">Page de capture · démo Atlas</p>
                 <span className="rounded-full bg-primary/15 px-2 py-0.5 text-[10px] font-bold text-primary">Bientôt</span>
               </div>
               <p className="mt-0.5 text-xs text-muted-foreground">Offre une session Atlas gratuite à tes prospects — ils goûtent l&apos;IA avant de s&apos;inscrire.</p>
@@ -141,11 +141,11 @@ export default function ParrainagePage() {
 
           {/* Filleuls */}
           <div>
-            <p className="mb-2 px-1 text-sm font-semibold text-foreground">Tes filleuls</p>
+            <p className="mb-2 px-1 text-lg lg:text-sm font-semibold text-foreground">Tes filleuls</p>
             {data.referrals.length === 0 ? (
               <div className="flex flex-col items-center gap-2 rounded-2xl border border-dashed border-border bg-surface px-6 py-10 text-center">
                 <Users className="size-6 text-muted-foreground" />
-                <p className="text-sm font-medium text-foreground">Aucun filleul pour l&apos;instant</p>
+                <p className="text-lg lg:text-sm font-medium text-foreground">Aucun filleul pour l&apos;instant</p>
                 <p className="text-xs text-muted-foreground">Partage ton lien pour commencer à parrainer.</p>
               </div>
             ) : (
@@ -161,7 +161,7 @@ export default function ParrainagePage() {
                         <span className="grid size-9 shrink-0 place-items-center rounded-full bg-primary/10 text-xs font-bold text-primary">{r.initials || '?'}</span>
                       )}
                       <div className="min-w-0 flex-1">
-                        <p className="truncate text-sm font-medium text-foreground">{r.name || 'Filleul'}</p>
+                        <p className="truncate text-lg lg:text-sm font-medium text-foreground">{r.name || 'Filleul'}</p>
                         <p className="text-xs text-muted-foreground">Inscrit le {fmtDate(r.createdAt)}</p>
                       </div>
                       <span className={cn('shrink-0 rounded-full px-2.5 py-0.5 text-xs font-semibold', p.price === 0 ? 'bg-muted text-muted-foreground' : 'bg-primary/10 text-primary')}>
@@ -177,7 +177,7 @@ export default function ParrainagePage() {
           {/* Total perçu */}
           {data.commissionsPaid > 0 && (
             <div className="flex items-center justify-between rounded-2xl border border-border bg-surface px-4 py-3.5 shadow-card">
-              <span className="text-sm text-muted-foreground">Total perçu</span>
+              <span className="text-lg lg:text-sm text-muted-foreground">Total perçu</span>
               <span className="text-base font-bold text-foreground">{euro(data.commissionsPaid)}</span>
             </div>
           )}

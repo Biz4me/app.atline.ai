@@ -37,7 +37,7 @@ export function AddContactSheet({
   const [source, setSource] = useState('Manuel')
   const [loading, setLoading] = useState(false)
 
-  const inputCls = 'w-full rounded-xl border border-border bg-surface px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-ring/40 placeholder:text-muted-foreground'
+  const inputCls = 'w-full rounded-xl border border-border bg-surface px-4 py-3 text-lg lg:text-sm outline-none focus:ring-2 focus:ring-ring/40 placeholder:text-muted-foreground'
 
   async function submit() {
     if (!name.trim()) {
@@ -104,7 +104,7 @@ export function AddContactSheet({
             <div className="flex flex-wrap gap-2">
               {stages.map((s) => (
                 <button key={s.id} type="button" onClick={() => setStage(s.id)}
-                  className={cn('rounded-full px-4 py-1.5 text-sm font-semibold transition-colors',
+                  className={cn('rounded-full px-4 py-1.5 text-lg lg:text-sm font-semibold transition-colors',
                     stage === s.id ? 'bg-primary/10 text-primary' : 'border border-border bg-surface text-muted-foreground')}>
                   {s.label}
                 </button>
@@ -117,7 +117,7 @@ export function AddContactSheet({
             <div className="flex flex-wrap gap-2">
               {sources.map((s) => (
                 <button key={s} type="button" onClick={() => setSource(s)}
-                  className={cn('rounded-full px-4 py-1.5 text-sm font-semibold transition-colors',
+                  className={cn('rounded-full px-4 py-1.5 text-lg lg:text-sm font-semibold transition-colors',
                     source === s ? 'bg-primary/10 text-primary' : 'border border-border bg-surface text-muted-foreground')}>
                   {s}
                 </button>
@@ -126,7 +126,7 @@ export function AddContactSheet({
           </div>
 
           <button type="button" onClick={submit} disabled={loading}
-            className="mt-2 flex w-full items-center justify-center gap-2 rounded-xl bg-primary py-3 text-sm font-bold text-primary-foreground transition-transform active:scale-[0.98] disabled:opacity-60">
+            className="mt-2 flex w-full items-center justify-center gap-2 rounded-xl bg-primary py-3 text-lg lg:text-sm font-bold text-primary-foreground transition-transform active:scale-[0.98] disabled:opacity-60">
             {loading && <Loader2 className="size-4 animate-spin" />}
             {loading ? 'Ajout...' : 'Ajouter au CRM'}
           </button>

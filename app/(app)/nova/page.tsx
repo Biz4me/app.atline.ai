@@ -72,7 +72,7 @@ export default function NovaPage() {
           <AtSign className="size-[18px] stroke-[1.5]" />
         </span>
         <span className="flex-1 text-left">
-          <span className="block text-sm font-bold text-foreground">Mes comptes</span>
+          <span className="block text-lg lg:text-sm font-bold text-foreground">Mes comptes</span>
           <span className="block text-xs text-muted-foreground">Prépare ton Instagram et ton TikTok</span>
         </span>
         <ChevronRight className="size-4 shrink-0 text-muted-foreground" />
@@ -86,7 +86,7 @@ export default function NovaPage() {
           <button
             type="button"
             onClick={() => router.push('/nova/campagne?fresh=1')}
-            className="hidden lg:flex items-center justify-center gap-2 rounded-2xl py-3 text-sm font-bold text-white transition-transform active:scale-[0.98]"
+            className="hidden lg:flex items-center justify-center gap-2 rounded-2xl py-3 text-lg lg:text-sm font-bold text-white transition-transform active:scale-[0.98]"
             style={{ background: NOVA }}
           >
             <Plus className="size-4" />
@@ -117,14 +117,14 @@ function EmptyState({ onCreate }: { onCreate: () => void }) {
       </span>
       <div>
         <p className="font-display text-lg font-semibold text-foreground">Lance ta première campagne</p>
-        <p className="mx-auto mt-1 max-w-xs text-sm text-muted-foreground">
+        <p className="mx-auto mt-1 max-w-xs text-lg lg:text-sm text-muted-foreground">
           Nova crée le contenu, capte les curieux et les amène à ta réunion.
         </p>
       </div>
       <button
         type="button"
         onClick={onCreate}
-        className="flex items-center gap-2 rounded-xl px-5 py-3 text-sm font-bold text-white transition-transform active:scale-[0.98]"
+        className="flex items-center gap-2 rounded-xl px-5 py-3 text-lg lg:text-sm font-bold text-white transition-transform active:scale-[0.98]"
         style={{ background: NOVA }}
       >
         <Plus className="size-4" />
@@ -176,14 +176,14 @@ function CampaignCard({
           className="flex min-w-0 flex-1 items-center gap-3 text-left"
         >
           <span
-            className="flex size-10 shrink-0 items-center justify-center rounded-xl text-sm font-bold text-white"
+            className="flex size-10 shrink-0 items-center justify-center rounded-xl text-lg lg:text-sm font-bold text-white"
             style={{ background: NOVA }}
           >
             {initialsOf(campaign.name)}
           </span>
           <span className="min-w-0 flex-1">
             <span className="flex items-center gap-2">
-              <span className="truncate text-sm font-bold text-foreground">{campaign.name}</span>
+              <span className="truncate text-lg lg:text-sm font-bold text-foreground">{campaign.name}</span>
               <span
                 className="flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold"
                 style={{ background: `${s.color}1a`, color: s.color }}
@@ -217,7 +217,7 @@ function CampaignCard({
                     setMenu(false)
                     onEdit()
                   }}
-                  className="flex w-full items-center gap-2.5 px-3 py-2 text-left text-sm text-foreground active:bg-muted"
+                  className="flex w-full items-center gap-2.5 px-3 py-2 text-left text-lg lg:text-sm text-foreground active:bg-muted"
                 >
                   <Pencil className="size-4 text-muted-foreground" />
                   Modifier
@@ -228,7 +228,7 @@ function CampaignCard({
                     setMenu(false)
                     onDelete()
                   }}
-                  className="flex w-full items-center gap-2.5 px-3 py-2 text-left text-sm text-destructive active:bg-muted"
+                  className="flex w-full items-center gap-2.5 px-3 py-2 text-left text-lg lg:text-sm text-destructive active:bg-muted"
                 >
                   <Trash2 className="size-4" />
                   Supprimer

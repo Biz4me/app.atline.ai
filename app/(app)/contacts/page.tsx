@@ -493,7 +493,7 @@ function ContactsContent() {
                       <p className="text-lg font-bold text-foreground">
                         {c.firstName} {c.lastName}
                       </p>
-                      <p className="text-base text-muted-foreground">
+                      <p className="text-sm text-muted-foreground">
                         {c.city && <span>{c.city} </span>}
                         <span className={cn('font-semibold', sourceColor(c.source))}>
                           {c.source}

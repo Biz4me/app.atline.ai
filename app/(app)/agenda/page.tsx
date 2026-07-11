@@ -90,7 +90,7 @@ export function AgendaView({ embedded = false, onClose }: { embedded?: boolean; 
           <div className="grid flex-1 grid-cols-3 gap-1 rounded-xl bg-muted p-1">
             {(['jour', 'semaine', 'mois'] as View[]).map((v) => (
               <button key={v} type="button" onClick={() => setView(v)}
-                className={cn('rounded-lg py-2 text-base font-semibold capitalize transition-all', view === v ? 'bg-background text-primary shadow-sm' : 'text-muted-foreground')}>
+                className={cn('rounded-lg py-2 text-lg lg:text-sm font-semibold capitalize transition-all', view === v ? 'bg-background text-primary shadow-sm' : 'text-muted-foreground')}>
                 {v.charAt(0).toUpperCase() + v.slice(1)}
               </button>
             ))}
@@ -108,8 +108,8 @@ export function AgendaView({ embedded = false, onClose }: { embedded?: boolean; 
           <div className="mb-4 flex items-center gap-3 rounded-2xl border border-primary/30 bg-primary/5 p-3.5">
             <CalendarCheck className="size-5 shrink-0 text-primary" />
             <div className="min-w-0 flex-1">
-              <p className="text-base font-bold text-foreground">Connecte ton Google Agenda</p>
-              <p className="text-sm leading-snug text-muted-foreground">Pour voir tes vrais créneaux et éviter les conflits.</p>
+              <p className="text-lg lg:text-sm font-bold text-foreground">Connecte ton Google Agenda</p>
+              <p className="text-lg lg:text-sm leading-snug text-muted-foreground">Pour voir tes vrais créneaux et éviter les conflits.</p>
             </div>
             <a href="/api/calendar/connect" className="shrink-0 rounded-xl bg-primary px-3 py-2 text-xs font-bold text-primary-foreground">Connecter</a>
           </div>
@@ -119,7 +119,7 @@ export function AgendaView({ embedded = false, onClose }: { embedded?: boolean; 
             onClick={() => { navigator.clipboard?.writeText(`${location.origin}/rdv/${username}`); toast.success('Lien de réservation copié') }}
             className="mb-4 flex w-full items-center gap-2.5 rounded-2xl border border-border bg-surface px-4 py-3 text-left active:bg-muted">
             <Share2 className="size-4 shrink-0 text-primary" />
-            <span className="min-w-0 flex-1 truncate text-base font-medium text-foreground">Mon lien de RDV — partage-le à tes prospects</span>
+            <span className="min-w-0 flex-1 truncate text-lg lg:text-sm font-medium text-foreground">Mon lien de RDV — partage-le à tes prospects</span>
             <span className="shrink-0 text-xs font-bold text-primary">Copier</span>
           </button>
         )}
@@ -160,7 +160,7 @@ function JourView({ selected, setSelected, today, apptsOn, gevents, onTap, onCre
             return (
               <button key={i} type="button" onClick={() => setSelected(d)} className="flex flex-col items-center gap-1 py-1">
                 <span className="text-[10px] font-bold text-muted-foreground">{DOW1[i]}</span>
-                <span className={cn('flex size-8 items-center justify-center rounded-full text-sm font-bold',
+                <span className={cn('flex size-8 items-center justify-center rounded-full text-lg lg:text-sm font-bold',
                   isSel ? 'bg-primary text-primary-foreground' : isToday ? 'border-2 border-primary text-primary' : 'text-foreground')}>{d.getDate()}</span>
               </button>
             )
@@ -174,7 +174,7 @@ function JourView({ selected, setSelected, today, apptsOn, gevents, onTap, onCre
       {items.length === 0 ? (
         <div className="flex flex-col items-center gap-3 rounded-2xl border border-border bg-surface px-4 py-8 text-center">
           <p className="text-lg text-muted-foreground">Aucun rendez-vous ce jour</p>
-          <button type="button" onClick={onCreate} className="rounded-xl border border-border px-4 py-2 text-base font-semibold text-foreground active:bg-muted">+ Nouveau RDV</button>
+          <button type="button" onClick={onCreate} className="rounded-xl border border-border px-4 py-2 text-lg lg:text-sm font-semibold text-foreground active:bg-muted">+ Nouveau RDV</button>
         </div>
       ) : (
         <div className="flex flex-col gap-2.5">
@@ -196,7 +196,7 @@ function JourView({ selected, setSelected, today, apptsOn, gevents, onTap, onCre
               <span className="font-display text-lg font-bold tabular-nums text-muted-foreground shrink-0">{it.g!.allDay ? '—' : fmtTime(it.g!.start)}</span>
               <div className="flex min-w-0 flex-1 flex-col gap-1">
                 <span className="self-start rounded-full bg-muted px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-muted-foreground">Google</span>
-                <span className="truncate text-base font-medium text-muted-foreground">{it.g!.title}</span>
+                <span className="truncate text-lg lg:text-sm font-medium text-muted-foreground">{it.g!.title}</span>
               </div>
             </div>
           ))}
@@ -216,7 +216,7 @@ function SemaineView({ selected, setSelected, today, appts, gevents, onTap }: {
     <div className="flex flex-col gap-3">
       <div className="flex items-center justify-between">
         <button type="button" onClick={() => setSelected(addDays(selected, -7))} className="flex size-8 items-center justify-center rounded-lg text-muted-foreground active:bg-muted"><ChevronLeft className="size-4" /></button>
-        <p className="text-sm font-bold capitalize text-foreground">{weekStart.getDate()}–{addDays(weekStart, 6).getDate()} {MONTHS[addDays(weekStart, 6).getMonth()]}</p>
+        <p className="text-lg lg:text-sm font-bold capitalize text-foreground">{weekStart.getDate()}–{addDays(weekStart, 6).getDate()} {MONTHS[addDays(weekStart, 6).getMonth()]}</p>
         <button type="button" onClick={() => setSelected(addDays(selected, 7))} className="flex size-8 items-center justify-center rounded-lg text-muted-foreground active:bg-muted"><ChevronRight className="size-4" /></button>
       </div>
       <div className="flex">
@@ -224,7 +224,7 @@ function SemaineView({ selected, setSelected, today, appts, gevents, onTap }: {
         {days.map((d, i) => (
           <button key={i} type="button" onClick={() => setSelected(d)} className="flex flex-1 flex-col items-center gap-0.5">
             <span className="text-[10px] font-bold text-muted-foreground">{DOW1[i]}</span>
-            <span className={cn('flex size-6 items-center justify-center rounded-full text-sm font-bold',
+            <span className={cn('flex size-6 items-center justify-center rounded-full text-lg lg:text-sm font-bold',
               sameDay(d, selected) ? 'bg-primary text-primary-foreground' : sameDay(d, today) ? 'border-2 border-primary text-primary' : 'text-foreground')}>{d.getDate()}</span>
           </button>
         ))}
@@ -275,7 +275,7 @@ function MoisView({ selected, setSelected, today, daysWithAppt }: {
           <button key={i} type="button" onClick={() => d && setSelected(d)} className="flex flex-col items-center gap-0.5 py-1.5 active:bg-muted/50 rounded-lg" style={{ width: `${100 / 7}%` }}>
             {d && (
               <>
-                <span className={cn('flex size-7 items-center justify-center rounded-full text-sm font-semibold', sameDay(d, today) ? 'border-2 border-primary font-bold text-primary' : 'text-foreground')}>{d.getDate()}</span>
+                <span className={cn('flex size-7 items-center justify-center rounded-full text-lg lg:text-sm font-semibold', sameDay(d, today) ? 'border-2 border-primary font-bold text-primary' : 'text-foreground')}>{d.getDate()}</span>
                 <span className={cn('size-1.5 rounded-full', daysWithAppt.has(startOfDay(d).getTime()) ? 'bg-primary' : 'bg-transparent')} />
               </>
             )}
@@ -293,7 +293,7 @@ function CreateSheet({ day: initDay, onClose, onDone }: { day: Date; onClose: ()
   const [type, setType] = useState('AUTRE')
   const [time, setTime] = useState('09:00')
   const [busy, setBusy] = useState(false)
-  const input = 'w-full rounded-xl border border-border bg-background px-4 py-3 text-sm text-foreground outline-none placeholder:text-muted-foreground'
+  const input = 'w-full rounded-xl border border-border bg-background px-4 py-3 text-lg lg:text-sm text-foreground outline-none placeholder:text-muted-foreground'
   const label = 'mb-1.5 block text-xs font-bold uppercase tracking-widest text-muted-foreground'
 
   async function submit() {
@@ -310,15 +310,15 @@ function CreateSheet({ day: initDay, onClose, onDone }: { day: Date; onClose: ()
       <div className="max-h-[92dvh] overflow-y-auto rounded-t-3xl bg-background pb-[max(1.25rem,env(safe-area-inset-bottom))]">
         <div className="mx-auto mb-3 mt-3 h-1 w-10 rounded-full bg-border" />
         <div className="sticky top-0 z-10 flex items-center gap-2 border-b border-border bg-background px-4 pb-3">
-          <button type="button" onClick={onClose} className="text-sm font-medium text-muted-foreground">Annuler</button>
-          <h2 className="flex-1 text-center text-sm font-bold text-foreground">Nouveau RDV</h2>
-          <button type="button" onClick={submit} disabled={busy} className="rounded-xl bg-primary px-4 py-1.5 text-sm font-bold text-primary-foreground disabled:opacity-50">OK</button>
+          <button type="button" onClick={onClose} className="text-lg lg:text-sm font-medium text-muted-foreground">Annuler</button>
+          <h2 className="flex-1 text-center text-lg lg:text-sm font-bold text-foreground">Nouveau RDV</h2>
+          <button type="button" onClick={submit} disabled={busy} className="rounded-xl bg-primary px-4 py-1.5 text-lg lg:text-sm font-bold text-primary-foreground disabled:opacity-50">OK</button>
         </div>
         <div className="flex flex-col gap-4 px-4 py-5">
           {/* Jour (repris de l'agenda, ajustable) */}
           <div className="flex items-center justify-between rounded-xl border border-border bg-surface px-2 py-1.5">
             <button type="button" onClick={() => setDay(addDays(day, -1))} className="flex size-8 items-center justify-center rounded-lg text-muted-foreground active:bg-muted"><ChevronLeft className="size-4" /></button>
-            <span className="text-sm font-bold capitalize text-foreground">{DOW3[(day.getDay() + 6) % 7]} {day.getDate()} {MONTHS[day.getMonth()]}</span>
+            <span className="text-lg lg:text-sm font-bold capitalize text-foreground">{DOW3[(day.getDay() + 6) % 7]} {day.getDate()} {MONTHS[day.getMonth()]}</span>
             <button type="button" onClick={() => setDay(addDays(day, 1))} className="flex size-8 items-center justify-center rounded-lg text-muted-foreground active:bg-muted"><ChevronRight className="size-4" /></button>
           </div>
           <div><label className={label}>Objet</label><input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Présentation, suivi…" className={input} /></div>
@@ -355,8 +355,8 @@ function DetailSheet({ appt, onClose, onChanged, onContact }: { appt: Appt; onCl
     const res = await fetch(`/api/appointments/${appt.id}`, { method: 'DELETE' })
     if (res.ok) { toast.success('RDV annulé'); onChanged(); onClose() } else toast.error('Échec')
   }
-  const row = 'flex items-center gap-3 rounded-2xl border border-border bg-surface px-4 py-3.5 text-left text-sm font-medium text-foreground active:bg-muted w-full'
-  const input = 'w-full rounded-xl border border-border bg-background px-4 py-3 text-sm text-foreground outline-none placeholder:text-muted-foreground'
+  const row = 'flex items-center gap-3 rounded-2xl border border-border bg-surface px-4 py-3.5 text-left text-lg lg:text-sm font-medium text-foreground active:bg-muted w-full'
+  const input = 'w-full rounded-xl border border-border bg-background px-4 py-3 text-lg lg:text-sm text-foreground outline-none placeholder:text-muted-foreground'
 
   return (
     <div className="fixed inset-0 z-[80] flex flex-col">
@@ -365,7 +365,7 @@ function DetailSheet({ appt, onClose, onChanged, onContact }: { appt: Appt; onCl
         <div className="mx-auto mb-3 mt-3 h-1 w-10 rounded-full bg-border" />
         <div className="flex items-start gap-3 px-5 pb-3">
           <div className="min-w-0 flex-1">
-            <p className="text-base font-bold text-foreground">{editing ? 'Modifier le RDV' : appt.title}</p>
+            <p className="text-lg lg:text-sm font-bold text-foreground">{editing ? 'Modifier le RDV' : appt.title}</p>
             {!editing && <p className="mt-0.5 text-xs text-muted-foreground">{DOW3[(d.getDay() + 6) % 7]} {d.getDate()} {MONTHS[d.getMonth()]} · {fmtTime(appt.startAt)} · {TYPE_LABEL[appt.type] ?? 'RDV'}{appt.contactName ? ` · ${appt.contactName}` : ''}</p>}
           </div>
           <button type="button" onClick={onClose}><X className="size-4 text-muted-foreground" /></button>
@@ -379,8 +379,8 @@ function DetailSheet({ appt, onClose, onChanged, onContact }: { appt: Appt; onCl
             </select>
             <WhenPicker value={when} onChange={setWhen} />
             <div className="flex gap-2">
-              <button type="button" onClick={() => setEditing(false)} className="flex-1 rounded-xl border border-border py-2.5 text-sm font-medium text-muted-foreground active:bg-muted">Retour</button>
-              <button type="button" onClick={() => patch({ title: title.trim() || 'Rendez-vous', type, startAt: new Date(when).toISOString() }, 'RDV modifié')} className="flex-1 rounded-xl bg-primary py-2.5 text-sm font-bold text-primary-foreground">Enregistrer</button>
+              <button type="button" onClick={() => setEditing(false)} className="flex-1 rounded-xl border border-border py-2.5 text-lg lg:text-sm font-medium text-muted-foreground active:bg-muted">Retour</button>
+              <button type="button" onClick={() => patch({ title: title.trim() || 'Rendez-vous', type, startAt: new Date(when).toISOString() }, 'RDV modifié')} className="flex-1 rounded-xl bg-primary py-2.5 text-lg lg:text-sm font-bold text-primary-foreground">Enregistrer</button>
             </div>
           </div>
         ) : (

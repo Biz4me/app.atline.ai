@@ -75,7 +75,7 @@ function DebriefContent() {
           <ChevronLeft className="size-5 stroke-[1.5]" />
         </button>
         <div className="flex-1 min-w-0">
-          <h1 className="truncate text-sm font-bold text-foreground lg:text-lg">
+          <h1 className="truncate text-lg font-bold text-foreground">
             Débrief{phaseLabel ? ` · ${phaseLabel}` : ''}
           </h1>
         </div>

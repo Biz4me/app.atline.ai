@@ -79,12 +79,12 @@ function NotifList() {
   return (
     <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between gap-2">
-        <p className="text-base font-semibold text-foreground">
+        <p className="text-lg font-semibold lg:text-sm text-foreground">
           {showAll ? `${items.length} notification${items.length > 1 ? 's' : ''}` : `${unread.length} non lue${unread.length > 1 ? 's' : ''}`}
         </p>
         <div className="flex items-center gap-3">
-          {unread.length > 0 && <button type="button" onClick={markAll} className="text-base font-semibold text-primary">Tout marquer comme lu</button>}
-          <button type="button" onClick={() => setShowAll((v) => !v)} className="text-base font-semibold text-muted-foreground">{showAll ? 'Non lues' : 'Historique'}</button>
+          {unread.length > 0 && <button type="button" onClick={markAll} className="text-lg font-semibold lg:text-sm text-primary">Tout marquer comme lu</button>}
+          <button type="button" onClick={() => setShowAll((v) => !v)} className="text-lg font-semibold lg:text-sm text-muted-foreground">{showAll ? 'Non lues' : 'Historique'}</button>
         </div>
       </div>
 
@@ -129,7 +129,7 @@ function NotifList() {
                   <span className="mt-1 size-2 shrink-0 rounded-full bg-primary" />
                 )}
               </div>
-              <p className="mt-0.5 text-base text-muted-foreground text-pretty line-clamp-2">{notif.body}</p>
+              <p className="mt-0.5 text-sm text-muted-foreground lg:text-xs text-pretty line-clamp-2">{notif.body}</p>
               <p className="mt-1 text-xs text-muted-foreground">{notif.time}</p>
             </div>
           </button>

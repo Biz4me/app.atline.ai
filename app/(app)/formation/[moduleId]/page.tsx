@@ -79,7 +79,7 @@ export default function ModulePage() {
         >
           <ChevronLeft className="size-6" />
         </button>
-        <p className="text-sm font-semibold text-foreground">Module {moduleNum}</p>
+        <p className="text-lg lg:text-sm font-semibold text-foreground">Module {moduleNum}</p>
         <span className="absolute right-4 text-xs text-muted-foreground">{moduleNum} / {totalModules}</span>
       </div>
 
@@ -93,7 +93,7 @@ export default function ModulePage() {
               {stripPrefix(mod.title)}
             </h1>
             {mod.description && (
-              <p className="mt-2 text-sm text-muted-foreground">{mod.description}</p>
+              <p className="mt-2 text-lg lg:text-sm text-muted-foreground">{mod.description}</p>
             )}
             <p className="mt-1 text-xs text-muted-foreground">
               {mod._count.lessons} leçons · {pct}% complété
@@ -165,24 +165,24 @@ export default function ModulePage() {
 
                       {/* Contenu */}
                       <div className="min-w-0 flex-1 flex flex-col justify-center">
-                        <p className="truncate text-sm font-semibold text-foreground">
+                        <p className="truncate text-lg lg:text-sm font-semibold text-foreground">
                           {isQuiz ? 'Quiz' : lesson.title}
                         </p>
                         {isQuiz ? (
                           <div className="mt-0.5 min-h-[2.5rem] flex flex-col justify-between">
                             {lesson.title.includes(" — ") && (
-                              <p className="line-clamp-1 text-sm font-semibold text-foreground leading-snug">
+                              <p className="line-clamp-1 text-lg lg:text-sm font-semibold text-foreground leading-snug">
                                 {lesson.title.split(" — ").slice(1).join(" — ")}
                               </p>
                             )}
                             <p className="text-xs text-muted-foreground">{lesson._count.questions} questions</p>
                           </div>
                         ) : lesson.intro ? (
-                          <p className="mt-0.5 line-clamp-2 text-sm text-muted-foreground leading-snug min-h-[2.5rem]">
+                          <p className="mt-0.5 line-clamp-2 text-lg lg:text-sm text-muted-foreground leading-snug min-h-[2.5rem]">
                             {lesson.intro}
                           </p>
                         ) : (
-                          <p className="mt-0.5 text-sm text-muted-foreground min-h-[2.5rem] flex items-end">
+                          <p className="mt-0.5 text-lg lg:text-sm text-muted-foreground min-h-[2.5rem] flex items-end">
                             Lecture
                           </p>
                         )}
