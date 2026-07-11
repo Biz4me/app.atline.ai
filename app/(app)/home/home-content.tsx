@@ -54,9 +54,9 @@ function Kpis({ s }: { s: Stats | null }) {
         { icon: BookOpen, label: 'Formation', value: s != null ? `${s.formationPct}%` : undefined, sub: 'du parcours' },
       ].map(({ icon: Icon, label, value, sub, alert }) => (
         <Card key={label} className="flex flex-col gap-0.5 px-3.5 py-3">
-          <span className="flex items-center gap-1.5 text-xs text-muted-foreground"><Icon className="size-3.5 stroke-[1.5]" />{label}</span>
+          <span className="flex items-center gap-1.5 text-sm text-muted-foreground lg:text-xs"><Icon className="size-3.5 stroke-[1.5]" />{label}</span>
           <span className={`font-display text-2xl font-bold tabular-nums ${alert ? 'text-[#EF4444]' : 'text-foreground'}`}>{value ?? '—'}</span>
-          <span className="text-xs text-muted-foreground">{sub}</span>
+          <span className="text-sm text-muted-foreground lg:text-xs">{sub}</span>
         </Card>
       ))}
     </div>
@@ -67,13 +67,13 @@ function TunnelCard({ s }: { s: Stats | null }) {
   const total = s ? Object.values(s.tunnel).reduce((a, b) => a + b, 0) : 0
   return (
     <Card className="flex flex-col gap-2.5 p-4">
-      <span className="text-sm font-bold text-foreground">Ton tunnel</span>
+      <span className="text-lg font-bold text-foreground lg:text-sm">Ton tunnel</span>
       {total > 0 ? (
         <>
           <div className="flex h-2 gap-0.5 overflow-hidden rounded-full">
             {TUNNEL_COLORS.map(([k, color]) => (s!.tunnel[k] > 0 ? <span key={k} style={{ flex: s!.tunnel[k], background: color }} /> : null))}
           </div>
-          <span className="text-xs text-muted-foreground">
+          <span className="text-sm text-muted-foreground lg:text-xs">
             {TUNNEL_COLORS.filter(([k]) => s!.tunnel[k] > 0).map(([k, , label]) => `${s!.tunnel[k]} ${label}`).join(' · ')}
           </span>
         </>
@@ -91,8 +91,8 @@ function AgentCards({ s }: { s: Stats | null }) {
         <Card className="flex items-center gap-3 p-4 transition-colors active:bg-muted/50 hover:bg-muted/40">
           <span className="w-1 self-stretch rounded-full bg-[#14B8A6]" />
           <span className="min-w-0 flex-1">
-            <span className="block text-sm font-bold text-foreground">{s?.ariaScore != null ? `Score d'entraînement : ${s.ariaScore}` : "Entraîne-toi à l'oral"}</span>
-            <span className="block text-xs text-muted-foreground">{s?.simCount ? `${s.simCount} simulation${s.simCount > 1 ? 's' : ''} · moyenne 30 jours` : 'Lance ta première simulation'}</span>
+            <span className="block text-lg font-bold text-foreground lg:text-sm">{s?.ariaScore != null ? `Score d'entraînement : ${s.ariaScore}` : "Entraîne-toi à l'oral"}</span>
+            <span className="block text-sm text-muted-foreground lg:text-xs">{s?.simCount ? `${s.simCount} simulation${s.simCount > 1 ? 's' : ''} · moyenne 30 jours` : 'Lance ta première simulation'}</span>
           </span>
           <Mic className="size-4 shrink-0 text-[#14B8A6]" />
         </Card>
@@ -101,8 +101,8 @@ function AgentCards({ s }: { s: Stats | null }) {
         <Card className="flex items-center gap-3 p-4 transition-colors active:bg-muted/50 hover:bg-muted/40">
           <span className="w-1 self-stretch rounded-full bg-[#8B5CF6]" />
           <span className="min-w-0 flex-1">
-            <span className="block text-sm font-bold text-foreground">{s?.nova.campaigns ? `${s.nova.campaigns} campagne${s.nova.campaigns > 1 ? 's' : ''} · ${s.nova.leads} lead${s.nova.leads > 1 ? 's' : ''}` : 'Attire tes prochains contacts'}</span>
-            <span className="block text-xs text-muted-foreground">{s?.nova.campaigns ? 'tes réseaux travaillent pour toi' : 'Crée ta première campagne'}</span>
+            <span className="block text-lg font-bold text-foreground lg:text-sm">{s?.nova.campaigns ? `${s.nova.campaigns} campagne${s.nova.campaigns > 1 ? 's' : ''} · ${s.nova.leads} lead${s.nova.leads > 1 ? 's' : ''}` : 'Attire tes prochains contacts'}</span>
+            <span className="block text-sm text-muted-foreground lg:text-xs">{s?.nova.campaigns ? 'tes réseaux travaillent pour toi' : 'Crée ta première campagne'}</span>
           </span>
           <Megaphone className="size-4 shrink-0 text-[#8B5CF6]" />
         </Card>
@@ -117,7 +117,7 @@ function AgendaCard({ today }: { today: Appt[] }) {
       <div className="flex items-center justify-between border-b border-border px-4 py-3">
         <div className="flex items-center gap-2">
           <CalendarDays className="size-4 stroke-[1.5] text-muted-foreground" />
-          <span className="text-sm font-bold text-foreground">Agenda du jour</span>
+          <span className="text-lg font-bold text-foreground lg:text-sm">Agenda du jour</span>
         </div>
         <Link href="/agenda" className="text-xs font-medium text-muted-foreground transition-colors hover:text-foreground">Voir tout →</Link>
       </div>
@@ -128,7 +128,7 @@ function AgendaCard({ today }: { today: Appt[] }) {
               <span className="w-12 shrink-0 text-sm font-bold tabular-nums text-foreground">
                 {new Date(a.startAt).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
               </span>
-              <span className="min-w-0 flex-1 truncate text-sm text-foreground">{a.title}{a.contactName ? ` · ${a.contactName}` : ''}</span>
+              <span className="min-w-0 flex-1 truncate text-lg text-foreground lg:text-sm">{a.title}{a.contactName ? ` · ${a.contactName}` : ''}</span>
             </div>
           ))}
         </div>

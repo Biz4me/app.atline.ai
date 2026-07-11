@@ -168,16 +168,16 @@ function SetupScreen({
           {/* Reprendre là où tu en étais — score réel + rejouer en 1 tap (jamais de jargon technique) */}
           {lastSim && (
             <div className="mb-4 rounded-2xl border border-[#14B8A6]/30 bg-[#14B8A6]/5 p-3.5">
-              <p className="text-xs font-bold text-foreground">
+              <p className="text-base font-bold text-foreground lg:text-sm">
                 Dernier entraînement : {lastSim.score}/100
                 {(() => { const l = scenarios.find((s) => s.id === lastSim.scenario)?.label; return l ? ` · ${l}` : '' })()}
               </p>
-              <p className="mt-0.5 text-xs text-muted-foreground">Rejoue ce scénario et bats ton score.</p>
+              <p className="mt-0.5 text-sm text-muted-foreground lg:text-xs">Rejoue ce scénario et bats ton score.</p>
               <button
                 type="button"
                 onClick={replay}
                 className={cn(
-                  'mt-2.5 rounded-full px-3.5 py-1.5 text-xs font-bold transition-colors',
+                  'mt-2.5 rounded-full px-3.5 py-1.5 text-sm font-bold transition-colors',
                   scenario === lastSim.scenario ? 'bg-[#14B8A6] text-white' : 'bg-[#14B8A6]/15 text-[#14B8A6]',
                 )}
               >
@@ -185,7 +185,7 @@ function SetupScreen({
               </button>
             </div>
           )}
-          <p className="mb-2.5 text-xs font-bold text-foreground">Avec qui tu t&apos;entraînes ?</p>
+          <p className="mb-2.5 text-sm font-bold text-foreground lg:text-xs">Avec qui tu t&apos;entraînes ?</p>
 
           {selected ? (
             <div className="mb-4 flex items-center gap-3 rounded-xl border border-border bg-muted/50 p-3">
@@ -193,7 +193,7 @@ function SetupScreen({
                 {selected.firstName[0]}{selected.lastName[0]}
               </span>
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-bold text-foreground">{selected.firstName} {selected.lastName}</p>
+                <p className="text-lg font-bold text-foreground lg:text-sm">{selected.firstName} {selected.lastName}</p>
                 <span className={cn('text-xs font-bold', stagePillColors[selected.stage])}>
                   {stageLabel[selected.stage]}
                 </span>
@@ -215,7 +215,7 @@ function SetupScreen({
                   onChange={(e) => { setQuery(e.target.value); setDropdownOpen(true) }}
                   onFocus={() => setDropdownOpen(true)}
                   placeholder="Rechercher un contact..."
-                  className="w-full rounded-xl border border-border bg-muted py-2.5 pl-9 pr-4 text-sm placeholder:text-muted-foreground outline-none focus:ring-2 focus:ring-ring/40"
+                  className="w-full rounded-xl border border-border bg-muted py-2.5 pl-9 pr-4 text-lg lg:text-sm placeholder:text-muted-foreground outline-none focus:ring-2 focus:ring-ring/40"
                 />
               </div>
               {dropdownOpen && filtered.length > 0 && (
@@ -231,7 +231,7 @@ function SetupScreen({
                         {c.firstName[0]}{c.lastName[0]}
                       </span>
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-semibold text-foreground">{c.firstName} {c.lastName}</p>
+                        <p className="text-base font-semibold text-foreground lg:text-sm">{c.firstName} {c.lastName}</p>
                         <p className="text-xs text-muted-foreground">{c.city}</p>
                       </div>
                       <span className={cn('shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold', stagePillColors[c.stage])}>
@@ -246,7 +246,7 @@ function SetupScreen({
 
           {/* Genre manquant → la voix ne peut pas s'accorder au contact */}
           {selected && !selected.gender && (
-            <p className="mb-3 rounded-xl border border-border bg-muted px-3 py-2 text-xs text-muted-foreground">
+            <p className="mb-3 rounded-xl border border-border bg-muted px-3 py-2 text-sm text-muted-foreground lg:text-xs">
               Renseigne le genre de {selected.firstName} sur sa fiche pour que la voix de la simulation corresponde (homme/femme).
             </p>
           )}
@@ -254,13 +254,13 @@ function SetupScreen({
           {/* La PHASE n'est plus demandée : elle se déduit du stade du contact (phaseForStage)
               et filtre la liste de scénarios ci-dessous. Une décision de moins à l'écran. */}
           {/* Scénario précis (bibliothèque partagée, filtrée par phase) — déroulant maison, Auto par défaut */}
-          <p className="mb-2.5 mt-1 text-xs font-bold text-foreground">Scénario</p>
+          <p className="mb-2.5 mt-1 text-sm font-bold text-foreground lg:text-xs">Scénario</p>
           <div className="mb-4">
             <SelectMenu
               value={scenario}
               onChange={setScenario}
               placeholder="Scénario"
-              className="w-full rounded-xl border border-border bg-surface px-3 py-2.5 text-sm text-foreground"
+              className="w-full rounded-xl border border-border bg-surface px-3 py-2.5 text-lg text-foreground lg:text-sm"
               options={[
                 { value: 'auto', label: 'Automatique (selon la phase)' },
                 ...scenarios.filter((s) => s.phase === PHASE_PARAMS[phase].phase).map((s) => ({ value: s.id, label: s.label })),
@@ -273,7 +273,7 @@ function SetupScreen({
             onClick={() => selected && onStart(selected, 'voice', scenario)}
             disabled={!selected}
             className={cn(
-              'flex w-full items-center justify-center gap-2 rounded-xl py-3.5 text-sm font-bold transition-all',
+              'flex w-full items-center justify-center gap-2 rounded-xl py-3.5 text-base font-bold transition-all lg:text-sm',
               selected
                 ? 'bg-[#14B8A6] text-white active:scale-[0.98]'
                 : 'bg-muted text-muted-foreground cursor-not-allowed'
@@ -287,7 +287,7 @@ function SetupScreen({
             onClick={() => selected && onStart(selected, 'text', scenario)}
             disabled={!selected}
             className={cn(
-              'mt-2 flex w-full items-center justify-center gap-2 rounded-xl border py-3 text-sm font-bold transition-all',
+              'mt-2 flex w-full items-center justify-center gap-2 rounded-xl border py-3 text-base font-bold transition-all lg:text-sm',
               selected
                 ? 'border-[#14B8A6]/40 text-[#14B8A6] active:bg-[#14B8A6]/5'
                 : 'border-border text-muted-foreground cursor-not-allowed'
@@ -300,7 +300,7 @@ function SetupScreen({
 
         {!selected && (
           <div>
-            <p className="mb-3 text-xs font-extrabold uppercase tracking-widest text-[#14B8A6]">
+            <p className="mb-3 text-sm font-extrabold uppercase tracking-widest text-[#14B8A6] lg:text-xs">
               Tes priorités du jour
             </p>
             <div className="flex flex-col gap-2">
@@ -315,7 +315,7 @@ function SetupScreen({
                     {c.firstName[0]}{c.lastName[0] ?? ''}
                   </span>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-bold text-foreground">{c.firstName} {c.lastName}</p>
+                    <p className="text-lg font-bold text-foreground lg:text-sm">{c.firstName} {c.lastName}</p>
                     <p className="text-xs text-muted-foreground">{c.city}</p>
                   </div>
                   <span className={cn('shrink-0 rounded-full px-2.5 py-0.5 text-xs font-bold', stagePillColors[c.stage])}>
@@ -757,7 +757,7 @@ function TextSimulatorScreen({
           onClick={() => onDebrief(sessionId)}
           disabled={!canDebrief}
           className={cn(
-            'shrink-0 rounded-full px-3.5 py-1.5 text-xs font-bold transition-colors',
+            'shrink-0 rounded-full px-3.5 py-1.5 text-sm font-bold transition-colors',
             canDebrief ? 'bg-[#14B8A6] text-white' : 'bg-muted text-muted-foreground'
           )}
         >
