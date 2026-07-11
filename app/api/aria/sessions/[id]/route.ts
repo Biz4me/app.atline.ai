@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getToken } from 'next-auth/jwt'
 import { db } from '@/lib/db'
+import { reconcileFacts, reflect, type ExtractedFact } from '@/lib/atlas-memory'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -87,6 +88,41 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
     where: { id },
     data: { score, feedback: JSON.stringify(feedback) },
   })
+
+  // ── La boucle apprend (fire-and-forget) : le débrief nourrit la mémoire d'Atlas ──
+  // 1) faits de compétence (maitrise / bloque_sur / travaille_sur) → réconciliation
+  //    (ré-observation = confiance qui monte ; progression = supersession traçable)
+  // 2) profil vivant rafraîchi avec le bilan d'entraînement
+  void (async () => {
+    try {
+      const facts = (Array.isArray(data.facts) ? data.facts : []) as ExtractedFact[]
+      if (facts.length) await reconcileFacts(userId, null, facts)
+
+      const resume = typeof data.resume === 'string' ? data.resume : ''
+      const axes = Array.isArray(data.axes)
+        ? (data.axes as { probleme?: string }[]).map((a) => a.probleme).filter(Boolean).join(' ; ')
+        : ''
+      const [prefs, user] = await Promise.all([
+        db.userPreferences.findUnique({ where: { userId }, select: { atlasProfile: true } }),
+        db.user.findUnique({ where: { id: userId }, select: { firstName: true } }),
+      ])
+      const { profile } = await reflect(
+        'user',
+        user?.firstName ?? '',
+        prefs?.atlasProfile ?? '',
+        `Entraînement Aria (simulation ${sim.characterId}, étape ${sim.phase.toLowerCase()}) — score ${score ?? '?'} sur 100.\nBilan : ${resume}\nAxes à travailler : ${axes || 'aucun'}`,
+      )
+      if (profile) {
+        await db.userPreferences.upsert({
+          where: { userId },
+          create: { userId, atlasProfile: profile, atlasProfileAt: new Date() },
+          update: { atlasProfile: profile, atlasProfileAt: new Date() },
+        })
+      }
+    } catch {
+      /* mémoire best-effort */
+    }
+  })()
 
   return NextResponse.json({ score, ...feedback })
 }

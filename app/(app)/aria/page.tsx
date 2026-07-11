@@ -92,6 +92,14 @@ function SetupScreen({
   const [query, setQuery] = useState('')
   const [selected, setSelected] = useState<SimContact | null>(null)
   const [dropdownOpen, setDropdownOpen] = useState(false)
+  // Reco d'Atlas issue du dernier débrief (parcours adaptatif)
+  const [lastSim, setLastSim] = useState<{ score: number; scenario: string; reco: string } | null>(null)
+  useEffect(() => {
+    fetch('/api/aria/sessions/last')
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => { if (d?.last?.score != null) setLastSim(d.last) })
+      .catch(() => {})
+  }, [])
 
   const filtered = query
     ? contacts.filter((c) =>
@@ -131,6 +139,20 @@ function SetupScreen({
               <p className="text-xs text-muted-foreground">Entraîne-toi face à un prospect IA</p>
             </div>
           </div>
+
+          {lastSim && (
+            <div className="mb-4 flex items-start gap-2.5 rounded-2xl border border-primary/30 bg-primary/5 p-3.5">
+              <span className="flex size-8 shrink-0 items-center justify-center rounded-xl bg-primary/10">
+                <span className="font-display text-sm font-bold text-primary">A</span>
+              </span>
+              <div className="min-w-0">
+                <p className="text-xs font-bold text-foreground">
+                  Dernier entraînement : {lastSim.score}/100 · {lastSim.scenario.replace(/_/g, ' ')}
+                </p>
+                {lastSim.reco && <p className="mt-0.5 text-xs text-muted-foreground text-pretty">{lastSim.reco}</p>}
+              </div>
+            </div>
+          )}
 
           <p className="mb-2.5 text-xs font-bold text-foreground">Phase</p>
           <div className="mb-5 flex flex-wrap gap-2">

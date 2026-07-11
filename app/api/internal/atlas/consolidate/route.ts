@@ -29,20 +29,43 @@ export async function POST(req: NextRequest) {
     list.push(c.id)
     byUser.set(c.userId, list)
   }
+  // Les utilisateurs qui n'ont QUE des entraînements Aria aujourd'hui comptent aussi
+  const simUsers = await db.simSession.findMany({
+    where: { score: { not: null }, startedAt: { gte: since } },
+    select: { userId: true },
+    distinct: ['userId'],
+  })
+  for (const s of simUsers) if (!byUser.has(s.userId)) byUser.set(s.userId, [])
 
   let done = 0
   for (const [userId, convIds] of [...byUser.entries()].slice(0, 50)) {
     try {
-      const msgs = await db.atlasMessage.findMany({
-        where: { conversationId: { in: convIds }, createdAt: { gte: since } },
-        orderBy: { createdAt: 'asc' },
-        take: 80,
-        select: { role: true, content: true },
-      })
-      if (msgs.length < 2) continue
-      const exchange = msgs
+      const [msgs, simsDuJour] = await Promise.all([
+        db.atlasMessage.findMany({
+          where: { conversationId: { in: convIds }, createdAt: { gte: since } },
+          orderBy: { createdAt: 'asc' },
+          take: 80,
+          select: { role: true, content: true },
+        }),
+        db.simSession.findMany({
+          where: { userId, score: { not: null }, startedAt: { gte: since } },
+          orderBy: { startedAt: 'asc' },
+          select: { characterId: true, score: true, feedback: true },
+        }),
+      ])
+      if (msgs.length < 2 && !simsDuJour.length) continue
+      let exchange = msgs
         .map((m) => `${m.role === 'USER' ? 'Utilisateur' : 'Atlas'}: ${m.content.slice(0, 500)}`)
         .join('\n')
+      // Les entraînements Aria du jour font partie de la journée du distributeur
+      if (simsDuJour.length) {
+        const lines = simsDuJour.map((s) => {
+          let resume = ''
+          try { resume = (JSON.parse(s.feedback ?? '{}') as { resume?: string }).resume ?? '' } catch { /* ignore */ }
+          return `Entraînement Aria (${s.characterId.replace(/_/g, ' ')}) : score ${s.score}/100${resume ? ` — ${resume}` : ''}`
+        })
+        exchange += `${exchange ? '\n\n' : ''}ENTRAÎNEMENTS DU JOUR :\n${lines.join('\n')}`
+      }
       const [prefs, user] = await Promise.all([
         db.userPreferences.findUnique({ where: { userId }, select: { atlasProfile: true } }),
         db.user.findUnique({ where: { id: userId }, select: { firstName: true } }),

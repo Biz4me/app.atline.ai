@@ -36,7 +36,7 @@ async function buildAtlasSnapshot(userId: string): Promise<string> {
 
     const now = new Date()
     const endOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59)
-    const [contactsCount, relancesDue, lessonsTotal, lessonsDone, nextRdv] = await Promise.all([
+    const [contactsCount, relancesDue, lessonsTotal, lessonsDone, nextRdv, sims] = await Promise.all([
       db.contact.count({ where: { userId } }),
       db.relance.count({ where: { userId, status: 'PENDING', dueAt: { lte: endOfDay } } }),
       db.lmsLesson.count(),
@@ -45,6 +45,11 @@ async function buildAtlasSnapshot(userId: string): Promise<string> {
         where: { userId, done: false, startAt: { gte: now } },
         orderBy: { startAt: 'asc' },
         select: { title: true, startAt: true, contact: { select: { firstName: true, lastName: true } } },
+      }),
+      db.simSession.findMany({
+        where: { userId, score: { not: null }, startedAt: { gte: new Date(now.getTime() - 30 * 86400000) } },
+        orderBy: { startedAt: 'asc' },
+        select: { characterId: true, score: true, startedAt: true, phase: true },
       }),
     ])
 
@@ -75,6 +80,22 @@ async function buildAtlasSnapshot(userId: string): Promise<string> {
       const when = new Intl.DateTimeFormat('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' }).format(nextRdv.startAt)
       const who = nextRdv.contact ? ` avec ${[nextRdv.contact.firstName, nextRdv.contact.lastName].filter(Boolean).join(' ')}` : ''
       lines.push(`Prochain rendez-vous : ${nextRdv.title}${who} — ${when}`)
+    }
+    // Entraînements Aria (30 j) : dernier score + PROGRESSION par scénario rejoué —
+    // c'est ce qui permet à Atlas de dire « tu es passé de 45 à 70 sur l'objection pyramide ».
+    if (sims.length) {
+      const last = sims[sims.length - 1]
+      lines.push(`Entraînements Aria (30 j) : ${sims.length} simulation${sims.length > 1 ? 's' : ''}, dernière : ${last.characterId.replace(/_/g, ' ')} — ${last.score}/100`)
+      const byScenario = new Map<string, number[]>()
+      for (const s of sims) {
+        const arr = byScenario.get(s.characterId) ?? []
+        arr.push(s.score!)
+        byScenario.set(s.characterId, arr)
+      }
+      const prog = [...byScenario.entries()]
+        .filter(([, scores]) => scores.length >= 2)
+        .map(([sc, scores]) => `${sc.replace(/_/g, ' ')} : ${scores[0]} → ${scores[scores.length - 1]}/100 (${scores.length} essais)`)
+      if (prog.length) lines.push(`Progression par scénario : ${prog.join(' · ')}`)
     }
     return lines.join('\n')
   } catch {
