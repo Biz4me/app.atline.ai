@@ -32,6 +32,8 @@ export function ShellComposer() {
   // Aria/Nova = expériences lancées (simulateur, cockpit campagnes) : « Écris à Atlas » y est un intrus
   if (pathname === '/nova' || pathname.startsWith('/nova/')) return null
   if (pathname === '/aria' || pathname.startsWith('/aria/')) return null
+  // Messages : la page a son propre composeur (fil du contact) — pas de barre Atlas par-dessus
+  if (pathname === '/messages' || pathname.startsWith('/messages/')) return null
 
   const scrollDown = () => setTimeout(() => scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' }), 60)
 
