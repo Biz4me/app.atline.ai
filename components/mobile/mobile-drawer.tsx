@@ -109,10 +109,54 @@ export function MobileDrawer() {
         )}
         style={drag ? { transform: `translateX(${drag}px)`, transition: 'none' } : undefined}
       >
-        <nav
-          className="flex-1 overflow-y-auto no-scrollbar px-2 py-1"
+        {/* Switcher MLM — EN HAUT : le contexte se choisit AVANT ce qu'il filtre
+            (tout le menu dépend du MLM actif ; le profil, lui, est global → en bas) */}
+        <button
+          type="button"
+          onClick={() => setBizOpen((o) => !o)}
+          className="flex w-full items-center gap-3 px-3 pb-2"
           style={{ paddingTop: 'max(14px, env(safe-area-inset-top))' }}
         >
+          <span className="grid size-9 shrink-0 place-items-center rounded-full text-sm font-bold text-white" style={{ backgroundColor: current.color }}>
+            {current.initials || current.name?.charAt(0).toUpperCase()}
+          </span>
+          <span className="min-w-0 flex-1 truncate text-left text-lg font-bold text-foreground">{current.name}</span>
+          <ChevronDown className={cn('size-5 shrink-0 text-muted-foreground transition-transform', bizOpen && 'rotate-180')} />
+        </button>
+        {bizOpen && (
+          <div className="border-b border-border px-1 pb-2">
+            {all.map((b) => {
+              const active = current.id === b.id
+              return (
+                <div key={b.id} className="flex items-center gap-2 rounded-xl px-2 py-1.5">
+                  <button type="button" onClick={() => selectBiz(b)} className="flex min-w-0 flex-1 items-center gap-3 text-left">
+                    <span
+                      className={cn('grid size-9 shrink-0 place-items-center rounded-full text-sm font-bold text-white', active && 'ring-2 ring-offset-2 ring-offset-background')}
+                      style={{ backgroundColor: b.color, ...(active ? { ['--tw-ring-color']: b.color } : {}) } as React.CSSProperties}
+                    >
+                      {b.initials || b.name?.charAt(0).toUpperCase()}
+                    </span>
+                    <span className="min-w-0 flex-1 truncate text-base font-medium text-foreground">{b.name}</span>
+                    {active && <Check className="size-4 shrink-0 text-foreground" />}
+                  </button>
+                  {!b.isAtline && (
+                    <button type="button" onClick={() => gerer(b)} className="shrink-0 rounded-full border border-border px-3 py-1 text-xs font-semibold text-foreground active:bg-muted">
+                      Gérer
+                    </button>
+                  )}
+                </div>
+              )
+            })}
+            <button type="button" onClick={() => go('/activities/new')} className="flex w-full items-center gap-3 rounded-xl px-2 py-1.5 text-left active:bg-muted">
+              <span className="grid size-9 shrink-0 place-items-center rounded-full border-2 border-dashed border-border text-muted-foreground">
+                <Plus className="size-5" />
+              </span>
+              <span className="text-base font-medium text-muted-foreground">Ajouter une activité</span>
+            </button>
+          </div>
+        )}
+
+        <nav className="flex-1 overflow-y-auto no-scrollbar px-2 py-1">
           {DRAWER_SECTIONS.map((item) => {
             const Icon = item.icon
             const act = isActive(item.href)
@@ -137,7 +181,8 @@ export function MobileDrawer() {
             Le nom règle la découvrabilité, le rectangle agrandit la cible, le retrait
             (px-3) éloigne du bord droit qui ferme le tiroir. */}
         <div className="flex flex-col items-end gap-2 px-3 pb-3">
-          {AGENTS.map((a) => {
+          {/* De bas en haut : Atlas, Aria, Nova — le plus utilisé au plus près du pouce */}
+          {[...AGENTS].reverse().map((a) => {
             const Icon = a.icon
             return (
               <button
@@ -158,43 +203,7 @@ export function MobileDrawer() {
           })}
         </div>
 
-        {/* Switcher MLM — EN BAS du tiroir (façon « espace de travail »), la liste s'ouvre vers le haut */}
-        <div className={cn('border-t border-border px-2', bizOpen && 'pt-2')}>
-          {bizOpen && (
-            <div className="px-1 pb-1">
-              {all.map((b) => {
-                const active = current.id === b.id
-                return (
-                  <div key={b.id} className="flex items-center gap-2 rounded-xl px-2 py-1.5">
-                    <button type="button" onClick={() => selectBiz(b)} className="flex min-w-0 flex-1 items-center gap-3 text-left">
-                      <span
-                        className={cn('grid size-9 shrink-0 place-items-center rounded-full text-sm font-bold text-white', active && 'ring-2 ring-offset-2 ring-offset-background')}
-                        style={{ backgroundColor: b.color, ...(active ? { ['--tw-ring-color']: b.color } : {}) } as React.CSSProperties}
-                      >
-                        {b.initials || b.name?.charAt(0).toUpperCase()}
-                      </span>
-                      <span className="min-w-0 flex-1 truncate text-base font-medium text-foreground">{b.name}</span>
-                      {active && <Check className="size-4 shrink-0 text-foreground" />}
-                    </button>
-                    {!b.isAtline && (
-                      <button type="button" onClick={() => gerer(b)} className="shrink-0 rounded-full border border-border px-3 py-1 text-xs font-semibold text-foreground active:bg-muted">
-                        Gérer
-                      </button>
-                    )}
-                  </div>
-                )
-              })}
-              <button type="button" onClick={() => go('/activities/new')} className="flex w-full items-center gap-3 rounded-xl px-2 py-1.5 text-left active:bg-muted">
-                <span className="grid size-9 shrink-0 place-items-center rounded-full border-2 border-dashed border-border text-muted-foreground">
-                  <Plus className="size-5" />
-                </span>
-                <span className="text-base font-medium text-muted-foreground">Ajouter une activité</span>
-              </button>
-            </div>
-          )}
-        </div>
-
-        {/* Barre du bas — avatar profil (→ Ton compte) · cloche · … · activité MLM (tap = changer) */}
+        {/* Barre du bas — identité globale : avatar profil (→ Ton compte) · cloche. Sans trait : la zone respire. */}
         <div
           className="flex items-center gap-2 px-3 pt-1"
           style={{ paddingBottom: 'max(20px, env(safe-area-inset-bottom))' }}
@@ -222,13 +231,6 @@ export function MobileDrawer() {
             {unread > 0 && (
               <span className="absolute right-0.5 top-0.5 flex size-4 items-center justify-center rounded-full bg-destructive text-[10px] font-bold text-white ring-2 ring-background">{unread > 9 ? '9+' : unread}</span>
             )}
-          </button>
-          <button type="button" onClick={() => setBizOpen((o) => !o)} className="ml-auto flex min-w-0 items-center gap-2 rounded-xl px-1 py-1 text-left">
-            <span className="grid size-8 shrink-0 place-items-center rounded-lg text-xs font-bold text-white" style={{ backgroundColor: current.color }}>
-              {current.initials || current.name?.charAt(0).toUpperCase()}
-            </span>
-            <span className="max-w-[110px] truncate text-sm font-bold text-foreground">{current.name}</span>
-            <ChevronDown className={cn('size-4 shrink-0 text-muted-foreground transition-transform', bizOpen ? 'rotate-0' : 'rotate-180')} />
           </button>
         </div>
       </div>
