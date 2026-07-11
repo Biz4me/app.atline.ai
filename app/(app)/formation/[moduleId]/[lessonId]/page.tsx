@@ -1,9 +1,9 @@
 'use client'
 
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useMemo, useRef } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import Link from 'next/link'
-import { X, ChevronRight, CheckCircle2, Clock, XCircle, Trophy, BookOpen } from 'lucide-react'
+import { X, ChevronRight, CheckCircle2, Clock, XCircle, Trophy, BookOpen, SendHorizontal } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 // ── BlockNote renderer ──────────────────────────────────────────────────────
@@ -85,6 +85,147 @@ function BlockNoteRenderer({ blocks }: { blocks: BNBlock[] }) {
   flushBullets('ul-end')
 
   return <div className="flex flex-col gap-3">{elements}</div>
+}
+
+// ── Lecteur guidé — la leçon EXISTANTE streamée façon chat, avec arrêts ──────
+// Zéro LLM sur le cours (affichage progressif du contenu validé). Arrêts SÉMANTIQUES :
+// fin de section (titre niveau 2), sinon toutes les ~6 briques. À l'arrêt : question à
+// Atlas (leçon en contexte) ou « Continuer » — reprise AUTO après 20 s d'inactivité.
+
+function LessonChatPlayer({ blocks, title, onFinished }: { blocks: BNBlock[]; title: string; onFinished: () => void }) {
+  const segments = useMemo(() => {
+    const cuts: number[] = []
+    blocks.forEach((b, i) => { if (i > 0 && b.type === 'heading' && (b.props?.level ?? 2) === 2) cuts.push(i) })
+    if (!cuts.length) for (let i = 6; i < blocks.length; i += 6) cuts.push(i)
+    const segs: { from: number; to: number }[] = []
+    let from = 0
+    for (const c of cuts) { if (c > from) { segs.push({ from, to: c - 1 }); from = c } }
+    segs.push({ from, to: blocks.length - 1 })
+    return segs
+  }, [blocks])
+
+  const [seg, setSeg] = useState(0)      // segment courant
+  const [shown, setShown] = useState(0)  // briques révélées dans le segment courant
+  const [paused, setPaused] = useState(false)
+  const [finishedAll, setFinishedAll] = useState(false)
+  const [thread, setThread] = useState<{ seg: number; from: 'user' | 'atlas'; text: string }[]>([])
+  const [input, setInput] = useState('')
+  const [streaming, setStreaming] = useState(false)
+  const convRef = useRef<string | null>(null)
+
+  // Révélation progressive (une brique toutes les ~420 ms = effet streaming, coût zéro)
+  useEffect(() => {
+    if (paused || finishedAll) return
+    const cur = segments[seg]
+    if (!cur) return
+    if (shown >= cur.to - cur.from + 1) {
+      if (seg === segments.length - 1) { setFinishedAll(true); onFinished() }
+      else setPaused(true)
+      return
+    }
+    const t = setTimeout(() => setShown((s) => s + 1), 420)
+    return () => clearTimeout(t)
+  }, [shown, paused, seg, finishedAll, segments, onFinished])
+
+  const goOn = useCallback(() => { setPaused(false); setSeg((s) => s + 1); setShown(0) }, [])
+
+  // Reprise automatique après 20 s d'inactivité (taper annule le minuteur)
+  useEffect(() => {
+    if (!paused || input.trim() || streaming) return
+    const t = setTimeout(goOn, 20000)
+    return () => clearTimeout(t)
+  }, [paused, input, streaming, goOn])
+
+  const ask = async () => {
+    const q = input.trim()
+    if (!q || streaming) return
+    setInput('')
+    setStreaming(true)
+    setThread((t) => [...t, { seg, from: 'user', text: q }, { seg, from: 'atlas', text: '' }])
+    const lessonText = blocks.slice(0, (segments[seg]?.to ?? 0) + 1).map((b) => b.content?.map((n) => n.text).join('') ?? '').filter(Boolean).join('\n').slice(0, 6000)
+    const query = `[LEÇON DE FORMATION « ${title} »] Voici le passage du cours que je suis en train de lire :\n${lessonText}\n\nMa question sur ce passage (réponds en 2 à 4 phrases, reste sur le contenu du cours ; si ma question dépasse ce module, dis-le en une phrase et reviens au cours) : ${q}`
+    const setLast = (text: string) => setThread((t) => t.map((m, i) => (i === t.length - 1 ? { ...m, text } : m)))
+    try {
+      const resp = await fetch('/api/atlas/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ query, conversationId: convRef.current ?? undefined, mlm_actif: 'Atline' }),
+      })
+      if (!resp.ok || !resp.body) throw new Error('no stream')
+      const cid = resp.headers.get('X-Conversation-Id')
+      if (cid) convRef.current = cid
+      const reader = resp.body.getReader()
+      const decoder = new TextDecoder()
+      let buffer = ''
+      let full = ''
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
+        buffer += decoder.decode(value, { stream: true })
+        const lines = buffer.split('\n')
+        buffer = lines.pop() ?? ''
+        for (const line of lines) {
+          if (!line.startsWith('data: ')) continue
+          const payload = line.slice(6)
+          if (payload === '[DONE]') continue
+          try {
+            const data = JSON.parse(payload)
+            if (data.text) { full += data.text; setLast(full) }
+          } catch { /* ligne SSE incomplète */ }
+        }
+      }
+      if (!full) setLast("Je n'ai pas de réponse pour l'instant, réessaie.")
+    } catch {
+      setLast("Désolé, je n'ai pas pu répondre. Réessaie dans un moment.")
+    } finally {
+      setStreaming(false)
+    }
+  }
+
+  return (
+    <div className="flex flex-col gap-4">
+      {segments.slice(0, seg + 1).map((s, k) => (
+        <div key={k} className="flex flex-col gap-3">
+          <BlockNoteRenderer blocks={blocks.slice(s.from, k < seg ? s.to + 1 : s.from + shown)} />
+          {thread.filter((m) => m.seg === k).map((m, i) =>
+            m.from === 'user' ? (
+              <p key={i} className="ml-auto w-fit max-w-[85%] rounded-2xl bg-primary/10 px-4 py-2.5 text-lg text-foreground lg:text-sm">{m.text}</p>
+            ) : (
+              <p key={i} className="whitespace-pre-line rounded-2xl border border-border bg-surface px-4 py-3 text-lg leading-relaxed text-foreground lg:text-sm">
+                {m.text || <span className="text-muted-foreground">…</span>}
+              </p>
+            ),
+          )}
+        </div>
+      ))}
+
+      {paused && (
+        <div className="flex flex-col gap-3">
+          <p className="text-sm text-muted-foreground">Une question sur ce qu&apos;on vient de voir ? Sinon on continue.</p>
+          <div className="flex items-end gap-2 rounded-[26px] border border-border bg-surface px-3 py-1.5">
+            <textarea
+              rows={1}
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); ask() } }}
+              placeholder="Pose ta question à Atlas…"
+              className="flex-1 resize-none bg-transparent py-1.5 text-lg leading-[1.4] text-foreground outline-none placeholder:text-muted-foreground lg:text-sm"
+            />
+            <button type="button" onClick={ask} disabled={!input.trim() || streaming} className="mb-0.5 flex size-9 shrink-0 items-center justify-center rounded-full bg-primary text-white disabled:opacity-40">
+              <SendHorizontal className="size-[17px] stroke-[1.5]" />
+            </button>
+          </div>
+          <button type="button" onClick={goOn} className="relative w-full overflow-hidden rounded-2xl border border-border py-3 text-base font-semibold text-foreground active:bg-muted">
+            Continuer ▸
+            {!input.trim() && !streaming && (
+              <span key={seg} className="absolute bottom-0 left-0 h-0.5 bg-primary" style={{ animation: 'lessonTick 20s linear forwards' }} />
+            )}
+          </button>
+        </div>
+      )}
+      <style>{`@keyframes lessonTick { from { width: 0 } to { width: 100% } }`}</style>
+    </div>
+  )
 }
 
 // ── Quiz Player ─────────────────────────────────────────────────────────────
@@ -353,6 +494,9 @@ export default function LessonPage() {
   const [showCongratsModal, setShowCongratsModal] = useState(false)
   const [showFailModal, setShowFailModal] = useState(false)
   const [quizProgress, setQuizProgress] = useState({ current: 0, total: 0, phase: 'playing' as 'playing' | 'result' })
+  // Mode guidé (streaming + questions) par défaut ; « classique » = tout d'un bloc
+  const [classic, setClassic] = useState(false)
+  const [chatDone, setChatDone] = useState(false)
 
   useEffect(() => {
     fetch(`/api/formation/modules/${moduleId}/lessons/${lessonId}`)
@@ -553,9 +697,24 @@ export default function LessonPage() {
             {!isQuiz && (
               <>
                 {lesson.content && lesson.content.length > 0 && (
-                  <BlockNoteRenderer blocks={lesson.content} />
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => { setClassic((c) => !c); setChatDone(false) }}
+                      className="self-start text-xs font-medium text-muted-foreground underline underline-offset-2"
+                    >
+                      {classic ? 'Repasser en lecture guidée' : "Lire d'un bloc (version classique)"}
+                    </button>
+                    {classic ? (
+                      <BlockNoteRenderer blocks={lesson.content} />
+                    ) : (
+                      <LessonChatPlayer key={lessonId} blocks={lesson.content} title={lesson.title} onFinished={() => setChatDone(true)} />
+                    )}
+                  </>
                 )}
 
+                {(classic || chatDone || !lesson.content || lesson.content.length === 0) && (
+                  <>
                 <div className="h-px bg-border" />
 
                 <button
@@ -591,6 +750,8 @@ export default function LessonPage() {
                   >
                     Retour au module
                   </button>
+                )}
+                  </>
                 )}
               </>
             )}
