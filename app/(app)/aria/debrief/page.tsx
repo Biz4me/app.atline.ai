@@ -85,7 +85,7 @@ function DebriefContent() {
 
         {(state === 'waiting' || state === 'analyzing') && (
           <div className="flex flex-col items-center gap-3 rounded-2xl border border-border bg-surface p-10 text-center">
-            <Loader2 className="size-7 animate-spin text-primary" />
+            <Loader2 className="size-7 animate-spin text-[#14B8A6]" />
             <p className="text-sm font-semibold text-foreground">
               {state === 'waiting' ? 'Je récupère ta conversation…' : 'Atlas analyse ta simulation…'}
             </p>
@@ -115,9 +115,9 @@ function DebriefContent() {
           <>
             {/* Score réel */}
             <div className="flex flex-col items-center gap-3 rounded-2xl border border-border bg-surface p-6">
-              <p className="font-display text-7xl font-extrabold text-primary">{data.score ?? '—'}</p>
+              <p className="font-display text-7xl font-extrabold text-[#14B8A6]">{data.score ?? '—'}</p>
               <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
-                <div className="h-2 rounded-full bg-primary transition-all" style={{ width: `${data.score ?? 0}%` }} />
+                <div className="h-2 rounded-full bg-[#14B8A6] transition-all" style={{ width: `${data.score ?? 0}%` }} />
               </div>
               <p className="text-sm text-muted-foreground">Score sur 100</p>
             </div>
@@ -126,8 +126,8 @@ function DebriefContent() {
             {data.resume && (
               <div className="rounded-2xl border border-border bg-surface p-4">
                 <div className="mb-3 flex items-center gap-2.5">
-                  <span className="flex size-8 shrink-0 items-center justify-center rounded-xl bg-primary/10">
-                    <span className="font-display text-sm font-bold text-primary">A</span>
+                  <span className="flex size-8 shrink-0 items-center justify-center rounded-xl bg-[#14B8A6]/10">
+                    <span className="font-display text-sm font-bold text-[#14B8A6]">A</span>
                   </span>
                   <p className="text-sm font-bold text-foreground">Le bilan d&apos;Atlas</p>
                 </div>
@@ -156,11 +156,11 @@ function DebriefContent() {
             {/* À travailler */}
             {!!data.axes?.length && (
               <div className="rounded-2xl border border-border bg-surface p-4">
-                <p className="mb-3 text-xs font-extrabold uppercase tracking-widest text-primary">À travailler</p>
+                <p className="mb-3 text-xs font-extrabold uppercase tracking-widest text-[#14B8A6]">À travailler</p>
                 <div className="flex flex-col gap-3">
                   {data.axes.map((a, i) => (
                     <div key={i} className="flex items-start gap-2.5">
-                      <Target className="mt-0.5 size-4 shrink-0 stroke-[1.5] text-primary" />
+                      <Target className="mt-0.5 size-4 shrink-0 stroke-[1.5] text-[#14B8A6]" />
                       <div className="min-w-0">
                         <p className="text-sm font-semibold text-foreground leading-snug">{a.probleme}</p>
                         <p className="mt-0.5 text-xs text-muted-foreground">{a.conseil}</p>
@@ -189,8 +189,8 @@ function DebriefContent() {
 
             {/* Prochaine étape */}
             {data.prochain_scenario && (
-              <div className="flex items-start gap-2.5 rounded-2xl border border-primary/30 bg-primary/5 p-4">
-                <ArrowRight className="mt-0.5 size-4 shrink-0 text-primary" />
+              <div className="flex items-start gap-2.5 rounded-2xl border border-[#14B8A6]/30 bg-[#14B8A6]/5 p-4">
+                <ArrowRight className="mt-0.5 size-4 shrink-0 text-[#14B8A6]" />
                 <p className="text-sm text-foreground leading-snug">{data.prochain_scenario}</p>
               </div>
             )}
@@ -207,7 +207,7 @@ function DebriefContent() {
           <button
             type="button"
             onClick={() => router.push('/aria')}
-            className="flex w-full items-center justify-center gap-2 rounded-2xl bg-primary py-3.5 text-sm font-bold text-primary-foreground transition-transform active:scale-[0.98]"
+            className="flex w-full items-center justify-center gap-2 rounded-2xl bg-[#14B8A6] py-3.5 text-sm font-bold text-white transition-transform active:scale-[0.98]"
           >
             <Mic className="size-4 stroke-2" />
             Refaire une simulation

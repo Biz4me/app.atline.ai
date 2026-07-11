@@ -37,10 +37,8 @@ export function AppHeader({
           <ChevronLeft className="size-5 stroke-[1.5]" />
         </button>
       )}
-      <h1 className={secondary
-        ? 'flex-1 truncate text-lg font-semibold text-foreground'
-        : 'flex-1 truncate font-display text-[32px] font-bold leading-tight tracking-[-0.025em] text-foreground'
-      }>
+      {/* Un seul gabarit de titre (Title 18) — le Display 32 était disproportionné pour des pages secondaires */}
+      <h1 className="flex-1 truncate text-lg font-semibold text-foreground">
         {title}
       </h1>
       {showActions && (

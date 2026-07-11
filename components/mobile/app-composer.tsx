@@ -71,7 +71,7 @@ export function AppComposer({
           type="button"
           onClick={() => setAgentMenu((o) => !o)}
           aria-label="Changer d'agent"
-          className="my-1 grid size-7 shrink-0 place-items-center self-center rounded-full text-[11px] font-bold text-white active:opacity-80"
+          className="my-1 grid size-7 shrink-0 place-items-center self-center rounded-full text-[10px] font-bold text-white active:opacity-80"
           style={{ background: current.color }}
         >
           {current.label[0]}

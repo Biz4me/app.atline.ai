@@ -275,7 +275,7 @@ function SetupScreen({
             className={cn(
               'flex w-full items-center justify-center gap-2 rounded-xl py-3.5 text-sm font-bold transition-all',
               selected
-                ? 'bg-primary text-primary-foreground active:scale-[0.98]'
+                ? 'bg-[#14B8A6] text-white active:scale-[0.98]'
                 : 'bg-muted text-muted-foreground cursor-not-allowed'
             )}
           >
@@ -289,7 +289,7 @@ function SetupScreen({
             className={cn(
               'mt-2 flex w-full items-center justify-center gap-2 rounded-xl border py-3 text-sm font-bold transition-all',
               selected
-                ? 'border-primary/40 text-primary active:bg-primary/5'
+                ? 'border-[#14B8A6]/40 text-[#14B8A6] active:bg-[#14B8A6]/5'
                 : 'border-border text-muted-foreground cursor-not-allowed'
             )}
           >
@@ -300,7 +300,7 @@ function SetupScreen({
 
         {!selected && (
           <div>
-            <p className="mb-3 text-xs font-extrabold uppercase tracking-widest text-primary">
+            <p className="mb-3 text-xs font-extrabold uppercase tracking-widest text-[#14B8A6]">
               Tes priorités du jour
             </p>
             <div className="flex flex-col gap-2">
@@ -537,7 +537,7 @@ function SimulatorScreen({
           <p className="text-xs font-extrabold uppercase tracking-widest text-white/50">
             Méthode Worre
           </p>
-          <button type="button" className="flex items-center gap-1 text-xs font-semibold text-primary">
+          <button type="button" className="flex items-center gap-1 text-xs font-semibold text-[#14B8A6]">
             Voir le détail <ChevronRight className="size-3" />
           </button>
         </div>
@@ -758,7 +758,7 @@ function TextSimulatorScreen({
           disabled={!canDebrief}
           className={cn(
             'shrink-0 rounded-full px-3.5 py-1.5 text-xs font-bold transition-colors',
-            canDebrief ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'
+            canDebrief ? 'bg-[#14B8A6] text-white' : 'bg-muted text-muted-foreground'
           )}
         >
           Terminer
@@ -780,7 +780,7 @@ function TextSimulatorScreen({
                 <div
                   className={cn(
                     'max-w-[82%] whitespace-pre-line rounded-2xl px-3.5 py-2.5 text-lg leading-[1.4] lg:text-sm',
-                    m.from === 'user' ? 'rounded-br-md bg-primary text-primary-foreground' : 'rounded-bl-md bg-muted text-foreground'
+                    m.from === 'user' ? 'rounded-br-md bg-[#14B8A6] text-white' : 'rounded-bl-md bg-muted text-foreground'
                   )}
                 >
                   {m.text}
@@ -806,7 +806,7 @@ function TextSimulatorScreen({
             type="button"
             onClick={send}
             disabled={busy || !input.trim() || !sessionId}
-            className="flex size-10 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground disabled:opacity-40"
+            className="flex size-10 shrink-0 items-center justify-center rounded-full bg-[#14B8A6] text-white disabled:opacity-40"
           >
             <SendHorizontal className="size-[17px] stroke-[1.5]" />
           </button>

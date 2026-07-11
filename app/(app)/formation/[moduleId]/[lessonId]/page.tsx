@@ -351,7 +351,7 @@ function QuizPlayer({
             ? <CheckCircle2 className="size-14 text-success stroke-[1.5]" />
             : <XCircle className="size-14 text-destructive stroke-[1.5]" />
           }
-          <p className="text-[40px] font-extrabold leading-none text-foreground">{score}%</p>
+          <p className="text-[36px] font-extrabold leading-none text-foreground">{score}%</p>
           <p className="text-sm font-semibold text-muted-foreground">
             {passed ? 'Quiz réussi !' : `Seuil requis : ${passThreshold}%`}
           </p>
