@@ -12,12 +12,37 @@ type SimState = 'idle' | 'calling' | 'ended'
 
 const phases: Phase[] = ['Invitation', 'Suivi', 'Démarrage', 'Coaching']
 
-const priorityContacts = [
-  { id: 'c1', firstName: 'Sophie', lastName: 'Laurent', city: 'Lyon', stage: 'closing' as const },
-  { id: 'c5', firstName: 'Karim', lastName: 'Benali', city: 'Marseille', stage: 'closing' as const },
-  { id: 'c2', firstName: 'Marc', lastName: 'Dubois', city: 'Paris', stage: 'prospect' as const },
-  { id: 'c3', firstName: 'Thomas', lastName: 'Petit', city: 'Toulouse', stage: 'prospect' as const },
-]
+// Contact d'entraînement = un VRAI contact du réseau (couleur Big Al incluse).
+type SimContact = {
+  id: string
+  firstName: string
+  lastName: string
+  city: string
+  stage: string
+  market: string | null
+  personality: string | null // ROUGE | VERT | BLEU | JAUNE (Big Al)
+}
+
+// Le choix de l'utilisateur pilote RÉELLEMENT la simulation :
+// phase → scénario de la bibliothèque de l'agent vocal + niveau de connaissance.
+const PHASE_PARAMS: Record<Phase, { phase: string; scenario: string; knowledge: string }> = {
+  'Invitation': { phase: 'invitation', scenario: 'marche_chaud', knowledge: 'JAMAIS_FAIT' },
+  'Suivi': { phase: 'suivi', scenario: 'suivi_j3', knowledge: 'A_UN_AVIS' },
+  'Démarrage': { phase: 'demarrage', scenario: 'demarrage_filleul', knowledge: 'JAMAIS_FAIT' },
+  'Coaching': { phase: 'coaching', scenario: 'filleul_inactif', knowledge: 'JAMAIS_FAIT' },
+}
+
+function simParams(contact: SimContact, phase: Phase) {
+  const base = PHASE_PARAMS[phase]
+  // Invitation en marché froid → le scénario froid (le reste suit la phase)
+  const scenario = phase === 'Invitation' && contact.market === 'FROID' ? 'marche_froid' : base.scenario
+  return {
+    ...base,
+    scenario,
+    color: contact.personality?.toLowerCase() ?? 'bleu',
+    contactId: contact.id,
+  }
+}
 
 const stagePillColors: Record<string, string> = {
   closing: 'bg-red-100 text-red-600',
@@ -55,22 +80,24 @@ const worreSteps = [
 function SetupScreen({
   phase,
   setPhase,
+  contacts,
   onStart,
 }: {
   phase: Phase
   setPhase: (p: Phase) => void
-  onStart: (c: typeof priorityContacts[0]) => void
+  contacts: SimContact[]
+  onStart: (c: SimContact) => void
 }) {
   const router = useRouter()
   const [query, setQuery] = useState('')
-  const [selected, setSelected] = useState<typeof priorityContacts[0] | null>(null)
+  const [selected, setSelected] = useState<SimContact | null>(null)
   const [dropdownOpen, setDropdownOpen] = useState(false)
 
   const filtered = query
-    ? priorityContacts.filter((c) =>
+    ? contacts.filter((c) =>
         `${c.firstName} ${c.lastName}`.toLowerCase().includes(query.toLowerCase())
       )
-    : priorityContacts
+    : contacts
 
   return (
     <div className="flex min-h-dvh flex-col bg-background">
@@ -206,15 +233,15 @@ function SetupScreen({
               Tes priorités du jour
             </p>
             <div className="flex flex-col gap-2">
-              {priorityContacts.map((c) => (
+              {contacts.slice(0, 6).map((c) => (
                 <button
                   key={c.id}
                   type="button"
                   onClick={() => setSelected(c)}
                   className="flex items-center gap-3 rounded-2xl border border-border bg-surface p-3.5 text-left transition-colors active:bg-muted"
                 >
-                  <span className={cn('flex size-10 shrink-0 items-center justify-center rounded-full text-sm font-bold text-white', stageAvatarBg[c.stage])}>
-                    {c.firstName[0]}{c.lastName[0]}
+                  <span className={cn('flex size-10 shrink-0 items-center justify-center rounded-full text-sm font-bold text-white', stageAvatarBg[c.stage] ?? 'bg-zinc-500')}>
+                    {c.firstName[0]}{c.lastName[0] ?? ''}
                   </span>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-bold text-foreground">{c.firstName} {c.lastName}</p>
@@ -240,10 +267,10 @@ function SimulatorScreen({
   onBack,
   onDebrief,
 }: {
-  contact: typeof priorityContacts[0]
+  contact: SimContact
   phase: Phase
   onBack: () => void
-  onDebrief: () => void
+  onDebrief: (sessionId: string | null) => void
 }) {
   const [simState, setSimState] = useState<SimState>('idle')
   const [seconds, setSeconds] = useState(0)
@@ -252,6 +279,7 @@ function SimulatorScreen({
   const [connecting, setConnecting] = useState(false)
   const [paused, setPaused] = useState(false)
   const [micError, setMicError] = useState(false)
+  const sessionIdRef = useRef<string | null>(null) // SimSession créée par /api/livekit-token
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const roomRef = useRef<Room | null>(null)
 
@@ -278,12 +306,16 @@ function SimulatorScreen({
       return
     }
     try {
+      // Le choix (contact réel + phase) pilote la simulation : couleur Big Al du contact,
+      // scénario selon la phase (et le marché), session persistée (aria-<sessionId>).
       const res = await fetch('/api/livekit-token', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ color: 'bleu', scenario: 'objection_pyramide' }),
+        body: JSON.stringify(simParams(contact, phase)),
       })
-      const { token, url } = await res.json()
+      if (!res.ok) throw new Error('token')
+      const { token, url, sessionId } = await res.json()
+      sessionIdRef.current = sessionId ?? null
 
       const room = new Room()
       roomRef.current = room
@@ -338,7 +370,7 @@ function SimulatorScreen({
   const endCall = async () => {
     await roomRef.current?.disconnect()
     roomRef.current = null
-    onDebrief()
+    onDebrief(sessionIdRef.current)
   }
 
   const formatTime = (s: number) => {
@@ -557,12 +589,35 @@ function AriaPageContent() {
   const [phase, setPhase] = useState<Phase>(
     phases.includes(initialPhase) ? initialPhase : 'Invitation'
   )
-  const [simulatingContact, setSimulatingContact] = useState<typeof priorityContacts[0] | null>(() => {
-    if (preselectedId) {
-      return priorityContacts.find((c) => c.id === preselectedId) ?? null
-    }
-    return null
-  })
+  const [contacts, setContacts] = useState<SimContact[]>([])
+  const [simulatingContact, setSimulatingContact] = useState<SimContact | null>(null)
+
+  // Vrais contacts du réseau (nom, stade, marché, couleur Big Al) — plus de mock.
+  useEffect(() => {
+    fetch('/api/contacts')
+      .then((r) => (r.ok ? r.json() : []))
+      .then((rows: { id: string; name: string; city: string; stage: string; market: string | null; personality: string | null }[]) => {
+        const list: SimContact[] = (Array.isArray(rows) ? rows : []).map((c) => {
+          const parts = (c.name || '').trim().split(/\s+/)
+          return {
+            id: c.id,
+            firstName: parts[0] || c.name || '?',
+            lastName: parts.slice(1).join(' '),
+            city: c.city || '',
+            stage: c.stage || 'nouveau',
+            market: c.market ?? null,
+            personality: c.personality ?? null,
+          }
+        })
+        setContacts(list)
+        if (preselectedId) {
+          const pre = list.find((c) => c.id === preselectedId)
+          if (pre) setSimulatingContact(pre)
+        }
+      })
+      .catch(() => {})
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   if (simulatingContact) {
     return (
@@ -570,7 +625,7 @@ function AriaPageContent() {
         contact={simulatingContact}
         phase={phase}
         onBack={() => setSimulatingContact(null)}
-        onDebrief={() => router.push('/aria/debrief')}
+        onDebrief={(sid) => router.push(sid ? `/aria/debrief?s=${sid}` : '/aria/debrief')}
       />
     )
   }
@@ -579,6 +634,7 @@ function AriaPageContent() {
     <SetupScreen
       phase={phase}
       setPhase={setPhase}
+      contacts={contacts}
       onStart={(c) => setSimulatingContact(c)}
     />
   )
