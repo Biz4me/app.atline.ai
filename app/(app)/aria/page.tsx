@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { ChevronLeft, Mic, Search, X, Phone, PhoneOff, Pause, ChevronRight } from 'lucide-react'
+import { ChevronLeft, Mic, Search, X, Phone, PhoneOff, Pause, ChevronRight, MessageSquare, SendHorizontal, Loader2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Room, RoomEvent, Track } from 'livekit-client'
 
@@ -32,13 +32,13 @@ const PHASE_PARAMS: Record<Phase, { phase: string; scenario: string; knowledge: 
   'Coaching': { phase: 'coaching', scenario: 'filleul_inactif', knowledge: 'JAMAIS_FAIT' },
 }
 
-function simParams(contact: SimContact, phase: Phase) {
+function simParams(contact: SimContact, phase: Phase, chosen = 'auto') {
   const base = PHASE_PARAMS[phase]
-  // Invitation en marché froid → le scénario froid (le reste suit la phase)
-  const scenario = phase === 'Invitation' && contact.market === 'FROID' ? 'marche_froid' : base.scenario
+  // Scénario choisi explicitement > sinon mapping auto (Invitation froide → marché froid)
+  const auto = phase === 'Invitation' && contact.market === 'FROID' ? 'marche_froid' : base.scenario
   return {
     ...base,
-    scenario,
+    scenario: chosen !== 'auto' && chosen ? chosen : auto,
     color: contact.personality?.toLowerCase() ?? 'bleu',
     contactId: contact.id,
   }
@@ -86,7 +86,7 @@ function SetupScreen({
   phase: Phase
   setPhase: (p: Phase) => void
   contacts: SimContact[]
-  onStart: (c: SimContact) => void
+  onStart: (c: SimContact, mode: 'voice' | 'text', scenario: string) => void
 }) {
   const router = useRouter()
   const [query, setQuery] = useState('')
@@ -94,12 +94,21 @@ function SetupScreen({
   const [dropdownOpen, setDropdownOpen] = useState(false)
   // Reco d'Atlas issue du dernier débrief (parcours adaptatif)
   const [lastSim, setLastSim] = useState<{ score: number; scenario: string; reco: string } | null>(null)
+  // Bibliothèque de scénarios (partagée avec l'agent vocal, éditable en admin)
+  const [scenarios, setScenarios] = useState<{ id: string; label: string; phase: string }[]>([])
+  const [scenario, setScenario] = useState('auto')
   useEffect(() => {
     fetch('/api/aria/sessions/last')
       .then((r) => (r.ok ? r.json() : null))
       .then((d) => { if (d?.last?.score != null) setLastSim(d.last) })
       .catch(() => {})
+    fetch('/api/aria/scenarios')
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => setScenarios(d?.scenarios ?? []))
+      .catch(() => {})
   }, [])
+  // Changer de phase réinitialise le scénario (la liste filtrée change)
+  useEffect(() => { setScenario('auto') }, [phase])
 
   const filtered = query
     ? contacts.filter((c) =>
@@ -233,9 +242,24 @@ function SetupScreen({
             </div>
           )}
 
+          {/* Scénario précis (bibliothèque partagée, filtrée par phase) — Auto = mapping de la phase */}
+          <p className="mb-2.5 mt-1 text-xs font-bold text-foreground">Scénario</p>
+          <select
+            value={scenario}
+            onChange={(e) => setScenario(e.target.value)}
+            className="mb-4 w-full rounded-xl border border-border bg-surface px-3 py-2.5 text-sm text-foreground outline-none"
+          >
+            <option value="auto">Automatique (selon la phase)</option>
+            {scenarios
+              .filter((s) => s.phase === PHASE_PARAMS[phase].phase)
+              .map((s) => (
+                <option key={s.id} value={s.id}>{s.label}</option>
+              ))}
+          </select>
+
           <button
             type="button"
-            onClick={() => selected && onStart(selected)}
+            onClick={() => selected && onStart(selected, 'voice', scenario)}
             disabled={!selected}
             className={cn(
               'flex w-full items-center justify-center gap-2 rounded-xl py-3.5 text-sm font-bold transition-all',
@@ -246,6 +270,20 @@ function SetupScreen({
           >
             <Mic className="size-4 stroke-2" />
             {selected ? `Simuler l'appel avec ${selected.firstName}` : 'Sélectionne un contact'}
+          </button>
+          <button
+            type="button"
+            onClick={() => selected && onStart(selected, 'text', scenario)}
+            disabled={!selected}
+            className={cn(
+              'mt-2 flex w-full items-center justify-center gap-2 rounded-xl border py-3 text-sm font-bold transition-all',
+              selected
+                ? 'border-primary/40 text-primary active:bg-primary/5'
+                : 'border-border text-muted-foreground cursor-not-allowed'
+            )}
+          >
+            <MessageSquare className="size-4 stroke-2" />
+            S&apos;entraîner à l&apos;écrit
           </button>
         </div>
 
@@ -286,11 +324,13 @@ function SetupScreen({
 function SimulatorScreen({
   contact,
   phase,
+  scenario,
   onBack,
   onDebrief,
 }: {
   contact: SimContact
   phase: Phase
+  scenario: string
   onBack: () => void
   onDebrief: (sessionId: string | null) => void
 }) {
@@ -333,7 +373,7 @@ function SimulatorScreen({
       const res = await fetch('/api/livekit-token', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(simParams(contact, phase)),
+        body: JSON.stringify(simParams(contact, phase, scenario)),
       })
       if (!res.ok) throw new Error('token')
       const { token, url, sessionId } = await res.json()
@@ -601,6 +641,179 @@ function SimulatorScreen({
   )
 }
 
+/* ── Simulation à l'ÉCRIT (même session, même débrief que le vocal) ── */
+function TextSimulatorScreen({
+  contact,
+  phase,
+  scenario,
+  onBack,
+  onDebrief,
+}: {
+  contact: SimContact
+  phase: Phase
+  scenario: string
+  onBack: () => void
+  onDebrief: (sessionId: string | null) => void
+}) {
+  const [sessionId, setSessionId] = useState<string | null>(null)
+  const [msgs, setMsgs] = useState<{ from: 'user' | 'aria'; text: string }[]>([])
+  const [input, setInput] = useState('')
+  const [busy, setBusy] = useState(false)
+  const scrollRef = useRef<HTMLDivElement>(null)
+  const started = useRef(false)
+
+  useEffect(() => {
+    if (started.current) return
+    started.current = true
+    const p = simParams(contact, phase, scenario)
+    fetch('/api/aria/text-session', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ scenario: p.scenario, phase: p.phase, contactId: p.contactId }),
+    })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => setSessionId(d?.sessionId ?? null))
+      .catch(() => {})
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  useEffect(() => {
+    scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' })
+  }, [msgs, busy])
+
+  async function send() {
+    const text = input.trim()
+    if (!text || busy || !sessionId) return
+    setInput('')
+    setBusy(true)
+    setMsgs((m) => [...m, { from: 'user', text }, { from: 'aria', text: '' }])
+    try {
+      const r = await fetch('/api/aria/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sessionId, message: text }),
+        signal: AbortSignal.timeout(60000),
+      })
+      if (!r.ok || !r.body) throw new Error()
+      const reader = r.body.getReader()
+      const dec = new TextDecoder()
+      let buf = ''
+      let acc = ''
+      for (;;) {
+        const { done, value } = await reader.read()
+        if (done) break
+        buf += dec.decode(value, { stream: true })
+        const lines = buf.split('\n')
+        buf = lines.pop() ?? ''
+        for (const line of lines) {
+          if (!line.startsWith('data: ')) continue
+          const p = line.slice(6).trim()
+          if (!p || p === '[DONE]') continue
+          try {
+            const d = JSON.parse(p)
+            if (d.text) {
+              acc += d.text
+              setMsgs((m) => {
+                const c = [...m]
+                c[c.length - 1] = { from: 'aria', text: acc }
+                return c
+              })
+            }
+          } catch { /* partiel */ }
+        }
+      }
+    } catch {
+      setMsgs((m) => {
+        const c = [...m]
+        c[c.length - 1] = { from: 'aria', text: '…' }
+        return c
+      })
+    }
+    setBusy(false)
+  }
+
+  const canDebrief = msgs.filter((m) => m.from === 'user').length >= 2
+
+  return (
+    <div className="flex h-dvh flex-col bg-background">
+      <header
+        className="sticky top-0 z-30 flex items-center gap-3 border-b border-border bg-background/90 px-4 py-3 backdrop-blur"
+        style={{ paddingTop: 'max(0.75rem, env(safe-area-inset-top))' }}
+      >
+        <button type="button" onClick={onBack} className="-ml-1 flex size-9 items-center justify-center rounded-full text-muted-foreground active:bg-muted">
+          <ChevronLeft className="size-5 stroke-[1.5]" />
+        </button>
+        <span className={cn('flex size-9 shrink-0 items-center justify-center rounded-full text-xs font-bold text-white', stageAvatarBg[contact.stage] ?? 'bg-zinc-500')}>
+          {contact.firstName[0]}{contact.lastName[0] ?? ''}
+        </span>
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-sm font-bold text-foreground">{contact.firstName} {contact.lastName}</p>
+          <p className="text-xs text-muted-foreground">Entraînement à l&apos;écrit · {phase}</p>
+        </div>
+        <button
+          type="button"
+          onClick={() => onDebrief(sessionId)}
+          disabled={!canDebrief}
+          className={cn(
+            'shrink-0 rounded-full px-3.5 py-1.5 text-xs font-bold transition-colors',
+            canDebrief ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'
+          )}
+        >
+          Terminer
+        </button>
+      </header>
+
+      <div ref={scrollRef} className="flex-1 overflow-y-auto no-scrollbar px-4 py-4">
+        <div className="mx-auto flex max-w-md flex-col gap-3">
+          {msgs.length === 0 && (
+            <p className="mt-10 text-center text-sm text-muted-foreground text-pretty">
+              C&apos;est toi qui engages : écris ton premier message à {contact.firstName}, comme sur WhatsApp.
+            </p>
+          )}
+          {msgs.map((m, i) => (
+            <div key={i} className={cn('flex', m.from === 'user' ? 'justify-end' : 'justify-start')}>
+              {m.text === '' ? (
+                <Loader2 className="size-4 animate-spin text-muted-foreground" />
+              ) : (
+                <div
+                  className={cn(
+                    'max-w-[82%] whitespace-pre-line rounded-2xl px-3.5 py-2.5 text-lg leading-[1.4] lg:text-sm',
+                    m.from === 'user' ? 'rounded-br-md bg-primary text-primary-foreground' : 'rounded-bl-md bg-muted text-foreground'
+                  )}
+                >
+                  {m.text}
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div className="border-t border-border bg-background px-4 py-3" style={{ paddingBottom: 'max(0.75rem, env(safe-area-inset-bottom))' }}>
+        <div className="mx-auto flex max-w-md items-end gap-2">
+          <textarea
+            rows={1}
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send() } }}
+            placeholder={sessionId ? `Écris à ${contact.firstName}…` : 'Préparation…'}
+            disabled={!sessionId}
+            className="flex-1 resize-none rounded-[22px] border border-border bg-surface px-4 py-2.5 text-lg leading-[1.4] text-foreground outline-none placeholder:text-muted-foreground lg:text-sm"
+          />
+          <button
+            type="button"
+            onClick={send}
+            disabled={busy || !input.trim() || !sessionId}
+            className="flex size-10 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground disabled:opacity-40"
+          >
+            <SendHorizontal className="size-[17px] stroke-[1.5]" />
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 /* ── Page principale ─────────────────────────────────────────── */
 function AriaPageContent() {
   const router = useRouter()
@@ -613,6 +826,8 @@ function AriaPageContent() {
   )
   const [contacts, setContacts] = useState<SimContact[]>([])
   const [simulatingContact, setSimulatingContact] = useState<SimContact | null>(null)
+  const [mode, setMode] = useState<'voice' | 'text'>('voice')
+  const [chosenScenario, setChosenScenario] = useState('auto')
 
   // Vrais contacts du réseau (nom, stade, marché, couleur Big Al) — plus de mock.
   useEffect(() => {
@@ -642,14 +857,14 @@ function AriaPageContent() {
   }, [])
 
   if (simulatingContact) {
-    return (
-      <SimulatorScreen
-        contact={simulatingContact}
-        phase={phase}
-        onBack={() => setSimulatingContact(null)}
-        onDebrief={(sid) => router.push(sid ? `/aria/debrief?s=${sid}` : '/aria/debrief')}
-      />
-    )
+    const common = {
+      contact: simulatingContact,
+      phase,
+      scenario: chosenScenario,
+      onBack: () => setSimulatingContact(null),
+      onDebrief: (sid: string | null) => router.push(sid ? `/aria/debrief?s=${sid}` : '/aria/debrief'),
+    }
+    return mode === 'text' ? <TextSimulatorScreen {...common} /> : <SimulatorScreen {...common} />
   }
 
   return (
@@ -657,7 +872,7 @@ function AriaPageContent() {
       phase={phase}
       setPhase={setPhase}
       contacts={contacts}
-      onStart={(c) => setSimulatingContact(c)}
+      onStart={(c, m, sc) => { setMode(m); setChosenScenario(sc); setSimulatingContact(c) }}
     />
   )
 }
