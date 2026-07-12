@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { ChevronLeft, Mic, Search, X, Phone, PhoneOff, Pause, ChevronRight, MessageSquare, SendHorizontal, Loader2 } from 'lucide-react'
 import { SelectMenu } from '@/components/select-menu'
-import { PageHeader } from '@/components/page-shell'
+import { AgentShell } from '@/components/page-shell'
 import { cn } from '@/lib/utils'
 import { Room, RoomEvent, Track } from 'livekit-client'
 
@@ -152,14 +152,7 @@ function SetupScreen({
     : contacts
 
   return (
-    <div className="flex min-h-dvh flex-col bg-background">
-      {/* UN SEUL wrapper max-w-3xl (identique à Nova) : en-tête + contenu dans la même colonne */}
-      <div className="lg:mx-auto lg:w-full lg:max-w-3xl">
-        {/* Desktop — l'en-tête UNIQUE (mobile : géré par la top-bar globale) */}
-        <div className="hidden lg:block">
-          <PageHeader title="Aria" />
-        </div>
-
+    <AgentShell title="Aria">
         <div className="flex flex-col gap-6 px-4 pt-5 pb-10 lg:px-0">
           <div className="rounded-2xl border border-border bg-surface p-5">
           {/* Reprendre là où tu en étais — score réel + rejouer en 1 tap (jamais de jargon technique) */}
@@ -324,8 +317,7 @@ function SetupScreen({
           </div>
         )}
         </div>
-      </div>
-    </div>
+    </AgentShell>
   )
 }
 

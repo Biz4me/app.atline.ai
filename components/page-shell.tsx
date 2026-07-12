@@ -13,6 +13,20 @@ export function PageHeader({ title, actions, className }: { title: string; actio
   )
 }
 
+// AGENTSHELL — LE cadre unique des pages agent (Aria, Nova) : wrapper max-w-3xl centré
+// (= largeur du fil d'Atlas) + l'en-tête unique. Un seul composant → zéro duplication du cadre.
+// Atlas garde sa structure propre (chat pleine hauteur) mais MÊME largeur + MÊME PageHeader.
+export function AgentShell({ title, children }: { title: string; children: ReactNode }) {
+  return (
+    <div className="flex min-h-dvh flex-col bg-background">
+      <div className="lg:mx-auto lg:w-full lg:max-w-3xl">
+        <div className="hidden lg:block"><PageHeader title={title} /></div>
+        {children}
+      </div>
+    </div>
+  )
+}
+
 // LE gabarit desktop unique (maquette validée 12 juil, en-tête « à la Vercel » — option 1) :
 // cadre + gouttière constants, en-tête 68px identique partout (titre SEUL, centré, discret),
 // 2 largeurs de contenu.

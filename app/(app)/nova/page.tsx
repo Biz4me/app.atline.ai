@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Plus, Sparkles, MoreVertical, Pencil, Trash2, ChevronDown, ChevronRight, AtSign } from 'lucide-react'
-import { PageHeader } from '@/components/page-shell'
+import { AgentShell } from '@/components/page-shell'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 
@@ -62,10 +62,8 @@ export default function NovaPage() {
   }
 
   return (
-    <div className="px-4 pt-4 lg:px-0 lg:pt-0 lg:max-w-3xl lg:mx-auto">
-      {/* En-tête UNIQUE (desktop) */}
-      <div className="hidden lg:block"><PageHeader title="Nova" /></div>
-
+    <AgentShell title="Nova">
+      <div className="px-4 pt-4 lg:px-0">
       {/* Accès compte (niveau user) : ce qu'il faut mettre sur ses réseaux */}
       <button
         type="button"
@@ -106,7 +104,8 @@ export default function NovaPage() {
           ))}
         </div>
       )}
-    </div>
+      </div>
+    </AgentShell>
   )
 }
 
