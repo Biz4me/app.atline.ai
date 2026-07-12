@@ -6,10 +6,6 @@ import './globals.css'
 import { SessionProvider } from '@/components/session-provider'
 import { AtlineSplash } from '@/components/atline-splash'
 
-// Cabinet Grotesk via Fontshare CDN (display font — titres, KPIs)
-const cabinetGroteskHref =
-  'https://api.fontshare.com/v2/css?f[]=cabinet-grotesk@800,700,600&display=swap'
-
 export const metadata: Metadata = {
   formatDetection: {
     telephone: false,
@@ -57,8 +53,6 @@ export default function RootLayout({
   return (
     <html lang="fr" suppressHydrationWarning style={{ backgroundColor: '#f5f4f1' }}>
       <head>
-        <link rel="preconnect" href="https://api.fontshare.com" />
-        <link rel="stylesheet" href={cabinetGroteskHref} />
         {/* Splash une seule fois par session : au refresh, l'attribut est posé avant le 1er paint (CSS le masque) */}
         <script
           dangerouslySetInnerHTML={{

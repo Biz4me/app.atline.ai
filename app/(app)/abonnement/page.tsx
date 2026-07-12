@@ -109,7 +109,7 @@ function AbonnementContent() {
                     <p className="mt-0.5 text-lg lg:text-sm text-muted-foreground">{plan.desc}</p>
                   </div>
                   <div className="text-right">
-                    <p className="font-display text-xl font-bold text-foreground">
+                    <p className="font-display text-2xl font-bold text-foreground">
                       {plan.price === 0 ? 'Gratuit' : `${plan.price}€`}
                     </p>
                     {plan.price > 0 && <p className="text-xs text-muted-foreground">/mois</p>}

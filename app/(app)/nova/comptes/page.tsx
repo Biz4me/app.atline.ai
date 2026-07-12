@@ -59,16 +59,17 @@ export default function ComptesPage() {
 
   return (
     <>
-      <header className="sticky top-0 z-30 flex items-center gap-3 bg-background/90 px-4 pt-[max(0.75rem,env(safe-area-inset-top))] pb-3 backdrop-blur lg:px-6 lg:py-0 lg:h-[68px]">
+      {/* En-tête gabarit : titre centré discret (Satoshi), retour mobile seulement (desktop a la sidebar) */}
+      <header className="sticky top-0 z-30 flex items-center justify-center bg-background/90 px-4 py-3 backdrop-blur lg:h-[68px] lg:py-0" style={{ paddingTop: 'max(0.75rem, env(safe-area-inset-top))' }}>
         <button
           type="button"
           onClick={() => router.push('/nova')}
           aria-label="Retour"
-          className="-ml-1 flex size-9 items-center justify-center rounded-full text-muted-foreground active:bg-muted"
+          className="lg:hidden absolute left-2 flex size-9 items-center justify-center rounded-full text-muted-foreground active:bg-muted"
         >
           <ChevronLeft className="size-5 stroke-[1.5]" />
         </button>
-        <h1 className="font-display text-lg font-bold text-foreground lg:text-2xl">Mes comptes</h1>
+        <h1 className="text-lg font-semibold text-foreground lg:text-base">Mes comptes</h1>
       </header>
 
       <div className="px-4 pt-2 pb-24 lg:px-8 lg:pt-4 lg:max-w-2xl lg:mx-auto">
