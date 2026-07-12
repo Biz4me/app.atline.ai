@@ -61,7 +61,7 @@ export default function NovaPage() {
   }
 
   return (
-    <div className="px-4 pt-4 lg:px-8 lg:pt-6 lg:max-w-3xl lg:mx-auto">
+    <div className="px-4 pt-4 lg:px-8 lg:pt-6 lg:max-w-2xl lg:mx-auto">
       {/* Accès compte (niveau user) : ce qu'il faut mettre sur ses réseaux */}
       <button
         type="button"

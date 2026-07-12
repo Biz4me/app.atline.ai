@@ -268,7 +268,7 @@ export default function CommunautePage() {
 
       {/* ── DESKTOP ONLY ── */}
       <div className="hidden lg:block">
-        <div className="px-8 pt-8 pb-8 max-w-3xl mx-auto">
+        <div className="px-8 pt-8 pb-8 max-w-2xl mx-auto">
           <Content />
         </div>
       </div>

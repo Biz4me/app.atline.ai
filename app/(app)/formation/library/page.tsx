@@ -148,7 +148,7 @@ export default function LibraryPage() {
       </div>
 
       {/* ── DESKTOP ONLY ── */}
-      <div className="hidden lg:block px-8 pt-8 pb-10 max-w-3xl mx-auto">
+      <div className="hidden lg:block px-8 pt-8 pb-10 max-w-2xl mx-auto">
         <h1 className="mb-6 font-display text-[32px] font-extrabold leading-tight tracking-[-0.025em] text-foreground">Bibliothèque</h1>
         <Library />
       </div>

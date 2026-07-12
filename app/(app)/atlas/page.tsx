@@ -975,7 +975,7 @@ TECHNIQUE (invisible pour moi, ne l'explique jamais)${NB}: le jour où je VALIDE
   }, [loadingConv, c])
 
   return (
-    <div className="flex h-[calc(100dvh-60px)] overflow-hidden lg:h-[calc(100dvh-3.5rem)]">
+    <div className="flex h-[calc(100dvh-60px)] overflow-hidden lg:h-dvh">
 
       {/* ── Zone principale : chat ── (l'historique desktop vit dans la sidebar 2) */}
       <div className="flex flex-1 flex-col min-h-0 min-w-0">

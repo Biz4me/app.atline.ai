@@ -86,12 +86,25 @@ pm2 restart atline-app
 
 ---
 
-## AppShell — structure layout desktop
+## AppShell — structure layout desktop (refonte 12 juil 2026)
 
 ```
-|← DesktopSidebar (fixe gauche) →|← contenu →|← AtlasSidebar (fixe droite) →|
-      w-56 (expanded) / w-14 (collapsed)        w-[320px] (open) / w-0 (closed)
+|← DesktopNav (260px, fixe) →|← contenu →|← AtlasSidebar (360px / 64px replié) →|
+   = le tiroir mobile épinglé                = composeur Atlas contextuel permanent
+   (nav-config partagée)                     (masqué sur /atlas /aria /nova /messages)
 ```
+- Plus de top bar desktop (supprimé) : le titre vit dans la page, le thème dans Mon compte.
+- Feuilles = routes interceptées `app/(app)/@sheet/(.)route` : plein écran mobile, panneau droit desktop, la page derrière reste montée. URL directe = vraie page.
+
+### Gabarits de largeur desktop — RÈGLE STRICTE (2 gabarits + 2 exceptions)
+| Gabarit | Classe | Pages |
+|---|---|---|
+| **Colonne de lecture** | `mx-auto w-full max-w-2xl` | fiche contact, profil, activités, réglages, abonnements, notifications, formation (module/leçon/bibliothèque), aria, nova (cockpit/comptes), communauté, débrief |
+| **Page large** | `mx-auto w-full max-w-6xl` | tableau de bord, liste contacts, agenda, formation (liste modules, grille 3 col.) |
+| *Exception* | `max-w-3xl` | fil de chat Atlas uniquement (largeur de lecture conversationnelle) |
+| *Exception* | plein cadre | messages (split liste/fil), quiz formation (plein écran) |
+
+Ne JAMAIS introduire une autre largeur (md/lg/xl/4xl/5xl/7xl en racine de page).
 
 ---
 

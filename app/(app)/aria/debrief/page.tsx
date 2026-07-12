@@ -81,7 +81,7 @@ function DebriefContent() {
         </div>
       </header>
 
-      <div className="flex flex-col gap-5 px-4 pt-5 pb-28 lg:px-8 lg:pt-8 lg:max-w-3xl lg:mx-auto lg:pb-32 w-full">
+      <div className="flex flex-col gap-5 px-4 pt-5 pb-28 lg:px-8 lg:pt-8 lg:max-w-2xl lg:mx-auto lg:pb-32 w-full">
 
         {(state === 'waiting' || state === 'analyzing') && (
           <div className="flex flex-col items-center gap-3 rounded-2xl border border-border bg-surface p-10 text-center">

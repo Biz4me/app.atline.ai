@@ -515,7 +515,8 @@ function ContactsContent() {
       </div>
 
       {/* ══ DESKTOP ═════════════════════════════════════════════ */}
-      <div className="hidden lg:flex flex-col h-[calc(100dvh-56px)] overflow-hidden bg-muted/40 px-8 pt-8 pb-8 gap-4">
+      {/* Gabarit large standard (max-w-6xl) ; h-dvh : l'ancien top bar de 56px n'existe plus */}
+      <div className="hidden lg:flex mx-auto w-full max-w-6xl flex-col h-dvh overflow-hidden px-8 pt-8 pb-8 gap-4">
 
         {/* KPI Strip — même pattern que Home */}
         {(() => {

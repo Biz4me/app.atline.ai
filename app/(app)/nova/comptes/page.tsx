@@ -71,7 +71,7 @@ export default function ComptesPage() {
         <h1 className="font-display text-lg font-bold text-foreground lg:text-2xl">Mes comptes</h1>
       </header>
 
-      <div className="px-4 pt-2 pb-24 lg:px-8 lg:pt-4 lg:max-w-3xl lg:mx-auto">
+      <div className="px-4 pt-2 pb-24 lg:px-8 lg:pt-4 lg:max-w-2xl lg:mx-auto">
         <p className="mb-3 text-lg lg:text-sm text-muted-foreground text-pretty">
           Nova te prépare le contenu de tes profils, prêt à copier-coller. Un visiteur doit comprendre en 3 secondes qui tu es et où cliquer.
         </p>

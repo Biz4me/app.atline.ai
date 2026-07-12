@@ -99,7 +99,7 @@ export function AgendaView({ embedded = false, onClose }: { embedded?: boolean; 
         </div>
       </div>
 
-      <div className={cn('flex-1 px-4 pt-4 lg:px-8 lg:pt-6 lg:max-w-5xl lg:mx-auto lg:w-full', embedded ? 'pb-6' : 'pb-24')}>
+      <div className={cn('flex-1 px-4 pt-4 lg:px-8 lg:pt-6 lg:max-w-6xl lg:mx-auto lg:w-full', embedded ? 'pb-6' : 'pb-24')}>
         {/* ⚠️ PHASE 2 — À ACTIVER (config Google Cloud requise, sinon "Connecter" renvoie une erreur Google) :
             1) activer Google Calendar API  2) scope calendar.readonly au consent screen
             3) redirect URI https://app.atline.ai/api/calendar/callback  4) publishing "Production" (non vérifiée) ou testeur.
