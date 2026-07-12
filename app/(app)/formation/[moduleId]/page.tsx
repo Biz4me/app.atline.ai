@@ -3,7 +3,8 @@
 import { useEffect, useState } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import Link from 'next/link'
-import { ChevronLeft, ChevronRight, CheckCircle2 } from 'lucide-react'
+import { ChevronRight, CheckCircle2 } from 'lucide-react'
+import { SubHeader } from '@/components/page-shell'
 import { Card } from '@/components/card'
 import { cn } from '@/lib/utils'
 
@@ -67,21 +68,8 @@ export default function ModulePage() {
     <div
       className="min-h-screen bg-background animate-slide-in-right"
     >
-      {/* Header sticky */}
-      <div
-        className="sticky top-0 z-10 relative flex items-center justify-center border-b border-border bg-background/90 px-2 backdrop-blur"
-        style={{ height: 56, paddingTop: 'env(safe-area-inset-top)' }}
-      >
-        <button
-          type="button"
-          onClick={() => router.back()}
-          className="absolute left-2 flex size-9 items-center justify-center rounded-full text-foreground active:bg-muted"
-        >
-          <ChevronLeft className="size-6" />
-        </button>
-        <p className="text-lg lg:text-sm font-semibold text-foreground">Module {moduleNum}</p>
-        <span className="absolute right-4 text-xs text-muted-foreground">{moduleNum} / {totalModules}</span>
-      </div>
+      <SubHeader title={`Module ${moduleNum}`} onBack={() => router.back()}
+        action={<span className="pr-1 text-xs text-muted-foreground">{moduleNum} / {totalModules}</span>} />
 
       {/* Body — colonne centrée sur desktop (sinon pleine largeur étirée) */}
       <div className="mx-auto flex w-full max-w-2xl flex-col gap-5 px-4 pt-6 pb-10">

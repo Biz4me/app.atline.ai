@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { Card } from '@/components/card'
+import { PageShell } from '@/components/page-shell'
 import { SectionTabs, FORMATION_TABS } from '@/components/section-tabs'
 import { ChevronDown, BookOpen, ShoppingCart, Headphones, Check } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -147,11 +148,10 @@ export default function LibraryPage() {
         </div>
       </div>
 
-      {/* ── DESKTOP ONLY ── */}
-      <div className="hidden lg:block px-8 pt-8 pb-10 max-w-2xl mx-auto">
-        <h1 className="mb-6 font-display text-[32px] font-extrabold leading-tight tracking-[-0.025em] text-foreground">Bibliothèque</h1>
+      {/* ── DESKTOP ONLY — gabarit lecture ── */}
+      <PageShell title="Bibliothèque">
         <Library />
-      </div>
+      </PageShell>
     </>
   )
 }

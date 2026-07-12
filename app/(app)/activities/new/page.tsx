@@ -2,7 +2,8 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { ChevronLeft, Loader2, Briefcase, Network, Minus, Plus } from 'lucide-react'
+import { Loader2, Briefcase, Network, Minus, Plus } from 'lucide-react'
+import { SubHeader } from '@/components/page-shell'
 import { SelectMenu } from '@/components/select-menu'
 import { CollapsibleSection } from '@/components/collapsible-section'
 import { useBusiness } from '@/components/business-provider'
@@ -79,13 +80,7 @@ export default function NewActivityPage() {
 
   return (
     <div className="mx-auto w-full max-w-2xl">
-      {/* Header — titre centré + retour à gauche (charte du hub compte) */}
-      <div className="sticky top-0 z-10 flex items-center justify-center bg-background/90 px-4 py-3 backdrop-blur" style={{ paddingTop: 'max(0.75rem, env(safe-area-inset-top))' }}>
-        <button type="button" onClick={() => router.back()} aria-label="Retour" className="absolute left-2 flex size-9 items-center justify-center rounded-full text-foreground active:bg-muted">
-          <ChevronLeft className="size-5 stroke-[1.5]" />
-        </button>
-        <h1 className="text-lg font-semibold text-foreground">Nouvelle activité</h1>
-      </div>
+      <SubHeader title="Nouvelle activité" onBack={() => router.back()} />
 
       <div className="space-y-5 px-4 pb-28 pt-4">
         <div className="flex flex-col gap-2">

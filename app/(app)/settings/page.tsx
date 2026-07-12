@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
 import { AppHeader } from '@/components/app-header'
+import { PageShell } from '@/components/page-shell'
 import { Card } from '@/components/card'
 import {
   Settings, Bell, Briefcase, Link2, Users, Lock, KeyRound,
@@ -137,12 +138,12 @@ export default function SettingsPage() {
         </div>
       </div>
 
-      {/* DESKTOP ONLY — même contenu, colonne centrée */}
-      <div className="hidden lg:block">
-        <div className="mx-auto max-w-2xl space-y-5 px-6 py-8">
+      {/* DESKTOP ONLY — gabarit lecture (PageShell) */}
+      <PageShell title="Mon compte">
+        <div className="space-y-5">
           <AccountBody />
         </div>
-      </div>
+      </PageShell>
     </>
   )
 }

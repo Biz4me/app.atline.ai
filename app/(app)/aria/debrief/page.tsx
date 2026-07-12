@@ -2,7 +2,8 @@
 
 import { Suspense, useEffect, useRef, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { ChevronLeft, Mic, CheckCircle2, Target, Quote, Loader2, ArrowRight } from 'lucide-react'
+import { Mic, CheckCircle2, Target, Quote, Loader2, ArrowRight } from 'lucide-react'
+import { SubHeader } from '@/components/page-shell'
 
 // Débrief RÉEL : la page attend le transcript (déposé par l'agent vocal en fin d'appel),
 // lance l'analyse Sonnet (une seule fois, persistée sur la SimSession), puis l'affiche.
@@ -63,25 +64,9 @@ function DebriefContent() {
 
   return (
     <div className="flex min-h-dvh flex-col bg-background">
-      <header
-        className="sticky top-0 z-30 flex items-center gap-3 bg-background/90 px-4 py-3 backdrop-blur lg:px-8"
-        style={{ paddingTop: 'max(0.75rem, env(safe-area-inset-top))' }}
-      >
-        <button
-          type="button"
-          onClick={() => router.push('/aria')}
-          className="-ml-1 flex size-9 items-center justify-center rounded-full text-muted-foreground active:bg-muted"
-        >
-          <ChevronLeft className="size-5 stroke-[1.5]" />
-        </button>
-        <div className="flex-1 min-w-0">
-          <h1 className="truncate text-lg font-bold text-foreground">
-            Débrief{phaseLabel ? ` · ${phaseLabel}` : ''}
-          </h1>
-        </div>
-      </header>
+      <SubHeader title={`Débrief${phaseLabel ? ` · ${phaseLabel}` : ''}`} onBack={() => router.push('/aria')} />
 
-      <div className="flex flex-col gap-5 px-4 pt-5 pb-28 lg:px-8 lg:pt-8 lg:max-w-2xl lg:mx-auto lg:pb-32 w-full">
+      <div className="flex flex-col gap-5 px-4 pt-5 pb-28 lg:pt-8 lg:max-w-2xl lg:mx-auto lg:pb-32 w-full">
 
         {(state === 'waiting' || state === 'analyzing') && (
           <div className="flex flex-col items-center gap-3 rounded-2xl border border-border bg-surface p-10 text-center">
