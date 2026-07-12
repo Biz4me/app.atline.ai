@@ -13,13 +13,17 @@ export type PanelMsg = { from: 'user' | 'atlas'; text: string; navCard?: { route
 // Pendant le stream, ne jamais révéler un marqueur [[OPEN]] (même partiel en fin de flux).
 const visible = (t: string) => t.replace(/\s*\[\[[\s\S]*$/, '')
 
-export function useAtlasMiniChat() {
+// `endpoint` : /api/atlas/chat par défaut. Un autre agent (Aria coach, Nova) passe son endpoint SSE
+// { query, history } → même fil, même rendu. Atlas garde son body à conversationId.
+export function useAtlasMiniChat(endpoint = '/api/atlas/chat') {
+  const isAtlas = endpoint === '/api/atlas/chat'
   const [msgs, setMsgs] = useState<PanelMsg[]>([])
   const [streaming, setStreaming] = useState(false)
   const convIdRef = useRef<string | null>(null)
 
   const send = async (q: string, onUpdate?: () => void) => {
     if (!q.trim() || streaming) return
+    const history = msgs.filter((m) => m.text).map((m) => ({ role: m.from === 'user' ? 'user' : 'assistant', content: m.text }))
     setMsgs((prev) => [...prev, { from: 'user', text: q }, { from: 'atlas', text: '' }])
     setStreaming(true)
     onUpdate?.()
@@ -27,10 +31,12 @@ export function useAtlasMiniChat() {
     const actions: AtlasAction[] = []
     const setLast = (text: string) => setMsgs((prev) => prev.map((m, i) => (i === prev.length - 1 && m.from === 'atlas' ? { ...m, text } : m)))
     try {
-      const resp = await fetch('/api/atlas/chat', {
+      const resp = await fetch(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ query: q, conversationId: convIdRef.current ?? undefined, mlm_actif: 'Atline' }),
+        body: JSON.stringify(isAtlas
+          ? { query: q, conversationId: convIdRef.current ?? undefined, mlm_actif: 'Atline' }
+          : { query: q, history }),
       })
       if (!resp.ok || !resp.body) throw new Error('no stream')
       const cid = resp.headers.get('X-Conversation-Id')
