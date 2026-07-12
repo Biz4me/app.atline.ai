@@ -1,14 +1,16 @@
 'use client'
 
 import { useRef, useEffect } from 'react'
-import { Paperclip, Mic, SendHorizontal, Loader2 } from 'lucide-react'
+import { Paperclip, Mic, SendHorizontal, Loader2, ChevronDown } from 'lucide-react'
 import { usePushToTalk } from '@/components/mobile/use-dictation'
 import { cn } from '@/lib/utils'
 
-// Composeur unique de l'app (mobile) — flottant fixe en bas.
-// Source de vérité UI : la page Atlas le câble au chat ; le shell le câble au relais Atlas.
+// Composeur unique de l'app — une seule source pour mobile ET desktop.
+// - mobile : barre flottante fixe en bas
+// - desktop (option `desktop`) : barre attachée en pied de colonne
+// - bouton « revenir en bas » intégré (même distance -top-12 des deux côtés)
 // Le choix d'agent se fait dans le tiroir (sidebar), pas ici.
-// Passer `agentLabel`/`accent` d'un autre agent le jour où Aria/Nova ont un backend conversationnel → zéro réécriture.
+// Nova/Shell l'utilisent en mobile only (ne passent ni `desktop` ni `bigText`) → inchangés.
 type Props = {
   value: string
   onChange: (v: string) => void
@@ -18,14 +20,19 @@ type Props = {
   accent?: string
   disabled?: boolean
   autoFocus?: boolean
-  children?: React.ReactNode // ex. input fichier caché
+  desktop?: boolean          // rend aussi la barre attachée desktop
+  bigText?: boolean          // +1px (chat Atlas)
+  showScrollBtn?: boolean
+  onScrollBottom?: () => void
+  children?: React.ReactNode // ex. input fichier caché (mobile)
 }
 
 export function AppComposer({
-  value, onChange, onSubmit, onAttach, agentLabel = 'Atlas', accent, disabled, autoFocus, children,
+  value, onChange, onSubmit, onAttach, agentLabel = 'Atlas', accent, disabled, autoFocus,
+  desktop, bigText, showScrollBtn, onScrollBottom, children,
 }: Props) {
-  const taRef = useRef<HTMLTextAreaElement>(null)
-  // Dictée vocale : on garde la valeur courante en ref pour y accoler le texte reconnu.
+  const rootRef = useRef<HTMLDivElement>(null)
+  // Dictée push-to-talk : la valeur courante en ref pour y accoler le texte reconnu.
   const valueRef = useRef(value)
   valueRef.current = value
   const { supported: micOk, recording, busy, start, stop } = usePushToTalk({
@@ -33,73 +40,105 @@ export function AppComposer({
     onText: (full) => onChange(full),
   })
 
-  // Grandit avec le contenu (jusqu'à 120px puis scroll)
+  // Auto-grow des zones de saisie (mobile + desktop) jusqu'à 120px puis scroll
   useEffect(() => {
-    const el = taRef.current
-    if (!el) return
-    el.style.height = 'auto'
-    el.style.height = Math.min(el.scrollHeight, 120) + 'px'
+    rootRef.current?.querySelectorAll('textarea').forEach((el) => {
+      el.style.height = 'auto'
+      el.style.height = Math.min(el.scrollHeight, 120) + 'px'
+    })
   }, [value])
+  useEffect(() => { if (autoFocus) rootRef.current?.querySelector('textarea')?.focus() }, [autoFocus])
 
-  useEffect(() => { if (autoFocus) taRef.current?.focus() }, [autoFocus])
+  const textCls = bigText ? 'text-[19px] lg:text-base' : 'text-lg lg:text-sm'
 
-  return (
-    <div
-      className="lg:hidden fixed inset-x-0 z-[48] px-4"
-      style={{ bottom: 'max(20px, env(safe-area-inset-bottom))' }}
+  // Bouton « revenir en bas » — au-dessus de la barre, même distance mobile/desktop.
+  const scrollBtn = showScrollBtn && onScrollBottom ? (
+    <button
+      type="button"
+      onClick={onScrollBottom}
+      aria-label="Revenir en bas"
+      className="absolute -top-12 left-1/2 z-10 flex size-9 -translate-x-1/2 items-center justify-center rounded-full border border-border bg-background text-muted-foreground shadow-md transition-colors hover:bg-muted hover:text-foreground active:bg-muted"
     >
-      <div className="mx-auto flex max-w-md items-end gap-2 rounded-[26px] border border-border bg-surface/95 px-3 py-1.5 shadow-[0_6px_24px_rgba(0,0,0,.12)] backdrop-blur-md">
-        {onAttach && (
-          <button
-            type="button"
-            onClick={onAttach}
-            title="Joindre un fichier"
-            className="flex size-9 shrink-0 items-center justify-center rounded-full text-muted-foreground active:bg-muted transition-colors"
-          >
-            <Paperclip className="size-5 stroke-[1.5]" />
-          </button>
-        )}
-        <textarea
-          ref={taRef}
-          rows={1}
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); onSubmit() }
-          }}
-          placeholder={`Écris à ${agentLabel}…`}
-          className="flex-1 resize-none overflow-y-auto no-scrollbar bg-transparent text-lg leading-[1.4] text-foreground outline-none placeholder:text-muted-foreground lg:text-sm"
-          style={{ maxHeight: 120, paddingTop: 7, paddingBottom: 7 }}
-        />
-        {micOk && (
-          <button
-            type="button"
-            onPointerDown={(e) => { e.preventDefault(); e.currentTarget.setPointerCapture(e.pointerId); start() }}
-            onPointerUp={(e) => { e.currentTarget.releasePointerCapture(e.pointerId); stop() }}
-            onPointerCancel={stop}
-            onContextMenu={(e) => e.preventDefault()}
-            disabled={busy}
-            aria-label="Maintenir pour dicter"
-            title="Maintenir pour dicter"
-            className={cn(
-              'flex size-9 shrink-0 select-none touch-none items-center justify-center rounded-full transition-all',
-              recording ? 'scale-110 bg-primary text-white' : busy ? 'text-primary' : 'text-muted-foreground active:bg-muted',
-            )}
-          >
-            {busy ? <Loader2 className="size-5 animate-spin" /> : <Mic className={cn('size-5 stroke-[1.5]', recording && 'animate-pulse')} />}
-          </button>
-        )}
+      <ChevronDown className="size-4" />
+    </button>
+  ) : null
+
+  // La barre — internals partagés ; seul l'habillage du conteneur diffère mobile/desktop.
+  const bar = (variant: 'mobile' | 'desktop') => (
+    <div
+      className={cn(
+        'relative mx-auto flex items-end gap-2 border border-border',
+        variant === 'mobile'
+          ? 'max-w-md rounded-[26px] bg-surface/95 px-3 py-1.5 shadow-[0_6px_24px_rgba(0,0,0,.12)] backdrop-blur-md'
+          : 'max-w-3xl rounded-2xl bg-surface px-4 py-2',
+      )}
+    >
+      {scrollBtn}
+      {onAttach && (
         <button
           type="button"
-          onClick={onSubmit}
-          disabled={disabled || !value.trim()}
-          className="flex size-9 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-sm active:opacity-90 transition-opacity disabled:opacity-40"
-          style={accent ? { background: accent } : undefined}
+          onClick={onAttach}
+          title="Joindre un fichier"
+          className="flex size-9 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted active:bg-muted"
         >
-          <SendHorizontal className="size-[17px] stroke-[1.5]" />
+          <Paperclip className="size-5 stroke-[1.5]" />
         </button>
+      )}
+      <textarea
+        rows={1}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); onSubmit() } }}
+        placeholder={`Écris à ${agentLabel}…`}
+        className={cn('flex-1 resize-none overflow-y-auto no-scrollbar bg-transparent leading-[1.4] text-foreground outline-none placeholder:text-muted-foreground', textCls)}
+        style={{ maxHeight: 120, paddingTop: 7, paddingBottom: 7 }}
+      />
+      {micOk && (
+        <button
+          type="button"
+          onPointerDown={(e) => { e.preventDefault(); e.currentTarget.setPointerCapture(e.pointerId); start() }}
+          onPointerUp={(e) => { e.currentTarget.releasePointerCapture(e.pointerId); stop() }}
+          onPointerCancel={stop}
+          onContextMenu={(e) => e.preventDefault()}
+          disabled={busy}
+          aria-label="Maintenir pour dicter"
+          title="Maintenir pour dicter"
+          className={cn(
+            'flex size-9 shrink-0 select-none touch-none items-center justify-center rounded-full transition-all',
+            recording ? 'scale-110 bg-primary text-white' : busy ? 'text-primary' : 'text-muted-foreground hover:bg-muted active:bg-muted',
+          )}
+        >
+          {busy ? <Loader2 className="size-5 animate-spin" /> : <Mic className={cn('size-5 stroke-[1.5]', recording && 'animate-pulse')} />}
+        </button>
+      )}
+      <button
+        type="button"
+        onClick={onSubmit}
+        disabled={disabled || !value.trim()}
+        className="flex size-9 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-sm transition-opacity hover:opacity-90 active:opacity-90 disabled:opacity-40"
+        style={accent ? { background: accent } : undefined}
+      >
+        <SendHorizontal className="size-[17px] stroke-[1.5]" />
+      </button>
+    </div>
+  )
+
+  return (
+    <div ref={rootRef} className={desktop ? 'shrink-0' : 'contents'}>
+      {/* MOBILE — flottant fixe */}
+      <div
+        className="lg:hidden fixed inset-x-0 z-[48] px-4"
+        style={{ bottom: 'max(20px, env(safe-area-inset-bottom))' }}
+      >
+        {bar('mobile')}
+        {children}
       </div>
-      {children}
+      {/* DESKTOP — attaché en pied de colonne (option desktop) */}
+      {desktop && (
+        <div className="hidden lg:block px-4 py-3 lg:px-6">
+          {bar('desktop')}
+        </div>
+      )}
     </div>
   )
 }

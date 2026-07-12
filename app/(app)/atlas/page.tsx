@@ -2,11 +2,10 @@
 
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { SendHorizontal, Mic, History, Plus, X, ChevronDown, MoreHorizontal, Pencil, Trash2, Paperclip, FileText, Users, Loader2, Zap, Target, SquarePen, UserRound, Compass, Sparkles } from 'lucide-react'
+import { Mic, History, Plus, X, MoreHorizontal, Pencil, Trash2, FileText, Users, Loader2, Zap, Target, SquarePen, UserRound, Compass, Sparkles } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
 import { AppComposer } from '@/components/mobile/app-composer'
-import { usePushToTalk } from '@/components/mobile/use-dictation'
 
 const BUCKET_LABEL: Record<string, string> = { PRESENTER: 'Présenter', FORMER: 'Former', VENDRE: 'Vendre' }
 
@@ -100,13 +99,6 @@ export default function AtlasPage() {
     fetch('/api/plan/today').then((r) => (r.ok ? r.json() : null)).then((d) => setPlan(d?.items?.slice(0, 4) ?? [])).catch(() => {})
   }, [])
   const [input, setInput] = useState('')
-  const inputRef = useRef(input)
-  inputRef.current = input
-  // Dictée « pousse-pour-parler » desktop (le composeur mobile gère la sienne dans AppComposer)
-  const { supported: micOk, recording, busy: micBusy, start: micStart, stop: micStop } = usePushToTalk({
-    getBase: () => inputRef.current,
-    onText: (full) => setInput(full),
-  })
   const [histMounted, setHistMounted] = useState(false)
   const [histVisible, setHistVisible] = useState(false)
   const [histTop, setHistTop] = useState(0)
@@ -115,7 +107,6 @@ export default function AtlasPage() {
   const [histEditingId, setHistEditingId] = useState<string | null>(null)
   const [histDraft, setHistDraft] = useState('')
   const headerRef = useRef<HTMLDivElement>(null)
-  const textareaRef = useRef<HTMLTextAreaElement>(null)
   const [streaming, setStreaming] = useState(false)
   const [toolHint, setToolHint] = useState('')   // « Atlas regarde la fiche de … » pendant un appel d'outil
   // true tant qu'on charge une conversation depuis l'URL → évite le flash de l'état vide
@@ -447,15 +438,6 @@ TECHNIQUE (invisible pour moi, ne l'explique jamais)${NB}: le jour où je VALIDE
     setTimeout(() => setHistMounted(false), 300)
   }
   const toggleHist = () => { histMounted ? closeHist() : openHist() }
-
-  // Composeur : grandit avec le contenu réel (jusqu'à 120px puis scroll)
-  const resizeTextarea = () => {
-    const el = textareaRef.current
-    if (!el) return
-    el.style.height = 'auto'
-    el.style.height = Math.min(el.scrollHeight, 120) + 'px'
-  }
-  useEffect(() => { resizeTextarea() }, [input])
 
   // Historique : renommer / supprimer (mobile, même logique que desktop)
   const renameConv = async () => {
@@ -1176,12 +1158,12 @@ TECHNIQUE (invisible pour moi, ne l'explique jamais)${NB}: le jour où je VALIDE
             {msgs.map((m, i) => (
               <div key={i} className={cn('flex flex-col gap-2', m.from === 'user' ? 'items-end' : 'items-start')}>
                 {m.from === 'user' ? (
-                  <div className="max-w-[82%] whitespace-pre-line rounded-2xl rounded-br-md bg-primary px-3.5 py-2.5 text-lg leading-[1.4] text-primary-foreground lg:text-sm">
+                  <div className="max-w-[82%] whitespace-pre-line rounded-2xl rounded-br-md bg-primary px-3.5 py-2.5 text-[19px] leading-[1.4] text-primary-foreground lg:text-base">
                     {frText(m.text)}
                   </div>
                 ) : m.choices && m.item ? (
                   <div className="flex w-full flex-col gap-2">
-                    {m.text && <p className="text-lg leading-[1.65] text-foreground lg:text-sm">{m.text}</p>}
+                    {m.text && <p className="text-[19px] leading-[1.65] text-foreground lg:text-base">{m.text}</p>}
                     <ChatChoices choices={m.choices} onPick={(value, label) => handleChoice(m.item!, value, label, i)} />
                   </div>
                 ) : m.draft ? (
@@ -1199,7 +1181,7 @@ TECHNIQUE (invisible pour moi, ne l'explique jamais)${NB}: le jour où je VALIDE
                     <div className="flex items-center gap-2 text-sm text-muted-foreground"><Sparkles className="size-3.5 animate-pulse text-primary" />{toolHint}</div>
                   ) : <TypingDots />
                 ) : (
-                  <div className="flex w-full flex-col gap-2.5 text-lg leading-[1.65] text-foreground lg:text-sm">
+                  <div className="flex w-full flex-col gap-2.5 text-[19px] leading-[1.65] text-foreground lg:text-base">
                     {frText(m.text).split(/\n{2,}/).map((para, j) => (
                       <p key={j} className="whitespace-pre-line">{para}</p>
                     ))}
@@ -1229,92 +1211,20 @@ TECHNIQUE (invisible pour moi, ne l'explique jamais)${NB}: le jour où je VALIDE
         <input ref={fileInputRef} type="file" onChange={onPickFile} className="hidden"
           accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.csv,.txt,image/*" />
 
-        {/* Composeur DESKTOP — attaché (mobile utilise l'AppComposer flottant, cf. plus bas) */}
-        <div className="relative hidden lg:block shrink-0 px-4 py-3 lg:px-6">
-          {showScrollBtn && (
-            <button
-              type="button"
-              onClick={goToBottom}
-              aria-label="Revenir en bas"
-              className="absolute -top-12 left-1/2 -translate-x-1/2 z-10 flex size-9 items-center justify-center rounded-full border border-border bg-background text-muted-foreground shadow-md hover:bg-muted hover:text-foreground transition-colors"
-            >
-              <ChevronDown className="size-4" />
-            </button>
-          )}
-          <div className="mx-auto flex max-w-3xl items-end gap-2 rounded-2xl border border-border bg-surface px-4 py-2">
-            <button
-              type="button"
-              onClick={() => fileInputRef.current?.click()}
-              title="Joindre un fichier"
-              className="flex size-9 shrink-0 items-center justify-center rounded-full text-muted-foreground hover:bg-muted transition-colors"
-            >
-              <Paperclip className="size-5 stroke-[1.5]" />
-            </button>
-            <textarea
-              ref={textareaRef}
-              rows={1}
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' && !e.shiftKey) {
-                  e.preventDefault()
-                  submitInput()
-                }
-              }}
-              placeholder="Écris à Atlas…"
-              className="flex-1 resize-none overflow-y-auto no-scrollbar bg-transparent text-lg leading-[1.4] text-foreground outline-none placeholder:text-muted-foreground lg:text-sm"
-              style={{ maxHeight: 120, paddingTop: 7, paddingBottom: 7 }}
-            />
-            {micOk && (
-              <button
-                type="button"
-                onPointerDown={(e) => { e.preventDefault(); e.currentTarget.setPointerCapture(e.pointerId); micStart() }}
-                onPointerUp={(e) => { e.currentTarget.releasePointerCapture(e.pointerId); micStop() }}
-                onPointerCancel={micStop}
-                onContextMenu={(e) => e.preventDefault()}
-                disabled={micBusy}
-                aria-label="Maintenir pour dicter"
-                title="Maintenir pour dicter"
-                className={cn(
-                  'flex size-9 shrink-0 select-none items-center justify-center rounded-full transition-all',
-                  recording ? 'scale-110 bg-primary text-white' : micBusy ? 'text-primary' : 'text-muted-foreground hover:bg-muted',
-                )}
-              >
-                {micBusy ? <Loader2 className="size-5 animate-spin" /> : <Mic className={cn('size-5 stroke-[1.5]', recording && 'animate-pulse')} />}
-              </button>
-            )}
-            <button
-              type="button"
-              onClick={submitInput}
-              disabled={streaming || !input.trim()}
-              className="flex size-9 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-sm hover:opacity-90 transition-opacity disabled:opacity-40"
-            >
-              <SendHorizontal className="size-[17px] stroke-[1.5]" />
-            </button>
-          </div>
-        </div>
+        {/* Composeur UNIQUE — mobile flottant + desktop attaché + bouton « revenir en bas » (cf. AppComposer) */}
+        <AppComposer
+          desktop
+          bigText
+          value={input}
+          onChange={setInput}
+          onSubmit={submitInput}
+          onAttach={() => fileInputRef.current?.click()}
+          agentLabel="Atlas"
+          disabled={streaming}
+          showScrollBtn={showScrollBtn}
+          onScrollBottom={goToBottom}
+        />
       </div>
-
-      {/* Composeur MOBILE — flottant fixe (source unique, cf. AppComposer) */}
-      <AppComposer
-        value={input}
-        onChange={setInput}
-        onSubmit={submitInput}
-        onAttach={() => fileInputRef.current?.click()}
-        agentLabel="Atlas"
-        disabled={streaming}
-      />
-      {showScrollBtn && (
-        <button
-          type="button"
-          onClick={goToBottom}
-          aria-label="Revenir en bas"
-          className="lg:hidden fixed left-1/2 z-[47] flex size-9 -translate-x-1/2 items-center justify-center rounded-full border border-border bg-background text-muted-foreground shadow-md active:bg-muted transition-colors"
-          style={{ bottom: 'calc(max(14px, env(safe-area-inset-bottom)) + 62px)' }}
-        >
-          <ChevronDown className="size-4" />
-        </button>
-      )}
 
       {/* Sélecteur de destination pour un fichier joint */}
       {pendingFile && (() => {
