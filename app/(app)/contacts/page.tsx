@@ -11,10 +11,11 @@ import type { ContactStage, ContactPipelineStage, DiscType } from '@/lib/types'
 import {
   Search, Plus, UserRound, ChevronDown, Check,
   Mic, Sparkles, Trash2, ArrowUpDown, ArrowUp, ArrowDown,
-  Download, Upload, FileUp, X, Loader2,
+  Download, Upload, FileUp, X, Loader2, Users, Flame,
 } from 'lucide-react'
 import { AddContactSheet } from '@/components/add-contact-sheet'
 import { Card } from '@/components/card'
+import { KpiCard } from '@/components/kpi-card'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
 
@@ -522,24 +523,16 @@ function ContactsContent() {
           <h1 className="text-base font-semibold text-foreground">Contacts</h1>
         </header>
 
-        {/* KPI Strip — même pattern que Home */}
+        {/* KPI Strip — composant KpiCard partagé (identique au tableau de bord) */}
         {(() => {
           const all    = rows
           const closings = all.filter((c) => c.stage === 'closing').length
           const nouveaux = all.filter((c) => c.stage === 'nouveau').length
           return (
             <div className="grid grid-cols-3 gap-3 shrink-0">
-              {[
-                { label: 'Total contacts',    value: String(all.length), sub: 'dans ma liste'    },
-                { label: 'En closing',        value: String(closings),   sub: 'à relancer'       },
-                { label: 'Sans qualification', value: String(nouveaux),  sub: 'à qualifier'      },
-              ].map((kpi) => (
-                <Card key={kpi.label} className="px-4 py-3">
-                  <p className="text-xs font-medium text-muted-foreground">{kpi.label}</p>
-                  <p className="text-xl font-bold text-foreground mt-1 tabular-nums">{kpi.value}</p>
-                  <p className="text-xs text-muted-foreground mt-0.5">{kpi.sub}</p>
-                </Card>
-              ))}
+              <KpiCard icon={Users} label="Total contacts" value={all.length} sub="dans ma liste" />
+              <KpiCard icon={Flame} label="En closing" value={closings} sub="à relancer" />
+              <KpiCard icon={Sparkles} label="Sans qualification" value={nouveaux} sub="à qualifier" />
             </div>
           )
         })()}

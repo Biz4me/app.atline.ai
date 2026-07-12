@@ -5,6 +5,7 @@ import { CalendarDays, Users, Mic, BookOpen, AlarmClock, Megaphone } from 'lucid
 import Link from 'next/link'
 import { useState, useEffect } from 'react'
 import { PageShell } from '@/components/page-shell'
+import { KpiCard } from '@/components/kpi-card'
 
 // Tableau de bord RÉEL (équivalent utilisateur de l'overview admin) : tout vient
 // de /api/home/stats + /api/appointments. Plus aucune donnée fictive ici.
@@ -48,18 +49,10 @@ function useDashboard() {
 function Kpis({ s }: { s: Stats | null }) {
   return (
     <div className="grid grid-cols-2 gap-2.5 lg:grid-cols-4 lg:gap-3">
-      {[
-        { icon: Users, label: 'Contacts', value: s?.contacts, sub: s ? `+${s.contactsWeek} cette semaine` : '' },
-        { icon: AlarmClock, label: 'Relances dues', value: s?.relancesDues, sub: "à traiter aujourd'hui", alert: (s?.relancesDues ?? 0) > 0 },
-        { icon: CalendarDays, label: 'RDV à venir', value: s?.rdvWeek, sub: 'cette semaine' },
-        { icon: BookOpen, label: 'Formation', value: s != null ? `${s.formationPct}%` : undefined, sub: 'du parcours' },
-      ].map(({ icon: Icon, label, value, sub, alert }) => (
-        <Card key={label} className="flex flex-col gap-0.5 px-3.5 py-3">
-          <span className="flex items-center gap-1.5 text-sm text-muted-foreground lg:text-xs"><Icon className="size-3.5 stroke-[1.5]" />{label}</span>
-          <span className={`font-display text-2xl font-bold tabular-nums ${alert ? 'text-[#EF4444]' : 'text-foreground'}`}>{value ?? '—'}</span>
-          <span className="text-sm text-muted-foreground lg:text-xs">{sub}</span>
-        </Card>
-      ))}
+      <KpiCard icon={Users} label="Contacts" value={s?.contacts} sub={s ? `+${s.contactsWeek} cette semaine` : ''} />
+      <KpiCard icon={AlarmClock} label="Relances dues" value={s?.relancesDues} sub="à traiter aujourd'hui" alert={(s?.relancesDues ?? 0) > 0} />
+      <KpiCard icon={CalendarDays} label="RDV à venir" value={s?.rdvWeek} sub="cette semaine" />
+      <KpiCard icon={BookOpen} label="Formation" value={s != null ? `${s.formationPct}%` : undefined} sub="du parcours" />
     </div>
   )
 }
