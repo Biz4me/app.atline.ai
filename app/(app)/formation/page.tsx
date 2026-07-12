@@ -5,7 +5,8 @@ import Link from 'next/link'
 import { Card } from '@/components/card'
 import { SectionTabs, FORMATION_TABS } from '@/components/section-tabs'
 import { cn } from '@/lib/utils'
-import { CheckCircle2, ChevronRight, BookOpen } from 'lucide-react'
+import { CheckCircle2, ChevronRight, BookOpen, Lock } from 'lucide-react'
+import { toast } from 'sonner'
 import { PageShell } from '@/components/page-shell'
 
 type ApiModule = {
@@ -64,61 +65,45 @@ export default function FormationPage() {
             </div>
           )}
 
-          {/* Liste des modules */}
+          {/* Liste des modules — un module est VERROUILLÉ tant que le précédent n'est pas terminé */}
           {course && (
             <div className="flex flex-col gap-2">
-              {modules.map((mod) => {
+              {modules.map((mod, i) => {
                 const pct = mod.progress?.[0]?.pct ?? 0
                 const done = mod.progress?.[0]?.status === 'DONE'
                 const inProgress = pct > 0 && !done
+                const locked = i > 0 && modules[i - 1].progress?.[0]?.status !== 'DONE'
 
-                return (
-                  <Link key={mod.id} href={`/formation/${mod.id}`}>
-                    <Card className="transition-colors active:bg-muted/50">
-                      <div className="flex items-center gap-3 p-3.5">
-
-                        {/* Badge numéro */}
-                        <span className={cn(
-                          'flex size-10 shrink-0 items-center justify-center rounded-xl',
-                          done
-                            ? 'bg-success'
-                            : inProgress
-                            ? 'bg-primary'
-                            : 'bg-muted'
-                        )}>
-                          {done ? (
-                            <CheckCircle2 className="size-5 stroke-2 text-white" />
-                          ) : (
-                            <span className={cn(
-                              'text-base font-bold',
-                              inProgress ? 'text-white' : 'text-muted-foreground'
-                            )}>
-                              {mod.position + 1}
-                            </span>
-                          )}
-                        </span>
-
-                        {/* Contenu */}
-                        <div className="min-w-0 flex-1">
-                          <p className="truncate text-lg font-semibold text-foreground">
-                            {stripPrefix(mod.title)}
-                          </p>
-                          <p className="mt-0.5 text-base text-muted-foreground">
-                            {mod._count.lessons} leçons
-                          </p>
+                const inner = (
+                  <Card className={cn('transition-colors', locked ? 'opacity-60' : 'active:bg-muted/50')}>
+                    <div className="flex items-center gap-3 p-3.5">
+                      <span className={cn(
+                        'flex size-10 shrink-0 items-center justify-center rounded-xl',
+                        done ? 'bg-success' : inProgress ? 'bg-primary' : 'bg-muted'
+                      )}>
+                        {done ? <CheckCircle2 className="size-5 stroke-2 text-white" />
+                          : locked ? <Lock className="size-4 stroke-[1.5] text-muted-foreground" />
+                          : <span className={cn('text-base font-bold', inProgress ? 'text-white' : 'text-muted-foreground')}>{mod.position + 1}</span>}
+                      </span>
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-lg font-semibold text-foreground">{stripPrefix(mod.title)}</p>
+                        <p className="mt-0.5 text-base text-muted-foreground">
+                          {locked ? 'Termine le module précédent pour débloquer' : `${mod._count.lessons} leçons`}
+                        </p>
+                        {!locked && (
                           <div className="mt-1.5 h-1 overflow-hidden rounded-full bg-muted">
-                            <div
-                              className="h-full rounded-full bg-primary transition-all"
-                              style={{ width: `${pct}%` }}
-                            />
+                            <div className="h-full rounded-full bg-primary transition-all" style={{ width: `${pct}%` }} />
                           </div>
-                        </div>
-
-                        <ChevronRight className="size-4 shrink-0 text-muted-foreground" />
+                        )}
                       </div>
-                    </Card>
-                  </Link>
+                      {locked ? <Lock className="size-4 shrink-0 text-muted-foreground" /> : <ChevronRight className="size-4 shrink-0 text-muted-foreground" />}
+                    </div>
+                  </Card>
                 )
+
+                return locked
+                  ? <button key={mod.id} type="button" onClick={() => toast('Termine le module précédent pour débloquer celui-ci.')} className="text-left">{inner}</button>
+                  : <Link key={mod.id} href={`/formation/${mod.id}`}>{inner}</Link>
               })}
             </div>
           )}
@@ -136,35 +121,41 @@ export default function FormationPage() {
           {!course && Array.from({ length: 5 }).map((_, i) => (
             <div key={i} className="h-[68px] animate-pulse rounded-2xl bg-muted" />
           ))}
-          {course && modules.map((mod) => {
+          {course && modules.map((mod, i) => {
             const pct = mod.progress?.[0]?.pct ?? 0
             const done = mod.progress?.[0]?.status === 'DONE'
             const inProgress = pct > 0 && !done
-            return (
-              <Link key={mod.id} href={`/formation/${mod.id}`}>
-                <Card className="flex items-center gap-4 p-4 transition-colors hover:border-primary/50">
-                  <span className={cn(
-                    'flex size-10 shrink-0 items-center justify-center rounded-xl text-base font-bold',
-                    done ? 'bg-success text-white' : inProgress ? 'bg-primary text-white' : 'bg-muted text-muted-foreground'
-                  )}>
-                    {done ? <CheckCircle2 className="size-5 stroke-2" /> : mod.position + 1}
-                  </span>
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-semibold text-foreground">{stripPrefix(mod.title)}</p>
-                    <p className="mt-0.5 text-xs text-muted-foreground">{mod._count.lessons} leçons</p>
-                  </div>
+            const locked = i > 0 && modules[i - 1].progress?.[0]?.status !== 'DONE'
+
+            const inner = (
+              <Card className={cn('flex items-center gap-4 p-4 transition-colors', locked ? 'opacity-60' : 'hover:border-primary/50')}>
+                <span className={cn(
+                  'flex size-10 shrink-0 items-center justify-center rounded-xl text-base font-bold',
+                  done ? 'bg-success text-white' : inProgress ? 'bg-primary text-white' : 'bg-muted text-muted-foreground'
+                )}>
+                  {done ? <CheckCircle2 className="size-5 stroke-2" /> : locked ? <Lock className="size-4 stroke-[1.5]" /> : mod.position + 1}
+                </span>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-semibold text-foreground">{stripPrefix(mod.title)}</p>
+                  <p className="mt-0.5 text-xs text-muted-foreground">{locked ? 'Termine le module précédent pour débloquer' : `${mod._count.lessons} leçons`}</p>
+                </div>
+                {!locked && (
                   <div className="hidden w-40 shrink-0 sm:block">
                     <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
                       <div className="h-full rounded-full bg-primary transition-all" style={{ width: `${pct}%` }} />
                     </div>
                     <p className="mt-1 text-right text-[10px] text-muted-foreground">{pct}%</p>
                   </div>
-                  {inProgress && <span className="shrink-0 rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-semibold text-primary">En cours</span>}
-                  {done && <span className="shrink-0 rounded-full bg-success/10 px-2 py-0.5 text-[10px] font-semibold text-success">Terminé</span>}
-                  <ChevronRight className="size-4 shrink-0 text-muted-foreground" />
-                </Card>
-              </Link>
+                )}
+                {inProgress && <span className="shrink-0 rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-semibold text-primary">En cours</span>}
+                {done && <span className="shrink-0 rounded-full bg-success/10 px-2 py-0.5 text-[10px] font-semibold text-success">Terminé</span>}
+                {locked ? <Lock className="size-4 shrink-0 text-muted-foreground" /> : <ChevronRight className="size-4 shrink-0 text-muted-foreground" />}
+              </Card>
             )
+
+            return locked
+              ? <button key={mod.id} type="button" onClick={() => toast('Termine le module précédent pour débloquer celui-ci.')} className="text-left">{inner}</button>
+              : <Link key={mod.id} href={`/formation/${mod.id}`}>{inner}</Link>
           })}
         </div>
       </PageShell>

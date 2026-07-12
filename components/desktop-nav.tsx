@@ -212,7 +212,8 @@ export function DesktopNav({ hidden = false, onToggle }: { hidden?: boolean; onT
           reste ouvert pendant la navigation ; ferme via croix ou clic dans le contenu (backdrop). */}
       {acctOpen && (
         <>
-          <div className="fixed inset-0 left-[260px] z-[35]" onClick={() => setAcctOpen(false)} />
+          {/* Backdrop plein écran : un clic N'IMPORTE OÙ hors du menu le ferme */}
+          <div className="fixed inset-0 z-[35]" onClick={() => setAcctOpen(false)} />
           <div className="absolute inset-x-0 bottom-0 z-40 flex max-h-[calc(100%-96px)] flex-col rounded-t-2xl border-t border-border bg-background shadow-[0_-8px_24px_rgba(0,0,0,.12)]">
           <div className="flex items-center gap-3 border-b border-border px-3 py-3">
             <span className="size-9 shrink-0 overflow-hidden rounded-full">
