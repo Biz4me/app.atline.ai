@@ -83,8 +83,8 @@ export default function ModulePage() {
         <span className="absolute right-4 text-xs text-muted-foreground">{moduleNum} / {totalModules}</span>
       </div>
 
-      {/* Body */}
-      <div className="flex flex-col gap-5 px-4 pt-6 pb-10">
+      {/* Body — colonne centrée sur desktop (sinon pleine largeur étirée) */}
+      <div className="mx-auto flex w-full max-w-2xl flex-col gap-5 px-4 pt-6 pb-10">
 
         {/* Titre + description */}
         {mod ? (

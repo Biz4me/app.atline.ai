@@ -647,7 +647,7 @@ export default function LessonPage() {
       )}
 
       {/* Body */}
-      <div className={isQuizPage ? "flex-1 flex flex-col overflow-hidden px-4 pt-6" : "flex flex-col gap-5 px-4 pt-6 pb-10"}>
+      <div className={isQuizPage ? "flex-1 flex flex-col overflow-hidden px-4 pt-6" : "mx-auto flex w-full max-w-2xl flex-col gap-5 px-4 pt-6 pb-10"}>
 
         {!lesson && (
           <div className="space-y-3">
