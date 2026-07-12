@@ -2,6 +2,8 @@
 
 import { useRef, useEffect } from 'react'
 import { Paperclip, Mic, SendHorizontal } from 'lucide-react'
+import { useDictation } from '@/components/mobile/use-dictation'
+import { cn } from '@/lib/utils'
 
 // Composeur unique de l'app (mobile) — flottant fixe en bas.
 // Source de vérité UI : la page Atlas le câble au chat ; le shell le câble au relais Atlas.
@@ -23,6 +25,12 @@ export function AppComposer({
   value, onChange, onSubmit, onAttach, agentLabel = 'Atlas', accent, disabled, autoFocus, children,
 }: Props) {
   const taRef = useRef<HTMLTextAreaElement>(null)
+  // Dictée vocale : on garde la valeur courante en ref pour y accoler le texte reconnu.
+  const valueRef = useRef(value)
+  valueRef.current = value
+  const { supported: micOk, listening, toggle: toggleMic } = useDictation(
+    (t) => onChange((valueRef.current ? valueRef.current + ' ' : '') + t),
+  )
 
   // Grandit avec le contenu (jusqu'à 120px puis scroll)
   useEffect(() => {
@@ -62,13 +70,20 @@ export function AppComposer({
           className="flex-1 resize-none overflow-y-auto no-scrollbar bg-transparent text-lg leading-[1.4] text-foreground outline-none placeholder:text-muted-foreground lg:text-sm"
           style={{ maxHeight: 120, paddingTop: 7, paddingBottom: 7 }}
         />
-        <button
-          type="button"
-          className="flex size-9 shrink-0 items-center justify-center rounded-full text-muted-foreground active:bg-muted transition-colors"
-          title="Dicter"
-        >
-          <Mic className="size-5 stroke-[1.5]" />
-        </button>
+        {micOk && (
+          <button
+            type="button"
+            onClick={toggleMic}
+            aria-label={listening ? 'Arrêter la dictée' : 'Dicter'}
+            title={listening ? 'Arrêter la dictée' : 'Dicter'}
+            className={cn(
+              'flex size-9 shrink-0 items-center justify-center rounded-full transition-colors',
+              listening ? 'bg-primary/15 text-primary' : 'text-muted-foreground active:bg-muted',
+            )}
+          >
+            <Mic className={cn('size-5 stroke-[1.5]', listening && 'animate-pulse')} />
+          </button>
+        )}
         <button
           type="button"
           onClick={onSubmit}

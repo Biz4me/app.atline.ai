@@ -6,6 +6,7 @@ import { SendHorizontal, Mic, History, Plus, X, ChevronDown, MoreHorizontal, Pen
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
 import { AppComposer } from '@/components/mobile/app-composer'
+import { useDictation } from '@/components/mobile/use-dictation'
 
 const BUCKET_LABEL: Record<string, string> = { PRESENTER: 'Présenter', FORMER: 'Former', VENDRE: 'Vendre' }
 
@@ -99,6 +100,10 @@ export default function AtlasPage() {
     fetch('/api/plan/today').then((r) => (r.ok ? r.json() : null)).then((d) => setPlan(d?.items?.slice(0, 4) ?? [])).catch(() => {})
   }, [])
   const [input, setInput] = useState('')
+  // Dictée vocale desktop (le composeur mobile gère la sienne dans AppComposer)
+  const { supported: micOk, listening, toggle: toggleMic } = useDictation(
+    (t) => setInput((v) => (v ? v + ' ' : '') + t),
+  )
   const [histMounted, setHistMounted] = useState(false)
   const [histVisible, setHistVisible] = useState(false)
   const [histTop, setHistTop] = useState(0)
@@ -1257,12 +1262,20 @@ TECHNIQUE (invisible pour moi, ne l'explique jamais)${NB}: le jour où je VALIDE
               className="flex-1 resize-none overflow-y-auto no-scrollbar bg-transparent text-lg leading-[1.4] text-foreground outline-none placeholder:text-muted-foreground lg:text-sm"
               style={{ maxHeight: 120, paddingTop: 7, paddingBottom: 7 }}
             />
-            <button
-              type="button"
-              className="flex size-9 shrink-0 items-center justify-center rounded-full text-muted-foreground hover:bg-muted transition-colors"
-            >
-              <Mic className="size-5 stroke-[1.5]" />
-            </button>
+            {micOk && (
+              <button
+                type="button"
+                onClick={toggleMic}
+                aria-label={listening ? 'Arrêter la dictée' : 'Dicter'}
+                title={listening ? 'Arrêter la dictée' : 'Dicter'}
+                className={cn(
+                  'flex size-9 shrink-0 items-center justify-center rounded-full transition-colors',
+                  listening ? 'bg-primary/15 text-primary' : 'text-muted-foreground hover:bg-muted',
+                )}
+              >
+                <Mic className={cn('size-5 stroke-[1.5]', listening && 'animate-pulse')} />
+              </button>
+            )}
             <button
               type="button"
               onClick={submitInput}
