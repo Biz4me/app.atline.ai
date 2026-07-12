@@ -5,7 +5,8 @@ import Link from 'next/link'
 import { Card } from '@/components/card'
 import { SectionTabs, FORMATION_TABS } from '@/components/section-tabs'
 import { cn } from '@/lib/utils'
-import { CheckCircle2, ChevronRight } from 'lucide-react'
+import { CheckCircle2, ChevronRight, BookOpen } from 'lucide-react'
+import { PageShell } from '@/components/page-shell'
 
 type ApiModule = {
   id: string
@@ -126,97 +127,47 @@ export default function FormationPage() {
       </div>
 
 
-      {/* ══════════════ DESKTOP ══════════════ */}
-      <div className="hidden lg:block px-8 pt-8 pb-10 max-w-6xl mx-auto">
-
-        {/* ── En-tête ── */}
-        <div className="mb-6 flex items-end justify-between">
-          <div>
-            <h1 className="font-display text-[32px] font-extrabold leading-tight tracking-[-0.025em] text-foreground">
-              Formation
-            </h1>
-            <p className="mt-1 text-sm text-muted-foreground">
-              {doneCount}/{modules.length} modules complétés · {totalPct}% du parcours
-            </p>
-          </div>
-          <div className="w-64">
-            <div className="mb-1 flex justify-between text-xs text-muted-foreground">
-              <span>Progression globale</span>
-              <span className="font-bold text-primary">{totalPct}%</span>
-            </div>
-            <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
-              <div
-                className="h-full rounded-full bg-primary transition-all duration-500"
-                style={{ width: `${totalPct}%` }}
-              />
-            </div>
-          </div>
+      {/* ══════════════ DESKTOP — gabarit unique (large), un module par LIGNE ══════════════ */}
+      <PageShell title="Formation" icon={BookOpen} wide>
+        <p className="mb-5 text-sm text-muted-foreground">
+          {doneCount}/{modules.length} modules complétés · {totalPct}% du parcours
+        </p>
+        <div className="flex flex-col gap-3">
+          {!course && Array.from({ length: 5 }).map((_, i) => (
+            <div key={i} className="h-[68px] animate-pulse rounded-2xl bg-muted" />
+          ))}
+          {course && modules.map((mod) => {
+            const pct = mod.progress?.[0]?.pct ?? 0
+            const done = mod.progress?.[0]?.status === 'DONE'
+            const inProgress = pct > 0 && !done
+            return (
+              <Link key={mod.id} href={`/formation/${mod.id}`}>
+                <Card className="flex items-center gap-4 p-4 transition-colors hover:border-primary/50">
+                  <span className={cn(
+                    'flex size-10 shrink-0 items-center justify-center rounded-xl text-base font-bold',
+                    done ? 'bg-success text-white' : inProgress ? 'bg-primary text-white' : 'bg-muted text-muted-foreground'
+                  )}>
+                    {done ? <CheckCircle2 className="size-5 stroke-2" /> : mod.position + 1}
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-semibold text-foreground">{stripPrefix(mod.title)}</p>
+                    <p className="mt-0.5 text-xs text-muted-foreground">{mod._count.lessons} leçons</p>
+                  </div>
+                  <div className="hidden w-40 shrink-0 sm:block">
+                    <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
+                      <div className="h-full rounded-full bg-primary transition-all" style={{ width: `${pct}%` }} />
+                    </div>
+                    <p className="mt-1 text-right text-[10px] text-muted-foreground">{pct}%</p>
+                  </div>
+                  {inProgress && <span className="shrink-0 rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-semibold text-primary">En cours</span>}
+                  {done && <span className="shrink-0 rounded-full bg-success/10 px-2 py-0.5 text-[10px] font-semibold text-success">Terminé</span>}
+                  <ChevronRight className="size-4 shrink-0 text-muted-foreground" />
+                </Card>
+              </Link>
+            )
+          })}
         </div>
-
-        {/* ── Grille modules ── */}
-        {!course && (
-          <div className="grid grid-cols-3 gap-4">
-            {Array.from({ length: 9 }).map((_, i) => (
-              <div key={i} className="h-32 animate-pulse rounded-2xl bg-muted" />
-            ))}
-          </div>
-        )}
-
-        {course && (
-          <div className="grid grid-cols-3 gap-4">
-            {modules.map((mod) => {
-              const pct = mod.progress?.[0]?.pct ?? 0
-              const done = mod.progress?.[0]?.status === 'DONE'
-              const inProgress = pct > 0 && !done
-
-              return (
-                <Link key={mod.id} href={`/formation/${mod.id}`}>
-                  <Card className="flex flex-col gap-3 p-5 hover:border-primary/50 transition-colors cursor-pointer">
-                    {/* Numéro + badge */}
-                    <div className="flex items-center justify-between">
-                      <span className={cn(
-                        'flex size-10 items-center justify-center rounded-xl text-base font-bold',
-                        done ? 'bg-success text-white' : inProgress ? 'bg-primary text-white' : 'bg-muted text-muted-foreground'
-                      )}>
-                        {done ? <CheckCircle2 className="size-5 stroke-2" /> : mod.position + 1}
-                      </span>
-                      {inProgress && (
-                        <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-semibold text-primary">
-                          En cours
-                        </span>
-                      )}
-                      {done && (
-                        <span className="rounded-full bg-success/10 px-2 py-0.5 text-[10px] font-semibold text-success">
-                          Terminé
-                        </span>
-                      )}
-                    </div>
-
-                    {/* Titre */}
-                    <div className="flex-1">
-                      <p className="text-sm font-semibold text-foreground leading-snug line-clamp-2">
-                        {stripPrefix(mod.title)}
-                      </p>
-                      <p className="mt-1 text-xs text-muted-foreground">{mod._count.lessons} leçons</p>
-                    </div>
-
-                    {/* Barre */}
-                    <div>
-                      <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
-                        <div
-                          className="h-full rounded-full bg-primary transition-all"
-                          style={{ width: `${pct}%` }}
-                        />
-                      </div>
-                      <p className="mt-1 text-right text-[10px] text-muted-foreground">{pct}%</p>
-                    </div>
-                  </Card>
-                </Link>
-              )
-            })}
-          </div>
-        )}
-      </div>
+      </PageShell>
     </>
   )
 }

@@ -59,8 +59,8 @@ export function DesktopNav({ hidden = false, onToggle }: { hidden?: boolean; onT
     }).catch(() => {})
   }, [])
 
-  // Fermer le menu compte à chaque navigation
-  useEffect(() => { setAcctOpen(false) }, [pathname])
+  // Le menu compte RESTE ouvert pendant qu'on navigue dans les sous-pages du profil
+  // (fermeture seulement via la croix ou un clic dans le contenu).
 
   // Vraies notifications non lues — rafraîchies à chaque navigation
   const [unread, setUnread] = useState(0)
@@ -208,9 +208,12 @@ export function DesktopNav({ hidden = false, onToggle }: { hidden?: boolean; onT
         )}
       </div>
 
-      {/* Menu compte — SUR la sidebar, même largeur, cohérent avec le reste (pas de feuille à l'autre bout) */}
+      {/* Menu compte — panneau qui MONTE depuis le bas (ne masque pas le haut de la sidebar),
+          reste ouvert pendant la navigation ; ferme via croix ou clic dans le contenu (backdrop). */}
       {acctOpen && (
-        <div className="absolute inset-0 z-10 flex flex-col bg-background">
+        <>
+          <div className="fixed inset-0 left-[260px] z-[35]" onClick={() => setAcctOpen(false)} />
+          <div className="absolute inset-x-0 bottom-0 z-40 flex max-h-[calc(100%-96px)] flex-col rounded-t-2xl border-t border-border bg-background shadow-[0_-8px_24px_rgba(0,0,0,.12)]">
           <div className="flex items-center gap-3 border-b border-border px-3 py-3">
             <span className="size-9 shrink-0 overflow-hidden rounded-full">
               {account.photoUrl ? (
@@ -261,7 +264,8 @@ export function DesktopNav({ hidden = false, onToggle }: { hidden?: boolean; onT
               </button>
             </div>
           </nav>
-        </div>
+          </div>
+        </>
       )}
     </aside>
   )

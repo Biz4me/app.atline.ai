@@ -1,9 +1,10 @@
 'use client'
 
 import { Card } from '@/components/card'
-import { CalendarDays, Users, Mic, BookOpen, AlarmClock, Megaphone } from 'lucide-react'
+import { CalendarDays, Users, Mic, BookOpen, AlarmClock, Megaphone, LayoutDashboard } from 'lucide-react'
 import Link from 'next/link'
 import { useState, useEffect } from 'react'
+import { PageShell } from '@/components/page-shell'
 
 // Tableau de bord RÉEL (équivalent utilisateur de l'overview admin) : tout vient
 // de /api/home/stats + /api/appointments. Plus aucune donnée fictive ici.
@@ -165,9 +166,9 @@ export function HomeContent({ mantra }: { mantra: string }) {
         </div>
       </div>
 
-      {/* ══════════════ DESKTOP ══════════════ */}
-      <div className="hidden lg:block px-8 pt-8 pb-10 max-w-6xl mx-auto">
-        {Mantra && <div className="mb-8">{Mantra}</div>}
+      {/* ══════════════ DESKTOP — gabarit unique (large) ══════════════ */}
+      <PageShell title="Tableau de bord" icon={LayoutDashboard} wide>
+        {Mantra && <div className="mb-6">{Mantra}</div>}
         <div className="mb-6"><Kpis s={stats} /></div>
         <div className="grid grid-cols-2 items-start gap-6">
           <div className="flex flex-col gap-5">
@@ -178,7 +179,7 @@ export function HomeContent({ mantra }: { mantra: string }) {
             <AgendaCard today={today} />
           </div>
         </div>
-      </div>
+      </PageShell>
     </>
   )
 }
