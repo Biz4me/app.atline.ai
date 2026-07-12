@@ -981,11 +981,11 @@ TECHNIQUE (invisible pour moi, ne l'explique jamais)${NB}: le jour où je VALIDE
       <div className="flex flex-1 flex-col min-h-0 min-w-0">
 
         {/* Header — vide sur mobile (ancre du panneau historique) ; en-tête agent unifié sur desktop */}
-        <div ref={headerRef} className="shrink-0 lg:flex lg:h-[68px] lg:items-center lg:gap-3 lg:px-6">
-          <span className="hidden lg:flex size-9 shrink-0 items-center justify-center rounded-[11px] bg-primary text-white shadow-sm">
-            <Sparkles className="size-[18px] stroke-[1.5]" />
+        <div ref={headerRef} className="shrink-0 lg:mx-auto lg:flex lg:h-[68px] lg:w-full lg:max-w-3xl lg:items-center lg:gap-3 lg:px-10">
+          <span className="hidden lg:flex size-8 shrink-0 items-center justify-center rounded-[10px] bg-primary text-white shadow-sm">
+            <Sparkles className="size-[17px] stroke-[1.5]" />
           </span>
-          <h1 className="hidden lg:block flex-1 font-display text-2xl font-bold text-foreground">Atlas</h1>
+          <h1 className="hidden lg:block flex-1 font-display text-xl font-bold text-foreground">Atlas</h1>
           <div className="hidden lg:flex gap-1">
             <button type="button" aria-label="Historique" onClick={() => window.dispatchEvent(new Event('agent:history'))} className="flex size-10 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted">
               <History className="size-5 stroke-[1.5]" />

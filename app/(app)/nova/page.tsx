@@ -61,13 +61,13 @@ export default function NovaPage() {
   }
 
   return (
-    <div className="px-4 pt-4 lg:px-8 lg:pt-0 lg:max-w-2xl lg:mx-auto">
-      {/* En-tête agent unifié desktop (même gabarit qu'Atlas et Aria) */}
+    <div className="px-4 pt-4 lg:px-10 lg:pt-0 lg:max-w-2xl lg:mx-auto">
+      {/* En-tête agent — charte commune (celle d'Atlas) : pastille couleur + nom */}
       <div className="hidden lg:flex h-[68px] items-center gap-3">
-        <span className="flex size-9 shrink-0 items-center justify-center rounded-[11px] text-white shadow-sm" style={{ backgroundColor: NOVA }}>
-          <SquarePen className="size-[18px] stroke-[1.5]" />
+        <span className="flex size-8 shrink-0 items-center justify-center rounded-[10px] text-white shadow-sm" style={{ backgroundColor: NOVA }}>
+          <SquarePen className="size-[17px] stroke-[1.5]" />
         </span>
-        <h1 className="flex-1 font-display text-2xl font-bold text-foreground">Nova</h1>
+        <h1 className="flex-1 font-display text-xl font-bold text-foreground">Nova</h1>
       </div>
 
       {/* Accès compte (niveau user) : ce qu'il faut mettre sur ses réseaux */}
