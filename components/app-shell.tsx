@@ -4,10 +4,8 @@ import { useState, useEffect, type ReactNode } from 'react'
 import { usePathname } from 'next/navigation'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { DesktopSidebar } from '@/components/desktop-sidebar'
+import { DesktopNav } from '@/components/desktop-nav'
 import { AtlasSidebar } from '@/components/atlas-sidebar'
-import { DesktopTopBar } from '@/components/desktop-top-bar'
-import { DesktopSectionRail } from '@/components/desktop-section-rail'
 import { TopBar } from '@/components/top-bar'
 import { MobileDrawer } from '@/components/mobile/mobile-drawer'
 import { ShellComposer } from '@/components/mobile/shell-composer'
@@ -25,11 +23,8 @@ export function AppShell({ children, initialCollapsed, initialAtlasCollapsed }: 
   const railCollapsedOnly = ['/atlas', '/aria', '/nova', '/messages'].some(
     (p) => pathname === p || pathname.startsWith(p + '/'),
   )
-  // Pages agent : sidebar 2 = historique, élargie à 256px (bord à 64+256 = 320)
-  const isAgentPage = ['/atlas', '/aria', '/nova'].some(
-    (p) => pathname === p || pathname.startsWith(p + '/'),
-  )
-  const sidebarEdge = isAgentPage ? 320 : 256
+  // UNE sidebar desktop (le tiroir mobile épinglé) — plus de rail + sidebar 2 à 2 étages
+  const sidebarEdge = 260
 
   // Pages atteintes via le menu « ⋯ » → plein écran, sans bottom bar (mobile)
   // La fiche contact /contacts/[id] est plein écran (charte profil), mais PAS la liste /contacts.
@@ -68,30 +63,28 @@ export function AppShell({ children, initialCollapsed, initialAtlasCollapsed }: 
 
   return (
     <PageVisibilityProvider>
-      <DesktopTopBar />
-      <DesktopSectionRail hidden={collapsed} />
-      <DesktopSidebar hidden={collapsed} />
+      <DesktopNav hidden={collapsed} />
       <AtlasSidebar collapsed={atlasCollapsed} onToggle={toggleAtlas} />
 
-      {/* Toggle nav (focus) — masque/affiche rail + sidebar 2, hauteur fixe */}
+      {/* Toggle nav (focus) — masque/affiche la sidebar */}
       <button
         type="button"
         onClick={toggle}
         title={collapsed ? 'Afficher la navigation' : 'Masquer la navigation'}
-        style={{ left: collapsed ? 32 : sidebarEdge }}
-        className="hidden lg:flex fixed top-[78px] z-[45] -translate-x-1/2 size-6 items-center justify-center rounded-full border border-border bg-background text-muted-foreground shadow-sm transition-all duration-200 hover:text-foreground hover:bg-muted"
+        style={{ left: collapsed ? 16 : sidebarEdge }}
+        className="hidden lg:flex fixed top-6 z-[45] -translate-x-1/2 size-6 items-center justify-center rounded-full border border-border bg-background text-muted-foreground shadow-sm transition-all duration-200 hover:text-foreground hover:bg-muted"
       >
         {collapsed ? <ChevronRight className="size-3.5" /> : <ChevronLeft className="size-3.5" />}
       </button>
 
       <div
         className={cn(
-          'app-shell lg:pb-0 lg:max-w-none lg:mx-0 lg:pt-14',
+          'app-shell lg:pb-0 lg:max-w-none lg:mx-0',
           navHidden || isAtlasChat ? '' : 'pb-[76px]',
           // Atlas mobile : hauteur figée = zéro scroll du document (le résidu est clippé, le composeur est fixed)
           isAtlasChat ? 'max-lg:h-[100dvh] max-lg:overflow-hidden' : '',
           'transition-[padding-left,padding-right] duration-200 ease-out',
-          collapsed ? (railCollapsedOnly ? 'lg:pl-14' : 'lg:pl-0') : (isAgentPage ? 'lg:pl-[320px]' : 'lg:pl-[256px]'),
+          collapsed ? 'lg:pl-0' : 'lg:pl-[260px]',
           railCollapsedOnly ? 'lg:pr-16' : atlasCollapsed ? 'lg:pr-16' : 'lg:pr-[360px]',
         )}
       >

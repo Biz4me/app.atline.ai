@@ -6,9 +6,10 @@ import { AppHeader } from '@/components/app-header'
 import { Card } from '@/components/card'
 import {
   Settings, Bell, Briefcase, Link2, Users, Lock, KeyRound,
-  CreditCard, HelpCircle, MessageSquare, LogOut, ChevronRight,
+  CreditCard, HelpCircle, MessageSquare, LogOut, ChevronRight, Moon, Sun,
 } from 'lucide-react'
 import { signOut } from 'next-auth/react'
+import { useTheme } from 'next-themes'
 
 // « Mon compte » — UNE page qui porte tout : profil en tête, abonnement, réglages
 // groupés, activité, assistance. Fini le sommaire qui menait à 8 sous-pages à plat.
@@ -51,6 +52,7 @@ function Row({ icon: Icon, label, href }: { icon: typeof Settings; label: string
 }
 
 function AccountBody() {
+  const { theme, setTheme } = useTheme()
   const [me, setMe] = useState<{ photoUrl: string; firstName: string; lastName: string; email: string } | null>(null)
   useEffect(() => {
     fetch('/api/me').then((r) => (r.ok ? r.json() : null)).then((u) => { if (u) setMe(u) }).catch(() => {})
@@ -79,6 +81,18 @@ function AccountBody() {
       {/* Abonnement — une seule entrée (résumé + gestion) */}
       <Card className="p-0">
         <Row icon={CreditCard} label="Mon abonnement" href="/mon-abonnement" />
+      </Card>
+
+      {/* Thème — relogé ici depuis l'ancien top bar desktop */}
+      <Card className="p-0">
+        <button
+          type="button"
+          onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+          className="flex w-full items-center gap-3.5 px-4 py-4 lg:py-3 text-left transition-colors active:bg-muted lg:hover:bg-muted"
+        >
+          {theme === 'dark' ? <Sun className="size-5 shrink-0 text-muted-foreground stroke-[1.5]" /> : <Moon className="size-5 shrink-0 text-muted-foreground stroke-[1.5]" />}
+          <span className="flex-1 text-lg font-medium text-foreground lg:text-sm">{theme === 'dark' ? 'Passer en mode clair' : 'Passer en mode sombre'}</span>
+        </button>
       </Card>
 
       {GROUPS.map((g) => (

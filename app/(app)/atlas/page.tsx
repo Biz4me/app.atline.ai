@@ -1088,6 +1088,16 @@ TECHNIQUE (invisible pour moi, ne l'explique jamais)${NB}: le jour où je VALIDE
           </>
         )}
 
+        {/* Desktop : historique + nouvelle conversation (l'ancienne sidebar 2 est morte, mêmes events que mobile) */}
+        <div className="hidden lg:flex fixed right-20 top-4 z-30 gap-1">
+          <button type="button" aria-label="Historique" onClick={() => window.dispatchEvent(new Event('agent:history'))} className="flex size-10 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted">
+            <History className="size-5 stroke-[1.5]" />
+          </button>
+          <button type="button" aria-label="Nouvelle conversation" onClick={() => window.dispatchEvent(new Event('agent:new'))} className="flex size-10 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted">
+            <Plus className="size-5 stroke-[1.5]" />
+          </button>
+        </div>
+
         {/* Conversation / empty state */}
         {loadingConv ? (
           <div className="flex-1" />

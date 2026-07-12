@@ -354,7 +354,7 @@ export function AtlasSidebar({ collapsed, onToggle }: Props) {
 
       <aside
         className={cn(
-          'hidden lg:flex flex-col fixed right-0 top-14 h-[calc(100dvh-3.5rem)] z-40',
+          'hidden lg:flex flex-col fixed right-0 top-0 h-dvh z-40',
           'bg-background border-l border-border overflow-hidden',
           'transition-[width] duration-200 ease-out',
           isOpen ? 'w-[360px]' : 'w-16',
