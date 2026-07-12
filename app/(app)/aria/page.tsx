@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { ChevronLeft, Mic, Search, X, Phone, PhoneOff, Pause, ChevronRight, MessageSquare, SendHorizontal, Loader2 } from 'lucide-react'
 import { SelectMenu } from '@/components/select-menu'
 import { AgentShell } from '@/components/page-shell'
+import { useAtlasMiniChat, MiniMsgs } from '@/components/use-atlas-mini-chat'
 import { cn } from '@/lib/utils'
 import { Room, RoomEvent, Track } from 'livekit-client'
 
@@ -153,7 +154,7 @@ function SetupScreen({
 
   return (
     <AgentShell title="Aria">
-        <div className="flex flex-col gap-6 px-4 pt-5 pb-10 lg:px-0">
+        <div className="flex flex-col gap-6 px-4 pt-5 pb-28 lg:px-0">
           <div className="rounded-2xl border border-border bg-surface p-5">
           {/* Reprendre là où tu en étais — score réel + rejouer en 1 tap (jamais de jargon technique) */}
           {lastSim && (
@@ -317,7 +318,52 @@ function SetupScreen({
           </div>
         )}
         </div>
+      <AriaCoachBar />
     </AgentShell>
+  )
+}
+
+/* ── Coach d'appel Aria (chat) : scripts + méthodes, teal. Distinct de la simulation. ── */
+function AriaCoachBar() {
+  const [open, setOpen] = useState(false)
+  const [value, setValue] = useState('')
+  const { msgs, streaming, send } = useAtlasMiniChat('/api/aria/coach')
+  const scrollRef = useRef<HTMLDivElement>(null)
+  const scrollDown = () => setTimeout(() => scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' }), 60)
+  const submit = () => { const q = value.trim(); if (!q || streaming) return; setValue(''); setOpen(true); send(q, scrollDown) }
+
+  return (
+    <>
+      {open && (
+        <>
+          <div className="fixed inset-0 z-[45] bg-black/40" onClick={() => setOpen(false)} />
+          <div className="fixed inset-x-0 bottom-0 z-[46] mx-auto flex max-h-[72dvh] max-w-[640px] flex-col rounded-t-3xl border border-b-0 border-border bg-background pb-[86px]">
+            <div className="flex items-center justify-between px-4 pb-1 pt-3">
+              <span className="flex items-center gap-2 text-sm font-semibold text-[#14B8A6]"><Mic className="size-4" />Aria — coach d&apos;appel</span>
+              <button type="button" onClick={() => setOpen(false)} aria-label="Fermer" className="grid size-8 place-items-center rounded-full text-muted-foreground active:bg-muted"><X className="size-4" /></button>
+            </div>
+            <div ref={scrollRef} className="flex-1 space-y-3 overflow-y-auto px-4 py-3">
+              {msgs.length === 0
+                ? <p className="mt-6 text-sm leading-relaxed text-muted-foreground">Demande-moi un script (« un texto pour relancer un tiède ») ou une méthode (« les étapes d&apos;une invitation »).</p>
+                : <MiniMsgs msgs={msgs} />}
+            </div>
+          </div>
+        </>
+      )}
+      <div className="fixed inset-x-0 z-[48] px-4" style={{ bottom: 'max(20px, env(safe-area-inset-bottom))' }}>
+        <div className="mx-auto flex max-w-md items-end gap-2 rounded-[26px] border border-border bg-surface/95 px-3 py-1.5 shadow-[0_6px_24px_rgba(0,0,0,.12)] backdrop-blur-md lg:max-w-3xl">
+          <span className="my-1 grid size-7 shrink-0 place-items-center self-center rounded-full text-[10px] font-bold text-white" style={{ background: '#14B8A6' }}>A</span>
+          <textarea rows={1} value={value} onChange={(e) => setValue(e.target.value)}
+            onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); submit() } }}
+            placeholder="Demande un script ou une méthode à Aria…"
+            className="flex-1 resize-none bg-transparent py-1.5 text-lg leading-[1.4] text-foreground outline-none placeholder:text-muted-foreground lg:text-sm" style={{ maxHeight: 120 }} />
+          <button type="button" onClick={submit} disabled={!value.trim() || streaming}
+            className="mb-0.5 flex size-9 shrink-0 items-center justify-center rounded-full text-white disabled:opacity-40" style={{ background: '#14B8A6' }}>
+            <SendHorizontal className="size-[17px] stroke-[1.5]" />
+          </button>
+        </div>
+      </div>
+    </>
   )
 }
 
