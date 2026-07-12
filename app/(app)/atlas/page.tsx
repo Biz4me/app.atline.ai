@@ -17,6 +17,7 @@ import { ChatChoices, AtlasDraftCard, type PlanItem } from '@/components/atlas-p
 import { ProfileFormCard } from '@/components/atlas-profile-form'
 import { WhyValidateCard } from '@/components/atlas-why-card'
 import { AtlasNavCard, OPEN_MARK, OPEN_MARK_RE, cleanOpenRoute, stripOpenMarker } from '@/components/atlas-nav-card'
+import { PageHeader } from '@/components/page-shell'
 import { AtlasActionCard, type AtlasAction } from '@/components/atlas-action-card'
 
 type Choice = { label: string; value: string }
@@ -981,18 +982,19 @@ TECHNIQUE (invisible pour moi, ne l'explique jamais)${NB}: le jour où je VALIDE
       <div className="flex flex-1 flex-col min-h-0 min-w-0">
 
         {/* Header — vide sur mobile (ancre du panneau historique) ; en-tête agent unifié sur desktop */}
-        <div ref={headerRef} className="shrink-0 lg:mx-auto lg:flex lg:h-[68px] lg:w-full lg:max-w-3xl lg:items-center lg:gap-3 lg:px-10">
-          <span className="hidden lg:flex size-8 shrink-0 items-center justify-center rounded-[10px] bg-primary text-white shadow-sm">
-            <Sparkles className="size-[17px] stroke-[1.5]" />
-          </span>
-          <h1 className="hidden lg:block flex-1 font-display text-xl font-bold text-foreground">Atlas</h1>
-          <div className="hidden lg:flex gap-1">
-            <button type="button" aria-label="Historique" onClick={() => window.dispatchEvent(new Event('agent:history'))} className="flex size-10 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted">
-              <History className="size-5 stroke-[1.5]" />
-            </button>
-            <button type="button" aria-label="Nouvelle conversation" onClick={() => window.dispatchEvent(new Event('agent:new'))} className="flex size-10 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted">
-              <Plus className="size-5 stroke-[1.5]" />
-            </button>
+        {/* En-tête : mobile vide (ancre historique) ; desktop = l'en-tête UNIQUE (PageHeader) */}
+        <div ref={headerRef} className="shrink-0 lg:mx-auto lg:w-full lg:max-w-3xl lg:px-10">
+          <div className="hidden lg:block">
+            <PageHeader title="Atlas" actions={
+              <>
+                <button type="button" aria-label="Historique" onClick={() => window.dispatchEvent(new Event('agent:history'))} className="flex size-10 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted">
+                  <History className="size-5 stroke-[1.5]" />
+                </button>
+                <button type="button" aria-label="Nouvelle conversation" onClick={() => window.dispatchEvent(new Event('agent:new'))} className="flex size-10 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted">
+                  <Plus className="size-5 stroke-[1.5]" />
+                </button>
+              </>
+            } />
           </div>
         </div>
 

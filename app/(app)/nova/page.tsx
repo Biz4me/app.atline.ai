@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Plus, Sparkles, MoreVertical, Pencil, Trash2, ChevronDown, ChevronRight, AtSign, SquarePen } from 'lucide-react'
+import { Plus, Sparkles, MoreVertical, Pencil, Trash2, ChevronDown, ChevronRight, AtSign } from 'lucide-react'
+import { PageHeader } from '@/components/page-shell'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 
@@ -62,13 +63,8 @@ export default function NovaPage() {
 
   return (
     <div className="px-4 pt-4 lg:px-10 lg:pt-0 lg:max-w-3xl lg:mx-auto">
-      {/* En-tête agent — charte commune (celle d'Atlas) : pastille couleur + nom */}
-      <div className="hidden lg:flex h-[68px] items-center gap-3">
-        <span className="flex size-8 shrink-0 items-center justify-center rounded-[10px] text-white shadow-sm" style={{ backgroundColor: NOVA }}>
-          <SquarePen className="size-[17px] stroke-[1.5]" />
-        </span>
-        <h1 className="flex-1 font-display text-xl font-bold text-foreground">Nova</h1>
-      </div>
+      {/* En-tête UNIQUE (desktop) */}
+      <div className="hidden lg:block"><PageHeader title="Nova" /></div>
 
       {/* Accès compte (niveau user) : ce qu'il faut mettre sur ses réseaux */}
       <button

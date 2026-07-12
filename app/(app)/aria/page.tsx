@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { ChevronLeft, Mic, Search, X, Phone, PhoneOff, Pause, ChevronRight, MessageSquare, SendHorizontal, Loader2 } from 'lucide-react'
 import { SelectMenu } from '@/components/select-menu'
+import { PageHeader } from '@/components/page-shell'
 import { cn } from '@/lib/utils'
 import { Room, RoomEvent, Track } from 'livekit-client'
 
@@ -152,13 +153,10 @@ function SetupScreen({
 
   return (
     <div className="flex min-h-dvh flex-col bg-background">
-      {/* Desktop — charte agent commune (celle d'Atlas) : pastille couleur + nom, même gouttière px-10 */}
-      <header className="sticky top-0 z-30 mx-auto hidden w-full max-w-3xl items-center gap-3 bg-background/90 backdrop-blur lg:flex lg:h-[68px] lg:px-10 lg:py-0">
-        <span className="flex size-8 shrink-0 items-center justify-center rounded-[10px] text-white shadow-sm" style={{ backgroundColor: '#14B8A6' }}>
-          <Mic className="size-[17px] stroke-[1.5]" />
-        </span>
-        <h1 className="flex-1 font-display text-xl font-bold text-foreground">Aria</h1>
-      </header>
+      {/* Desktop — l'en-tête UNIQUE (mobile : géré par la top-bar globale) */}
+      <div className="mx-auto hidden w-full max-w-3xl px-10 lg:block">
+        <PageHeader title="Aria" />
+      </div>
 
       <div className="flex flex-col gap-6 px-4 pt-5 pb-10 lg:px-10 lg:max-w-3xl lg:mx-auto">
         <div className="rounded-2xl border border-border bg-surface p-5">
