@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { AppHeader } from '@/components/app-header'
+import { PageShell } from '@/components/page-shell'
 import { Card } from '@/components/card'
 import { DiscAvatar } from '@/components/disc-avatar'
 import { Bell, Sparkles, TrendingUp, Mic, CheckCircle2, type LucideIcon } from 'lucide-react'
@@ -158,12 +159,10 @@ export function NotificationsView({ embedded = false, onClose }: { embedded?: bo
         </div>
       </div>
 
-      {/* ── DESKTOP ONLY ── */}
-      <div className="hidden lg:block">
-        <div className="px-8 pt-8 pb-8 max-w-2xl mx-auto">
-          <NotifList />
-        </div>
-      </div>
+      {/* ── DESKTOP ONLY — gabarit lecture ── */}
+      <PageShell title="Notifications">
+        <NotifList />
+      </PageShell>
     </>
   )
 }

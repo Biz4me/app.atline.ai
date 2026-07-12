@@ -115,12 +115,10 @@ export default function MonAbonnementPage() {
         </div>
       </div>
 
-      {/* ── DESKTOP ONLY ── */}
-      <div className="hidden lg:block">
-        <div className="px-8 pt-8 max-w-2xl mx-auto">
-          <Summary />
-        </div>
-      </div>
+      {/* ── DESKTOP ONLY — gabarit lecture ── */}
+      <PageShell title="Mon abonnement">
+        <Summary />
+      </PageShell>
     </>
   )
 }

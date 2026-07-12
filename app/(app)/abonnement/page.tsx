@@ -1,6 +1,7 @@
 'use client'
 
 import { AppHeader } from '@/components/app-header'
+import { PageShell } from '@/components/page-shell'
 import { Card, SectionTitle } from '@/components/card'
 import { Check, Crown, ChevronRight, Calendar, CreditCard } from 'lucide-react'
 import { euro } from '@/lib/data'
@@ -216,12 +217,10 @@ export default function AbonnementPage() {
         </div>
       </div>
 
-      {/* ── DESKTOP ONLY ── */}
-      <div className="hidden lg:block">
-        <div className="px-8 pt-8 max-w-2xl mx-auto">
-          <AbonnementContent />
-        </div>
-      </div>
+      {/* ── DESKTOP ONLY — gabarit lecture ── */}
+      <PageShell title="Abonnement">
+        <AbonnementContent />
+      </PageShell>
     </>
   )
 }
