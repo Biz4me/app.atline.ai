@@ -1,6 +1,6 @@
 'use client'
 
-import { useRouter } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 import ContactDetailPage from '@/app/(app)/contacts/[id]/page'
 
 // FEUILLE fiche contact (route interceptée) : en navigation interne, la fiche glisse
@@ -8,6 +8,10 @@ import ContactDetailPage from '@/app/(app)/contacts/[id]/page'
 // sur desktop, la page derrière reste montée. URL directe/refresh = la vraie page.
 export default function ContactSheet({ params }: { params: Promise<{ id: string }> }) {
   const router = useRouter()
+  const pathname = usePathname()
+  // Slot parallèle : Next garde l'état du slot en navigation douce → si on navigue AILLEURS
+  // depuis la feuille (Aria, conversions…), elle resterait affichée par-dessus. On la coupe.
+  if (!pathname.startsWith('/contacts/')) return null
   return (
     <div className="fixed inset-0 z-[60]">
       <div className="hidden lg:block absolute inset-0 bg-black/40" onClick={() => router.back()} />

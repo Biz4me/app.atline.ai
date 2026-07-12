@@ -2,11 +2,39 @@
 
 import { usePathname, useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
-import { ChevronDown, ChevronLeft, Check, Plus, Bell } from 'lucide-react'
+import {
+  ChevronDown, ChevronLeft, ChevronRight, Check, Plus, Bell, X,
+  User, CreditCard, Moon, Sun, Settings, KeyRound, Link2, Lock, Briefcase, Users, HelpCircle, MessageSquare, LogOut,
+} from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { signOut } from 'next-auth/react'
+import { useTheme } from 'next-themes'
 import { useBusiness } from '@/components/business-provider'
 import type { Business } from '@/lib/types'
 import { DRAWER_SECTIONS, AGENTS } from '@/components/mobile/nav-config'
+
+// Menu compte — s'ouvre SUR la sidebar, à sa largeur (décision Patrice, façon ChatGPT).
+const ACCT_ITEMS: { icon: typeof User; label: string; href: string }[][] = [
+  [
+    { icon: User, label: 'Mon profil', href: '/profile/edit' },
+    { icon: CreditCard, label: 'Mon abonnement', href: '/mon-abonnement' },
+  ],
+  [
+    { icon: Settings, label: 'Préférences', href: '/settings/preferences' },
+    { icon: Bell, label: 'Notifications', href: '/settings/notifications' },
+    { icon: KeyRound, label: 'Connexion & sécurité', href: '/settings/securite' },
+    { icon: Link2, label: 'Comptes liés', href: '/settings/comptes-lies' },
+    { icon: Lock, label: 'Confidentialité', href: '/settings/confidentialite' },
+  ],
+  [
+    { icon: Briefcase, label: 'Mes activités MLM', href: '/activities' },
+    { icon: Users, label: 'Parrainage', href: '/settings/parrainage' },
+  ],
+  [
+    { icon: HelpCircle, label: "Centre d'aide", href: '/settings/centre-aide' },
+    { icon: MessageSquare, label: 'Contact et remarques', href: '/settings/contact' },
+  ],
+]
 
 // LA sidebar desktop = le tiroir mobile ÉPINGLÉ (même contenu, même ordre, même source
 // nav-config) : contexte en haut (activité + cloche), pages, agents zone basse, avatar.
@@ -17,13 +45,22 @@ export function DesktopNav({ hidden = false, onToggle }: { hidden?: boolean; onT
   const router = useRouter()
   const { current, all, setCurrent } = useBusiness()
   const [bizOpen, setBizOpen] = useState(false)
+  const [acctOpen, setAcctOpen] = useState(false)
+  const { theme, setTheme } = useTheme()
 
-  const [account, setAccount] = useState<{ photoUrl: string; initials: string }>({ photoUrl: '', initials: '' })
+  const [account, setAccount] = useState<{ photoUrl: string; initials: string; name: string }>({ photoUrl: '', initials: '', name: '' })
   useEffect(() => {
     fetch('/api/me').then((r) => (r.ok ? r.json() : null)).then((u) => {
-      if (u) setAccount({ photoUrl: u.photoUrl || '', initials: `${(u.firstName || '')[0] ?? ''}${(u.lastName || '')[0] ?? ''}`.toUpperCase() })
+      if (u) setAccount({
+        photoUrl: u.photoUrl || '',
+        initials: `${(u.firstName || '')[0] ?? ''}${(u.lastName || '')[0] ?? ''}`.toUpperCase(),
+        name: `${u.firstName ?? ''} ${u.lastName ?? ''}`.trim(),
+      })
     }).catch(() => {})
   }, [])
+
+  // Fermer le menu compte à chaque navigation
+  useEffect(() => { setAcctOpen(false) }, [pathname])
 
   // Vraies notifications non lues — rafraîchies à chaque navigation
   const [unread, setUnread] = useState(0)
@@ -148,7 +185,7 @@ export function DesktopNav({ hidden = false, onToggle }: { hidden?: boolean; onT
       <div className="flex items-center px-3 pb-4 pt-1">
         <button
           type="button"
-          onClick={() => router.push('/settings')}
+          onClick={() => setAcctOpen((o) => !o)}
           aria-label="Mon compte"
           className="size-9 shrink-0 overflow-hidden rounded-full ring-2 ring-primary/60 transition-opacity hover:opacity-90"
         >
@@ -170,6 +207,62 @@ export function DesktopNav({ hidden = false, onToggle }: { hidden?: boolean; onT
           </button>
         )}
       </div>
+
+      {/* Menu compte — SUR la sidebar, même largeur, cohérent avec le reste (pas de feuille à l'autre bout) */}
+      {acctOpen && (
+        <div className="absolute inset-0 z-10 flex flex-col bg-background">
+          <div className="flex items-center gap-3 border-b border-border px-3 py-3">
+            <span className="size-9 shrink-0 overflow-hidden rounded-full">
+              {account.photoUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={account.photoUrl} alt="" className="size-full object-cover" />
+              ) : (
+                <span className="grid size-full place-items-center bg-[#3B82F6] text-sm font-medium text-white">{account.initials || 'A'}</span>
+              )}
+            </span>
+            <span className="min-w-0 flex-1 truncate text-sm font-bold text-foreground">{account.name || 'Mon compte'}</span>
+            <button type="button" onClick={() => setAcctOpen(false)} aria-label="Fermer" className="flex size-8 items-center justify-center rounded-full text-muted-foreground hover:bg-muted">
+              <X className="size-4" />
+            </button>
+          </div>
+          <nav className="flex-1 overflow-y-auto no-scrollbar px-2 py-2">
+            {ACCT_ITEMS.map((group, gi) => (
+              <div key={gi} className={cn(gi > 0 && 'mt-2 border-t border-border pt-2')}>
+                {group.map(({ icon: Icon, label, href }) => (
+                  <button
+                    key={href}
+                    type="button"
+                    onClick={() => router.push(href)}
+                    className="flex w-full items-center gap-3 rounded-xl px-3 py-2 text-left text-sm text-foreground hover:bg-muted"
+                  >
+                    <Icon className="size-[18px] shrink-0 text-muted-foreground" />
+                    <span className="flex-1 truncate">{label}</span>
+                    <ChevronRight className="size-3.5 shrink-0 text-muted-foreground" />
+                  </button>
+                ))}
+              </div>
+            ))}
+            <div className="mt-2 border-t border-border pt-2">
+              <button
+                type="button"
+                onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+                className="flex w-full items-center gap-3 rounded-xl px-3 py-2 text-left text-sm text-foreground hover:bg-muted"
+              >
+                {theme === 'dark' ? <Sun className="size-[18px] shrink-0 text-muted-foreground" /> : <Moon className="size-[18px] shrink-0 text-muted-foreground" />}
+                <span className="flex-1">{theme === 'dark' ? 'Passer en mode clair' : 'Passer en mode sombre'}</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => signOut({ callbackUrl: '/auth' })}
+                className="flex w-full items-center gap-3 rounded-xl px-3 py-2 text-left text-sm text-destructive hover:bg-muted"
+              >
+                <LogOut className="size-[18px] shrink-0" />
+                Déconnexion
+              </button>
+            </div>
+          </nav>
+        </div>
+      )}
     </aside>
   )
 }
