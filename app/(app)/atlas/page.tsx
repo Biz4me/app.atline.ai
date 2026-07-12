@@ -100,10 +100,13 @@ export default function AtlasPage() {
     fetch('/api/plan/today').then((r) => (r.ok ? r.json() : null)).then((d) => setPlan(d?.items?.slice(0, 4) ?? [])).catch(() => {})
   }, [])
   const [input, setInput] = useState('')
+  const inputRef = useRef(input)
+  inputRef.current = input
   // Dictée « pousse-pour-parler » desktop (le composeur mobile gère la sienne dans AppComposer)
-  const { supported: micOk, recording, busy: micBusy, start: micStart, stop: micStop } = usePushToTalk(
-    (t) => setInput((v) => (v ? v + ' ' : '') + t),
-  )
+  const { supported: micOk, recording, busy: micBusy, start: micStart, stop: micStop } = usePushToTalk({
+    getBase: () => inputRef.current,
+    onText: (full) => setInput(full),
+  })
   const [histMounted, setHistMounted] = useState(false)
   const [histVisible, setHistVisible] = useState(false)
   const [histTop, setHistTop] = useState(0)

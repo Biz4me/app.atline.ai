@@ -28,9 +28,10 @@ export function AppComposer({
   // Dictée vocale : on garde la valeur courante en ref pour y accoler le texte reconnu.
   const valueRef = useRef(value)
   valueRef.current = value
-  const { supported: micOk, recording, busy, start, stop } = usePushToTalk(
-    (t) => onChange((valueRef.current ? valueRef.current + ' ' : '') + t),
-  )
+  const { supported: micOk, recording, busy, start, stop } = usePushToTalk({
+    getBase: () => valueRef.current,
+    onText: (full) => onChange(full),
+  })
 
   // Grandit avec le contenu (jusqu'à 120px puis scroll)
   useEffect(() => {
