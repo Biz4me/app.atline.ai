@@ -92,7 +92,7 @@ async function arbitrate(predicate: string, category: string, existingObject: st
 }
 
 // Réconciliation : déterministe d'abord (match exact normalisé), arbitre LLM sur l'ambigu.
-export async function reconcileFacts(userId: string, contactId: string | null, facts: ExtractedFact[]) {
+export async function reconcileFacts(userId: string, contactId: string | null, facts: ExtractedFact[], source: 'atlas' | 'aria' | 'nova' = 'atlas') {
   for (const f of facts) {
     const object = normalizeObject(f.object || '')
     if (!object || !f.predicate || !f.category) continue
@@ -115,7 +115,7 @@ export async function reconcileFacts(userId: string, contactId: string | null, f
       const create = () =>
         db.atlasFact.create({
           data: {
-            userId, contactId, predicate: f.predicate, object, category: f.category,
+            userId, contactId, predicate: f.predicate, object, category: f.category, source,
             importance: f.importance ?? 0.5, confidence: f.confidence ?? 0.75,
           },
         })

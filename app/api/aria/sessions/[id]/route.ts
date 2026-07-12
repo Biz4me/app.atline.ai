@@ -96,7 +96,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
   void (async () => {
     try {
       const facts = (Array.isArray(data.facts) ? data.facts : []) as ExtractedFact[]
-      if (facts.length) await reconcileFacts(userId, null, facts)
+      if (facts.length) await reconcileFacts(userId, null, facts, 'aria') // mémoire partagée, source = Aria
 
       const resume = typeof data.resume === 'string' ? data.resume : ''
       const axes = Array.isArray(data.axes)

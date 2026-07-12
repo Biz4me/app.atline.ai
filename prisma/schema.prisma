@@ -728,6 +728,7 @@ model AtlasFact {
   predicate      String // vise | prefere | bloque_sur | a_decide | ...
   object         String // forme canonique courte
   category       String // objectif | preference | emotion | decision | ...
+  source         String   @default("atlas") // qui a appris ce fait : atlas | aria | nova (mémoire partagée, plumes multiples)
   status         String   @default("active") // active | superseded
   confidence     Float    @default(0.75) // 0.55 déduit · 0.75 explicite · 0.9 correction
   supportCount   Int      @default(1) // ré-observations compatibles
