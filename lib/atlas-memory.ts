@@ -177,18 +177,20 @@ export async function reflect(
 }
 
 // Réflexion utilisateur après un échange (fire-and-forget depuis la route chat).
-export async function reflectUserMemory(userId: string, query: string, answer: string) {
+// `source` = quel agent a mené l'échange (mémoire partagée, plumes multiples).
+export async function reflectUserMemory(userId: string, query: string, answer: string, source: 'atlas' | 'aria' | 'nova' = 'atlas') {
   try {
     const prefs = await db.userPreferences.findUnique({
       where: { userId },
       select: { atlasProfile: true },
     })
     const user = await db.user.findUnique({ where: { id: userId }, select: { firstName: true } })
+    const agentName = source === 'nova' ? 'Nova' : source === 'aria' ? 'Aria' : 'Atlas'
     const { profile, facts } = await reflect(
       'user',
       user?.firstName ?? '',
       prefs?.atlasProfile ?? '',
-      `Utilisateur: ${query}\nAtlas: ${answer}`,
+      `Utilisateur: ${query}\n${agentName}: ${answer}`,
     )
     if (profile) {
       await db.userPreferences.upsert({
@@ -197,7 +199,7 @@ export async function reflectUserMemory(userId: string, query: string, answer: s
         update: { atlasProfile: profile, atlasProfileAt: new Date() },
       })
     }
-    if (facts.length) await reconcileFacts(userId, null, facts)
+    if (facts.length) await reconcileFacts(userId, null, facts, source)
   } catch {
     /* mémoire best-effort */
   }

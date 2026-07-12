@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getToken } from 'next-auth/jwt'
+import { reflectUserMemory } from '@/lib/atlas-memory'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -49,7 +50,30 @@ export async function POST(req: NextRequest) {
   }
   if (!resp.ok || !resp.body) return NextResponse.json({ error: 'Nova indisponible' }, { status: 502 })
 
-  return new Response(resp.body, {
+  // tee : le client streame, le serveur reflète l'échange dans la MÉMOIRE PARTAGÉE (source nova)
+  const [toClient, toReflect] = resp.body.tee()
+  void (async () => {
+    const reader = toReflect.getReader()
+    const decoder = new TextDecoder()
+    let raw = ''
+    try {
+      for (;;) {
+        const { done, value } = await reader.read()
+        if (done) break
+        raw += decoder.decode(value, { stream: true })
+      }
+    } catch { /* flux interrompu */ }
+    let full = ''
+    for (const line of raw.split('\n')) {
+      if (!line.startsWith('data: ')) continue
+      const p = line.slice(6).trim()
+      if (!p || p === '[DONE]') continue
+      try { const d = JSON.parse(p); if (d.text) full += d.text } catch { /* partiel */ }
+    }
+    if (full.trim()) await reflectUserMemory(userId, query, full.trim(), 'nova')
+  })()
+
+  return new Response(toClient, {
     headers: {
       'Content-Type': 'text/event-stream',
       'Cache-Control': 'no-cache',
