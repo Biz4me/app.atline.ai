@@ -1,7 +1,7 @@
 'use client'
 
 import { Card } from '@/components/card'
-import { CalendarDays, Users, Mic, BookOpen, AlarmClock, Megaphone, LayoutDashboard } from 'lucide-react'
+import { CalendarDays, Users, Mic, BookOpen, AlarmClock, Megaphone } from 'lucide-react'
 import Link from 'next/link'
 import { useState, useEffect } from 'react'
 import { PageShell } from '@/components/page-shell'
@@ -167,7 +167,7 @@ export function HomeContent({ mantra }: { mantra: string }) {
       </div>
 
       {/* ══════════════ DESKTOP — gabarit unique (large) ══════════════ */}
-      <PageShell title="Tableau de bord" icon={LayoutDashboard} wide>
+      <PageShell title="Tableau de bord" wide>
         {Mantra && <div className="mb-6">{Mantra}</div>}
         <div className="mb-6"><Kpis s={stats} /></div>
         <div className="grid grid-cols-2 items-start gap-6">

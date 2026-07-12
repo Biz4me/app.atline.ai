@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { Card } from '@/components/card'
 import { SectionTabs, FORMATION_TABS } from '@/components/section-tabs'
 import { cn } from '@/lib/utils'
-import { CheckCircle2, ChevronRight, BookOpen, Lock } from 'lucide-react'
+import { CheckCircle2, ChevronRight, Lock } from 'lucide-react'
 import { toast } from 'sonner'
 import { PageShell } from '@/components/page-shell'
 
@@ -113,7 +113,7 @@ export default function FormationPage() {
 
 
       {/* ══════════════ DESKTOP — gabarit unique (large), un module par LIGNE ══════════════ */}
-      <PageShell title="Formation" icon={BookOpen} wide>
+      <PageShell title="Formation" wide>
         <p className="mb-5 text-sm text-muted-foreground">
           {doneCount}/{modules.length} modules complétés · {totalPct}% du parcours
         </p>
