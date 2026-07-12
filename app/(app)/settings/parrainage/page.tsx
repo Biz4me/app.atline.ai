@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { ChevronLeft, Copy, Share2, Users, Loader2, Gift, Sparkles } from 'lucide-react'
+import { Copy, Share2, Users, Loader2, Gift, Sparkles } from 'lucide-react'
+import { PageShell, SubHeader } from '@/components/page-shell'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 import { euro } from '@/lib/data'
@@ -52,32 +53,12 @@ export default function ParrainagePage() {
     }
   }
 
-  return (
-    <div
-      className="lg:hidden fixed inset-0 z-[70] mx-auto max-w-[480px] bg-background overflow-y-auto animate-slide-in-right"
-      style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
-    >
-      {/* Header */}
-      <div
-        className="sticky top-0 z-10 flex items-center justify-center bg-background/90 px-4 py-3 backdrop-blur"
-        style={{ paddingTop: 'max(0.75rem, env(safe-area-inset-top))' }}
-      >
-        <button
-          type="button"
-          onClick={() => router.back()}
-          className="absolute left-2 flex size-9 items-center justify-center rounded-full text-foreground active:bg-muted"
-        >
-          <ChevronLeft className="size-5 stroke-[1.5]" />
-        </button>
-        <h1 className="text-lg lg:text-sm font-semibold text-foreground">Parrainage</h1>
-      </div>
-
-      {loading || !data ? (
+  const body = loading || !data ? (
         <div className="flex min-h-[60vh] items-center justify-center">
           <Loader2 className="size-6 animate-spin text-muted-foreground" />
         </div>
       ) : (
-        <div className="flex flex-col gap-5 px-4 pb-10 pt-4">
+        <div className="flex flex-col gap-5 px-4 pb-10 pt-4 lg:px-0">
           {/* Lien d'affiliation */}
           <div className="rounded-2xl border border-border bg-surface p-4 shadow-card">
             <div className="flex items-center gap-2">
@@ -182,7 +163,21 @@ export default function ParrainagePage() {
             </div>
           )}
         </div>
-      )}
-    </div>
+      )
+
+  return (
+    <>
+      {/* MOBILE ONLY — overlay plein écran */}
+      <div
+        className="lg:hidden fixed inset-0 z-[70] mx-auto max-w-[480px] bg-background overflow-y-auto animate-slide-in-right"
+        style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
+      >
+        <SubHeader title="Parrainage" onBack={() => router.back()} />
+        {body}
+      </div>
+
+      {/* DESKTOP ONLY — gabarit lecture */}
+      <PageShell title="Parrainage">{body}</PageShell>
+    </>
   )
 }

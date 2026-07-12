@@ -16,6 +16,7 @@ import {
 import { AddContactSheet } from '@/components/add-contact-sheet'
 import { Card } from '@/components/card'
 import { KpiCard } from '@/components/kpi-card'
+import { PageHeader } from '@/components/page-shell'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
 
@@ -519,9 +520,7 @@ function ContactsContent() {
       {/* Gabarit unique : cadre max-w-6xl + gouttière px-10 + en-tête 68px centré (page pleine hauteur) */}
       <div className="hidden lg:flex mx-auto w-full max-w-6xl flex-col h-dvh overflow-hidden px-10 pb-8 gap-4">
 
-        <header className="flex h-[68px] shrink-0 items-center justify-center">
-          <h1 className="text-base font-semibold text-foreground">Contacts</h1>
-        </header>
+        <div className="shrink-0"><PageHeader title="Contacts" /></div>
 
         {/* KPI Strip — composant KpiCard partagé (identique au tableau de bord) */}
         {(() => {

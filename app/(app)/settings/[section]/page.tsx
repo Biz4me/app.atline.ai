@@ -4,7 +4,8 @@ import { use, useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { useTheme } from 'next-themes'
-import { ChevronLeft, ChevronRight, ChevronDown, MessageCircle, Send, Check, Sun, Moon, Monitor, Trash2, LifeBuoy } from 'lucide-react'
+import { ChevronRight, ChevronDown, MessageCircle, Send, Check, Sun, Moon, Monitor, Trash2, LifeBuoy } from 'lucide-react'
+import { PageShell, SubHeader } from '@/components/page-shell'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 
@@ -315,38 +316,32 @@ export default function SettingsSectionPage({ params }: { params: Promise<{ sect
   const { section } = use(params)
   const title = TITLES[section] ?? 'Paramètres'
 
+  const content = section === 'comptes-lies' ? <LinkedAccounts />
+    : section === 'securite' ? <Security />
+    : section === 'preferences' ? <Preferences />
+    : section === 'notifications' ? <NotifPrefs />
+    : section === 'confidentialite' ? <Privacy />
+    : section === 'centre-aide' ? <Help />
+    : section === 'contact' ? <ContactForm />
+    : (
+      <div className="flex flex-col items-center justify-center px-6 pt-20 text-center">
+        <p className="text-lg text-muted-foreground">Bientôt disponible</p>
+      </div>
+    )
+
   return (
-    <div
-      className="lg:hidden fixed inset-0 z-[70] mx-auto max-w-[480px] bg-background overflow-y-auto animate-slide-in-right"
-      style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
-    >
-      {/* Header */}
+    <>
+      {/* MOBILE — overlay plein écran (inchangé) */}
       <div
-        className="sticky top-0 z-10 relative flex items-center justify-center bg-background/90 px-4 py-3 backdrop-blur"
-        style={{ paddingTop: 'max(0.75rem, env(safe-area-inset-top))' }}
+        className="lg:hidden fixed inset-0 z-[70] mx-auto max-w-[480px] bg-background overflow-y-auto animate-slide-in-right"
+        style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
       >
-        <button
-          type="button"
-          onClick={() => router.back()}
-          className="absolute left-2 flex size-9 items-center justify-center rounded-full text-foreground active:bg-muted"
-        >
-          <ChevronLeft className="size-5 stroke-[1.5]" />
-        </button>
-        <h1 className="text-lg font-semibold text-foreground">{title}</h1>
+        <SubHeader title={title} onBack={() => router.back()} />
+        {content}
       </div>
 
-      {section === 'comptes-lies' ? <LinkedAccounts />
-        : section === 'securite' ? <Security />
-        : section === 'preferences' ? <Preferences />
-        : section === 'notifications' ? <NotifPrefs />
-        : section === 'confidentialite' ? <Privacy />
-        : section === 'centre-aide' ? <Help />
-        : section === 'contact' ? <ContactForm />
-        : (
-          <div className="flex flex-col items-center justify-center px-6 pt-20 text-center">
-            <p className="text-lg text-muted-foreground">Bientôt disponible</p>
-          </div>
-        )}
-    </div>
+      {/* DESKTOP — gabarit lecture (fini l'écran blanc) */}
+      <PageShell title={title}>{content}</PageShell>
+    </>
   )
 }
