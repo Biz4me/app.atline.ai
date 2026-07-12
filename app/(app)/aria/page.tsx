@@ -153,13 +153,15 @@ function SetupScreen({
 
   return (
     <div className="flex min-h-dvh flex-col bg-background">
-      {/* Desktop — l'en-tête UNIQUE (mobile : géré par la top-bar globale) */}
-      <div className="mx-auto hidden w-full max-w-3xl lg:block">
-        <PageHeader title="Aria" />
-      </div>
+      {/* UN SEUL wrapper max-w-3xl (identique à Nova) : en-tête + contenu dans la même colonne */}
+      <div className="lg:mx-auto lg:w-full lg:max-w-3xl">
+        {/* Desktop — l'en-tête UNIQUE (mobile : géré par la top-bar globale) */}
+        <div className="hidden lg:block">
+          <PageHeader title="Aria" />
+        </div>
 
-      <div className="flex flex-col gap-6 px-4 pt-5 pb-10 lg:px-0 lg:max-w-3xl lg:mx-auto">
-        <div className="rounded-2xl border border-border bg-surface p-5">
+        <div className="flex flex-col gap-6 px-4 pt-5 pb-10 lg:px-0">
+          <div className="rounded-2xl border border-border bg-surface p-5">
           {/* Reprendre là où tu en étais — score réel + rejouer en 1 tap (jamais de jargon technique) */}
           {lastSim && (
             <div className="mb-4 rounded-2xl border border-[#14B8A6]/30 bg-[#14B8A6]/5 p-3.5">
@@ -321,6 +323,7 @@ function SetupScreen({
             </div>
           </div>
         )}
+        </div>
       </div>
     </div>
   )
