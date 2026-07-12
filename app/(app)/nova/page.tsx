@@ -62,7 +62,7 @@ export default function NovaPage() {
   }
 
   return (
-    <div className="px-4 pt-4 lg:px-10 lg:pt-0 lg:max-w-3xl lg:mx-auto">
+    <div className="px-4 pt-4 lg:px-0 lg:pt-0 lg:max-w-3xl lg:mx-auto">
       {/* En-tête UNIQUE (desktop) */}
       <div className="hidden lg:block"><PageHeader title="Nova" /></div>
 

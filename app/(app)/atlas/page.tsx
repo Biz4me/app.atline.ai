@@ -983,7 +983,7 @@ TECHNIQUE (invisible pour moi, ne l'explique jamais)${NB}: le jour où je VALIDE
 
         {/* Header — vide sur mobile (ancre du panneau historique) ; en-tête agent unifié sur desktop */}
         {/* En-tête : mobile vide (ancre historique) ; desktop = l'en-tête UNIQUE (PageHeader) */}
-        <div ref={headerRef} className="shrink-0 lg:mx-auto lg:w-full lg:max-w-3xl lg:px-10">
+        <div ref={headerRef} className="shrink-0 lg:mx-auto lg:w-full lg:max-w-3xl">
           <div className="hidden lg:block">
             <PageHeader title="Atlas" actions={
               <>

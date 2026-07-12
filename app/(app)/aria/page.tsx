@@ -154,11 +154,11 @@ function SetupScreen({
   return (
     <div className="flex min-h-dvh flex-col bg-background">
       {/* Desktop — l'en-tête UNIQUE (mobile : géré par la top-bar globale) */}
-      <div className="mx-auto hidden w-full max-w-3xl px-10 lg:block">
+      <div className="mx-auto hidden w-full max-w-3xl lg:block">
         <PageHeader title="Aria" />
       </div>
 
-      <div className="flex flex-col gap-6 px-4 pt-5 pb-10 lg:px-10 lg:max-w-3xl lg:mx-auto">
+      <div className="flex flex-col gap-6 px-4 pt-5 pb-10 lg:px-0 lg:max-w-3xl lg:mx-auto">
         <div className="rounded-2xl border border-border bg-surface p-5">
           {/* Reprendre là où tu en étais — score réel + rejouer en 1 tap (jamais de jargon technique) */}
           {lastSim && (
