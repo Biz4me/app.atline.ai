@@ -85,7 +85,7 @@ export function AppShell({ children, initialCollapsed, initialAtlasCollapsed }: 
           isAtlasChat ? 'max-lg:h-[100dvh] max-lg:overflow-hidden' : '',
           'transition-[padding-left,padding-right] duration-200 ease-out',
           collapsed ? 'lg:pl-0' : 'lg:pl-[260px]',
-          railCollapsedOnly ? 'lg:pr-16' : atlasCollapsed ? 'lg:pr-16' : 'lg:pr-[360px]',
+          railCollapsedOnly ? 'lg:pr-0' : atlasCollapsed ? 'lg:pr-16' : 'lg:pr-[360px]',
         )}
       >
         {/* Chrome mobile global : barre du haut (hamburger → tiroir) + barre Atlas en bas */}
