@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { AppHeader } from '@/components/app-header'
+import { PageShell } from '@/components/page-shell'
 import { Card } from '@/components/card'
 import { Calendar, CreditCard, ChevronRight, Loader2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
