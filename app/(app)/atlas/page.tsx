@@ -6,7 +6,7 @@ import { SendHorizontal, Mic, History, Plus, X, ChevronDown, MoreHorizontal, Pen
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
 import { AppComposer } from '@/components/mobile/app-composer'
-import { useDictation } from '@/components/mobile/use-dictation'
+import { usePushToTalk } from '@/components/mobile/use-dictation'
 
 const BUCKET_LABEL: Record<string, string> = { PRESENTER: 'Présenter', FORMER: 'Former', VENDRE: 'Vendre' }
 
@@ -100,8 +100,8 @@ export default function AtlasPage() {
     fetch('/api/plan/today').then((r) => (r.ok ? r.json() : null)).then((d) => setPlan(d?.items?.slice(0, 4) ?? [])).catch(() => {})
   }, [])
   const [input, setInput] = useState('')
-  // Dictée vocale desktop (le composeur mobile gère la sienne dans AppComposer)
-  const { supported: micOk, listening, toggle: toggleMic } = useDictation(
+  // Dictée « pousse-pour-parler » desktop (le composeur mobile gère la sienne dans AppComposer)
+  const { supported: micOk, recording, busy: micBusy, start: micStart, stop: micStop } = usePushToTalk(
     (t) => setInput((v) => (v ? v + ' ' : '') + t),
   )
   const [histMounted, setHistMounted] = useState(false)
@@ -1265,15 +1265,19 @@ TECHNIQUE (invisible pour moi, ne l'explique jamais)${NB}: le jour où je VALIDE
             {micOk && (
               <button
                 type="button"
-                onClick={toggleMic}
-                aria-label={listening ? 'Arrêter la dictée' : 'Dicter'}
-                title={listening ? 'Arrêter la dictée' : 'Dicter'}
+                onPointerDown={(e) => { e.preventDefault(); e.currentTarget.setPointerCapture(e.pointerId); micStart() }}
+                onPointerUp={(e) => { e.currentTarget.releasePointerCapture(e.pointerId); micStop() }}
+                onPointerCancel={micStop}
+                onContextMenu={(e) => e.preventDefault()}
+                disabled={micBusy}
+                aria-label="Maintenir pour dicter"
+                title="Maintenir pour dicter"
                 className={cn(
-                  'flex size-9 shrink-0 items-center justify-center rounded-full transition-colors',
-                  listening ? 'bg-primary/15 text-primary' : 'text-muted-foreground hover:bg-muted',
+                  'flex size-9 shrink-0 select-none items-center justify-center rounded-full transition-all',
+                  recording ? 'scale-110 bg-primary text-white' : micBusy ? 'text-primary' : 'text-muted-foreground hover:bg-muted',
                 )}
               >
-                <Mic className={cn('size-5 stroke-[1.5]', listening && 'animate-pulse')} />
+                {micBusy ? <Loader2 className="size-5 animate-spin" /> : <Mic className={cn('size-5 stroke-[1.5]', recording && 'animate-pulse')} />}
               </button>
             )}
             <button

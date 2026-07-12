@@ -1,8 +1,8 @@
 'use client'
 
 import { useRef, useEffect } from 'react'
-import { Paperclip, Mic, SendHorizontal } from 'lucide-react'
-import { useDictation } from '@/components/mobile/use-dictation'
+import { Paperclip, Mic, SendHorizontal, Loader2 } from 'lucide-react'
+import { usePushToTalk } from '@/components/mobile/use-dictation'
 import { cn } from '@/lib/utils'
 
 // Composeur unique de l'app (mobile) — flottant fixe en bas.
@@ -28,7 +28,7 @@ export function AppComposer({
   // Dictée vocale : on garde la valeur courante en ref pour y accoler le texte reconnu.
   const valueRef = useRef(value)
   valueRef.current = value
-  const { supported: micOk, listening, toggle: toggleMic } = useDictation(
+  const { supported: micOk, recording, busy, start, stop } = usePushToTalk(
     (t) => onChange((valueRef.current ? valueRef.current + ' ' : '') + t),
   )
 
@@ -73,15 +73,19 @@ export function AppComposer({
         {micOk && (
           <button
             type="button"
-            onClick={toggleMic}
-            aria-label={listening ? 'Arrêter la dictée' : 'Dicter'}
-            title={listening ? 'Arrêter la dictée' : 'Dicter'}
+            onPointerDown={(e) => { e.preventDefault(); e.currentTarget.setPointerCapture(e.pointerId); start() }}
+            onPointerUp={(e) => { e.currentTarget.releasePointerCapture(e.pointerId); stop() }}
+            onPointerCancel={stop}
+            onContextMenu={(e) => e.preventDefault()}
+            disabled={busy}
+            aria-label="Maintenir pour dicter"
+            title="Maintenir pour dicter"
             className={cn(
-              'flex size-9 shrink-0 items-center justify-center rounded-full transition-colors',
-              listening ? 'bg-primary/15 text-primary' : 'text-muted-foreground active:bg-muted',
+              'flex size-9 shrink-0 select-none touch-none items-center justify-center rounded-full transition-all',
+              recording ? 'scale-110 bg-primary text-white' : busy ? 'text-primary' : 'text-muted-foreground active:bg-muted',
             )}
           >
-            <Mic className={cn('size-5 stroke-[1.5]', listening && 'animate-pulse')} />
+            {busy ? <Loader2 className="size-5 animate-spin" /> : <Mic className={cn('size-5 stroke-[1.5]', recording && 'animate-pulse')} />}
           </button>
         )}
         <button
