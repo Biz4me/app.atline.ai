@@ -3,7 +3,7 @@
 import { usePathname, useRouter } from 'next/navigation'
 import { useRef, useState } from 'react'
 import { cn } from '@/lib/utils'
-import { ChevronLeft, ChevronRight, Sparkles, ArrowUpRight, SendHorizontal } from 'lucide-react'
+import { ChevronRight, Sparkles, ArrowUpRight, SendHorizontal } from 'lucide-react'
 import { useAtlasMiniChat, MiniMsgs } from '@/components/use-atlas-mini-chat'
 
 // Rail droit desktop = le COMPOSEUR CONTEXTUEL PERMANENT (équivalent du composeur mobile) :
@@ -33,16 +33,6 @@ export function AtlasSidebar({ collapsed, onToggle }: { collapsed: boolean; onTo
 
   return (
     <>
-      <button
-        type="button"
-        onClick={onToggle}
-        title={isOpen ? 'Réduire' : 'Développer'}
-        style={{ right: isOpen ? '348px' : '52px' }}
-        className="hidden lg:flex fixed top-6 z-50 size-6 items-center justify-center rounded-full border border-border bg-background text-muted-foreground shadow-sm transition-[right] duration-200 ease-out hover:bg-muted hover:text-foreground"
-      >
-        {isOpen ? <ChevronRight className="size-3.5" /> : <ChevronLeft className="size-3.5" />}
-      </button>
-
       <aside
         className={cn(
           'hidden lg:flex flex-col fixed right-0 top-0 z-40 h-dvh overflow-hidden border-l border-border bg-background',
@@ -57,15 +47,26 @@ export function AtlasSidebar({ collapsed, onToggle }: { collapsed: boolean; onTo
                 <span className="grid size-6 place-items-center rounded-full bg-primary text-white"><Sparkles className="size-3.5" /></span>
                 Atlas
               </span>
-              {msgs.length > 0 && (
+              <span className="flex items-center gap-1">
+                {msgs.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => router.push(convIdRef.current ? `/atlas?c=${convIdRef.current}` : '/atlas')}
+                    className="flex items-center gap-1 rounded-full px-2.5 py-1.5 text-xs font-semibold text-primary hover:bg-muted"
+                  >
+                    Ouvrir dans Atlas <ArrowUpRight className="size-3.5" />
+                  </button>
+                )}
+                {/* Repli — DANS le rail (plus de chevron flottant) */}
                 <button
                   type="button"
-                  onClick={() => router.push(convIdRef.current ? `/atlas?c=${convIdRef.current}` : '/atlas')}
-                  className="flex items-center gap-1 rounded-full px-2.5 py-1.5 text-xs font-semibold text-primary hover:bg-muted"
+                  onClick={onToggle}
+                  title="Réduire"
+                  className="flex size-8 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted"
                 >
-                  Ouvrir dans Atlas <ArrowUpRight className="size-3.5" />
+                  <ChevronRight className="size-4" />
                 </button>
-              )}
+              </span>
             </div>
 
             <div ref={scrollRef} className="flex-1 space-y-3 overflow-y-auto px-4 py-3">

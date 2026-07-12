@@ -980,10 +980,21 @@ TECHNIQUE (invisible pour moi, ne l'explique jamais)${NB}: le jour où je VALIDE
       {/* ── Zone principale : chat ── (l'historique desktop vit dans la sidebar 2) */}
       <div className="flex flex-1 flex-col min-h-0 min-w-0">
 
-        {/* Header */}
-        {/* Contrat d'alignement : lg:h-[68px] + items-center = icône/titre centrés à 90px (indépendant de la taille). */}
-        {/* Ancre : 0px sur mobile (le panneau historique se positionne sous la barre globale) ; en-tête 68px desktop */}
-        <div ref={headerRef} className="shrink-0 lg:h-[68px]" />
+        {/* Header — vide sur mobile (ancre du panneau historique) ; en-tête agent unifié sur desktop */}
+        <div ref={headerRef} className="shrink-0 lg:flex lg:h-[68px] lg:items-center lg:gap-3 lg:px-6">
+          <span className="hidden lg:flex size-9 shrink-0 items-center justify-center rounded-[11px] bg-primary text-white shadow-sm">
+            <Sparkles className="size-[18px] stroke-[1.5]" />
+          </span>
+          <h1 className="hidden lg:block flex-1 font-display text-2xl font-bold text-foreground">Atlas</h1>
+          <div className="hidden lg:flex gap-1">
+            <button type="button" aria-label="Historique" onClick={() => window.dispatchEvent(new Event('agent:history'))} className="flex size-10 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted">
+              <History className="size-5 stroke-[1.5]" />
+            </button>
+            <button type="button" aria-label="Nouvelle conversation" onClick={() => window.dispatchEvent(new Event('agent:new'))} className="flex size-10 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted">
+              <Plus className="size-5 stroke-[1.5]" />
+            </button>
+          </div>
+        </div>
 
         {/* Mobile : historique — slide depuis le header + backdrop (comme le menu Plus de l'accueil) */}
         {histMounted && (
@@ -1087,16 +1098,6 @@ TECHNIQUE (invisible pour moi, ne l'explique jamais)${NB}: le jour où je VALIDE
             )}
           </>
         )}
-
-        {/* Desktop : historique + nouvelle conversation (l'ancienne sidebar 2 est morte, mêmes events que mobile) */}
-        <div className="hidden lg:flex fixed right-20 top-4 z-30 gap-1">
-          <button type="button" aria-label="Historique" onClick={() => window.dispatchEvent(new Event('agent:history'))} className="flex size-10 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted">
-            <History className="size-5 stroke-[1.5]" />
-          </button>
-          <button type="button" aria-label="Nouvelle conversation" onClick={() => window.dispatchEvent(new Event('agent:new'))} className="flex size-10 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted">
-            <Plus className="size-5 stroke-[1.5]" />
-          </button>
-        </div>
 
         {/* Conversation / empty state */}
         {loadingConv ? (

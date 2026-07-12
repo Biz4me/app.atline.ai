@@ -2,7 +2,7 @@
 
 import { usePathname, useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
-import { ChevronDown, Check, Plus, Bell } from 'lucide-react'
+import { ChevronDown, ChevronLeft, Check, Plus, Bell } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useBusiness } from '@/components/business-provider'
 import type { Business } from '@/lib/types'
@@ -12,7 +12,7 @@ import { DRAWER_SECTIONS, AGENTS } from '@/components/mobile/nav-config'
 // nav-config) : contexte en haut (activité + cloche), pages, agents zone basse, avatar.
 // Remplace l'ancien trio top bar + rail + sidebar 2 (navigation à 2 étages supprimée).
 
-export function DesktopNav({ hidden = false }: { hidden?: boolean }) {
+export function DesktopNav({ hidden = false, onToggle }: { hidden?: boolean; onToggle?: () => void }) {
   const pathname = usePathname()
   const router = useRouter()
   const { current, all, setCurrent } = useBusiness()
@@ -121,8 +121,9 @@ export function DesktopNav({ hidden = false }: { hidden?: boolean }) {
         })}
       </nav>
 
-      {/* Les 3 agents — mêmes rectangles mats que le tiroir, de bas en haut : Atlas, Aria, Nova */}
-      <div className="flex flex-col items-end gap-2 px-3 pb-3">
+      {/* Les 3 agents — rectangles mats ALIGNÉS À GAUCHE comme la nav (la « zone du pouce »
+          est un concept mobile : à la souris, on suit la colonne). Bas → haut : Atlas, Aria, Nova. */}
+      <div className="flex flex-col gap-2 px-3 pb-3">
         {[...AGENTS].reverse().map((a) => {
           const Icon = a.icon
           return (
@@ -130,7 +131,7 @@ export function DesktopNav({ hidden = false }: { hidden?: boolean }) {
               key={a.href}
               type="button"
               onClick={() => router.push(a.href)}
-              className="flex min-w-[124px] items-center gap-2.5 rounded-xl px-4 py-2 transition-all active:translate-y-px hover:brightness-105"
+              className="flex w-full items-center gap-2.5 rounded-xl px-4 py-2 transition-all active:translate-y-px hover:brightness-105"
               style={{
                 background: `linear-gradient(180deg, rgba(255,255,255,.14), rgba(255,255,255,0) 55%), ${a.color}`,
                 boxShadow: '0 1px 2px rgba(0,0,0,.2), inset 0 1px 0 rgba(255,255,255,.22)',
@@ -143,7 +144,7 @@ export function DesktopNav({ hidden = false }: { hidden?: boolean }) {
         })}
       </div>
 
-      {/* Identité — l'avatar seul (→ Mon compte) */}
+      {/* Identité — l'avatar (→ Mon compte) + repli de la sidebar (plus de chevron flottant) */}
       <div className="flex items-center px-3 pb-4 pt-1">
         <button
           type="button"
@@ -158,6 +159,16 @@ export function DesktopNav({ hidden = false }: { hidden?: boolean }) {
             <span className="grid size-full place-items-center bg-[#3B82F6] text-sm font-medium text-white">{account.initials || 'A'}</span>
           )}
         </button>
+        {onToggle && (
+          <button
+            type="button"
+            onClick={onToggle}
+            title="Masquer la navigation"
+            className="ml-auto flex size-8 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted"
+          >
+            <ChevronLeft className="size-4" />
+          </button>
+        )}
       </div>
     </aside>
   )

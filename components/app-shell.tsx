@@ -2,7 +2,7 @@
 
 import { useState, useEffect, type ReactNode } from 'react'
 import { usePathname } from 'next/navigation'
-import { ChevronLeft, ChevronRight } from 'lucide-react'
+import { ChevronRight } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { DesktopNav } from '@/components/desktop-nav'
 import { AtlasSidebar } from '@/components/atlas-sidebar'
@@ -63,19 +63,20 @@ export function AppShell({ children, initialCollapsed, initialAtlasCollapsed }: 
 
   return (
     <PageVisibilityProvider>
-      <DesktopNav hidden={collapsed} />
+      <DesktopNav hidden={collapsed} onToggle={toggle} />
       <AtlasSidebar collapsed={atlasCollapsed} onToggle={toggleAtlas} />
 
-      {/* Toggle nav (focus) — masque/affiche la sidebar */}
-      <button
-        type="button"
-        onClick={toggle}
-        title={collapsed ? 'Afficher la navigation' : 'Masquer la navigation'}
-        style={{ left: collapsed ? 16 : sidebarEdge }}
-        className="hidden lg:flex fixed top-6 z-[45] -translate-x-1/2 size-6 items-center justify-center rounded-full border border-border bg-background text-muted-foreground shadow-sm transition-all duration-200 hover:text-foreground hover:bg-muted"
-      >
-        {collapsed ? <ChevronRight className="size-3.5" /> : <ChevronLeft className="size-3.5" />}
-      </button>
+      {/* Rouvrir la nav — visible SEULEMENT quand elle est repliée (le repli vit DANS la sidebar) */}
+      {collapsed && (
+        <button
+          type="button"
+          onClick={toggle}
+          title="Afficher la navigation"
+          className="hidden lg:flex fixed left-3 top-5 z-[45] size-8 items-center justify-center rounded-full border border-border bg-background text-muted-foreground shadow-sm transition-colors hover:bg-muted hover:text-foreground"
+        >
+          <ChevronRight className="size-4" />
+        </button>
+      )}
 
       <div
         className={cn(
