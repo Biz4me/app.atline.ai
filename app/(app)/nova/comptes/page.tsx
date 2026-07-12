@@ -2,7 +2,8 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { ChevronLeft, Camera, Music2, User, Copy, Sparkles, Loader2, Lock, Check } from 'lucide-react'
+import { Camera, Music2, User, Copy, Sparkles, Loader2, Lock, Check } from 'lucide-react'
+import { SubHeader } from '@/components/page-shell'
 import { toast } from 'sonner'
 
 const NOVA = '#8B5CF6'
@@ -59,18 +60,7 @@ export default function ComptesPage() {
 
   return (
     <>
-      {/* En-tête gabarit : titre centré discret (Satoshi), retour mobile seulement (desktop a la sidebar) */}
-      <header className="sticky top-0 z-30 flex items-center justify-center bg-background/90 px-4 py-3 backdrop-blur lg:h-[68px] lg:py-0" style={{ paddingTop: 'max(0.75rem, env(safe-area-inset-top))' }}>
-        <button
-          type="button"
-          onClick={() => router.push('/nova')}
-          aria-label="Retour"
-          className="lg:hidden absolute left-2 flex size-9 items-center justify-center rounded-full text-muted-foreground active:bg-muted"
-        >
-          <ChevronLeft className="size-5 stroke-[1.5]" />
-        </button>
-        <h1 className="text-lg font-semibold text-foreground lg:text-base">Mes comptes</h1>
-      </header>
+      <SubHeader title="Mes comptes" onBack={() => router.push('/nova')} />
 
       <div className="px-4 pt-2 pb-24 lg:px-8 lg:pt-4 lg:max-w-2xl lg:mx-auto">
         <p className="mb-3 text-lg lg:text-sm text-muted-foreground text-pretty">
