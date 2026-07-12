@@ -61,7 +61,7 @@ export default function NovaPage() {
   }
 
   return (
-    <div className="px-4 pt-4 lg:px-10 lg:pt-0 lg:max-w-2xl lg:mx-auto">
+    <div className="px-4 pt-4 lg:px-10 lg:pt-0 lg:max-w-3xl lg:mx-auto">
       {/* En-tête agent — charte commune (celle d'Atlas) : pastille couleur + nom */}
       <div className="hidden lg:flex h-[68px] items-center gap-3">
         <span className="flex size-8 shrink-0 items-center justify-center rounded-[10px] text-white shadow-sm" style={{ backgroundColor: NOVA }}>
