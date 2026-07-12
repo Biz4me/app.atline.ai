@@ -308,12 +308,12 @@ export default function ProfileEditPage() {
 
   return (
     <div className="mx-auto w-full max-w-2xl">
-      {/* Header — titre centré + flèche retour (comme les pages du hub compte) */}
-      <div className="sticky top-0 z-10 flex items-center justify-center bg-background/90 px-4 py-3 backdrop-blur" style={{ paddingTop: 'max(0.75rem, env(safe-area-inset-top))' }}>
-        <button type="button" onClick={() => router.back()} aria-label="Retour" className="absolute left-2 flex size-9 items-center justify-center rounded-full text-foreground active:bg-muted">
+      {/* Header — gabarit : titre centré discret ; flèche retour mobile seulement (desktop a la sidebar) */}
+      <div className="sticky top-0 z-10 flex items-center justify-center bg-background/90 px-4 py-3 backdrop-blur lg:h-[68px] lg:py-0" style={{ paddingTop: 'max(0.75rem, env(safe-area-inset-top))' }}>
+        <button type="button" onClick={() => router.back()} aria-label="Retour" className="lg:hidden absolute left-2 flex size-9 items-center justify-center rounded-full text-foreground active:bg-muted">
           <ChevronLeft className="size-5 stroke-[1.5]" />
         </button>
-        <h1 className="text-lg font-semibold text-foreground">Profil</h1>
+        <h1 className="text-lg font-semibold text-foreground lg:text-base">Profil</h1>
       </div>
 
       {loading ? (

@@ -77,15 +77,15 @@ export function AgendaView({ embedded = false, onClose }: { embedded?: boolean; 
     <div className={embedded ? 'flex flex-col bg-background' : 'flex min-h-dvh flex-col bg-background'}>
       {/* Header — route uniquement (en panneau, la topbar reste visible au-dessus) */}
       {!embedded && (
-        <header className="sticky top-0 z-30 flex items-center gap-3 bg-background/90 px-4 py-3 backdrop-blur lg:px-8" style={{ paddingTop: 'max(0.75rem, env(safe-area-inset-top))' }}>
-          {/* Titre + retour gérés par la top-bar centrée sur mobile ; titre gardé sur desktop */}
-          <h1 className="hidden flex-1 font-display text-lg font-bold text-foreground lg:block lg:text-2xl">Agenda</h1>
+        <header className="sticky top-0 z-30 flex items-center gap-3 bg-background/90 px-4 py-3 backdrop-blur lg:mx-auto lg:h-[68px] lg:w-full lg:max-w-6xl lg:py-0 lg:px-10" style={{ paddingTop: 'max(0.75rem, env(safe-area-inset-top))' }}>
+          {/* Gabarit desktop : titre centré discret (mobile : géré par la top-bar) */}
+          <h1 className="hidden text-base font-semibold text-foreground lg:block lg:absolute lg:left-1/2 lg:-translate-x-1/2">Agenda</h1>
           <button type="button" onClick={() => setCreateOpen(true)} className="ml-auto flex size-9 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-sm active:opacity-80"><Plus className="size-5 stroke-2" /></button>
         </header>
       )}
 
       {/* Tabs (+ bouton créer en mode panneau) */}
-      <div className={cn('border-b border-border bg-background px-4 py-2 lg:px-8', !embedded && 'sticky top-[57px] z-20')}>
+      <div className={cn('border-b border-border bg-background px-4 py-2 lg:mx-auto lg:w-full lg:max-w-6xl lg:px-10', !embedded && 'sticky top-[57px] z-20')}>
         <div className="flex items-center gap-2 lg:max-w-xs">
           <div className="grid flex-1 grid-cols-3 gap-1 rounded-xl bg-muted p-1">
             {(['jour', 'semaine', 'mois'] as View[]).map((v) => (
@@ -99,7 +99,7 @@ export function AgendaView({ embedded = false, onClose }: { embedded?: boolean; 
         </div>
       </div>
 
-      <div className={cn('flex-1 px-4 pt-4 lg:px-8 lg:pt-6 lg:max-w-6xl lg:mx-auto lg:w-full', embedded ? 'pb-6' : 'pb-24')}>
+      <div className={cn('flex-1 px-4 pt-4 lg:px-10 lg:pt-6 lg:max-w-6xl lg:mx-auto lg:w-full', embedded ? 'pb-6' : 'pb-24')}>
         {/* ⚠️ PHASE 2 — À ACTIVER (config Google Cloud requise, sinon "Connecter" renvoie une erreur Google) :
             1) activer Google Calendar API  2) scope calendar.readonly au consent screen
             3) redirect URI https://app.atline.ai/api/calendar/callback  4) publishing "Production" (non vérifiée) ou testeur.

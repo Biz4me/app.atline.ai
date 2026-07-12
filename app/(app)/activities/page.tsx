@@ -158,12 +158,12 @@ export default function ActivitiesPage() {
 
   return (
     <div className="mx-auto w-full max-w-2xl">
-      {/* Header — titre centré + retour à gauche + « + » (ajouter une activité) à droite */}
-      <div className="sticky top-0 z-10 flex items-center justify-center bg-background/90 px-4 py-3 backdrop-blur" style={{ paddingTop: 'max(0.75rem, env(safe-area-inset-top))' }}>
-        <button type="button" onClick={back} aria-label="Retour" className="absolute left-2 flex size-9 items-center justify-center rounded-full text-foreground active:bg-muted">
+      {/* Header — gabarit : titre centré discret ; retour mobile seulement ; « + » à droite */}
+      <div className="sticky top-0 z-10 flex items-center justify-center bg-background/90 px-4 py-3 backdrop-blur lg:h-[68px] lg:py-0" style={{ paddingTop: 'max(0.75rem, env(safe-area-inset-top))' }}>
+        <button type="button" onClick={back} aria-label="Retour" className="lg:hidden absolute left-2 flex size-9 items-center justify-center rounded-full text-foreground active:bg-muted">
           <ChevronLeft className="size-5 stroke-[1.5]" />
         </button>
-        <h1 className="text-lg font-semibold text-foreground">Mon activité</h1>
+        <h1 className="text-lg font-semibold text-foreground lg:text-base">Mon activité</h1>
         <button type="button" onClick={() => router.push('/activities/new')} aria-label="Ajouter une activité" className="absolute right-2 flex size-9 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-sm active:scale-95 transition-transform">
           <Plus className="size-5 stroke-[2]" />
         </button>
