@@ -93,7 +93,7 @@ export function DesktopNav({ hidden = false, onToggle }: { hidden?: boolean; onT
         </button>
         <button
           type="button"
-          onClick={() => router.push('/notifications')}
+          onClick={() => pathname === '/notifications' ? router.back() : router.push('/notifications')}
           aria-label="Notifications"
           className="relative flex size-9 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted"
         >

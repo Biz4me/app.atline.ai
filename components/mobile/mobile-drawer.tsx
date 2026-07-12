@@ -125,7 +125,7 @@ export function MobileDrawer() {
           {/* Cloche en HAUT à droite : les notifications sont du contexte, pas de l'identité */}
           <button
             type="button"
-            onClick={() => go('/notifications')}
+            onClick={() => pathname === '/notifications' ? (close(), router.back()) : go('/notifications')}
             aria-label="Notifications"
             className="relative flex size-9 shrink-0 items-center justify-center rounded-full text-muted-foreground active:bg-muted transition-colors"
           >
