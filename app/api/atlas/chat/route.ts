@@ -141,23 +141,27 @@ export async function POST(req: NextRequest) {
   }
   const cid = conversationId
 
-  // Historique BORNÉ : fenêtre des derniers messages + résumé roulant pour le plus ancien
-  // (la fenêtre ne grossit plus avec la conversation → latence et coût stables).
-  const [totalPrior, lastMsgs, convMeta] = await Promise.all([
+  // Historique BORNÉ, ANCRÉ sur le résumé : on envoie tout ce que le résumé ne couvre pas
+  // (préfixe stable entre deux régénérations → le cache prompt sert à ~0,1x), avec un
+  // garde-fou glissant si la régénération échoue en boucle.
+  const WINDOW_CAP = HISTORY_WINDOW + 2 * SUMMARY_LAG // 48 messages max envoyés
+  const [totalPrior, convMeta] = await Promise.all([
     db.atlasMessage.count({ where: { conversationId: cid } }),
-    db.atlasMessage.findMany({
-      where: { conversationId: cid },
-      orderBy: { createdAt: 'desc' },
-      take: HISTORY_WINDOW,
-      select: { role: true, content: true },
-    }),
     db.atlasConversation.findFirst({ where: { id: cid }, select: { summary: true, summarizedCount: true } }),
   ])
-  const conversation_history = lastMsgs.reverse().map((m) => ({
+  const covered = convMeta?.summarizedCount ?? 0
+  const skip = totalPrior - covered > WINDOW_CAP ? totalPrior - WINDOW_CAP : covered
+  const lastMsgs = await db.atlasMessage.findMany({
+    where: { conversationId: cid },
+    orderBy: { createdAt: 'asc' },
+    skip,
+    select: { role: true, content: true },
+  })
+  const conversation_history = lastMsgs.map((m) => ({
     role: m.role === 'USER' ? 'user' : 'assistant',
     content: m.content,
   }))
-  const history_summary = totalPrior > HISTORY_WINDOW ? (convMeta?.summary ?? '') : ''
+  const history_summary = skip > 0 ? (convMeta?.summary ?? '') : ''
 
   // Sauver le message utilisateur
   await db.atlasMessage.create({
