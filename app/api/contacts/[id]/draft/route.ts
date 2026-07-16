@@ -36,7 +36,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
   const { channel, instruction } = await req.json()
   const ch = String(channel ?? 'SMS').toUpperCase()
   // Consigne libre de l'utilisateur (« propose-lui un RDV mardi ») — prioritaire sur l'intention du stade
-  const consigne = typeof instruction === 'string' && instruction.trim() ? instruction.trim().slice(0, 300) : ''
+  const consigne = typeof instruction === 'string' && instruction.trim() ? instruction.trim().slice(0, 500) : ''
 
   const [user, business, lastInter] = await Promise.all([
     db.user.findUnique({ where: { id: session.user.id }, select: { firstName: true } }),

@@ -373,7 +373,7 @@ export default function ContactDetailPage({ params }: { params: Promise<{ id: st
       </div>
 
       {/* ═══ STRUCTURE CHARTE PROFIL (nouveau — à adapter) ═══ */}
-      <div className="flex flex-col gap-5 px-4 pb-8 pt-2">
+      <div className="flex flex-col gap-5 px-4 pb-2 pt-2">
         <div className="flex flex-col items-center gap-2.5">
           <div className="grid size-20 place-items-center rounded-full text-2xl font-bold text-white" style={{ backgroundColor: perso?.hex ?? c.accent }}>{c.initials}</div>
           <p className="text-lg font-semibold text-foreground">{c.name || 'Contact'}</p>
@@ -386,6 +386,180 @@ export default function ContactDetailPage({ params }: { params: Promise<{ id: st
             {perso && <span className="flex items-center gap-1 rounded-full bg-muted px-2.5 py-0.5 text-xs font-medium text-muted-foreground"><span className="size-2 rounded-full" style={{ backgroundColor: perso.hex }} />{perso.label}</span>}
           </div>
         </div>
+      </div>
+
+      <div className="flex flex-col gap-4 px-4 pb-24 pt-2">
+        {/* Curseur d'étape — le flow d'abord, un seul tunnel (opportunité) : prospect, partenaire, OU client re-sollicité */}
+        {showOppCursor && (
+          <StageCursor
+            stages={oppStages}
+            current={oppCurrent}
+            onPick={(id) => save(isPartner ? { partnerStage: id } : { prospectStage: id }, 'Étape mise à jour')}
+          />
+        )}
+        {/* Fiche client « pur » : possibilité de le réengager vers l'opportunité (entre au tunnel Invitation) */}
+        {isClient && !recruiting && (
+          <button
+            type="button"
+            onClick={() => save({ prospectStage: 'INVITATION' }, "Réengagé vers l'opportunité")}
+            className="flex w-full items-center justify-center gap-2 rounded-2xl border border-primary/30 bg-primary/5 py-3 text-base font-bold text-primary transition-transform active:scale-[0.98]"
+          >
+            <ArrowRight className="size-4 stroke-[1.5]" />
+            Réengager vers l'opportunité
+          </button>
+        )}
+        {/* Prochain pas — simplifié, à la charte (carte standard, accent Atlas discret) */}
+        {nextStep && (
+          <div className="rounded-2xl border border-border bg-surface p-4">
+            <p className="mb-1 text-xs font-bold uppercase tracking-widest text-muted-foreground">Prochain pas</p>
+            <p className="text-lg font-bold text-foreground lg:text-sm">{nextStep.headline}</p>
+            <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">{nextStep.reason}</p>
+            {nextStep.action === 'MESSAGE' && nextStep.channel && (
+              <button type="button" onClick={() => setCompose({ channel: nextStep.channel!, label: CHANNEL_LABEL[nextStep.channel!] ?? 'Message', auto: true })}
+                className="mt-3 flex w-full items-center justify-center gap-1.5 rounded-xl bg-primary py-2.5 text-xs font-bold text-primary-foreground active:opacity-90">
+                Voir le message
+              </button>
+            )}
+            {nextStep.action === 'EDIT' && (
+              <button type="button" onClick={() => { setPfOpen((o) => ({ ...o, details: true })); setTimeout(() => window.scrollTo({ top: document.documentElement.scrollHeight, behavior: 'smooth' }), 60) }} className="mt-3 flex w-full items-center justify-center gap-1.5 rounded-xl bg-primary py-2.5 text-xs font-bold text-primary-foreground active:opacity-90">Compléter la fiche</button>
+            )}
+          </div>
+        )}
+
+        {/* Actions rapides (branchées à la prochaine étape : appel/message/email/SMS) */}
+        <div className="grid grid-cols-4 gap-2">
+          {[
+            { type: 'APPEL', label: 'Appel', icon: PhoneCall, href: c.phone ? `tel:${c.phone}` : '', err: 'Aucun numéro', external: false },
+            { type: 'SMS', label: 'SMS', icon: MessageSquare, href: c.phone ? `sms:${c.phone}` : '', err: 'Aucun numéro', external: false },
+            { type: 'WHATSAPP', label: 'WhatsApp', icon: MessageCircle, href: c.phone ? `https://wa.me/${c.phone.replace(/[^0-9]/g, '')}` : '', err: 'Aucun numéro', external: true },
+            { type: 'EMAIL', label: 'Email', icon: Mail, href: c.email ? `mailto:${c.email}` : '', err: 'Aucun email', external: false },
+          ].map((t) => (
+            <button key={t.type} type="button"
+              onClick={() => {
+                if (t.type === 'APPEL') { if (!c.phone) { toast.error('Aucun numéro'); return } window.location.href = `tel:${c.phone}`; setConfirm({ type: 'APPEL', label: 'Appel' }); return }
+                if (t.type === 'EMAIL' ? !c.email : !c.phone) { toast.error(t.err); return }
+                setCompose({ channel: t.type, label: t.label })
+              }}
+              className="flex flex-col items-center gap-1.5 rounded-2xl border border-border bg-surface py-3 active:bg-muted">
+              <t.icon className="size-5 stroke-[1.5] text-primary" />
+              <span className="text-xs font-medium text-foreground">{t.label}</span>
+            </button>
+          ))}
+        </div>
+        {/* Rangée secondaire compacte : planifier / relancer / répéter avec Aria */}
+        <div className="grid grid-cols-3 gap-2">
+          <button type="button" onClick={() => setSchedule('rdv')} className="flex flex-col items-center gap-1.5 rounded-2xl border border-border bg-surface py-3 active:bg-muted"><CalendarPlus className="size-5 stroke-[1.5] text-primary" /><span className="text-xs font-medium text-foreground">RDV</span></button>
+          <button type="button" onClick={() => setSchedule('relance')} className="flex flex-col items-center gap-1.5 rounded-2xl border border-border bg-surface py-3 active:bg-muted"><Bell className="size-5 stroke-[1.5] text-primary" /><span className="text-xs font-medium text-foreground">Relance</span></button>
+          <button type="button" onClick={() => router.push(`/aria?contact=${c.id}`)} className="flex flex-col items-center gap-1.5 rounded-2xl bg-[#14B8A6]/10 py-3 active:bg-[#14B8A6]/20"><Mic className="size-5 stroke-[1.5] text-[#14B8A6]" /><span className="text-xs font-medium text-[#14B8A6]">Aria</span></button>
+        </div>
+
+        {/* Ce qu'Atlas retient — bloc mémoire auto-édité (MemGPT-style), éditable/corrigeable */}
+        <div className="rounded-2xl border border-border bg-surface p-4">
+          <div className="mb-1 flex items-center justify-between gap-2">
+            <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">À retenir</p>
+            {memEditing ? (
+              <button type="button" onClick={() => { save({ atlasMemory: memDraft.trim() }, 'Mémoire mise à jour'); setMemEditing(false) }} className="rounded-lg bg-primary px-3 py-1 text-xs font-bold text-primary-foreground">Enregistrer</button>
+            ) : (
+              <button type="button" onClick={() => { setMemDraft(c.atlasMemory ?? ''); setMemEditing(true) }} className="text-xs font-medium text-primary"><Pencil className="mr-1 inline size-3" />{c.atlasMemory ? 'Corriger' : 'Ajouter une note'}</button>
+            )}
+          </div>
+          {memEditing ? (
+            <textarea value={memDraft} onChange={(e) => setMemDraft(e.target.value)} rows={4} autoFocus placeholder="Ce qu'Atlas doit retenir de ce contact… (vide = effacer)" className="w-full resize-none bg-transparent text-lg leading-relaxed text-foreground lg:text-sm outline-none placeholder:text-muted-foreground" />
+          ) : c.atlasMemory ? (
+            <p className="whitespace-pre-line text-lg leading-relaxed text-muted-foreground lg:text-sm">{c.atlasMemory}</p>
+          ) : (
+            <p className="text-lg leading-relaxed text-muted-foreground lg:text-sm">Rien pour l'instant. Atlas remplit ce bloc au fil de vos échanges, et tu peux noter toi-même l'essentiel.</p>
+          )}
+        </div>
+
+        {/* Suivi (Source/Tags) retiré : Source → snapshot Atlas · Dernier contact → signal du haut · Tags → coupés */}
+
+        {/* Conversions — liens discrets (secondaire), alignés, sans pastille flottante */}
+        {(isProspect || isClient) && (
+          <div className="flex flex-wrap items-center gap-1">
+            <span className="mr-1 text-xs text-muted-foreground">Convertir en</span>
+            {isProspect && (
+              <button type="button" onClick={() => save({ convert: 'client' }, 'Converti en client')} className="rounded-md px-2 py-0.5 text-sm font-semibold text-primary active:bg-primary/10">client</button>
+            )}
+            {isProspect && <span className="text-xs text-muted-foreground">·</span>}
+            <button type="button" onClick={() => save({ convert: 'partenaire' }, 'Converti en partenaire')} className="rounded-md px-2 py-0.5 text-sm font-semibold text-primary active:bg-primary/10">partenaire</button>
+          </div>
+        )}
+        {/* Signal — dernier contact (déclencheur de relance) ; exposition remontée dans les pastilles */}
+        <p className="text-xs text-muted-foreground">
+          dernier contact : <span className="font-medium text-foreground">{c.lastContact ? new Date(c.lastContact).toLocaleDateString('fr-FR') : 'jamais'}</span>
+        </p>
+
+        {/* ÉCHANGES AVEC ATLAS — conversations passées sur ce contact (rouvrir dans le composeur) */}
+        {contactConvs.length > 0 && (
+          <Section title="Échanges avec Atlas">
+            <div className="flex flex-col">
+              {contactConvs.map((cv) => (
+                <button key={cv.id} type="button" onClick={() => setOpenConvId(cv.id)} className="flex items-center gap-3 rounded-xl px-1 py-2.5 text-left active:bg-muted">
+                  <Sparkles className="size-4 shrink-0 stroke-[1.5] text-primary" />
+                  <span className="min-w-0 flex-1 truncate text-lg text-foreground lg:text-sm">{cv.title || 'Échange'}</span>
+                  <span className="shrink-0 text-[10px] text-muted-foreground">{new Date(cv.updatedAt).toLocaleDateString('fr-FR')}</span>
+                </button>
+              ))}
+            </div>
+          </Section>
+        )}
+
+        {/* À VENIR (RDV + relances programmées) */}
+        {(appointments.length > 0 || relances.length > 0) && (
+          <Section title="À venir">
+            <div className="flex flex-col gap-2">
+              {appointments.map((a) => (
+                <div key={a.id} className="flex items-center gap-3 rounded-xl border border-border bg-background px-4 py-3">
+                  <CalendarPlus className="size-4 shrink-0 stroke-[1.5] text-primary" />
+                  <div className="min-w-0 flex-1">
+                    <p className="text-lg font-medium text-foreground lg:text-sm">{a.title}</p>
+                    <p className="text-xs text-muted-foreground">{new Date(a.startAt).toLocaleString('fr-FR', { dateStyle: 'medium', timeStyle: 'short' })} · {a.type}</p>
+                  </div>
+                </div>
+              ))}
+              {relances.map((r) => (
+                <div key={r.id} className="flex items-center gap-3 rounded-xl border border-border bg-background px-4 py-3">
+                  <Bell className="size-4 shrink-0 stroke-[1.5] text-primary" />
+                  <div className="min-w-0 flex-1">
+                    <p className="text-lg font-medium text-foreground lg:text-sm">Relance · {r.channel}</p>
+                    <p className="text-xs text-muted-foreground">{new Date(r.dueAt).toLocaleDateString('fr-FR')}{r.message ? ` · ${r.message}` : ''}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </Section>
+        )}
+
+        {/* HISTORIQUE des interactions */}
+        {/* Historique — replié par défaut, masqué s'il est vide (journal terrain, secondaire) */}
+        {interactions.length > 0 && (
+          <Card className="overflow-hidden">
+            <button type="button" onClick={() => setHistOpen((o) => !o)} className={cn('flex w-full items-center justify-between px-5 py-3', histOpen && 'border-b border-border')}>
+              <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Historique ({interactions.length})</p>
+              <ChevronDown className={cn('size-4 text-muted-foreground transition-transform', histOpen && 'rotate-180')} />
+            </button>
+            {histOpen && (
+              <ol className="flex flex-col gap-3 px-5 py-4">
+                {interactions.map((it) => {
+                  const m = INTERACTION_META[it.type] ?? INTERACTION_META.AUTRE
+                  return (
+                    <li key={it.id} className="flex items-start gap-3">
+                      <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground"><m.icon className="size-3.5 stroke-[1.5]" /></span>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-lg font-medium text-foreground lg:text-sm">{m.label}{it.direction === 'IN' ? ' reçu' : ''}{it.outcome ? ` · ${it.outcome.toLowerCase()}` : ''}</p>
+                        {it.body && <p className="truncate text-xs text-muted-foreground">{it.body}</p>}
+                        <p className="mt-0.5 text-[10px] text-muted-foreground">{new Date(it.createdAt).toLocaleString('fr-FR', { dateStyle: 'medium', timeStyle: 'short' })}</p>
+                      </div>
+                      {it.isExposure && <span className="shrink-0 text-[10px] font-bold text-primary">+1 expo</span>}
+                    </li>
+                  )
+                })}
+              </ol>
+            )}
+          </Card>
+        )}
+
         {/* Détails de la fiche — repliés par défaut (consultation d'abord, on édite à la demande) */}
         <Collapsible icon={ClipboardList} title="Détails de la fiche" filled={detailsFilled} total={20} open={!!pfOpen.details} onToggle={() => pfToggle('details')}>
         <div className="flex flex-col gap-2">
@@ -482,180 +656,6 @@ export default function ContactDetailPage({ params }: { params: Promise<{ id: st
             Enregistrer les détails
           </button>
         </Collapsible>
-      </div>
-
-      <div className="flex flex-col gap-4 px-4 pb-24 pt-2">
-        {/* Prochain pas — simplifié, à la charte (carte standard, accent Atlas discret) */}
-        {nextStep && (
-          <div className="rounded-2xl border border-border bg-surface p-4">
-            <p className="mb-1 text-xs font-bold uppercase tracking-widest text-muted-foreground">Prochain pas</p>
-            <p className="text-lg font-bold text-foreground lg:text-sm">{nextStep.headline}</p>
-            <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">{nextStep.reason}</p>
-            {nextStep.action === 'MESSAGE' && nextStep.channel && (
-              <button type="button" onClick={() => setCompose({ channel: nextStep.channel!, label: CHANNEL_LABEL[nextStep.channel!] ?? 'Message', auto: true })}
-                className="mt-3 flex w-full items-center justify-center gap-1.5 rounded-xl bg-primary py-2.5 text-xs font-bold text-primary-foreground active:opacity-90">
-                Voir le message
-              </button>
-            )}
-            {nextStep.action === 'EDIT' && (
-              <button type="button" onClick={() => { setPfOpen((o) => ({ ...o, details: true })); window.scrollTo({ top: 0, behavior: 'smooth' }) }} className="mt-3 flex w-full items-center justify-center gap-1.5 rounded-xl bg-primary py-2.5 text-xs font-bold text-primary-foreground active:opacity-90">Compléter la fiche</button>
-            )}
-          </div>
-        )}
-
-        {/* Actions rapides (branchées à la prochaine étape : appel/message/email/SMS) */}
-        <div className="grid grid-cols-4 gap-2">
-          {[
-            { type: 'APPEL', label: 'Appel', icon: PhoneCall, href: c.phone ? `tel:${c.phone}` : '', err: 'Aucun numéro', external: false },
-            { type: 'SMS', label: 'SMS', icon: MessageSquare, href: c.phone ? `sms:${c.phone}` : '', err: 'Aucun numéro', external: false },
-            { type: 'WHATSAPP', label: 'WhatsApp', icon: MessageCircle, href: c.phone ? `https://wa.me/${c.phone.replace(/[^0-9]/g, '')}` : '', err: 'Aucun numéro', external: true },
-            { type: 'EMAIL', label: 'Email', icon: Mail, href: c.email ? `mailto:${c.email}` : '', err: 'Aucun email', external: false },
-          ].map((t) => (
-            <button key={t.type} type="button"
-              onClick={() => {
-                if (t.type === 'APPEL') { if (!c.phone) { toast.error('Aucun numéro'); return } window.location.href = `tel:${c.phone}`; setConfirm({ type: 'APPEL', label: 'Appel' }); return }
-                if (t.type === 'EMAIL' ? !c.email : !c.phone) { toast.error(t.err); return }
-                setCompose({ channel: t.type, label: t.label })
-              }}
-              className="flex flex-col items-center gap-1.5 rounded-2xl border border-border bg-surface py-3 active:bg-muted">
-              <t.icon className="size-5 stroke-[1.5] text-primary" />
-              <span className="text-xs font-medium text-foreground">{t.label}</span>
-            </button>
-          ))}
-        </div>
-        {/* Rangée secondaire compacte : planifier / relancer / répéter avec Aria */}
-        <div className="grid grid-cols-3 gap-2">
-          <button type="button" onClick={() => setSchedule('rdv')} className="flex flex-col items-center gap-1.5 rounded-2xl border border-border bg-surface py-3 active:bg-muted"><CalendarPlus className="size-5 stroke-[1.5] text-primary" /><span className="text-xs font-medium text-foreground">RDV</span></button>
-          <button type="button" onClick={() => setSchedule('relance')} className="flex flex-col items-center gap-1.5 rounded-2xl border border-border bg-surface py-3 active:bg-muted"><Bell className="size-5 stroke-[1.5] text-primary" /><span className="text-xs font-medium text-foreground">Relance</span></button>
-          <button type="button" onClick={() => router.push(`/aria?contact=${c.id}`)} className="flex flex-col items-center gap-1.5 rounded-2xl bg-[#14B8A6]/10 py-3 active:bg-[#14B8A6]/20"><Mic className="size-5 stroke-[1.5] text-[#14B8A6]" /><span className="text-xs font-medium text-[#14B8A6]">Aria</span></button>
-        </div>
-
-        {/* Ce qu'Atlas retient — bloc mémoire auto-édité (MemGPT-style), éditable/corrigeable */}
-        <div className="rounded-2xl border border-border bg-surface p-4">
-          <div className="mb-1 flex items-center justify-between gap-2">
-            <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">À retenir</p>
-            {memEditing ? (
-              <button type="button" onClick={() => { save({ atlasMemory: memDraft.trim() }, 'Mémoire mise à jour'); setMemEditing(false) }} className="rounded-lg bg-primary px-3 py-1 text-xs font-bold text-primary-foreground">Enregistrer</button>
-            ) : (
-              <button type="button" onClick={() => { setMemDraft(c.atlasMemory ?? ''); setMemEditing(true) }} className="text-xs font-medium text-primary"><Pencil className="mr-1 inline size-3" />{c.atlasMemory ? 'Corriger' : 'Ajouter une note'}</button>
-            )}
-          </div>
-          {memEditing ? (
-            <textarea value={memDraft} onChange={(e) => setMemDraft(e.target.value)} rows={4} autoFocus placeholder="Ce qu'Atlas doit retenir de ce contact… (vide = effacer)" className="w-full resize-none bg-transparent text-lg leading-relaxed text-foreground lg:text-sm outline-none placeholder:text-muted-foreground" />
-          ) : c.atlasMemory ? (
-            <p className="whitespace-pre-line text-lg leading-relaxed text-muted-foreground lg:text-sm">{c.atlasMemory}</p>
-          ) : (
-            <p className="text-lg leading-relaxed text-muted-foreground lg:text-sm">Rien pour l'instant. Atlas remplit ce bloc au fil de vos échanges, et tu peux noter toi-même l'essentiel.</p>
-          )}
-        </div>
-
-        {/* Suivi (Source/Tags) retiré : Source → snapshot Atlas · Dernier contact → signal du haut · Tags → coupés */}
-
-        {/* Curseur d'étape — un seul tunnel (opportunité) : prospect, partenaire, OU client re-sollicité */}
-        {showOppCursor && (
-          <StageCursor
-            stages={oppStages}
-            current={oppCurrent}
-            onPick={(id) => save(isPartner ? { partnerStage: id } : { prospectStage: id }, 'Étape mise à jour')}
-          />
-        )}
-        {/* Fiche client « pur » : possibilité de le réengager vers l'opportunité (entre au tunnel Invitation) */}
-        {isClient && !recruiting && (
-          <button
-            type="button"
-            onClick={() => save({ prospectStage: 'INVITATION' }, "Réengagé vers l'opportunité")}
-            className="flex w-full items-center justify-center gap-2 rounded-2xl border border-primary/30 bg-primary/5 py-3 text-base font-bold text-primary transition-transform active:scale-[0.98]"
-          >
-            <ArrowRight className="size-4 stroke-[1.5]" />
-            Réengager vers l'opportunité
-          </button>
-        )}
-        {/* Conversions — liens discrets (secondaire), alignés, sans pastille flottante */}
-        {(isProspect || isClient) && (
-          <div className="flex flex-wrap items-center gap-1">
-            <span className="mr-1 text-xs text-muted-foreground">Convertir en</span>
-            {isProspect && (
-              <button type="button" onClick={() => save({ convert: 'client' }, 'Converti en client')} className="rounded-md px-2 py-0.5 text-sm font-semibold text-primary active:bg-primary/10">client</button>
-            )}
-            {isProspect && <span className="text-xs text-muted-foreground">·</span>}
-            <button type="button" onClick={() => save({ convert: 'partenaire' }, 'Converti en partenaire')} className="rounded-md px-2 py-0.5 text-sm font-semibold text-primary active:bg-primary/10">partenaire</button>
-          </div>
-        )}
-        {/* Signal — dernier contact (déclencheur de relance) ; exposition remontée dans les pastilles */}
-        <p className="text-xs text-muted-foreground">
-          dernier contact : <span className="font-medium text-foreground">{c.lastContact ? new Date(c.lastContact).toLocaleDateString('fr-FR') : 'jamais'}</span>
-        </p>
-
-        {/* ÉCHANGES AVEC ATLAS — conversations passées sur ce contact (rouvrir dans le composeur) */}
-        {contactConvs.length > 0 && (
-          <Section title="Échanges avec Atlas">
-            <div className="flex flex-col">
-              {contactConvs.map((cv) => (
-                <button key={cv.id} type="button" onClick={() => setOpenConvId(cv.id)} className="flex items-center gap-3 rounded-xl px-1 py-2.5 text-left active:bg-muted">
-                  <Sparkles className="size-4 shrink-0 stroke-[1.5] text-primary" />
-                  <span className="min-w-0 flex-1 truncate text-lg text-foreground lg:text-sm">{cv.title || 'Échange'}</span>
-                  <span className="shrink-0 text-[10px] text-muted-foreground">{new Date(cv.updatedAt).toLocaleDateString('fr-FR')}</span>
-                </button>
-              ))}
-            </div>
-          </Section>
-        )}
-
-        {/* À VENIR (RDV + relances programmées) */}
-        {(appointments.length > 0 || relances.length > 0) && (
-          <Section title="À venir">
-            <div className="flex flex-col gap-2">
-              {appointments.map((a) => (
-                <div key={a.id} className="flex items-center gap-3 rounded-xl border border-border bg-background px-4 py-3">
-                  <CalendarPlus className="size-4 shrink-0 stroke-[1.5] text-primary" />
-                  <div className="min-w-0 flex-1">
-                    <p className="text-lg font-medium text-foreground lg:text-sm">{a.title}</p>
-                    <p className="text-xs text-muted-foreground">{new Date(a.startAt).toLocaleString('fr-FR', { dateStyle: 'medium', timeStyle: 'short' })} · {a.type}</p>
-                  </div>
-                </div>
-              ))}
-              {relances.map((r) => (
-                <div key={r.id} className="flex items-center gap-3 rounded-xl border border-border bg-background px-4 py-3">
-                  <Bell className="size-4 shrink-0 stroke-[1.5] text-primary" />
-                  <div className="min-w-0 flex-1">
-                    <p className="text-lg font-medium text-foreground lg:text-sm">Relance · {r.channel}</p>
-                    <p className="text-xs text-muted-foreground">{new Date(r.dueAt).toLocaleDateString('fr-FR')}{r.message ? ` · ${r.message}` : ''}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </Section>
-        )}
-
-        {/* HISTORIQUE des interactions */}
-        {/* Historique — replié par défaut, masqué s'il est vide (journal terrain, secondaire) */}
-        {interactions.length > 0 && (
-          <Card className="overflow-hidden">
-            <button type="button" onClick={() => setHistOpen((o) => !o)} className={cn('flex w-full items-center justify-between px-5 py-3', histOpen && 'border-b border-border')}>
-              <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Historique ({interactions.length})</p>
-              <ChevronDown className={cn('size-4 text-muted-foreground transition-transform', histOpen && 'rotate-180')} />
-            </button>
-            {histOpen && (
-              <ol className="flex flex-col gap-3 px-5 py-4">
-                {interactions.map((it) => {
-                  const m = INTERACTION_META[it.type] ?? INTERACTION_META.AUTRE
-                  return (
-                    <li key={it.id} className="flex items-start gap-3">
-                      <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground"><m.icon className="size-3.5 stroke-[1.5]" /></span>
-                      <div className="min-w-0 flex-1">
-                        <p className="text-lg font-medium text-foreground lg:text-sm">{m.label}{it.direction === 'IN' ? ' reçu' : ''}{it.outcome ? ` · ${it.outcome.toLowerCase()}` : ''}</p>
-                        {it.body && <p className="truncate text-xs text-muted-foreground">{it.body}</p>}
-                        <p className="mt-0.5 text-[10px] text-muted-foreground">{new Date(it.createdAt).toLocaleString('fr-FR', { dateStyle: 'medium', timeStyle: 'short' })}</p>
-                      </div>
-                      {it.isExposure && <span className="shrink-0 text-[10px] font-bold text-primary">+1 expo</span>}
-                    </li>
-                  )
-                })}
-              </ol>
-            )}
-          </Card>
-        )}
-
         {/* Suppression du contact (relogée depuis l'ancien EditSheet) */}
         <div className="flex justify-center pt-2">
           <button type="button" onClick={() => { if (window.confirm('Supprimer définitivement ce contact ?')) { fetch(`/api/contacts/${id}`, { method: 'DELETE' }).then((r) => { if (r.ok) { toast.success('Contact supprimé'); router.push('/contacts') } else toast.error('Échec de la suppression') }) } }}

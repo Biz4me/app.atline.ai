@@ -70,7 +70,7 @@ export async function GET() {
   if (!bizId) return NextResponse.json({ items: [] })
 
   const now = Date.now()
-  const [contacts, appts, relances] = await Promise.all([
+  const [contacts, appts, relances, recentInteractions] = await Promise.all([
     db.contact.findMany({
       where: { userId, mlmBusinessId: bizId },
       select: {
@@ -81,7 +81,26 @@ export async function GET() {
     }),
     db.appointment.findMany({ where: { userId, done: false }, select: { id: true, contactId: true, title: true, startAt: true } }),
     db.relance.findMany({ where: { userId, status: 'PENDING', dueAt: { lte: new Date() } }, select: { id: true, contactId: true, channel: true } }).catch(() => []),
+    db.interaction.findMany({
+      where: { userId, outcome: { not: null } },
+      orderBy: { createdAt: 'desc' },
+      take: 300,
+      select: { contactId: true, outcome: true },
+    }).catch(() => []),
   ])
+
+  // Modulation par l'outcome (spec catalogue) : dernier échange POSITIF ↑, SANS_REPONSE répété ↓.
+  const lastOutcomes = new Map<string, string[]>()
+  for (const i of recentInteractions) {
+    const arr = lastOutcomes.get(i.contactId) ?? []
+    if (arr.length < 2) { arr.push(i.outcome as string); lastOutcomes.set(i.contactId, arr) }
+  }
+  const outcomeMult = (contactId: string): number => {
+    const o = lastOutcomes.get(contactId) ?? []
+    if (o[0] === 'POSITIF') return 1.3
+    if (o[0] === 'SANS_REPONSE' && o[1] === 'SANS_REPONSE') return 0.7
+    return 1.0
+  }
 
   const byId = new Map(contacts.map((c) => [c.id, c]))
   const prenom = (c: { firstName: string | null; name: string }) => c.firstName || c.name.split(' ')[0]
@@ -92,7 +111,7 @@ export async function GET() {
   const push = (c: typeof contacts[number], level: number, action: string, headline: string, reason: string, channel: string | null, apptId: string | null = null) => {
     cands.push({
       contactId: c.id, name: c.name, prenom: prenom(c), initials: initialsOf(c), accent: c.accent ?? '#F97316',
-      level, priority: Math.round(opportunity(c) * potentielMult(c.qualification)),
+      level, priority: Math.round(opportunity(c) * potentielMult(c.qualification) * outcomeMult(c.id)),
       action, headline, reason, channel, stage: c.prospectStage ?? c.partnerStage ?? '',
       phone: c.phone, email: c.email, market: c.market, route: null, apptId,
     })
@@ -176,11 +195,41 @@ export async function GET() {
       case 'PRESENTATION':
         push(c, 4, 'MESSAGE', `Fais le suivi de ${prenom(c)}`, `« La fortune est dans le suivi » — reviens vers lui/elle.`, channel); break
       case 'INVITATION':
-        push(c, stale ? 4 : 3, 'MESSAGE', stale ? `Relance ton invitation à ${prenom(c)}` : `Propose une présentation à ${prenom(c)}`, stale ? `Invité il y a ${days}j sans suite.` : `A réagi — propose d'en voir plus.`, channel); break
+        // Non relancé = le moment de PRÉSENTER (format « présenter = support » : le flux chat propose de joindre un support).
+        if (stale) push(c, 4, 'MESSAGE', `Relance ton invitation à ${prenom(c)}`, `Invité il y a ${days}j sans suite.`, channel)
+        else push(c, 3, 'PRESENTER', `Propose une présentation à ${prenom(c)}`, `A réagi — propose d'en voir plus, support à l'appui.`, channel)
+        break
       default: // NOUVEAU
         push(c, 3, 'MESSAGE', `Invite ${prenom(c)}`, `Nouveau dans ta liste — lance la conversation et crée la curiosité.`, channel)
     }
   }
+
+  // ── Niveau 5 — Investissement (soi) : formation en cours, lecture — remplit le plan quand le terrain est calme ──
+  const selfItem = (action: string, rank: number, headline: string, reason: string, route: string): Cand => ({
+    contactId: '', name: '', prenom: '', initials: '', accent: '#F97316',
+    level: 5, priority: rank, action, headline, reason, channel: null, stage: 'PERSO',
+    phone: null, email: null, market: null, route,
+  })
+  try {
+    const [allLessons, doneProgress] = await Promise.all([
+      db.lmsLesson.findMany({
+        where: { published: true },
+        orderBy: [{ module: { position: 'asc' } }, { position: 'asc' }],
+        select: { id: true, moduleId: true, module: { select: { title: true } } },
+      }),
+      db.userLessonProgress.findMany({ where: { userId, done: true }, select: { lessonId: true } }),
+    ])
+    const doneIds = new Set(doneProgress.map((p) => p.lessonId))
+    const nextLesson = allLessons.find((l) => !doneIds.has(l.id))
+    if (nextLesson) cands.push(selfItem('FORMATION', 2, `Continue ta formation : ${nextLesson.module.title}`, 'Un pas de formation par jour — la discipline qui paie sur 90 jours.', `/formation/${nextLesson.moduleId}`))
+    const [reads, books] = await Promise.all([
+      db.userBookInteraction.findMany({ where: { userId, read: true }, select: { bookId: true } }),
+      db.mlmBook.findMany({ where: { priority: 'ESSENTIEL', dispoFR: true }, orderBy: { rang: 'asc' }, select: { id: true, titreFR: true, auteur: true } }),
+    ])
+    const readIds = new Set(reads.map((r) => r.bookId))
+    const book = books.find((b) => !readIds.has(b.id))
+    if (book) cands.push(selfItem('LECTURE', 1, `Avance dans « ${book.titreFR} »`, `${book.auteur} — les leaders sont des lecteurs. 10 pages aujourd'hui suffisent.`, '/formation/library'))
+  } catch { /* investissement best-effort : le plan terrain reste complet sans */ }
 
   // ── Tri : niveau asc, puis priorité desc ; équilibre : 1 par contact, plafond 7 ──
   cands.sort((a, b) => a.level - b.level || b.priority - a.priority)

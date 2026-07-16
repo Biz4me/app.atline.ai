@@ -21,7 +21,7 @@ import { PageHeader } from '@/components/page-shell'
 import { AtlasActionCard, type AtlasAction } from '@/components/atlas-action-card'
 
 type Choice = { label: string; value: string }
-type Msg = { from: 'user' | 'atlas'; text: string; chips?: string[]; choices?: Choice[]; item?: PlanItem; draft?: { contactId: string; prenom: string; channel: string; phone: string | null; email: string | null }; profileForm?: { me: Record<string, unknown> }; whyCard?: { text: string; kind: SessionKind; title: string; obj?: Objectifs; superseded?: boolean; done?: boolean }; navCard?: { route: string; label: string }; actionCard?: AtlasAction }
+type Msg = { from: 'user' | 'atlas'; text: string; chips?: string[]; choices?: Choice[]; item?: PlanItem; draft?: { contactId: string; prenom: string; channel: string; phone: string | null; email: string | null; instruction?: string }; profileForm?: { me: Record<string, unknown> }; whyCard?: { text: string; kind: SessionKind; title: string; obj?: Objectifs; superseded?: boolean; done?: boolean }; navCard?: { route: string; label: string }; actionCard?: AtlasAction }
 
 type SessionKind = 'why' | 'rencontre' | 'mindset' | 'objectifs' | 'audience' | 'parcours' | 'produit'
 type Objectifs = { mensuel: string; m3: string; m6: string; m12: string }
@@ -155,6 +155,7 @@ export default function AtlasPage() {
   const captureRef = useRef<{ field: string; item: PlanItem } | null>(null)
   const pendingRef = useRef<{ field: string; value: string; item: PlanItem } | null>(null)
   const gatherRef = useRef<{ queue: string[]; item: PlanItem | null }>({ queue: [], item: null })
+  const supportsRef = useRef<{ title: string; fileUrl: string }[]>([]) // supports « Présenter » proposés (action PRESENTER)
   // Session profonde en cours (ex. « le pourquoi ») : le composeur alimente la session au lieu du chat libre.
   const sessionRef = useRef<null | SessionKind>(null)
   const whyTurnsRef = useRef(0)
@@ -674,7 +675,11 @@ TECHNIQUE (invisible pour moi, ne l'explique jamais)${NB}: le jour où je VALIDE
       if (item.action === 'FOUND_MINDSET') { setTimeout(() => startSessionRef.current('mindset'), 300); return }
       if (item.action === 'FOUND_OBJECTIFS') { setTimeout(() => startSessionRef.current('objectifs'), 300); return }
       if (item.action === 'FOUND_PROFILE') { setTimeout(() => showProfileForm(), 300); return }
-      const label = item.action === 'FOUND_LIST' ? 'Construire ma liste' : item.action === 'FOUND_MINDSET' ? 'Ouvrir le module' : 'Y aller'
+      const label = item.action === 'FOUND_LIST' ? 'Construire ma liste'
+        : item.action === 'FOUND_MINDSET' ? 'Ouvrir le module'
+        : item.action === 'FORMATION' ? 'Continuer le module'
+        : item.action === 'LECTURE' ? 'Ouvrir la bibliothèque'
+        : 'Y aller'
       setMsgs((prev) => [...prev, { from: 'atlas', text: item.reason, choices: [{ label, value: 'goto' }], item }])
       setTimeout(scrollToBottom, 60)
       return
@@ -695,7 +700,7 @@ TECHNIQUE (invisible pour moi, ne l'explique jamais)${NB}: le jour où je VALIDE
       setTimeout(scrollToBottom, 60)
       return
     }
-    if (item.action !== 'MESSAGE') {
+    if (item.action !== 'MESSAGE' && item.action !== 'PRESENTER') {
       setMsgs((prev) => [...prev, { from: 'atlas', text: `On s'occupe de ${item.prenom} — dis-moi :`, choices: [{ label: 'Ouvre sa fiche', value: 'fiche' }, { label: "Je m'entraîne avec Aria", value: 'aria' }], item }])
       setTimeout(scrollToBottom, 60)
       return
@@ -713,7 +718,9 @@ TECHNIQUE (invisible pour moi, ne l'explique jamais)${NB}: le jour où je VALIDE
     const isFoundation = top && !top.contactId
     const line = (it: PlanItem, i: number) => it.contactId
       ? `${i + 1}. ${it.headline} — ${it.reason} (contact : ${it.prenom}, étape : ${it.stage || 'à définir'})`
-      : `${i + 1}. ${it.headline} — ${it.reason} (fondation de ton activité, pas un contact)`
+      : it.stage === 'PERSO'
+        ? `${i + 1}. ${it.headline} — ${it.reason} (investissement sur toi, pas un contact)`
+        : `${i + 1}. ${it.headline} — ${it.reason} (fondation de ton activité, pas un contact)`
     const ctx = items.length === 0
       ? "Je n'ai aucune priorité urgente aujourd'hui d'après mes contacts. Dis-moi à ta voix, comme un coach, comment on avance (prospecter, enrichir ma liste, me former…) — une action à la fois."
       : isFoundation
@@ -858,6 +865,43 @@ TECHNIQUE (invisible pour moi, ne l'explique jamais)${NB}: le jour où je VALIDE
   }
 
   // Sélection d'un rond : retire les choix, renvoie le choix en bulle, et branche (machine à états du flux).
+  // Pousse la carte brouillon ; avec un support joint, le lien est intégré au message via la consigne du draft.
+  const emitDraft = (item: PlanItem, channel: string, support: { title: string; fileUrl: string } | null) => {
+    const intro = channel === 'EMAIL'
+      ? `Je te prépare un mail pour ${item.prenom}.`
+      : `Je te prépare un message qui lui ressemble. Régénère-le si besoin, puis ouvre-le direct dans ${channel === 'WHATSAPP' ? 'WhatsApp' : 'tes SMS'}.`
+    const instruction = support
+      ? `Tu lui envoies ton support de présentation « ${support.title} » — intègre naturellement ce lien dans le message : ${support.fileUrl.startsWith('/') ? window.location.origin + support.fileUrl : support.fileUrl}`
+      : undefined
+    setMsgs((prev) => [...prev,
+      { from: 'atlas', text: support ? `Bien vu — je rédige le message avec « ${support.title} » joint.` : intro },
+      { from: 'atlas', text: '', draft: { contactId: item.contactId, prenom: item.prenom, channel, phone: item.phone, email: item.email, instruction } },
+    ])
+    setTimeout(scrollToBottom, 60)
+  }
+
+  // Action « présenter » : liste les supports du rayon Présenter, l'utilisateur en joint un (ou pas).
+  const askSupport = async (item: PlanItem, channel: string) => {
+    let sups: { title: string; fileUrl: string }[] = []
+    try {
+      const r = await fetch('/api/activities/active')
+      const d = r.ok ? await r.json() : null
+      sups = (d?.activity?.supports?.PRESENTER ?? []).slice(0, 3)
+    } catch { /* pas de supports → brouillon simple */ }
+    if (!sups.length) { emitDraft(item, channel, null); return }
+    supportsRef.current = sups
+    setMsgs((prev) => [...prev, {
+      from: 'atlas',
+      text: `Un support fait la moitié du travail — tu veux en joindre un ?`,
+      choices: [
+        ...sups.map((s, i) => ({ label: `📎 ${s.title}`, value: `sup:${i}:${channel}` })),
+        { label: 'Sans support', value: `sup:none:${channel}` },
+      ],
+      item,
+    }])
+    setTimeout(scrollToBottom, 60)
+  }
+
   const handleChoice = (item: PlanItem, value: string, label: string, idx: number) => {
     setMsgs((prev) => [...prev.map((m, j) => (j === idx ? { ...m, choices: undefined } : m)), { from: 'user', text: label }])
     // Débrief : l'issue choisie déclenche les mutations EN CODE (RDV soldé, contact muté, relance posée),
@@ -929,21 +973,17 @@ TECHNIQUE (invisible pour moi, ne l'explique jamais)${NB}: le jour où je VALIDE
       advanceGather()
       return
     }
-    if (value === 'chan:message') {
-      const ch = item.phone ? 'WHATSAPP' : 'SMS'
-      setMsgs((prev) => [...prev,
-        { from: 'atlas', text: `Je te prépare un message qui lui ressemble. Régénère-le si besoin, puis ouvre-le direct dans ${ch === 'WHATSAPP' ? 'WhatsApp' : 'tes SMS'}.` },
-        { from: 'atlas', text: '', draft: { contactId: item.contactId, prenom: item.prenom, channel: ch, phone: item.phone, email: item.email } },
-      ])
-      setTimeout(scrollToBottom, 60)
+    if (value === 'chan:message' || value === 'chan:mail') {
+      const ch = value === 'chan:mail' ? 'EMAIL' : item.phone ? 'WHATSAPP' : 'SMS'
+      // Action « présenter » : on propose de joindre un support de sa bibliothèque (rayon Présenter).
+      if (item.action === 'PRESENTER') { void askSupport(item, ch); return }
+      emitDraft(item, ch, null)
       return
     }
-    if (value === 'chan:mail') {
-      setMsgs((prev) => [...prev,
-        { from: 'atlas', text: `Je te prépare un mail pour ${item.prenom}.` },
-        { from: 'atlas', text: '', draft: { contactId: item.contactId, prenom: item.prenom, channel: 'EMAIL', phone: item.phone, email: item.email } },
-      ])
-      setTimeout(scrollToBottom, 60)
+    // Choix du support à joindre (action PRESENTER) : sup:<index|none>:<canal>
+    if (value.startsWith('sup:')) {
+      const [, k, ch] = value.split(':')
+      emitDraft(item, ch, k === 'none' ? null : supportsRef.current[Number(k)] ?? null)
       return
     }
     if (value === 'chan:call') {
@@ -1225,7 +1265,7 @@ TECHNIQUE (invisible pour moi, ne l'explique jamais)${NB}: le jour où je VALIDE
                     <ChatChoices choices={m.choices} onPick={(value, label) => handleChoice(m.item!, value, label, i)} />
                   </div>
                 ) : m.draft ? (
-                  <AtlasDraftCard contactId={m.draft.contactId} prenom={m.draft.prenom} channel={m.draft.channel} phone={m.draft.phone} email={m.draft.email} />
+                  <AtlasDraftCard contactId={m.draft.contactId} prenom={m.draft.prenom} channel={m.draft.channel} phone={m.draft.phone} email={m.draft.email} instruction={m.draft.instruction} />
                 ) : m.profileForm ? (
                   <ProfileFormCard me={m.profileForm.me} onSaved={(n) => { setMsgs((prev) => [...prev, { from: 'atlas', text: `C'est noté dans ton profil ✓ (${n} info${n > 1 ? 's' : ''}). Plus je te connais, mieux je te coache.` }]); setTimeout(scrollToBottom, 60) }} />
                 ) : m.whyCard ? (

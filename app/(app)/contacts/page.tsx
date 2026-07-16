@@ -504,6 +504,11 @@ function ContactsContent() {
                     </div>
                     <div className="flex shrink-0 flex-col items-end gap-1">
                       <StagePill stage={c.stage} />
+                      {c.isClient && !c.isPartner && c.prospectStage && (
+                        <span className="inline-flex items-center rounded-full bg-primary/10 px-2.5 py-0.5 text-[10px] font-medium text-primary">
+                          En recrutement
+                        </span>
+                      )}
                       <span className="text-[10px] text-muted-foreground">
                         {c.lastInteraction}
                       </span>
@@ -774,7 +779,14 @@ function ContactsContent() {
 
                       {/* Température */}
                       <td className="px-4 py-3.5">
-                        <StagePill stage={c.stage} />
+                        <span className="inline-flex flex-wrap items-center gap-1">
+                          <StagePill stage={c.stage} />
+                          {c.isClient && !c.isPartner && c.prospectStage && (
+                            <span className="inline-flex items-center rounded-full bg-primary/10 px-2.5 py-0.5 text-[10px] font-medium text-primary">
+                              En recrutement
+                            </span>
+                          )}
+                        </span>
                       </td>
 
                       {/* Ville */}

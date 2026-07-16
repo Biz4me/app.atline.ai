@@ -50,7 +50,7 @@ export function ChatChoices({ choices, onPick }: { choices: { label: string; val
 }
 
 // Carte brouillon régénérable + ouverture de la vraie messagerie avec le message prêt.
-export function AtlasDraftCard({ contactId, prenom, channel, phone, email }: { contactId: string; prenom: string; channel: string; phone: string | null; email: string | null }) {
+export function AtlasDraftCard({ contactId, prenom, channel, phone, email, instruction }: { contactId: string; prenom: string; channel: string; phone: string | null; email: string | null; instruction?: string }) {
   const [msg, setMsg] = useState<string | null>(null)
   const [regensLeft, setRegensLeft] = useState(2)
   const [busy, setBusy] = useState(false)
@@ -59,12 +59,12 @@ export function AtlasDraftCard({ contactId, prenom, channel, phone, email }: { c
   const load = useCallback(async () => {
     setBusy(true); setCopied(false)
     try {
-      const r = await fetch(`/api/contacts/${contactId}/draft`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ channel }) })
+      const r = await fetch(`/api/contacts/${contactId}/draft`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ channel, ...(instruction ? { instruction } : {}) }) })
       const d = r.ok ? await r.json() : null
       setMsg(d?.message ?? "Je n'arrive pas à le rédiger là — réessaie dans un instant.")
     } catch { setMsg('Souci réseau — réessaie.') }
     finally { setBusy(false) }
-  }, [contactId, channel])
+  }, [contactId, channel, instruction])
   useEffect(() => { load() }, [load])
 
   const copy = () => { if (!msg) return; navigator.clipboard?.writeText(msg).then(() => { setCopied(true); setTimeout(() => setCopied(false), 1800) }).catch(() => {}) }
