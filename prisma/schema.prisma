@@ -463,6 +463,7 @@ model Contact {
   exposures       Int              @default(0)
   tags            String[]
   lastContact     DateTime?
+  signedAt        DateTime? // date de passage PARTENAIRE (issue « signé » du débrief) — mesure l'objectif mensuel
   note            String?
   atlasMemory     String? // bloc mémoire auto-édité par Atlas (MemGPT-style) — ce qu'il a appris sur ce contact
   atlasMemoryAt   DateTime? // dernière mise à jour du bloc mémoire

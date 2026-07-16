@@ -95,8 +95,9 @@ export default function AtlasPage() {
   const sessionParam = sp.get('session')
   const [msgs, setMsgs] = useState<Msg[]>([])
   const [plan, setPlan] = useState<PlanItem[]>([]) // plan du jour en cartes sur l'écran d'accueil du fil
+  const [planObj, setPlanObj] = useState<{ mensuel: number; signed: number } | null>(null) // objectif du mois (partenaires signés)
   useEffect(() => {
-    fetch('/api/plan/today').then((r) => (r.ok ? r.json() : null)).then((d) => setPlan(d?.items?.slice(0, 4) ?? [])).catch(() => {})
+    fetch('/api/plan/today').then((r) => (r.ok ? r.json() : null)).then((d) => { setPlan(d?.items?.slice(0, 4) ?? []); setPlanObj(d?.objectif ?? null) }).catch(() => {})
   }, [])
   const [input, setInput] = useState('')
   const [histMounted, setHistMounted] = useState(false)
@@ -678,6 +679,22 @@ TECHNIQUE (invisible pour moi, ne l'explique jamais)${NB}: le jour où je VALIDE
       setTimeout(scrollToBottom, 60)
       return
     }
+    // Débrief guidé : Atlas demande l'issue, les ronds déclenchent les mutations EN CODE.
+    if (item.action === 'DEBRIEF') {
+      setMsgs((prev) => [...prev, {
+        from: 'atlas',
+        text: `Alors, ce rendez-vous avec ${item.prenom} — comment ça s'est terminé ?`,
+        choices: [
+          { label: '✅ Signé !', value: 'deb:signed' },
+          { label: '🤔 Réfléchit encore', value: 'deb:thinking' },
+          { label: '❌ Pas maintenant', value: 'deb:no' },
+          { label: '📅 Reporté', value: 'deb:postponed' },
+        ],
+        item,
+      }])
+      setTimeout(scrollToBottom, 60)
+      return
+    }
     if (item.action !== 'MESSAGE') {
       setMsgs((prev) => [...prev, { from: 'atlas', text: `On s'occupe de ${item.prenom} — dis-moi :`, choices: [{ label: 'Ouvre sa fiche', value: 'fiche' }, { label: "Je m'entraîne avec Aria", value: 'aria' }], item }])
       setTimeout(scrollToBottom, 60)
@@ -690,7 +707,8 @@ TECHNIQUE (invisible pour moi, ne l'explique jamais)${NB}: le jour où je VALIDE
   const showPlan = async () => {
     if (streaming) return
     let items: PlanItem[] = []
-    try { const r = await fetch('/api/plan/today'); const d = r.ok ? await r.json() : null; items = d?.items ?? [] } catch { /* ignore */ }
+    let objMeta: { mensuel: number; signed: number } | null = null
+    try { const r = await fetch('/api/plan/today'); const d = r.ok ? await r.json() : null; items = d?.items ?? []; objMeta = d?.objectif ?? null } catch { /* ignore */ }
     const top = items[0]
     const isFoundation = top && !top.contactId
     const line = (it: PlanItem, i: number) => it.contactId
@@ -705,7 +723,10 @@ TECHNIQUE (invisible pour moi, ne l'explique jamais)${NB}: le jour où je VALIDE
         : 'Voici mes priorités du jour, déjà calculées et classées :\n'
           + items.map(line).join('\n')
           + "\n\nPrésente-moi ça à ta voix, comme un coach — pas une liste, tu me parles. Concentre-toi sur la priorité n°1 : dis-moi juste l'état d'esprit à avoir, en 1-2 phrases courtes. RÈGLE ABSOLUE : ne termine PAS par une question, ne me demande PAS ce que je veux faire, ne propose AUCUNE option. Tu t'arrêtes net sur l'état d'esprit. C'est MOI qui pose la question suivante juste après."
-    await sendMsg(ctx, 'Mon plan du jour')
+    const objLine = objMeta
+      ? `\n\nOBJECTIF DU MOIS : ${objMeta.signed}/${objMeta.mensuel} partenaires signés. Mentionne-le en UNE phrase au passage (célèbre si atteint, encourage sobrement sinon — jamais culpabilisant).`
+      : ''
+    await sendMsg(ctx + objLine, 'Mon plan du jour')
     if (top) startActionFlow(top)
   }
 
@@ -839,6 +860,38 @@ TECHNIQUE (invisible pour moi, ne l'explique jamais)${NB}: le jour où je VALIDE
   // Sélection d'un rond : retire les choix, renvoie le choix en bulle, et branche (machine à états du flux).
   const handleChoice = (item: PlanItem, value: string, label: string, idx: number) => {
     setMsgs((prev) => [...prev.map((m, j) => (j === idx ? { ...m, choices: undefined } : m)), { from: 'user', text: label }])
+    // Débrief : l'issue choisie déclenche les mutations EN CODE (RDV soldé, contact muté, relance posée),
+    // puis Atlas réagit à sa voix — dont le passage Closing → Démarrage et le compteur d'objectif.
+    if (value.startsWith('deb:')) {
+      const outcome = value.slice(4)
+      void (async () => {
+        let d: { signedThisMonth?: number; objectifMensuel?: number | null } = {}
+        try {
+          const r = await fetch(`/api/contacts/${item.contactId}/debrief`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ outcome, appointmentId: item.apptId ?? undefined }),
+          })
+          if (r.ok) d = await r.json()
+        } catch { /* best-effort : Atlas réagit quand même */ }
+        const p = item.prenom
+        if (outcome === 'signed') {
+          const n = d.signedThisMonth ?? 1
+          const score = d.objectifMensuel
+            ? ` Ça fait ${n} partenaire${n > 1 ? 's' : ''} sur ton objectif de ${d.objectifMensuel} ce mois-ci${n >= d.objectifMensuel ? ' — objectif ATTEINT 🎯' : ''}.`
+            : ''
+          setMsgs((prev) => [...prev, { from: 'atlas', text: `Énorme 🎉 ${p} rejoint ton équipe — je passe sa fiche en partenaire, phase démarrage.${score}\n\nTon prochain pas : cadre ses premières 48 heures (ses objectifs, sa liste, son premier contact accompagné). C'est là que tout se joue.` }])
+        } else if (outcome === 'thinking') {
+          setMsgs((prev) => [...prev, { from: 'atlas', text: `C'est un « pas encore », pas un non. Je remets ${p} en suivi et je t'ai posé une relance dans 3 jours — on garde le fer chaud, sans pression.` }])
+        } else if (outcome === 'no') {
+          setMsgs((prev) => [...prev, { from: 'atlas', text: `Ça arrive, et tu l'as tenté — c'est ça le métier. ${p} reste en suivi, je te le rappelle dans un mois : un non aujourd'hui est souvent un « pas maintenant ».` }])
+        } else {
+          setMsgs((prev) => [...prev, { from: 'atlas', text: `Pas grave — replanifie-le tant que c'est chaud.` }, { from: 'atlas', text: '', navCard: { route: '/agenda', label: 'Replanifier le RDV' } }])
+        }
+        setTimeout(scrollToBottom, 80)
+      })()
+      return
+    }
     // Nouvelle info donnée par l'utilisateur → Atlas demande s'il l'enregistre, le fait lui-même, puis confirme.
     if (value.startsWith('set:')) {
       const [, field, val] = value.split(':')
@@ -1104,6 +1157,11 @@ TECHNIQUE (invisible pour moi, ne l'explique jamais)${NB}: le jour où je VALIDE
             {!input.trim() && plan.length > 0 && (
               <div className="mx-auto mb-3 flex w-full max-w-md flex-col gap-2">
                 <p className="px-1 text-xs font-extrabold uppercase tracking-widest text-primary">Ton plan du jour</p>
+                {planObj && (
+                  <p className="px-1 text-xs text-muted-foreground">
+                    Objectif du mois : <span className="font-semibold tabular-nums text-foreground">{planObj.signed}/{planObj.mensuel}</span> partenaire{planObj.mensuel > 1 ? 's' : ''} signé{planObj.signed > 1 ? 's' : ''}{planObj.signed >= planObj.mensuel ? ' 🎯' : ''}
+                  </p>
+                )}
                 {plan.map((it) => (
                   <button
                     key={`${it.action}-${it.contactId}`}

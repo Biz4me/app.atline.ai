@@ -26,6 +26,7 @@ type Cand = {
   email: string | null
   market: string | null
   route: string | null // socle : surface à ouvrir (fondation) ; null pour une action par contact
+  apptId?: string | null // RDV concerné (actions DEBRIEF / RDV) — pour solder le bon rendez-vous
 }
 
 // score_opportunité (aligné sur computeScore de /api/contacts/[id])
@@ -88,12 +89,12 @@ export async function GET() {
   const cands: Cand[] = []
   const seen = new Set<string>() // 1 candidat max par contact (le 1er = le plus prioritaire)
 
-  const push = (c: typeof contacts[number], level: number, action: string, headline: string, reason: string, channel: string | null) => {
+  const push = (c: typeof contacts[number], level: number, action: string, headline: string, reason: string, channel: string | null, apptId: string | null = null) => {
     cands.push({
       contactId: c.id, name: c.name, prenom: prenom(c), initials: initialsOf(c), accent: c.accent ?? '#F97316',
       level, priority: Math.round(opportunity(c) * potentielMult(c.qualification)),
       action, headline, reason, channel, stage: c.prospectStage ?? c.partnerStage ?? '',
-      phone: c.phone, email: c.email, market: c.market, route: null,
+      phone: c.phone, email: c.email, market: c.market, route: null, apptId,
     })
   }
 
@@ -145,8 +146,8 @@ export async function GET() {
     if (!a.contactId) continue
     const c = byId.get(a.contactId); if (!c) continue
     const t = new Date(a.startAt).getTime()
-    if (t < now) push(c, 1, 'DEBRIEF', `Débriefe ton RDV avec ${prenom(c)}`, `RDV passé non débriefé — saisis le résultat pour débloquer la suite.`, null)
-    else if (t - now < 2 * 86_400_000) push(c, 1, 'RDV', `Prépare ton RDV avec ${prenom(c)}`, `RDV « ${a.title} » à venir — prépare-le et confirme.`, null)
+    if (t < now) push(c, 1, 'DEBRIEF', `Débriefe ton RDV avec ${prenom(c)}`, `RDV passé non débriefé — saisis le résultat pour débloquer la suite.`, null, a.id)
+    else if (t - now < 2 * 86_400_000) push(c, 1, 'RDV', `Prépare ton RDV avec ${prenom(c)}`, `RDV « ${a.title} » à venir — prépare-le et confirme.`, null, a.id)
   }
   for (const r of relances) {
     const c = byId.get(r.contactId); if (!c) continue
@@ -192,5 +193,21 @@ export async function GET() {
     if (plan.length >= 7) break
   }
 
-  return NextResponse.json({ items: plan, total: cands.length })
+  // Compteur d'objectif du mois : partenaires signés (signedAt) vs objectif.mensuel.
+  // La boucle agenda → débrief → « signé » → partenaire rend enfin l'objectif MESURABLE.
+  const objMensuel = parseInt(String(objectif.mensuel ?? ''), 10)
+  const signedThisMonth = hasObjectif && Number.isFinite(objMensuel)
+    ? await db.contact.count({
+        where: {
+          userId, mlmBusinessId: bizId, kind: 'PARTENAIRE',
+          signedAt: { gte: new Date(today.getFullYear(), today.getMonth(), 1) },
+        },
+      })
+    : 0
+
+  return NextResponse.json({
+    items: plan,
+    total: cands.length,
+    objectif: hasObjectif && Number.isFinite(objMensuel) ? { mensuel: objMensuel, signed: signedThisMonth } : null,
+  })
 }

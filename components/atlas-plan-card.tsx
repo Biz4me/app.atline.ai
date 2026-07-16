@@ -16,6 +16,7 @@ export type PlanItem = {
   reason: string
   channel: string | null
   stage: string
+  apptId?: string | null
   phone: string | null
   email: string | null
   market: string | null
