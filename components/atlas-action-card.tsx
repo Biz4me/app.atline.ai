@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { AlarmClock, CalendarPlus, StickyNote, Check, Loader2, X, type LucideIcon } from 'lucide-react'
+import { AlarmClock, CalendarPlus, StickyNote, UserPen, Check, Loader2, X, type LucideIcon } from 'lucide-react'
 import { toast } from 'sonner'
 
 // Carte « action » — Atlas a proposé une action concrète (relance, RDV, note) via un outil.
@@ -24,6 +24,23 @@ const META: Record<string, { icon: LucideIcon; label: (p: Record<string, string>
     icon: StickyNote,
     label: (p) => `Noter sur la fiche de ${p.contact_name ?? ''}`,
     desc: (p) => `« ${(p.note ?? '').slice(0, 120)} »`,
+  },
+  update_contact: {
+    icon: UserPen,
+    label: (p) => `Mettre à jour la fiche de ${p.contact_name ?? ''}`,
+    desc: (p) => {
+      const FR: [string, string][] = [
+        ['telephone', 'téléphone'], ['telephone2', '2e téléphone'], ['email', 'email'],
+        ['adresse', 'adresse'], ['ville', 'ville'], ['code_postal', 'code postal'], ['pays', 'pays'],
+        ['profession', 'métier'], ['education', 'formation'], ['date_naissance', 'naissance'],
+        ['genre', 'genre'], ['prenom', 'prénom'], ['nom', 'nom'], ['tags', 'tags'],
+        ['marche', 'proximité'], ['couleur', 'couleur'], ['etape', 'étape'],
+        ['situation', 'situation'], ['interets', 'intérêts'], ['motivation', 'motivation'],
+        ['insatisfaction', 'insatisfaction'], ['reseau', 'réseau'], ['ouverture', 'ouverture'],
+      ]
+      const parts = FR.filter(([k]) => p[k]).map(([, l]) => l)
+      return parts.length ? parts.join(' · ') : 'infos de la fiche'
+    },
   },
 }
 

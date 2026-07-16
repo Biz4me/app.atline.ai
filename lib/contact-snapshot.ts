@@ -17,15 +17,36 @@ export async function buildContactSnapshot(userId: string, contactId: string): P
     const kindLabel = c.kind === 'CLIENT' ? 'Client' : c.kind === 'PARTENAIRE' ? 'Partenaire' : 'Prospect'
     let statut = kindLabel
     if (c.prospectStage) statut += ` · tunnel : ${c.prospectStage}`
+    if (c.clientStage) statut += ` · client : ${c.clientStage}`
     if (c.partnerStage) statut += ` · partenaire : ${c.partnerStage}`
+    if (c.signedAt) statut += ` (signé le ${c.signedAt.toLocaleDateString('fr-FR')})`
     lines.push(`Statut : ${statut}`)
+    if (c.gender) {
+      const g = ({ M: 'homme', H: 'homme', HOMME: 'homme', F: 'femme', FEMME: 'femme' } as Record<string, string>)[c.gender.toUpperCase()] ?? c.gender
+      lines.push(`Genre : ${g} (accorde tes messages)`)
+    }
+    if (c.profession) lines.push(`Métier : ${c.profession}`)
+    if (c.education) lines.push(`Formation : ${c.education}`)
+    if (c.birthDate) {
+      const b = new Date(c.birthDate)
+      const today = new Date()
+      let age = today.getFullYear() - b.getFullYear()
+      if (today < new Date(today.getFullYear(), b.getMonth(), b.getDate())) age--
+      const anniv = b.getMonth() === today.getMonth() && b.getDate() === today.getDate()
+      lines.push(`Naissance : ${b.toLocaleDateString('fr-FR')} (${age} ans)${anniv ? " — C'EST SON ANNIVERSAIRE AUJOURD'HUI 🎂" : ''}`)
+    }
+    const reach = [c.phone && 'téléphone/WhatsApp', c.email && 'email'].filter(Boolean).join(' · ')
+    lines.push(reach ? `Joignable par : ${reach}` : '⚠️ Aucune coordonnée (ni téléphone ni email) — propose de les récupérer')
+    if (c.city || c.country) lines.push(`Ville : ${[c.city, c.country].filter(Boolean).join(', ')}`)
     if (c.market) lines.push(`Marché (proximité) : ${({ CHAUD: 'chaud', TIEDE: 'tiède', FROID: 'froid' } as Record<string, string>)[c.market] ?? c.market}`)
     if (c.personality) lines.push(`Couleur (Big Al) : ${c.personality}`)
     if (q) {
       const ql = [q.situation && `situation: ${q.situation}`, q.interests && `intérêts: ${q.interests}`, q.motivation && `motivation: ${q.motivation}`, q.insatisfaction && `insatisfaction: ${q.insatisfaction}`, q.reseau && `réseau: ${q.reseau}`, q.ouverture && `ouverture: ${q.ouverture}`].filter(Boolean).join(' · ')
       if (ql) lines.push(`Qualification : ${ql}`)
     }
+    if (c.tags.length) lines.push(`Tags : ${c.tags.join(', ')}`)
     if (typeof c.exposures === 'number' && c.exposures > 0) lines.push(`Expositions : ${c.exposures}`)
+    if (c.lastContact) lines.push(`Dernier contact : il y a ${Math.max(0, Math.floor((Date.now() - new Date(c.lastContact).getTime()) / 86_400_000))} j`)
     if (c.source) lines.push(`Origine : ${c.source}`)
     if (c.note) lines.push(`Note : ${c.note}`)
     if (c.atlasMemory) lines.push(`Ta mémoire sur lui : ${c.atlasMemory}`)

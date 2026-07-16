@@ -80,6 +80,47 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: true, done: `Note ajoutée à la fiche de ${contact.name}` })
     }
 
+    if (kind === 'update_contact') {
+      if (!p.contact_name) return NextResponse.json({ error: 'contact requis' }, { status: 400 })
+      const { contact, error } = await findContact(userId, p.contact_name)
+      if (!contact) return NextResponse.json({ error }, { status: 404 })
+
+      const data: Record<string, unknown> = {}
+      const set = (key: string, v?: string) => { if (v && v.trim()) data[key] = v.trim() }
+      set('firstName', p.prenom); set('lastName', p.nom)
+      set('gender', p.genre); set('profession', p.profession); set('education', p.education)
+      set('phone', p.telephone); set('phone2', p.telephone2); set('email', p.email)
+      set('address', p.adresse); set('city', p.ville); set('postal', p.code_postal); set('country', p.pays)
+      if (p.date_naissance) { const d = new Date(`${p.date_naissance}T12:00:00`); if (!isNaN(d.getTime())) data.birthDate = d }
+      if (p.tags) data.tags = p.tags.split(',').map((t) => t.trim()).filter(Boolean)
+      if (['CHAUD', 'TIEDE', 'FROID'].includes(p.marche)) data.market = p.marche
+      if (['ROUGE', 'VERT', 'BLEU', 'JAUNE'].includes(p.couleur)) data.personality = p.couleur
+      if (['NOUVEAU', 'INVITATION', 'PRESENTATION', 'SUIVI', 'CLOSING'].includes(p.etape)) data.prospectStage = p.etape
+
+      // Qualification : fusion clé à clé dans le JSON existant (jamais d'écrasement global)
+      const QUAL: Record<string, string> = { situation: 'situation', interets: 'interests', motivation: 'motivation', insatisfaction: 'insatisfaction', reseau: 'reseau', ouverture: 'ouverture' }
+      const qualEntries = Object.entries(QUAL).filter(([frk]) => p[frk] && p[frk].trim())
+      if (qualEntries.length) {
+        const cur = await db.contact.findFirst({ where: { id: contact.id, userId }, select: { qualification: true } })
+        const q = (cur?.qualification && typeof cur.qualification === 'object' && !Array.isArray(cur.qualification)) ? { ...(cur.qualification as Record<string, unknown>) } : {}
+        for (const [frk, dbk] of qualEntries) q[dbk] = p[frk].trim()
+        data.qualification = q
+      }
+
+      if (!Object.keys(data).length) return NextResponse.json({ error: 'aucune info à enregistrer' }, { status: 400 })
+
+      // name recomposé si prénom/nom changent (aligné sur le PATCH de la fiche)
+      if (data.firstName !== undefined || data.lastName !== undefined) {
+        const curN = await db.contact.findFirst({ where: { id: contact.id, userId }, select: { firstName: true, lastName: true } })
+        const composed = `${(data.firstName as string) ?? curN?.firstName ?? ''} ${(data.lastName as string) ?? curN?.lastName ?? ''}`.trim()
+        if (composed) data.name = composed
+      }
+
+      await db.contact.update({ where: { id: contact.id }, data })
+      const n = Object.keys(data).filter((k) => k !== 'name').length
+      return NextResponse.json({ ok: true, done: `Fiche de ${contact.name} mise à jour (${n} info${n > 1 ? 's' : ''})` })
+    }
+
     return NextResponse.json({ error: 'action inconnue' }, { status: 400 })
   } catch {
     return NextResponse.json({ error: "L'action n'a pas pu être exécutée" }, { status: 500 })
