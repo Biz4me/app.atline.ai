@@ -121,6 +121,56 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: true, done: `Fiche de ${contact.name} mise à jour (${n} info${n > 1 ? 's' : ''})` })
     }
 
+    if (kind === 'update_profile') {
+      const data: Record<string, unknown> = {}
+      const set = (key: string, v?: string) => { if (v && v.trim()) data[key] = v.trim() }
+      set('profession', p.profession); set('education', p.education); set('city', p.ville); set('bio', p.bio)
+      if (p.genre) { const g = ({ homme: 'M', femme: 'F', neutre: 'N' } as Record<string, string>)[p.genre]; if (g) data.gender = g }
+      if (p.date_naissance) { const d = new Date(`${p.date_naissance}T12:00:00`); if (!isNaN(d.getTime())) data.birthDate = d }
+      if (['ROUGE', 'VERT', 'BLEU', 'JAUNE'].includes(p.couleur)) data.personality = p.couleur
+
+      // Coaching : fusion clé à clé dans le JSON existant (même règle que la qualification contact)
+      const COACH: Record<string, string> = { pourquoi: 'why', parcours: 'background', passions: 'passions', dispo: 'availability', niveau: 'level' }
+      const coachEntries = Object.entries(COACH).filter(([frk]) => p[frk] && p[frk].trim())
+      if (coachEntries.length) {
+        const cur = await db.user.findUnique({ where: { id: userId }, select: { coaching: true } })
+        const c = (cur?.coaching && typeof cur.coaching === 'object' && !Array.isArray(cur.coaching)) ? { ...(cur.coaching as Record<string, unknown>) } : {}
+        for (const [frk, dbk] of coachEntries) c[dbk] = p[frk].trim()
+        data.coaching = c
+      }
+
+      if (!Object.keys(data).length) return NextResponse.json({ error: 'aucune info à enregistrer' }, { status: 400 })
+      await db.user.update({ where: { id: userId }, data })
+      const n = Object.keys(data).filter((k) => k !== 'coaching').length + coachEntries.length
+      return NextResponse.json({ ok: true, done: `Ton profil est à jour (${n} info${n > 1 ? 's' : ''})` })
+    }
+
+    if (kind === 'update_activite') {
+      const prefs = await db.userPreferences.findUnique({ where: { userId }, select: { activeCompanyId: true } })
+      const biz = (prefs?.activeCompanyId
+        ? await db.userMlmBusiness.findFirst({ where: { id: prefs.activeCompanyId, userId } })
+        : null) ?? await db.userMlmBusiness.findFirst({ where: { userId }, orderBy: { position: 'asc' } })
+      if (!biz) return NextResponse.json({ error: 'Aucune activité à mettre à jour.' }, { status: 404 })
+
+      const data: Record<string, unknown> = {}
+      const set = (key: string, v?: string) => { if (v && v.trim()) data[key] = v.trim() }
+      set('produit', p.produit); set('audience', p.audience); set('rank', p.rang); set('story', p.story); set('sponsorName', p.parrain)
+
+      // Objectif : fusion clé à clé (mensuel / m3 / m6 / m12)
+      const OBJ: Record<string, string> = { objectif_mensuel: 'mensuel', objectif_3m: 'm3', objectif_6m: 'm6', objectif_12m: 'm12' }
+      const objEntries = Object.entries(OBJ).filter(([frk]) => p[frk] && p[frk].trim())
+      if (objEntries.length) {
+        const o = (biz.objectif && typeof biz.objectif === 'object' && !Array.isArray(biz.objectif)) ? { ...(biz.objectif as Record<string, unknown>) } : {}
+        for (const [frk, dbk] of objEntries) o[dbk] = p[frk].trim()
+        data.objectif = o
+      }
+
+      if (!Object.keys(data).length) return NextResponse.json({ error: 'aucune info à enregistrer' }, { status: 400 })
+      await db.userMlmBusiness.update({ where: { id: biz.id }, data })
+      const n = Object.keys(data).filter((k) => k !== 'objectif').length + objEntries.length
+      return NextResponse.json({ ok: true, done: `Activité ${biz.mlmName} mise à jour (${n} info${n > 1 ? 's' : ''})` })
+    }
+
     return NextResponse.json({ error: 'action inconnue' }, { status: 400 })
   } catch {
     return NextResponse.json({ error: "L'action n'a pas pu être exécutée" }, { status: 500 })

@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { AlarmClock, CalendarPlus, StickyNote, UserPen, Check, Loader2, X, type LucideIcon } from 'lucide-react'
+import { AlarmClock, Briefcase, CalendarPlus, CircleUserRound, StickyNote, UserPen, Check, Loader2, X, type LucideIcon } from 'lucide-react'
 import { toast } from 'sonner'
 
 // Carte « action » — Atlas a proposé une action concrète (relance, RDV, note) via un outil.
@@ -40,6 +40,34 @@ const META: Record<string, { icon: LucideIcon; label: (p: Record<string, string>
       ]
       const parts = FR.filter(([k]) => p[k]).map(([, l]) => l)
       return parts.length ? parts.join(' · ') : 'infos de la fiche'
+    },
+  },
+  update_profile: {
+    icon: CircleUserRound,
+    label: () => 'Mettre à jour ton profil',
+    desc: (p) => {
+      const FR: [string, string][] = [
+        ['profession', 'métier'], ['education', 'formation'], ['ville', 'ville'],
+        ['date_naissance', 'naissance'], ['genre', 'genre'], ['couleur', 'couleur'], ['bio', 'bio'],
+        ['pourquoi', 'pourquoi'], ['parcours', 'parcours'], ['passions', 'passions'],
+        ['dispo', 'disponibilité'], ['niveau', 'niveau'],
+      ]
+      const parts = FR.filter(([k]) => p[k]).map(([, l]) => l)
+      return parts.length ? parts.join(' · ') : 'infos du profil'
+    },
+  },
+  update_activite: {
+    icon: Briefcase,
+    label: () => 'Mettre à jour ton activité',
+    desc: (p) => {
+      const FR: [string, string][] = [
+        ['objectif_mensuel', 'objectif mensuel'], ['objectif_3m', 'objectif 3 mois'],
+        ['objectif_6m', 'objectif 6 mois'], ['objectif_12m', 'objectif 12 mois'],
+        ['produit', 'produit phare'], ['audience', 'audience'], ['rang', 'rang'],
+        ['story', 'ta rencontre'], ['parrain', 'parrain'],
+      ]
+      const parts = FR.filter(([k]) => p[k]).map(([, l]) => l)
+      return parts.length ? parts.join(' · ') : "infos de l'activité"
     },
   },
 }

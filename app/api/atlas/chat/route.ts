@@ -36,14 +36,25 @@ async function buildAtlasSnapshot(userId: string): Promise<string> {
 
     const now = new Date()
     const endOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59)
-    const [contactsCount, relancesDue, lessonsTotal, lessonsDone, nextRdv, sims] = await Promise.all([
+    const [user, contactsCount, relancesDue, nextRelances, lessonsTotal, lessonsDone, nextRdvs, sims, links, supports] = await Promise.all([
+      db.user.findUnique({
+        where: { id: userId },
+        select: { firstName: true, gender: true, birthDate: true, city: true, profession: true, education: true, bio: true, personality: true, coaching: true, socials: true },
+      }),
       db.contact.count({ where: { userId } }),
       db.relance.count({ where: { userId, status: 'PENDING', dueAt: { lte: endOfDay } } }),
+      db.relance.findMany({
+        where: { userId, status: 'PENDING' },
+        orderBy: { dueAt: 'asc' },
+        take: 5,
+        select: { dueAt: true, channel: true, contactId: true },
+      }),
       db.lmsLesson.count(),
       db.userLessonProgress.count({ where: { userId, done: true } }),
-      db.appointment.findFirst({
+      db.appointment.findMany({
         where: { userId, done: false, startAt: { gte: now } },
         orderBy: { startAt: 'asc' },
+        take: 5,
         select: { title: true, startAt: true, contact: { select: { firstName: true, lastName: true } } },
       }),
       db.simSession.findMany({
@@ -51,9 +62,41 @@ async function buildAtlasSnapshot(userId: string): Promise<string> {
         orderBy: { startedAt: 'asc' },
         select: { characterId: true, score: true, startedAt: true, phase: true },
       }),
+      biz ? db.toolboxLink.findMany({ where: { userId, mlmBusinessId: biz.id }, select: { linkType: true, url: true } }) : [],
+      biz ? db.toolboxSupport.findMany({ where: { userId, mlmBusinessId: biz.id }, select: { bucket: true, title: true }, orderBy: { createdAt: 'desc' }, take: 12 }) : [],
     ])
 
     const lines: string[] = []
+
+    // Qui est l'utilisateur — Atlas coache une personne, pas un compte.
+    if (user) {
+      let who = `Utilisateur : ${user.firstName}`
+      const g = ({ M: 'homme', F: 'femme', N: 'neutre' } as Record<string, string>)[user.gender ?? ''] ?? ''
+      const bits: string[] = []
+      if (g) bits.push(`${g} — accorde tes messages`)
+      if (user.birthDate) {
+        const b = new Date(user.birthDate)
+        let age = now.getFullYear() - b.getFullYear()
+        if (now < new Date(now.getFullYear(), b.getMonth(), b.getDate())) age--
+        bits.push(`${age} ans`)
+        if (b.getMonth() === now.getMonth() && b.getDate() === now.getDate()) bits.push("C'EST SON ANNIVERSAIRE AUJOURD'HUI 🎂")
+      }
+      if (user.city) bits.push(user.city)
+      if (bits.length) who += ` (${bits.join(', ')})`
+      lines.push(who)
+      const job = [user.profession && `Métier : ${user.profession}`, user.education && `Formation : ${user.education}`].filter(Boolean).join(' · ')
+      if (job) lines.push(job)
+      if (user.personality) lines.push(`Sa couleur (Big Al) : ${user.personality} — adapte ton coaching à SA couleur`)
+      if (user.bio) lines.push(`Bio : ${user.bio.slice(0, 200)}`)
+      const co = (user.coaching ?? null) as Record<string, string> | null
+      if (co) {
+        const cl = [co.why && `pourquoi : ${co.why}`, co.background && `parcours : ${co.background}`, co.passions && `passions : ${co.passions}`, co.availability && `dispo : ${co.availability}`, co.level && `niveau : ${co.level}`].filter(Boolean).join(' · ')
+        if (cl) lines.push(`Coaching : ${cl}`)
+      }
+      const so = (user.socials ?? null) as Record<string, string> | null
+      if (so && Object.keys(so).length) lines.push(`Réseaux sociaux : ${Object.keys(so).join(', ')}`)
+    }
+
     if (biz) {
       let head = `Activité active : ${biz.mlmName}`
       if (biz.rank) head += ` · rang ${biz.rank}`
@@ -72,14 +115,42 @@ async function buildAtlasSnapshot(userId: string): Promise<string> {
         const seg = [Number(st.directs) && `${st.directs} partenaires directs`, Number(st.total) && `${st.total} dans l'organisation`, Number(st.clients) && `${st.clients} clients`].filter(Boolean).join(', ')
         lines.push(`Structure de départ (déclarée) : ${seg}`)
       }
+      if (biz.sponsorName) lines.push(`Parrain : ${biz.sponsorName}`)
+      if (biz.story) lines.push(`Sa rencontre avec l'opportunité : ${biz.story.slice(0, 400)}`)
+      if (links.length) {
+        const LT: Record<string, string> = { BOUTIQUE: 'boutique', PARRAINAGE: 'parrainage', RDV: 'prise de RDV', WHATSAPP: 'WhatsApp', WHATSAPP_GROUP: 'groupe WhatsApp', ZOOM: 'Zoom', INSTAGRAM: 'Instagram', FACEBOOK: 'Facebook', TIKTOK: 'TikTok' }
+        lines.push(`Ses liens (à glisser dans les messages que tu rédiges) : ${links.filter((l) => l.url).map((l) => `${LT[l.linkType] ?? l.linkType.toLowerCase()} → ${l.url}`).join(' · ')}`)
+      }
+      if (supports.length) {
+        const BK: Record<string, string> = { PRESENTER: 'Présenter', FORMER: 'Former', VENDRE: 'Vendre' }
+        const byBucket = new Map<string, string[]>()
+        for (const s of supports) {
+          const arr = byBucket.get(s.bucket) ?? []
+          arr.push(s.title)
+          byBucket.set(s.bucket, arr)
+        }
+        lines.push(`Supports dans sa bibliothèque : ${[...byBucket.entries()].map(([b, ts]) => `${BK[b] ?? b} : ${ts.map((t) => `« ${t} »`).join(', ')}`).join(' · ')}`)
+      }
     }
     lines.push(`Contacts : ${contactsCount} au total`)
     if (relancesDue > 0) lines.push(`Relances à faire (échéance ≤ aujourd'hui) : ${relancesDue}`)
+    if (nextRelances.length) {
+      // Relance n'a pas de relation Prisma vers Contact : résolution des noms en un lot.
+      const rc = await db.contact.findMany({
+        where: { id: { in: [...new Set(nextRelances.map((r) => r.contactId))] }, userId },
+        select: { id: true, name: true },
+      })
+      const names = new Map(rc.map((c) => [c.id, c.name]))
+      const fmt = new Intl.DateTimeFormat('fr-FR', { weekday: 'short', day: 'numeric', month: 'short' })
+      lines.push(`Prochaines relances : ${nextRelances.map((r) => `${names.get(r.contactId) ?? '?'} (${r.channel}) ${fmt.format(r.dueAt)}`).join(' · ')}`)
+    }
     if (lessonsTotal > 0) lines.push(`Formation : ${Math.round((lessonsDone / lessonsTotal) * 100)}% des leçons (${lessonsDone}/${lessonsTotal})`)
-    if (nextRdv) {
-      const when = new Intl.DateTimeFormat('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' }).format(nextRdv.startAt)
-      const who = nextRdv.contact ? ` avec ${[nextRdv.contact.firstName, nextRdv.contact.lastName].filter(Boolean).join(' ')}` : ''
-      lines.push(`Prochain rendez-vous : ${nextRdv.title}${who} — ${when}`)
+    if (nextRdvs.length) {
+      const fmt = new Intl.DateTimeFormat('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' })
+      lines.push(`Prochains rendez-vous : ${nextRdvs.map((r) => {
+        const who = r.contact ? ` avec ${[r.contact.firstName, r.contact.lastName].filter(Boolean).join(' ')}` : ''
+        return `${r.title}${who} — ${fmt.format(r.startAt)}`
+      }).join(' · ')}`)
     }
     // Entraînements Aria (30 j) : dernier score + PROGRESSION par scénario rejoué —
     // c'est ce qui permet à Atlas de dire « tu es passé de 45 à 70 sur l'objection pyramide ».
