@@ -21,6 +21,11 @@ export function usePushToTalk({ getBase, onText }: Opts) {
   const finalsRef = useRef<string[]>([])
   const interimRef = useRef('')
   const chunksRef = useRef<Blob[]>([])
+  // Mobile : le WS s'ouvre APRÈS le 1er chunk (réseau lent) — on met en file au lieu de perdre
+  // l'entête du conteneur (sans elle, Deepgram ne peut pas décoder le flux).
+  const queueRef = useRef<Blob[]>([])
+  const stopPendingRef = useRef(false)
+  const mimeRef = useRef('audio/webm')
 
   useEffect(() => {
     setSupported(
@@ -38,12 +43,28 @@ export function usePushToTalk({ getBase, onText }: Opts) {
     optsRef.current.onText(base ? (live ? base + ' ' + live : base) : live)
   }, [])
 
+  // Repli « prerecorded » : tout l'audio enregistré part en un POST (pas de WS, ou flux resté muet).
+  const postFallback = useCallback(async () => {
+    const blob = new Blob(chunksRef.current, { type: mimeRef.current })
+    if (blob.size < 1200) { setBusy(false); return }
+    setBusy(true)
+    try {
+      const r = await fetch('/api/stt', { method: 'POST', headers: { 'Content-Type': mimeRef.current }, body: blob })
+      const d = r.ok ? await r.json().catch(() => null) : null
+      const t = (d?.text ?? '').trim()
+      if (t) { finalsRef.current = [t]; interimRef.current = ''; compose() }
+    } catch { /* ignore */ }
+    setBusy(false)
+  }, [compose])
+
   const start = useCallback(async () => {
     if (recording || busy) return
     baseRef.current = optsRef.current.getBase()
     finalsRef.current = []
     interimRef.current = ''
     chunksRef.current = []
+    queueRef.current = []
+    stopPendingRef.current = false
 
     // Ticket d'accès au WebSocket (échoue en silence → repli POST)
     let ticket = ''
@@ -57,10 +78,17 @@ export function usePushToTalk({ getBase, onText }: Opts) {
       const mime = MediaRecorder.isTypeSupported('audio/webm') ? 'audio/webm'
         : MediaRecorder.isTypeSupported('audio/mp4') ? 'audio/mp4' : ''
       const mr = new MediaRecorder(stream, mime ? { mimeType: mime } : undefined)
+      mimeRef.current = mime || 'audio/webm'
 
       if (ticket) {
         const proto = location.protocol === 'https:' ? 'wss' : 'ws'
         const ws = new WebSocket(`${proto}://${location.host}/sttws/stream?ticket=${encodeURIComponent(ticket)}`)
+        ws.onopen = () => {
+          // Les chunks arrivés pendant la poignée de main (mobile) partent maintenant, dans l'ordre.
+          for (const b of queueRef.current) { try { ws.send(b) } catch { /* ignore */ } }
+          queueRef.current = []
+          if (stopPendingRef.current) { try { ws.send('stop') } catch { /* ignore */ } }
+        }
         ws.onmessage = (ev) => {
           try {
             const d = JSON.parse(ev.data)
@@ -71,7 +99,13 @@ export function usePushToTalk({ getBase, onText }: Opts) {
             compose()
           } catch { /* ignore */ }
         }
-        ws.onclose = () => setBusy(false)
+        ws.onclose = () => {
+          // Flux resté muet (réseau, décodage…) alors qu'on a de l'audio → repli POST complet.
+          const noText = finalsRef.current.length === 0 && !interimRef.current
+          const done = !mrRef.current || mrRef.current.state === 'inactive'
+          if (noText && done && chunksRef.current.length) void postFallback()
+          else setBusy(false)
+        }
         wsRef.current = ws
       }
 
@@ -79,37 +113,37 @@ export function usePushToTalk({ getBase, onText }: Opts) {
         if (!e.data.size) return
         chunksRef.current.push(e.data)
         const ws = wsRef.current
-        if (ws && ws.readyState === WebSocket.OPEN) ws.send(e.data)
+        if (!ws) return
+        if (ws.readyState === WebSocket.OPEN) ws.send(e.data)
+        // Pas encore ouvert : on met en file — le 1er chunk porte l'entête du conteneur, le perdre rend le flux illisible.
+        else if (ws.readyState === WebSocket.CONNECTING) queueRef.current.push(e.data)
       }
 
       mr.onstop = async () => {
         stream.getTracks().forEach((t) => t.stop())
         const ws = wsRef.current
-        if (ws && (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING)) {
+        if (ws && ws.readyState === WebSocket.OPEN) {
           setBusy(true)
           try { ws.send('stop') } catch { /* ignore */ }
           setTimeout(() => { try { ws.close() } catch { /* ignore */ } }, 1500)
           return
         }
-        // Repli : pas de WebSocket → transcription « prerecorded » en un POST.
-        const type = mr.mimeType || 'audio/webm'
-        const blob = new Blob(chunksRef.current, { type })
-        if (blob.size < 1200) return
-        setBusy(true)
-        try {
-          const r = await fetch('/api/stt', { method: 'POST', headers: { 'Content-Type': type }, body: blob })
-          const d = r.ok ? await r.json().catch(() => null) : null
-          const t = (d?.text ?? '').trim()
-          if (t) { finalsRef.current = [t]; interimRef.current = ''; compose() }
-        } catch { /* ignore */ }
-        setBusy(false)
+        if (ws && ws.readyState === WebSocket.CONNECTING) {
+          // La poignée de main n'est pas finie : le « stop » partira à l'ouverture, après la file.
+          setBusy(true)
+          stopPendingRef.current = true
+          setTimeout(() => { try { ws.close() } catch { /* ignore */ } }, 2500)
+          return
+        }
+        // Pas de WebSocket → transcription « prerecorded » en un POST.
+        await postFallback()
       }
 
       mr.start(250) // segments de 250 ms → flux continu vers Deepgram
       mrRef.current = mr
       setRecording(true)
     } catch { /* micro refusé/indisponible */ }
-  }, [recording, busy, compose])
+  }, [recording, busy, compose, postFallback])
 
   const stop = useCallback(() => {
     const mr = mrRef.current
