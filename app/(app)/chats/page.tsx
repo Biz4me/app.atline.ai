@@ -15,7 +15,7 @@ import { ChatsDrawer } from '@/components/chats-drawer'
 // T1 : les badges = le plan du jour (même moteur /api/plan/today que le chat, plafond 7).
 // Action liée à un contact → badge sur SON fil ; fondation/formation → badge Atlas. Inbox zéro = journée faite.
 
-type Agent = { id: string; name: string; role: string; line: string; at: string | null }
+type Agent = { id: string; name: string; role: string; line: string; at: string | null; badge?: number }
 type Thread = {
   contactId: string; name: string; prenom: string; initials: string; accent: string
   kind: string; stage: string | null; recruiting: boolean
@@ -23,7 +23,7 @@ type Thread = {
 }
 
 const AGENT_COLOR: Record<string, string> = { atlas: '#F97316', aria: '#14B8A6', nova: '#8B5CF6', communaute: '#3f434b' }
-const AGENT_ROUTE: Record<string, string> = { atlas: '/atlas', aria: '/aria', nova: '/nova', communaute: '/communaute' }
+const AGENT_ROUTE: Record<string, string> = { atlas: '/atlas', aria: '/chats/aria', nova: '/nova', communaute: '/communaute' }
 const AGENT_PILL: Record<string, string> = { atlas: 'bg-primary/10 text-primary', aria: 'bg-[#14B8A6]/10 text-[#14B8A6]', nova: 'bg-[#8B5CF6]/10 text-[#8B5CF6]', communaute: 'bg-muted text-muted-foreground' }
 const STAGE_LABEL: Record<string, string> = {
   NOUVEAU: 'Nouveau', INVITATION: 'Invitation', PRESENTATION: 'Présentation', SUIVI: 'Suivi', CLOSING: 'Closing',
@@ -120,9 +120,9 @@ export default function ChatsPage() {
             title={a.name}
             titlePill={{ label: a.role, cls: AGENT_PILL[a.id] ?? AGENT_PILL.communaute }}
             line={a.id === 'atlas' && plan.length > 0 ? `Ton plan est prêt · ${plan.length} action${plan.length > 1 ? 's' : ''} aujourd'hui 🎯` : a.line}
-            lineOrange={a.id === 'atlas' && plan.length > 0}
+            lineOrange={(a.id === 'atlas' && plan.length > 0) || (a.badge ?? 0) > 0}
             time={when(a.at)}
-            count={a.id === 'atlas' ? atlasBadge : 0}
+            count={a.id === 'atlas' ? atlasBadge : a.badge ?? 0}
             onClick={() => router.push(AGENT_ROUTE[a.id] ?? '/atlas')}
           />
         ))}

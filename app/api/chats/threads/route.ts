@@ -27,7 +27,8 @@ export async function GET() {
   const bizId = await activeBusinessId(userId)
 
   // ── Agents épinglés : la dernière trace de chacun (best-effort, jamais bloquant) ──
-  const [lastAtlas, lastSim, lastIdea, lastForum, contacts] = await Promise.all([
+  const now = new Date()
+  const [lastAtlas, lastSim, lastIdea, lastForum, nextRdv, simToday, contacts] = await Promise.all([
     db.atlasMessage.findFirst({
       where: { conversation: { userId, contactId: null, agent: 'atlas' } },
       orderBy: { createdAt: 'desc' },
@@ -46,6 +47,16 @@ export async function GET() {
     db.forumPost.findFirst({
       orderBy: { createdAt: 'desc' },
       select: { content: true, createdAt: true, author: { select: { firstName: true } } },
+    }).catch(() => null),
+    // Aria proactive : un vrai RDV dans les 36 h → « on s'échauffe ? » (sauf si déjà entraîné aujourd'hui)
+    db.appointment.findFirst({
+      where: { userId, done: false, startAt: { gte: now, lte: new Date(now.getTime() + 36 * 3_600_000) } },
+      orderBy: { startAt: 'asc' },
+      select: { startAt: true, contact: { select: { firstName: true, name: true } } },
+    }).catch(() => null),
+    db.simSession.findFirst({
+      where: { userId, score: { not: null }, startedAt: { gte: new Date(now.getFullYear(), now.getMonth(), now.getDate()) } },
+      select: { id: true },
     }).catch(() => null),
     bizId
       ? db.contact.findMany({
@@ -74,10 +85,14 @@ export async function GET() {
       id: 'aria',
       name: 'Aria',
       role: 'simulateur',
-      line: lastSim
-        ? `Simulation « ${lastSim.characterId.replace(/_/g, ' ')} » : ${lastSim.score}/100`
-        : "Ton sparring-partner — entraîne-toi avant d'appeler",
-      at: lastSim?.startedAt ?? null,
+      // Veille de RDV : Aria propose l'échauffement d'avant-match (badge), sauf si déjà entraîné aujourd'hui.
+      line: nextRdv && !simToday
+        ? `Tu vois ${nextRdv.contact?.firstName ?? nextRdv.contact?.name ?? "quelqu'un"} ${nextRdv.startAt.toDateString() === now.toDateString() ? "aujourd'hui" : 'demain'} — on s'échauffe avant ?`
+        : lastSim
+          ? `Simulation « ${lastSim.characterId.replace(/_/g, ' ')} » : ${lastSim.score}/100`
+          : "Ton sparring-partner — entraîne-toi avant d'appeler",
+      at: (nextRdv && !simToday ? now : lastSim?.startedAt) ?? null,
+      badge: nextRdv && !simToday ? 1 : 0,
     },
     {
       id: 'nova',
