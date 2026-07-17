@@ -4,7 +4,7 @@ import { use, useEffect, useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import {
   Pencil, Mail, Tag,
-  MessageSquare, PhoneCall, CalendarPlus, Mic, Sparkles, ArrowRight, X, Plus,
+  MessageSquare, PhoneCall, CalendarPlus, Mic, Sparkles, ArrowRight, X, Plus, ChevronLeft,
   MessageCircle, Bell, Share2, StickyNote, Check, ChevronDown, User as UserIcon, Contact, Trash2, ClipboardList,
 } from 'lucide-react'
 import { toast } from 'sonner'
@@ -365,11 +365,11 @@ export default function ContactDetailPage({ params }: { params: Promise<{ id: st
 
   return (
     <div className="mx-auto flex min-h-dvh w-full max-w-2xl flex-col bg-background">
-      {/* Topbar — titre = statut du contact, croix de fermeture à droite, aucune flèche retour */}
+      {/* Topbar — flèche retour à gauche : la fiche est l'« info du contact », on revient à SA conversation */}
       <div className="sticky top-0 z-30 flex items-center gap-2 bg-background/90 px-4 py-3 backdrop-blur" style={{ paddingTop: 'max(0.75rem, env(safe-area-inset-top))' }}>
-        <div className="size-9" />
+        <button type="button" onClick={() => router.push(`/chats/${id}`)} aria-label="Retour à la conversation" className="-ml-1 flex size-9 items-center justify-center rounded-full text-muted-foreground active:bg-muted"><ChevronLeft className="size-5 stroke-[1.5]" /></button>
         <h1 className="flex-1 text-center text-lg font-semibold text-foreground">{KIND_LABEL[c.kind]}</h1>
-        <button type="button" onClick={() => router.push('/contacts')} aria-label="Fermer" className="-mr-1 flex size-9 items-center justify-center rounded-full text-muted-foreground active:bg-muted"><X className="size-5 stroke-[1.5]" /></button>
+        <div className="size-9" />
       </div>
 
       {/* ═══ STRUCTURE CHARTE PROFIL (nouveau — à adapter) ═══ */}
