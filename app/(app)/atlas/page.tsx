@@ -24,7 +24,7 @@ import { PageHeader } from '@/components/page-shell'
 import { AtlasActionCard, type AtlasAction } from '@/components/atlas-action-card'
 
 type Choice = { label: string; value: string }
-type Msg = { from: 'user' | 'atlas'; text: string; chips?: string[]; choices?: Choice[]; item?: PlanItem; draft?: { contactId: string; prenom: string; channel: string; phone: string | null; email: string | null; instruction?: string }; profileForm?: { me: Record<string, unknown> }; whyCard?: { text: string; kind: SessionKind; title: string; obj?: Objectifs; superseded?: boolean; done?: boolean }; navCard?: { route: string; label: string }; actionCard?: AtlasAction }
+type Msg = { from: 'user' | 'atlas'; text: string; day?: string; chips?: string[]; choices?: Choice[]; item?: PlanItem; draft?: { contactId: string; prenom: string; channel: string; phone: string | null; email: string | null; instruction?: string }; profileForm?: { me: Record<string, unknown> }; whyCard?: { text: string; kind: SessionKind; title: string; obj?: Objectifs; superseded?: boolean; done?: boolean }; navCard?: { route: string; label: string }; actionCard?: AtlasAction }
 
 type SessionKind = 'why' | 'rencontre' | 'mindset' | 'objectifs' | 'audience' | 'parcours' | 'produit'
 type Objectifs = { mensuel: string; m3: string; m6: string; m12: string }
@@ -99,6 +99,8 @@ export default function AtlasPage() {
   const [msgs, setMsgs] = useState<Msg[]>([])
   // Recherche DANS la conversation (⋮ de l'en-tête, façon Telegram)
   const filSearch = useFilSearch(msgs.map((m) => m.text ?? ''))
+  // FIL CONTINU : l'id de la conversation la plus récente — celle que le composeur continue toujours
+  const filConvRef = useRef<string | null>(null)
   const [plan, setPlan] = useState<PlanItem[]>([]) // plan du jour en cartes sur l'écran d'accueil du fil
   const [planObj, setPlanObj] = useState<{ mensuel: number; signed: number } | null>(null) // objectif du mois (partenaires signés)
   useEffect(() => {
@@ -260,45 +262,47 @@ TECHNIQUE (invisible pour moi, ne l'explique jamais)${NB}: le jour où je VALIDE
     },
   }
 
-  // Charge la conversation de l'URL (?c=) — saute si on vient de la créer (loadedRef).
+  // FIL CONTINU (nav messagerie) : charge les derniers messages TOUTES conversations confondues,
+  // avec séparateurs de jours. Le composeur continue TOUJOURS la conversation la plus récente.
   useEffect(() => {
     if (c === loadedRef.current) return
     loadedRef.current = c
-    if (!c) { setMsgs([]); setLoadingConv(false); return }
     let cancelled = false
     setLoadingConv(true)
     ;(async () => {
       try {
-        const r = await fetch(`/api/atlas/conversations/${c}`)
-        if (r.status === 404) {
-          // conversation supprimée → on oublie et on repart vierge
-          localStorage.removeItem('atlas-last-conv')
-          loadedRef.current = null
-          if (!cancelled) { setMsgs([]); router.replace('/atlas') }
-          return
-        }
+        const r = await fetch('/api/atlas/fil')
         if (r.ok && !cancelled) {
           const d = await r.json()
-          const raw: { role: string; content: string }[] = d.messages ?? []
-          setMsgs(
-            raw.flatMap((m): Msg[] => {
-              if (m.role === 'USER') return [{ from: 'user', text: displayUserText(m.content) }]
-              const base: Msg = { from: 'atlas', text: stripOpenMarker(stripSaveMarker(m.content)) }
-              const om = m.content.match(OPEN_MARK_RE)
-              if (om) { const route = cleanOpenRoute(om[1]); if (route) return [base, { from: 'atlas', text: '', navCard: { route, label: om[2].trim() } }] }
-              return [base]
-            }),
-          )
+          const raw: { role: string; content: string; createdAt: string; conversationId: string }[] = d.messages ?? []
+          filConvRef.current = d.conversationId ?? null
+          const out: Msg[] = []
+          let lastDay = ''
+          const todayKey = new Date().toDateString()
+          for (const m of raw) {
+            const dt = new Date(m.createdAt)
+            if (dt.toDateString() !== lastDay) {
+              lastDay = dt.toDateString()
+              out.push({ from: 'atlas', text: '', day: lastDay === todayKey ? "Aujourd'hui" : dt.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' }) })
+            }
+            if (m.role === 'USER') { out.push({ from: 'user', text: displayUserText(m.content) }); continue }
+            out.push({ from: 'atlas', text: stripOpenMarker(stripSaveMarker(m.content)) })
+            const om = m.content.match(OPEN_MARK_RE)
+            if (om) { const route = cleanOpenRoute(om[1]); if (route) out.push({ from: 'atlas', text: '', navCard: { route, label: om[2].trim() } }) }
+          }
+          setMsgs(out)
           scrollToBottom()
           // Reprise d'une session de fondation non finalisée : cadre présent + valeur pas encore enregistrée.
+          // On ne scanne QUE la conversation la plus récente (pas les vieilles sessions du fil fusionné).
+          const rawLast = raw.filter((m) => m.conversationId === d.conversationId)
           const kind: SessionKind | null =
-            raw.some((m) => m.role === 'USER' && m.content.startsWith('[SESSION_RENCONTRE]')) ? 'rencontre'
-            : raw.some((m) => m.role === 'USER' && m.content.startsWith('[SESSION_MINDSET]')) ? 'mindset'
-            : raw.some((m) => m.role === 'USER' && m.content.startsWith('[SESSION_OBJECTIFS]')) ? 'objectifs'
-            : raw.some((m) => m.role === 'USER' && m.content.startsWith('[SESSION_AUDIENCE]')) ? 'audience'
-            : raw.some((m) => m.role === 'USER' && m.content.startsWith('[SESSION_PARCOURS]')) ? 'parcours'
-            : raw.some((m) => m.role === 'USER' && m.content.startsWith('[SESSION_PRODUIT]')) ? 'produit'
-            : raw.some((m) => m.role === 'USER' && m.content.startsWith('[SESSION_POURQUOI]')) ? 'why'
+            rawLast.some((m) => m.role === 'USER' && m.content.startsWith('[SESSION_RENCONTRE]')) ? 'rencontre'
+            : rawLast.some((m) => m.role === 'USER' && m.content.startsWith('[SESSION_MINDSET]')) ? 'mindset'
+            : rawLast.some((m) => m.role === 'USER' && m.content.startsWith('[SESSION_OBJECTIFS]')) ? 'objectifs'
+            : rawLast.some((m) => m.role === 'USER' && m.content.startsWith('[SESSION_AUDIENCE]')) ? 'audience'
+            : rawLast.some((m) => m.role === 'USER' && m.content.startsWith('[SESSION_PARCOURS]')) ? 'parcours'
+            : rawLast.some((m) => m.role === 'USER' && m.content.startsWith('[SESSION_PRODUIT]')) ? 'produit'
+            : rawLast.some((m) => m.role === 'USER' && m.content.startsWith('[SESSION_POURQUOI]')) ? 'why'
             : null
           if (kind) {
             let saved = false
@@ -312,9 +316,9 @@ TECHNIQUE (invisible pour moi, ne l'explique jamais)${NB}: le jour où je VALIDE
             if (!cancelled && !saved) {
               // Reprise transparente : on rebranche le composeur sur la session, la conversation continue naturellement.
               sessionRef.current = kind
-              whyTurnsRef.current = raw.filter((m) => m.role === 'USER' && !m.content.startsWith('[SESSION')).length
+              whyTurnsRef.current = rawLast.filter((m) => m.role === 'USER' && !m.content.startsWith('[SESSION')).length
               // Si Atlas avait déjà proposé une formulation validée (dernier marqueur), on rétablit la carte « Je valide ».
-              const lastMarked = [...raw].reverse().find((m) => m.role !== 'USER' && SAVE_MARK_RE.test(m.content))
+              const lastMarked = [...rawLast].reverse().find((m) => m.role !== 'USER' && SAVE_MARK_RE.test(m.content))
               const finalText = lastMarked ? extractSaved(lastMarked.content) : ''
               const card = finalText ? sessionCardMsg(kind, finalText) : null
               if (card) setMsgs((prev) => [...prev, card])
@@ -372,48 +376,8 @@ TECHNIQUE (invisible pour moi, ne l'explique jamais)${NB}: le jour où je VALIDE
     fetch('/api/me').then((r) => (r.ok ? r.json() : null)).then((u) => { if (u?.firstName) setFirstName(u.firstName) }).catch(() => {})
   }, [])
 
-  // Mémorise la conversation active (+ horodatage) pour la retrouver au retour sur Atlas
-  useEffect(() => {
-    if (c) { localStorage.setItem('atlas-last-conv', c); localStorage.setItem('atlas-last-conv-at', String(Date.now())) }
-  }, [c])
-
-  // Frontière de « journée » : 3 h du matin (l'heure de la consolidation nocturne d'Atlas).
-  // Avant 3 h → la journée a commencé hier 3 h. La reprise auto ne vaut QUE pour la journée
-  // en cours : chaque matin, l'app rouvre sur l'accueil (bonjour + plan du jour).
-  const dayStart = () => {
-    const d = new Date()
-    if (d.getHours() < 3) d.setDate(d.getDate() - 1)
-    d.setHours(3, 0, 0, 0)
-    return d.getTime()
-  }
-
-  // Au retour sur /atlas (sans ?c=), reprend la conversation de LA JOURNÉE — sauf si on démarre une session.
-  useEffect(() => {
-    if (c || sessionParam) return
-    const last = localStorage.getItem('atlas-last-conv')
-    const lastAt = Number(localStorage.getItem('atlas-last-conv-at') || 0)
-    if (last && lastAt >= dayStart()) {
-      setLoadingConv(true)
-      router.replace(`/atlas?c=${last}`)
-      return
-    }
-    if (last) { localStorage.removeItem('atlas-last-conv'); localStorage.removeItem('atlas-last-conv-at') }
-    // Pas de pointeur du jour (nouveau matin, autre appareil, stockage vidé) →
-    // filet de sécurité : reprend la conversation la plus récente SI elle date d'aujourd'hui.
-    ;(async () => {
-      try {
-        const r = await fetch('/api/atlas/conversations')
-        if (!r.ok) return
-        const list: { id: string; updatedAt: string }[] = await r.json()
-        const latest = Array.isArray(list) ? list[0] : null
-        if (latest?.id && new Date(latest.updatedAt).getTime() >= dayStart()) {
-          setLoadingConv(true)
-          router.replace(`/atlas?c=${latest.id}`)
-        }
-      } catch { /* ignore */ }
-    })()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  // FIL CONTINU : plus de frontière de journée ni de pointeur localStorage — le fil fusionné
+  // reprend toujours là où on en était (le loader /api/atlas/fil s'en charge, tous appareils).
 
   // Démarrage d'une session depuis un lien (?session=why|rencontre|mindset|objectifs|audience|parcours) — boutons « avec Atlas ».
   const sessionStartedRef = useRef(false)
@@ -426,6 +390,7 @@ TECHNIQUE (invisible pour moi, ne l'explique jamais)${NB}: le jour où je VALIDE
     // On repart d'un chat vierge pour la session, puis on retire le paramètre de l'URL.
     localStorage.removeItem('atlas-last-conv')
     loadedRef.current = null
+    filConvRef.current = null // la session démarre sa PROPRE conversation (cadre propre), le fil la fusionnera
     setMsgs([])
     router.replace('/atlas', { scroll: false })
     setTimeout(() => startSessionRef.current(kind), 100)
@@ -565,7 +530,8 @@ TECHNIQUE (invisible pour moi, ne l'explique jamais)${NB}: le jour où je VALIDE
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           query: q,
-          conversationId: c ?? undefined,
+          // FIL CONTINU : on poursuit la conversation la plus récente (jamais de conversation accidentelle)
+          conversationId: (c ?? filConvRef.current) ?? undefined,
           mlm_actif: 'Atline',
         }),
       })
@@ -573,6 +539,7 @@ TECHNIQUE (invisible pour moi, ne l'explique jamais)${NB}: le jour où je VALIDE
 
       // Nouvelle conversation : on synchronise l'URL (la sidebar se rafraîchit) sans recharger.
       const newCid = resp.headers.get('X-Conversation-Id')
+      if (newCid) filConvRef.current = newCid
       if (newCid && newCid !== c) {
         loadedRef.current = newCid
         router.replace(`/atlas?c=${newCid}`, { scroll: false })
@@ -1306,7 +1273,11 @@ TECHNIQUE (invisible pour moi, ne l'explique jamais)${NB}: le jour où je VALIDE
             <div className="mx-auto flex max-w-md flex-col gap-4 lg:max-w-3xl">
             {msgs.map((m, i) => (
               <div key={i} data-midx={i} className={cn('flex flex-col gap-2', m.from === 'user' ? 'items-end' : 'items-start', filSearch.highlight(i))}>
-                {m.from === 'user' ? (
+                {m.day ? (
+                  <div className="w-full py-1 text-center">
+                    <span className="rounded-full bg-surface px-3 py-1 text-[10px] font-medium text-muted-foreground">{m.day}</span>
+                  </div>
+                ) : m.from === 'user' ? (
                   <div className="max-w-[82%] whitespace-pre-line rounded-2xl rounded-br-md bg-primary px-3.5 py-2.5 text-[19px] leading-[1.4] text-primary-foreground lg:text-base">
                     {frText(m.text)}
                   </div>
