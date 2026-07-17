@@ -8,6 +8,7 @@ import type { PlanItem } from '@/components/atlas-plan-card'
 import { AddContactSheet } from '@/components/add-contact-sheet'
 import { ThreadRow } from '@/components/thread-row'
 import { ChatsSearch } from '@/components/chats-search'
+import { ChatsDrawer } from '@/components/chats-drawer'
 
 // ═══ NAV MESSAGERIE — T0 socle + T1 badges ═══
 // Page Conversations en PARALLÈLE de la nav actuelle (URL /chats, aucun lien) jusqu'à la bascule (T10).
@@ -56,6 +57,7 @@ export default function ChatsPage() {
   const [pickerQ, setPickerQ] = useState('')
   const [addOpen, setAddOpen] = useState(false)
   const [searchOpen, setSearchOpen] = useState(false)
+  const [drawerOpen, setDrawerOpen] = useState(false)
 
   const load = useCallback(() => {
     Promise.all([
@@ -99,7 +101,7 @@ export default function ChatsPage() {
     <div className="mx-auto flex min-h-dvh w-full max-w-2xl flex-col bg-background">
       {/* Rangée unique : ☰ + atline + recherche (tiroir = T6, recherche plein écran = T3) */}
       <div className="sticky top-0 z-30 flex items-center gap-2.5 bg-background/90 px-4 py-2.5 backdrop-blur" style={{ paddingTop: 'max(0.625rem, env(safe-area-inset-top))' }}>
-        <button type="button" aria-label="Menu" className="flex size-9 shrink-0 items-center justify-center rounded-full text-muted-foreground active:bg-muted">
+        <button type="button" aria-label="Menu" onClick={() => setDrawerOpen(true)} className="flex size-9 shrink-0 items-center justify-center rounded-full text-muted-foreground active:bg-muted">
           <Menu className="size-5 stroke-[1.5]" />
         </button>
         <p className="shrink-0 text-lg font-bold tracking-tight text-foreground">atl<span className="text-primary">i</span>ne</p>
@@ -228,6 +230,9 @@ export default function ChatsPage() {
           </div>
         </div>
       )}
+
+      {/* Gérer (T6) : le tiroir compte — profil, activité (switcher), bilan, abonnement, réglages, thème */}
+      <ChatsDrawer open={drawerOpen} onClose={() => setDrawerOpen(false)} onBusinessChanged={load} />
 
       {/* Chercher = naviguer (T3) : plein écran, jamais de cul-de-sac */}
       <ChatsSearch open={searchOpen} onClose={() => setSearchOpen(false)} threads={threads} onAddContact={() => setAddOpen(true)} />
