@@ -2,7 +2,7 @@
 
 import { use, useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { ChevronLeft, Info, Loader2, PhoneCall, PenLine } from 'lucide-react'
+import { ChevronLeft, Loader2, PhoneCall, PenLine } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { AppComposer } from '@/components/mobile/app-composer'
 import { AtlasDraftCard } from '@/components/atlas-plan-card'
@@ -16,8 +16,9 @@ type Contact = {
   id: string; name: string; firstName: string | null; initials: string | null; accent: string | null
   kind: string; prospectStage: string | null; partnerStage: string | null; market: string | null
   exposures: number; phone: string | null; email: string | null
+  lastDraft: string | null; lastDraftAt: string | null; lastContact: string | null
 }
-type Msg = { from: 'user' | 'atlas'; text: string; draft?: { channel: string } }
+type Msg = { from: 'user' | 'atlas'; text: string; draft?: { channel: string; initial?: string } }
 
 const STAGE_LABEL: Record<string, string> = {
   NOUVEAU: 'Nouveau', INVITATION: 'Invitation', PRESENTATION: 'Présentation', SUIVI: 'Suivi', CLOSING: 'Closing',
@@ -49,20 +50,27 @@ export default function ContactThreadPage({ params }: { params: Promise<{ contac
           fetch(`/api/atlas/conversations?contactId=${contactId}`),
         ])
         if (cancelled) return
-        if (rc.ok) setC(await rc.json())
+        const contact: Contact | null = rc.ok ? await rc.json() : null
+        if (contact) setC(contact)
         const convs = rl.ok ? await rl.json() : []
         const last = Array.isArray(convs) && convs.length ? convs[0] : null
+        let loaded: Msg[] = []
         if (last?.id) {
           const rm = await fetch(`/api/atlas/conversations/${last.id}`)
           if (!cancelled && rm.ok) {
             const d = await rm.json()
             convRef.current = last.id
-            setMsgs((d.messages ?? []).map((m: { role: string; content: string }) => ({
+            loaded = (d.messages ?? []).map((m: { role: string; content: string }) => ({
               from: m.role === 'USER' ? 'user' : 'atlas',
               text: stripMarkers(m.content).trim(),
-            })).filter((m: Msg) => m.text))
+            })).filter((m: Msg) => m.text)
           }
         }
+        // Le brouillon en attente survit au refresh : la carte revient avec le TEXTE sauvé (lastDraft, T0).
+        if (contact?.lastDraft && (!contact.lastContact || !contact.lastDraftAt || contact.lastDraftAt > contact.lastContact)) {
+          loaded = [...loaded, { from: 'atlas', text: '', draft: { channel: contact.phone ? 'WHATSAPP' : 'EMAIL', initial: contact.lastDraft } }]
+        }
+        if (!cancelled && loaded.length) setMsgs(loaded)
       } catch { /* fil vide */ }
       finally { if (!cancelled) setLoading(false) }
     })()
@@ -126,14 +134,8 @@ export default function ContactThreadPage({ params }: { params: Promise<{ contac
     setMsgs((m) => [...m, { from: 'atlas', text: `Je te prépare un message pour ${prenom} — régénère-le si besoin, puis envoie-le direct.`, }, { from: 'atlas', text: '', draft: { channel } }])
   }
 
-  const subtitle = c
-    ? [
-        c.kind === 'PARTENAIRE' ? 'Partenaire' : c.kind === 'CLIENT' ? 'Client' : 'Prospect',
-        c.prospectStage ? STAGE_LABEL[c.prospectStage] : c.partnerStage ? STAGE_LABEL[c.partnerStage] : null,
-        c.market ? MARKET_LABEL[c.market] : null,
-        c.exposures > 0 ? `${c.exposures} exposition${c.exposures > 1 ? 's' : ''}` : null,
-      ].filter(Boolean).join(' · ')
-    : ''
+  // Sous le nom : le statut seul (le détail vit dans la fiche, un tap sur l'en-tête)
+  const subtitle = c ? (c.kind === 'PARTENAIRE' ? 'Partenaire' : c.kind === 'CLIENT' ? 'Client' : 'Prospect') : ''
 
   return (
     <div className="mx-auto flex h-dvh w-full max-w-2xl flex-col bg-background">
@@ -153,9 +155,6 @@ export default function ContactThreadPage({ params }: { params: Promise<{ contac
               {streaming ? 'Atlas écrit…' : subtitle}
             </span>
           </span>
-        </button>
-        <button type="button" aria-label="Fiche" onClick={() => router.push(`/contacts/${contactId}`)} className="flex size-9 shrink-0 items-center justify-center rounded-full text-muted-foreground active:bg-muted">
-          <Info className="size-[18px] stroke-[1.5]" />
         </button>
       </div>
 
@@ -177,7 +176,7 @@ export default function ContactThreadPage({ params }: { params: Promise<{ contac
           {msgs.map((m, i) => (
             <div key={i} className={m.from === 'user' ? 'max-w-[85%] self-end' : m.draft ? 'w-[92%] self-start' : 'max-w-[92%] self-start'}>
               {m.draft && c ? (
-                <AtlasDraftCard contactId={c.id} prenom={prenom} channel={m.draft.channel} phone={c.phone} email={c.email} />
+                <AtlasDraftCard contactId={c.id} prenom={prenom} channel={m.draft.channel} phone={c.phone} email={c.email} initial={m.draft.initial} />
               ) : m.from === 'user' ? (
                 <div className="rounded-2xl rounded-br-md bg-primary/15 px-3.5 py-2 text-[19px] leading-[1.45] text-foreground lg:text-base">{m.text}</div>
               ) : m.text === '' ? (

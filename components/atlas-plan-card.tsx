@@ -50,8 +50,8 @@ export function ChatChoices({ choices, onPick }: { choices: { label: string; val
 }
 
 // Carte brouillon régénérable + ouverture de la vraie messagerie avec le message prêt.
-export function AtlasDraftCard({ contactId, prenom, channel, phone, email, instruction }: { contactId: string; prenom: string; channel: string; phone: string | null; email: string | null; instruction?: string }) {
-  const [msg, setMsg] = useState<string | null>(null)
+export function AtlasDraftCard({ contactId, prenom, channel, phone, email, instruction, initial }: { contactId: string; prenom: string; channel: string; phone: string | null; email: string | null; instruction?: string; initial?: string }) {
+  const [msg, setMsg] = useState<string | null>(initial ?? null)
   const [regensLeft, setRegensLeft] = useState(2)
   const [busy, setBusy] = useState(false)
   const [copied, setCopied] = useState(false)
@@ -65,7 +65,8 @@ export function AtlasDraftCard({ contactId, prenom, channel, phone, email, instr
     } catch { setMsg('Souci réseau — réessaie.') }
     finally { setBusy(false) }
   }, [contactId, channel, instruction])
-  useEffect(() => { load() }, [load])
+  // `initial` = brouillon déjà sauvé (lastDraft) : on l'affiche tel quel, sans regénérer.
+  useEffect(() => { if (!initial) load() }, [load, initial])
 
   const copy = () => { if (!msg) return; navigator.clipboard?.writeText(msg).then(() => { setCopied(true); setTimeout(() => setCopied(false), 1800) }).catch(() => {}) }
 
