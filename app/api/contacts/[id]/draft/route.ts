@@ -66,5 +66,8 @@ Règles STRICTES : écris à la 1ère personne (c'est ${user?.firstName ?? 'moi'
   }
 
   if (!message) return NextResponse.json({ error: 'Atlas indisponible' }, { status: 503 })
+  // Nav messagerie : le dernier brouillon fait signe dans la liste des conversations
+  // (« ✍️ Brouillon : … ») tant qu'aucun échange plus récent ne l'a dépassé.
+  await db.contact.update({ where: { id }, data: { lastDraft: message, lastDraftAt: new Date() } }).catch(() => {})
   return NextResponse.json({ message })
 }

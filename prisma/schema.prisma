@@ -464,6 +464,8 @@ model Contact {
   tags            String[]
   lastContact     DateTime?
   signedAt        DateTime? // date de passage PARTENAIRE (issue « signé » du débrief) — mesure l'objectif mensuel
+  lastDraft       String? // dernier brouillon généré non envoyé — affiché « ✍️ Brouillon : … » dans la liste des conversations
+  lastDraftAt     DateTime?
   note            String?
   atlasMemory     String? // bloc mémoire auto-édité par Atlas (MemGPT-style) — ce qu'il a appris sur ce contact
   atlasMemoryAt   DateTime? // dernière mise à jour du bloc mémoire
@@ -710,6 +712,7 @@ model AtlasConversation {
   contact         Contact?         @relation(fields: [contactId], references: [id])
   title           String?
   context         String? // "parcours" | "contact" | "reseau" | "messagerie"
+  agent           String           @default("atlas") // "atlas" | "aria" | "nova" — fil d'agent (nav messagerie)
   summary         String? // résumé roulant (compaction : couvre les messages anciens hors fenêtre)
   summarizedCount Int              @default(0) // nb de messages couverts par le résumé
   messages        AtlasMessage[]
