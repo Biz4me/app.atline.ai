@@ -426,6 +426,26 @@ TECHNIQUE (invisible pour moi, ne l'explique jamais)${NB}: le jour où je VALIDE
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sessionParam, loadingConv])
 
+  // Nav messagerie : commandes (?cmd=plan|objectif) et « Demander à Atlas » (?ask=…) — même patron que ?session.
+  const cmdParam = sp.get('cmd')
+  const askParam = sp.get('ask')
+  const cmdStartedRef = useRef(false)
+  const showPlanRef = useRef<() => void>(() => {})
+  const cmdSendRef = useRef<(t: string, title?: string) => void>(() => {})
+  useEffect(() => {
+    if ((!cmdParam && !askParam) || cmdStartedRef.current || loadingConv) return
+    cmdStartedRef.current = true
+    const cmd = cmdParam
+    const ask = askParam
+    router.replace('/atlas', { scroll: false })
+    setTimeout(() => {
+      if (cmd === 'plan') showPlanRef.current()
+      else if (cmd === 'objectif') cmdSendRef.current("Fais le point sur mon objectif de partenaires ce mois-ci : où j'en suis, et qu'est-ce qui ferait avancer le score ?", 'Mon objectif du mois')
+      else if (ask) cmdSendRef.current(ask)
+    }, 200)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cmdParam, askParam, loadingConv])
+
   // Historique mobile — déploiement type menu « Plus » de l'accueil (slide depuis le header + backdrop)
   const openHist = () => {
     loadConvs()
@@ -1031,6 +1051,9 @@ TECHNIQUE (invisible pour moi, ne l'explique jamais)${NB}: le jour où je VALIDE
 
   // Permet à l'effet ?session=why de déclencher la session une fois la fonction définie.
   startSessionRef.current = startSession
+  // Idem pour ?cmd (plan/objectif) et ?ask (recherche « Demander à Atlas »).
+  showPlanRef.current = showPlan
+  cmdSendRef.current = sendMsg
 
   // Historique + nouveau chat pilotés depuis la barre du haut globale (via événements)
   const toggleHistRef = useRef(toggleHist); toggleHistRef.current = toggleHist

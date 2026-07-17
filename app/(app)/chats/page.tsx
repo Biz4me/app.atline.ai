@@ -6,6 +6,8 @@ import { Menu, Search, Pencil, X, ChevronLeft, MessageSquarePlus, UserPlus } fro
 import { cn } from '@/lib/utils'
 import type { PlanItem } from '@/components/atlas-plan-card'
 import { AddContactSheet } from '@/components/add-contact-sheet'
+import { ThreadRow } from '@/components/thread-row'
+import { ChatsSearch } from '@/components/chats-search'
 
 // ═══ NAV MESSAGERIE — T0 socle + T1 badges ═══
 // Page Conversations en PARALLÈLE de la nav actuelle (URL /chats, aucun lien) jusqu'à la bascule (T10).
@@ -40,33 +42,7 @@ function when(iso: string | null): string {
 
 const daysSince = (iso: string | null) => (iso ? Math.max(0, Math.floor((Date.now() - new Date(iso).getTime()) / 86_400_000)) : null)
 
-// UNE seule rangée pour agents ET contacts (règle des 7 : un composant, deux usages).
-function ThreadRow({ avatarBg, avatarText, title, titlePill, line, lineOrange, time, count, endPill, dim, onClick }: {
-  avatarBg: string; avatarText: string; title: string; titlePill?: { label: string; cls: string }
-  line: string; lineOrange?: boolean; time?: string; count?: number
-  endPill?: { label: string; cls: string }; dim?: boolean; onClick: () => void
-}) {
-  return (
-    <button type="button" onClick={onClick} className={cn('flex w-full items-center gap-3 px-4 py-2.5 text-left active:bg-muted', dim && 'opacity-50')}>
-      <span className="grid size-12 shrink-0 place-items-center rounded-full text-base font-bold text-white" style={{ backgroundColor: avatarBg }}>{avatarText}</span>
-      <span className="min-w-0 flex-1">
-        <span className="flex items-center gap-1.5 text-sm font-semibold text-foreground">
-          {title}
-          {titlePill && <span className={cn('rounded-full px-2 py-0.5 text-[10px] font-semibold', titlePill.cls)}>{titlePill.label}</span>}
-        </span>
-        <span className={cn('block truncate text-xs', lineOrange ? 'font-medium text-primary' : 'text-muted-foreground')}>{line}</span>
-      </span>
-      <span className="flex shrink-0 flex-col items-end gap-1">
-        {time !== undefined && <span className="text-[10px] text-muted-foreground">{time}</span>}
-        {count ? (
-          <span className="grid h-[18px] min-w-[18px] place-items-center rounded-full bg-primary px-1.5 text-[10px] font-bold text-primary-foreground">{count}</span>
-        ) : endPill ? (
-          <span className={cn('rounded-full px-2 py-0.5 text-[10px] font-medium', endPill.cls)}>{endPill.label}</span>
-        ) : null}
-      </span>
-    </button>
-  )
-}
+// ThreadRow = composant partagé (components/thread-row.tsx) — agents, contacts, picker, recherche.
 
 export default function ChatsPage() {
   const router = useRouter()
@@ -79,6 +55,7 @@ export default function ChatsPage() {
   const [pickerOpen, setPickerOpen] = useState(false)
   const [pickerQ, setPickerQ] = useState('')
   const [addOpen, setAddOpen] = useState(false)
+  const [searchOpen, setSearchOpen] = useState(false)
 
   const load = useCallback(() => {
     Promise.all([
@@ -126,9 +103,9 @@ export default function ChatsPage() {
           <Menu className="size-5 stroke-[1.5]" />
         </button>
         <p className="shrink-0 text-lg font-bold tracking-tight text-foreground">atl<span className="text-primary">i</span>ne</p>
-        <div className="flex flex-1 items-center gap-2 rounded-full border border-border bg-surface px-3.5 py-2 text-sm text-muted-foreground">
+        <button type="button" onClick={() => setSearchOpen(true)} className="flex flex-1 items-center gap-2 rounded-full border border-border bg-surface px-3.5 py-2 text-sm text-muted-foreground">
           <Search className="size-4 shrink-0 stroke-[1.5]" /> Rechercher…
-        </div>
+        </button>
       </div>
 
       {/* Agents épinglés */}
@@ -251,6 +228,9 @@ export default function ChatsPage() {
           </div>
         </div>
       )}
+
+      {/* Chercher = naviguer (T3) : plein écran, jamais de cul-de-sac */}
+      <ChatsSearch open={searchOpen} onClose={() => setSearchOpen(false)} threads={threads} onAddContact={() => setAddOpen(true)} />
 
       {/* Nouveau contact : la feuille existante, telle quelle */}
       <AddContactSheet open={addOpen} onOpenChange={(o) => { setAddOpen(o); if (!o) load() }} />
