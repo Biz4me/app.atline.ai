@@ -57,6 +57,9 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       where: { id },
       data: { kind: 'PARTENAIRE', partnerStage: 'DEMARRAGE', signedAt: now, lastContact: now },
     })
+    // La signature CLÔT la prospection : ses relances en attente meurent avec elle
+    // (l'accompagnement partenaire a ses propres actions dans le plan).
+    await db.relance.updateMany({ where: { contactId: id, status: 'PENDING' }, data: { status: 'CANCELLED' } })
   } else if (outcome === 'thinking' || outcome === 'no') {
     const days = outcome === 'thinking' ? 3 : 30
     await db.contact.update({ where: { id }, data: { prospectStage: 'SUIVI', lastContact: now } })

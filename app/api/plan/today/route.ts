@@ -171,6 +171,8 @@ export async function GET() {
   }
   for (const r of relances) {
     const c = byId.get(r.contactId); if (!c) continue
+    // Garde-fou : une relance de PROSPECTION ne survit pas à la signature (données anciennes).
+    if (c.kind === 'PARTENAIRE') continue
     push(c, 1, 'MESSAGE', `Relance ${prenom(c)}`, `Relance programmée arrivée à échéance.`, (r.channel || '').toUpperCase() || (c.phone ? 'WHATSAPP' : c.email ? 'EMAIL' : null))
   }
 

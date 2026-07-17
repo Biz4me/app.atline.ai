@@ -117,7 +117,11 @@ export async function POST(req: NextRequest) {
         const cur = await db.contact.findFirst({ where: { id: contact.id, userId }, select: { kind: true } })
         data.kind = 'PARTENAIRE'
         data.partnerStage = p.etape
-        if (cur?.kind !== 'PARTENAIRE') { data.signedAt = new Date(); data.lastContact = new Date() } // 1re bascule = signature (compteur du mois)
+        if (cur?.kind !== 'PARTENAIRE') {
+          data.signedAt = new Date(); data.lastContact = new Date() // 1re bascule = signature (compteur du mois)
+          // La signature clôt la prospection : ses relances en attente meurent avec elle.
+          await db.relance.updateMany({ where: { contactId: contact.id, status: 'PENDING' }, data: { status: 'CANCELLED' } })
+        }
       }
 
       // Qualification : fusion clé à clé dans le JSON existant (jamais d'écrasement global)
