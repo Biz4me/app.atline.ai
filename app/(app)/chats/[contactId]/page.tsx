@@ -148,7 +148,10 @@ export default function ContactThreadPage({ params }: { params: Promise<{ contac
           </span>
           <span className="min-w-0">
             <span className="block truncate text-sm font-semibold text-foreground">{c?.name ?? 'Contact'}</span>
-            <span className="block truncate text-xs text-muted-foreground">{subtitle}</span>
+            {/* présence : pendant la réponse, l'en-tête vit (« Atlas écrit… ») */}
+            <span className={cn('block truncate text-xs', streaming ? 'font-medium text-primary' : 'text-muted-foreground')}>
+              {streaming ? 'Atlas écrit…' : subtitle}
+            </span>
           </span>
         </button>
         <button type="button" aria-label="Fiche" onClick={() => router.push(`/contacts/${contactId}`)} className="flex size-9 shrink-0 items-center justify-center rounded-full text-muted-foreground active:bg-muted">

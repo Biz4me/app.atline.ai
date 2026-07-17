@@ -4,14 +4,18 @@ import { cn } from '@/lib/utils'
 
 // Rangée unique de la nav messagerie — agents épinglés, contacts, résultats de recherche :
 // UN composant pour toutes les listes (règle des 7). Avatar lettré OU emoji (fond neutre).
-export function ThreadRow({ avatarBg, avatarText, title, titlePill, line, lineOrange, time, count, endPill, dim, onClick }: {
+export function ThreadRow({ avatarBg, avatarText, title, titlePill, line, lineOrange, time, count, endPill, dim, online, onClick }: {
   avatarBg: string; avatarText: string; title: string; titlePill?: { label: string; cls: string }
   line: string; lineOrange?: boolean; time?: string; count?: number
-  endPill?: { label: string; cls: string }; dim?: boolean; onClick: () => void
+  endPill?: { label: string; cls: string }; dim?: boolean; online?: boolean; onClick: () => void
 }) {
   return (
     <button type="button" onClick={onClick} className={cn('flex w-full items-center gap-3 px-4 py-2.5 text-left active:bg-muted', dim && 'opacity-50')}>
-      <span className="grid size-12 shrink-0 place-items-center rounded-full text-base font-bold text-white" style={{ backgroundColor: avatarBg }}>{avatarText}</span>
+      <span className="relative grid size-12 shrink-0 place-items-center rounded-full text-base font-bold text-white" style={{ backgroundColor: avatarBg }}>
+        {avatarText}
+        {/* présence : les agents sont toujours là (point vert façon messagerie) */}
+        {online && <span className="absolute bottom-0 right-0 size-3 rounded-full border-2 border-background bg-[#22C55E]" />}
+      </span>
       <span className="min-w-0 flex-1">
         <span className="flex items-center gap-1.5 text-sm font-semibold text-foreground">
           {title}

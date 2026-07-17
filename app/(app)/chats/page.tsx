@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Menu, Search, Pencil, X, ChevronLeft, MessageSquarePlus, UserPlus } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -73,6 +73,16 @@ export default function ChatsPage() {
   }, [])
   useEffect(() => { load() }, [load])
 
+  // Règle d'ouverture (T9) : tant qu'il n'y a aucun fil contact, la liste est pauvre —
+  // on atterrit directement chez Atlas (l'onboarding progressif peuplera la liste).
+  const bouncedRef = useRef(false)
+  useEffect(() => {
+    if (loading || bouncedRef.current || threads.length > 0) return
+    bouncedRef.current = true
+    router.replace('/atlas')
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loading, threads.length])
+
   // Badges = le plan du jour : rang par contact (pour le tri), le reste (fondation/formation) au fil Atlas.
   const planRank = new Map<string, number>()
   plan.forEach((it, i) => { if (it.contactId && !planRank.has(it.contactId)) planRank.set(it.contactId, i) })
@@ -123,6 +133,7 @@ export default function ChatsPage() {
             lineOrange={(a.id === 'atlas' && plan.length > 0) || (a.badge ?? 0) > 0}
             time={when(a.at)}
             count={a.id === 'atlas' ? atlasBadge : a.badge ?? 0}
+            online={a.id !== 'communaute'}
             onClick={() => router.push(AGENT_ROUTE[a.id] ?? '/atlas')}
           />
         ))}
