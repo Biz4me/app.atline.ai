@@ -114,7 +114,7 @@ export function ChatsSearch({ open, onClose, threads, onAddContact }: {
   const noResult = Q && !contacts.length && !cmds.length && !rdvHits.length && !modHits.length && !supHits.length
 
   return (
-    <div className="fixed inset-0 z-[60] mx-auto flex w-full max-w-2xl flex-col bg-background">
+    <div className="fixed inset-0 z-[60] mx-auto flex w-full max-w-2xl flex-col bg-background lg:mx-0 lg:w-[340px] lg:max-w-none lg:border-r lg:border-border">
       {/* ← + barre (dictée intégrée) */}
       <div className="flex items-center gap-2.5 px-4 py-2.5" style={{ paddingTop: 'max(0.625rem, env(safe-area-inset-top))' }}>
         <button type="button" aria-label="Retour" onClick={onClose} className="flex size-9 shrink-0 items-center justify-center rounded-full text-muted-foreground active:bg-muted">

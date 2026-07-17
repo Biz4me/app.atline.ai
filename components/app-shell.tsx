@@ -65,11 +65,12 @@ export function AppShell({ children, initialCollapsed, initialAtlasCollapsed }: 
 
   return (
     <PageVisibilityProvider>
-      <DesktopNav hidden={collapsed} onToggle={toggle} />
+      {/* T10b : sur les surfaces messagerie, la colonne Conversations REMPLACE l'ancienne nav desktop */}
+      <DesktopNav hidden={collapsed || isChats || isAtlasChat} onToggle={toggle} />
       <AtlasSidebar collapsed={atlasCollapsed} onToggle={toggleAtlas} />
 
       {/* Rouvrir la nav — visible SEULEMENT quand elle est repliée (le repli vit DANS la sidebar) */}
-      {collapsed && (
+      {collapsed && !isChats && !isAtlasChat && (
         <button
           type="button"
           onClick={toggle}
@@ -87,7 +88,7 @@ export function AppShell({ children, initialCollapsed, initialAtlasCollapsed }: 
           // Atlas mobile : hauteur figée = zéro scroll du document (le résidu est clippé, le composeur est fixed)
           isAtlasChat || isChatFil ? 'max-lg:h-[100dvh] max-lg:overflow-hidden' : '',
           'transition-[padding-left,padding-right] duration-200 ease-out',
-          collapsed ? 'lg:pl-0' : 'lg:pl-[260px]',
+          collapsed || isChats || isAtlasChat ? 'lg:pl-0' : 'lg:pl-[260px]',
           railCollapsedOnly ? 'lg:pr-0' : atlasCollapsed ? 'lg:pr-16' : 'lg:pr-[360px]',
         )}
       >
