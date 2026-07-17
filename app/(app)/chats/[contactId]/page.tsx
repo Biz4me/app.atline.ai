@@ -3,7 +3,7 @@
 import { use, useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { ChevronLeft, Loader2, PhoneCall, PenLine, MoreVertical } from 'lucide-react'
-import { cn } from '@/lib/utils'
+import { cn, cleanChat } from '@/lib/utils'
 import { AppComposer } from '@/components/mobile/app-composer'
 import { AtlasDraftCard } from '@/components/atlas-plan-card'
 import { useFilSearch, FilSearchRow } from '@/components/fil-search'
@@ -20,7 +20,7 @@ type Contact = {
   exposures: number; phone: string | null; email: string | null
   lastDraft: string | null; lastDraftAt: string | null; lastContact: string | null
 }
-type Msg = { from: 'user' | 'atlas'; text: string; draft?: { channel: string; initial?: string }; actionCard?: AtlasAction }
+type Msg = { from: 'user' | 'atlas'; text: string; draft?: { channel: string; initial?: string; conversationId?: string }; actionCard?: AtlasAction }
 
 const STAGE_LABEL: Record<string, string> = {
   NOUVEAU: 'Nouveau', INVITATION: 'Invitation', PRESENTATION: 'Présentation', SUIVI: 'Suivi', CLOSING: 'Closing',
@@ -70,7 +70,7 @@ export default function ContactThreadPage({ params }: { params: Promise<{ contac
               if (m.role !== 'USER' && m.content.startsWith('[[ACTION]]')) {
                 try { return [{ from: 'atlas', text: '', actionCard: JSON.parse(m.content.slice(10)) as AtlasAction }] } catch { return [] }
               }
-              const text = m.role === 'USER' ? m.content : stripMarkers(m.content).trim()
+              const text = m.role === 'USER' ? m.content : cleanChat(stripMarkers(m.content))
               return text ? [{ from: m.role === 'USER' ? 'user' : 'atlas', text }] : []
             })
           }
@@ -123,7 +123,7 @@ export default function ContactThreadPage({ params }: { params: Promise<{ contac
             const d = JSON.parse(p)
             if (d.text) {
               full += d.text
-              const shown = stripMarkers(full)
+              const shown = cleanChat(stripMarkers(full))
               setMsgs((m) => { const cp = [...m]; cp[cp.length - 1] = { from: 'atlas', text: shown }; return cp })
             } else if (d.action_proposal?.kind) pendingActions.push(d.action_proposal as AtlasAction)
           } catch { /* ligne SSE partielle */ }
@@ -143,7 +143,7 @@ export default function ContactThreadPage({ params }: { params: Promise<{ contac
   const addDraft = () => {
     if (!c) return
     const channel = c.phone ? 'WHATSAPP' : 'EMAIL'
-    setMsgs((m) => [...m, { from: 'atlas', text: `Je te prépare un message pour ${prenom} — régénère-le si besoin, puis envoie-le direct.`, }, { from: 'atlas', text: '', draft: { channel } }])
+    setMsgs((m) => [...m, { from: 'atlas', text: `Je te prépare un message pour ${prenom} — régénère-le si besoin, puis envoie-le direct.`, }, { from: 'atlas', text: '', draft: { channel, conversationId: convRef.current ?? undefined } }])
   }
 
   // Sous le nom : le statut seul (le détail vit dans la fiche, un tap sur l'en-tête)
@@ -199,7 +199,7 @@ export default function ContactThreadPage({ params }: { params: Promise<{ contac
               {m.actionCard ? (
                 <AtlasActionCard action={m.actionCard} />
               ) : m.draft && c ? (
-                <AtlasDraftCard contactId={c.id} prenom={prenom} channel={m.draft.channel} phone={c.phone} email={c.email} initial={m.draft.initial} />
+                <AtlasDraftCard contactId={c.id} prenom={prenom} channel={m.draft.channel} phone={c.phone} email={c.email} initial={m.draft.initial} conversationId={m.draft.conversationId} />
               ) : m.from === 'user' ? (
                 <div className="rounded-2xl rounded-br-md bg-primary/15 px-3.5 py-2 text-[19px] leading-[1.45] text-foreground lg:text-base">{m.text}</div>
               ) : m.text === '' ? (

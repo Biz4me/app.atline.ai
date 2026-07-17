@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Mic, History, Plus, X, MoreHorizontal, MoreVertical, ChevronLeft as ChevronLeftIcon, Pencil, Trash2, FileText, Users, Loader2, Zap, Target, SquarePen, UserRound, Compass, Sparkles } from 'lucide-react'
-import { cn } from '@/lib/utils'
+import { cn, cleanChat } from '@/lib/utils'
 import { toast } from 'sonner'
 import { AppComposer } from '@/components/mobile/app-composer'
 
@@ -24,7 +24,7 @@ import { PageHeader } from '@/components/page-shell'
 import { AtlasActionCard, type AtlasAction } from '@/components/atlas-action-card'
 
 type Choice = { label: string; value: string }
-type Msg = { from: 'user' | 'atlas'; text: string; day?: string; chips?: string[]; choices?: Choice[]; item?: PlanItem; draft?: { contactId: string; prenom: string; channel: string; phone: string | null; email: string | null; instruction?: string }; profileForm?: { me: Record<string, unknown> }; whyCard?: { text: string; kind: SessionKind; title: string; obj?: Objectifs; superseded?: boolean; done?: boolean }; navCard?: { route: string; label: string }; actionCard?: AtlasAction }
+type Msg = { from: 'user' | 'atlas'; text: string; day?: string; chips?: string[]; choices?: Choice[]; item?: PlanItem; draft?: { contactId: string; prenom: string; channel: string; phone: string | null; email: string | null; instruction?: string; conversationId?: string }; profileForm?: { me: Record<string, unknown> }; whyCard?: { text: string; kind: SessionKind; title: string; obj?: Objectifs; superseded?: boolean; done?: boolean }; navCard?: { route: string; label: string }; actionCard?: AtlasAction }
 
 type SessionKind = 'why' | 'rencontre' | 'mindset' | 'objectifs' | 'audience' | 'parcours' | 'produit'
 type Objectifs = { mensuel: string; m3: string; m6: string; m12: string }
@@ -293,7 +293,7 @@ TECHNIQUE (invisible pour moi, ne l'explique jamais)${NB}: le jour où je VALIDE
               try { out.push({ from: 'atlas', text: '', actionCard: JSON.parse(m.content.slice(10)) as AtlasAction }) } catch { /* carte illisible, ignorée */ }
               continue
             }
-            out.push({ from: 'atlas', text: stripOpenMarker(stripSaveMarker(m.content)) })
+            out.push({ from: 'atlas', text: cleanChat(stripOpenMarker(stripSaveMarker(m.content))) })
             const om = m.content.match(OPEN_MARK_RE)
             if (om) { const route = cleanOpenRoute(om[1]); if (route) out.push({ from: 'atlas', text: '', navCard: { route, label: om[2].trim() } }) }
           }
@@ -891,7 +891,7 @@ TECHNIQUE (invisible pour moi, ne l'explique jamais)${NB}: le jour où je VALIDE
       : undefined
     setMsgs((prev) => [...prev,
       { from: 'atlas', text: support ? `Bien vu — je rédige le message avec « ${support.title} » joint.` : intro },
-      { from: 'atlas', text: '', draft: { contactId: item.contactId, prenom: item.prenom, channel, phone: item.phone, email: item.email, instruction } },
+      { from: 'atlas', text: '', draft: { contactId: item.contactId, prenom: item.prenom, channel, phone: item.phone, email: item.email, instruction, conversationId: (c ?? filConvRef.current) ?? undefined } },
     ])
     setTimeout(scrollToBottom, 60)
   }
@@ -1294,7 +1294,7 @@ TECHNIQUE (invisible pour moi, ne l'explique jamais)${NB}: le jour où je VALIDE
                     <ChatChoices choices={m.choices} onPick={(value, label) => handleChoice(m.item!, value, label, i)} />
                   </div>
                 ) : m.draft ? (
-                  <AtlasDraftCard contactId={m.draft.contactId} prenom={m.draft.prenom} channel={m.draft.channel} phone={m.draft.phone} email={m.draft.email} instruction={m.draft.instruction} />
+                  <AtlasDraftCard contactId={m.draft.contactId} prenom={m.draft.prenom} channel={m.draft.channel} phone={m.draft.phone} email={m.draft.email} instruction={m.draft.instruction} conversationId={m.draft.conversationId} />
                 ) : m.profileForm ? (
                   <ProfileFormCard me={m.profileForm.me} onSaved={(n) => { setMsgs((prev) => [...prev, { from: 'atlas', text: `C'est noté dans ton profil ✓ (${n} info${n > 1 ? 's' : ''}). Plus je te connais, mieux je te coache.` }]); setTimeout(scrollToBottom, 60) }} />
                 ) : m.whyCard ? (

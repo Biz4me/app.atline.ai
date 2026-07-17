@@ -42,10 +42,26 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
   const c = await db.contact.findFirst({ where: { id, userId: session.user.id } })
   if (!c) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
-  const { channel, instruction } = await req.json()
+  const { channel, instruction, conversationId } = await req.json()
   const ch = String(channel ?? 'SMS').toUpperCase()
   // Consigne libre de l'utilisateur (« propose-lui un RDV mardi ») — prioritaire sur l'intention du stade
   const consigne = typeof instruction === 'string' && instruction.trim() ? instruction.trim().slice(0, 500) : ''
+
+  // LA CONVERSATION EST LA SOURCE DE VÉRITÉ : si le brouillon naît d'un échange avec Atlas,
+  // il doit PROLONGER ce qui vient d'être convenu — jamais le contredire (fin de l'usine à gaz).
+  let convo = ''
+  if (typeof conversationId === 'string' && conversationId) {
+    const conv = await db.atlasConversation.findFirst({ where: { id: conversationId, userId: session.user.id }, select: { id: true } })
+    if (conv) {
+      const msgs = await db.atlasMessage.findMany({
+        where: { conversationId: conv.id, NOT: { content: { startsWith: '[[ACTION' } } },
+        orderBy: { createdAt: 'desc' },
+        take: 10,
+        select: { role: true, content: true },
+      })
+      convo = msgs.reverse().map((m) => `${m.role === 'USER' ? 'Lui' : 'Toi (son coach)'} : ${m.content.replace(/\s+/g, ' ').slice(0, 300)}`).join('\n')
+    }
+  }
 
   const [user, business, lastInter] = await Promise.all([
     db.user.findUnique({ where: { id: session.user.id }, select: { firstName: true } }),
@@ -66,7 +82,8 @@ ${c.personality ? (COLOR_TONE[c.personality] ?? '') : ''}
 ${CHANNEL_RULE[ch] ?? CHANNEL_RULE.SMS}
 ${c.note ? `Contexte sur ${prenom} : ${c.note}` : ''}
 ${histo}
-Règles STRICTES : écris à la 1ère personne (c'est ${user?.firstName ?? 'moi'} qui écris), en français naturel, prêt à envoyer, AUCUN placeholder type [prénom] ou [nom], pas de signature inutile. Réponds UNIQUEMENT avec le message, rien d'autre.`
+${convo ? `CONVERSATION EN COURS entre l'utilisateur et son coach — le message doit être COHÉRENT avec ce qui vient d'être convenu ici, ne contredis JAMAIS ces conseils :\n${convo}` : ''}
+Règles STRICTES : écris à la 1ère personne (c'est ${user?.firstName ?? 'moi'} qui écris), en français naturel, prêt à envoyer, AUCUN placeholder type [prénom] ou [nom], pas de signature inutile, AUCUN markdown (pas de **, pas de listes formatées). Réponds UNIQUEMENT avec le message, rien d'autre.`
 
   let message = ''
   try {
