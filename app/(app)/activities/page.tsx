@@ -8,7 +8,6 @@ import { AtlasSessionField } from '@/components/atlas-session-field'
 import { CollapsibleSection } from '@/components/collapsible-section'
 import { SelectMenu } from '@/components/select-menu'
 import { MLM_COMPANIES, companyOptions, categoryForCompany, OTHER_COMPANY } from '@/lib/mlm-companies'
-import { useOverlay } from '@/components/overlay-provider'
 import { toast } from 'sonner'
 
 const DATE_MONTHS = ['Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin', 'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre']
@@ -51,9 +50,9 @@ const nf = (vals: (string | undefined)[]) => vals.filter((v) => v && String(v).t
 
 export default function ActivitiesPage() {
   const router = useRouter()
-  const { setOpenId } = useOverlay()
   // Retour → on revient à la page précédente ET on rouvre le tiroir (on venait de « Gérer »)
-  const back = () => { setOpenId('drawer'); router.back() }
+  // Bascule nav messagerie : la feuille revient à la messagerie (plus jamais l'ancien tiroir)
+  const back = () => router.push('/chats')
   const [act, setAct] = useState<Activity | null>(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
