@@ -100,7 +100,9 @@ export function ChatsSearch({ open, onClose, threads, onAddContact }: {
   }
   const runCmd = (c: AtlasCommand) => {
     if (c.kind === 'local' && c.action === 'add-contact') { onClose(); onAddContact(); return }
-    const href = c.kind === 'atlas' ? `/atlas?cmd=${c.param}` : (c.to ?? '/atlas')
+    const href = c.kind === 'atlas' ? `/atlas?cmd=${c.param}`
+      : c.kind === 'prefill' ? `/atlas?prefill=${encodeURIComponent(c.prefill ?? '')}`
+      : (c.to ?? '/atlas')
     go(href, { emoji: c.emoji, label: c.label, href })
   }
 

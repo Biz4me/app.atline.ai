@@ -24,12 +24,13 @@ type Props = {
   bigText?: boolean          // +1px (chat Atlas)
   showScrollBtn?: boolean
   onScrollBottom?: () => void
+  onSlash?: () => void       // nav messagerie : bouton « / » (catalogue de commandes) — optionnel, surfaces agents uniquement
   children?: React.ReactNode // ex. input fichier caché (mobile)
 }
 
 export function AppComposer({
   value, onChange, onSubmit, onAttach, agentLabel = 'Atlas', accent, disabled, autoFocus,
-  desktop, bigText, showScrollBtn, onScrollBottom, children,
+  desktop, bigText, showScrollBtn, onScrollBottom, onSlash, children,
 }: Props) {
   const rootRef = useRef<HTMLDivElement>(null)
   // Dictée push-to-talk : la valeur courante en ref pour y accoler le texte reconnu.
@@ -74,6 +75,17 @@ export function AppComposer({
       )}
     >
       {scrollBtn}
+      {onSlash && (
+        <button
+          type="button"
+          onClick={onSlash}
+          title="Commandes"
+          aria-label="Commandes"
+          className="flex size-9 shrink-0 items-center justify-center rounded-full bg-primary/10 font-mono text-base font-bold text-primary transition-colors active:bg-primary/20"
+        >
+          /
+        </button>
+      )}
       {onAttach && (
         <button
           type="button"

@@ -17,6 +17,8 @@ import { ChatChoices, AtlasDraftCard, type PlanItem } from '@/components/atlas-p
 import { ProfileFormCard } from '@/components/atlas-profile-form'
 import { WhyValidateCard } from '@/components/atlas-why-card'
 import { AtlasNavCard, OPEN_MARK, OPEN_MARK_RE, cleanOpenRoute, stripOpenMarker } from '@/components/atlas-nav-card'
+import { SlashMenu } from '@/components/slash-menu'
+import { ATLAS_COMMANDS, type AtlasCommand } from '@/lib/atlas-commands'
 import { PageHeader } from '@/components/page-shell'
 import { AtlasActionCard, type AtlasAction } from '@/components/atlas-action-card'
 
@@ -100,6 +102,7 @@ export default function AtlasPage() {
     fetch('/api/plan/today').then((r) => (r.ok ? r.json() : null)).then((d) => { setPlan(d?.items?.slice(0, 4) ?? []); setPlanObj(d?.objectif ?? null) }).catch(() => {})
   }, [])
   const [input, setInput] = useState('')
+  const [slashOpen, setSlashOpen] = useState(false) // sheet des commandes « / » (T4)
   const [histMounted, setHistMounted] = useState(false)
   const [histVisible, setHistVisible] = useState(false)
   const [histTop, setHistTop] = useState(0)
@@ -426,25 +429,30 @@ TECHNIQUE (invisible pour moi, ne l'explique jamais)${NB}: le jour où je VALIDE
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sessionParam, loadingConv])
 
-  // Nav messagerie : commandes (?cmd=plan|objectif) et « Demander à Atlas » (?ask=…) — même patron que ?session.
+  // Nav messagerie : commandes (?cmd), « Demander à Atlas » (?ask) et préremplissage (?prefill) — même patron que ?session.
   const cmdParam = sp.get('cmd')
   const askParam = sp.get('ask')
+  const prefillParam = sp.get('prefill')
   const cmdStartedRef = useRef(false)
   const showPlanRef = useRef<() => void>(() => {})
   const cmdSendRef = useRef<(t: string, title?: string) => void>(() => {})
   useEffect(() => {
-    if ((!cmdParam && !askParam) || cmdStartedRef.current || loadingConv) return
+    if ((!cmdParam && !askParam && !prefillParam) || cmdStartedRef.current || loadingConv) return
     cmdStartedRef.current = true
     const cmd = cmdParam
     const ask = askParam
+    const pf = prefillParam
     router.replace('/atlas', { scroll: false })
     setTimeout(() => {
       if (cmd === 'plan') showPlanRef.current()
-      else if (cmd === 'objectif') cmdSendRef.current("Fais le point sur mon objectif de partenaires ce mois-ci : où j'en suis, et qu'est-ce qui ferait avancer le score ?", 'Mon objectif du mois')
-      else if (ask) cmdSendRef.current(ask)
+      else if (cmd) {
+        const c = ATLAS_COMMANDS.find((x) => x.kind === 'atlas' && x.param === cmd)
+        if (c?.ask) cmdSendRef.current(c.ask, c.label)
+      } else if (ask) cmdSendRef.current(ask)
+      else if (pf) setInput(pf)
     }, 200)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [cmdParam, askParam, loadingConv])
+  }, [cmdParam, askParam, prefillParam, loadingConv])
 
   // Historique mobile — déploiement type menu « Plus » de l'accueil (slide depuis le header + backdrop)
   const openHist = () => {
@@ -755,6 +763,17 @@ TECHNIQUE (invisible pour moi, ne l'explique jamais)${NB}: le jour où je VALIDE
       : ''
     await sendMsg(ctx + objLine, 'Mon plan du jour')
     if (top) startActionFlow(top)
+  }
+
+  // Le « / » agit (T4) : exécute une commande du catalogue (bouton / du composeur, ou saisie « /… »).
+  const runSlash = (c: AtlasCommand) => {
+    setSlashOpen(false)
+    if (c.kind === 'route') { setInput(''); router.push(c.to ?? '/atlas'); return }
+    if (c.kind === 'prefill') { setInput(c.prefill ?? ''); return } // l'utilisateur complète le nom, Atlas et ses outils font le reste
+    setInput('')
+    if (c.param === 'plan') { void showPlan(); return }
+    if (c.ask) { void sendMsg(c.ask, c.label); return }
+    router.push('/contacts') // kind local (/nouveau) : ici, la création passe par la liste
   }
 
   // Compléter mon profil : carte mini-formulaire inline (self-serve, tout dans le chat).
@@ -1337,13 +1356,22 @@ TECHNIQUE (invisible pour moi, ne l'explique jamais)${NB}: le jour où je VALIDE
           desktop
           bigText
           value={input}
-          onChange={setInput}
+          onChange={(v) => { setInput(v); setSlashOpen(v.startsWith('/')) }}
           onSubmit={submitInput}
           onAttach={() => fileInputRef.current?.click()}
+          onSlash={() => setSlashOpen(true)}
           agentLabel="Atlas"
           disabled={streaming}
           showScrollBtn={showScrollBtn}
           onScrollBottom={goToBottom}
+        />
+
+        {/* Catalogue des commandes — bouton / ou saisie « /… » (filtre en direct) */}
+        <SlashMenu
+          open={slashOpen}
+          query={input.startsWith('/') ? input.slice(1) : ''}
+          onClose={() => { setSlashOpen(false); if (input.startsWith('/')) setInput('') }}
+          onPick={runSlash}
         />
       </div>
 
