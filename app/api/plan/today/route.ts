@@ -165,7 +165,8 @@ export async function GET() {
     if (!a.contactId) continue
     const c = byId.get(a.contactId); if (!c) continue
     const t = new Date(a.startAt).getTime()
-    if (t < now) push(c, 1, 'DEBRIEF', `Débriefe ton RDV avec ${prenom(c)}`, `RDV passé non débriefé — saisis le résultat pour débloquer la suite.`, null, a.id)
+    // Partenaire = la signature est actée (annoncée en chat ou au débrief) : on ne redemande JAMAIS l'issue.
+    if (t < now) { if (c.kind !== 'PARTENAIRE') push(c, 1, 'DEBRIEF', `Débriefe ton RDV avec ${prenom(c)}`, `RDV passé non débriefé — saisis le résultat pour débloquer la suite.`, null, a.id) }
     else if (t - now < 2 * 86_400_000) push(c, 1, 'RDV', `Prépare ton RDV avec ${prenom(c)}`, `RDV « ${a.title} » à venir — prépare-le et confirme.`, null, a.id)
   }
   for (const r of relances) {

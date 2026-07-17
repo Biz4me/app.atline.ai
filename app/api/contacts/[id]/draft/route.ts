@@ -19,6 +19,15 @@ const STAGE_INTENT: Record<string, string> = {
   CLOSING: "Objectif : l'aider à décider maintenant, lever la dernière objection en douceur.",
 }
 
+// Le message suit le VRAI statut du contact — une partenaire ne reçoit plus un message de prospection.
+const PARTNER_INTENT: Record<string, string> = {
+  DEMARRAGE: "C'est une NOUVELLE PARTENAIRE de ton équipe : félicite-la, cadre ses premières 48 heures (ses objectifs, sa liste de noms, son premier contact accompagné), propose un point ensemble.",
+  FORMATION: "Partenaire en formation : encourage sa montée en compétence, propose ton aide sur un module ou une action concrète.",
+  ACTIF: "Partenaire actif : entretiens la dynamique d'équipe, valorise ses résultats récents, garde le lien.",
+  LEADER: "Leader de ton équipe : reconnaissance entre pros, vision, coordination — jamais de ton descendant.",
+}
+const CLIENT_INTENT = "C'est un(e) client(e) : prends des nouvelles, assure-toi que le produit lui convient, fidélise — sans vendre à tout prix."
+
 const CHANNEL_RULE: Record<string, string> = {
   SMS: "Canal SMS : très court (1-2 phrases max).",
   WHATSAPP: "Canal WhatsApp : court et chaleureux, ton parlé, un emoji possible.",
@@ -49,7 +58,10 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
   const histo = lastInter.length ? `Dernières interactions : ${lastInter.map(i => `${i.type.toLowerCase()}${i.outcome ? ` (${i.outcome.toLowerCase()})` : ''}`).join(', ')}.` : ''
 
   const query = `Tu es Atlas, coach en marketing de réseau. Rédige UN message prêt à envoyer, de la part de ${user?.firstName ?? 'moi'} (distributeur ${business?.mlmName ?? ''}), à ${prenom} (${kindLabel}).
-${consigne ? `CONSIGNE PRIORITAIRE de l'utilisateur : ${consigne}` : c.kind === 'PROSPECT' ? (STAGE_INTENT[c.prospectStage ?? 'NOUVEAU'] ?? '') : ''}
+${consigne ? `CONSIGNE PRIORITAIRE de l'utilisateur : ${consigne}`
+    : c.kind === 'PARTENAIRE' ? (PARTNER_INTENT[c.partnerStage ?? 'DEMARRAGE'] ?? PARTNER_INTENT.DEMARRAGE)
+    : c.kind === 'CLIENT' ? CLIENT_INTENT
+    : (STAGE_INTENT[c.prospectStage ?? 'NOUVEAU'] ?? '')}
 ${c.personality ? (COLOR_TONE[c.personality] ?? '') : ''}
 ${CHANNEL_RULE[ch] ?? CHANNEL_RULE.SMS}
 ${c.note ? `Contexte sur ${prenom} : ${c.note}` : ''}

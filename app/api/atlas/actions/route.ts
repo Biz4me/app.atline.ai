@@ -96,6 +96,13 @@ export async function POST(req: NextRequest) {
       if (['CHAUD', 'TIEDE', 'FROID'].includes(p.marche)) data.market = p.marche
       if (['ROUGE', 'VERT', 'BLEU', 'JAUNE'].includes(p.couleur)) data.personality = p.couleur
       if (['NOUVEAU', 'INVITATION', 'PRESENTATION', 'SUIVI', 'CLOSING'].includes(p.etape)) data.prospectStage = p.etape
+      // « Elle a démarré » annoncé en chat : Atlas peut acter la signature (pas seulement le débrief).
+      else if (['DEMARRAGE', 'FORMATION', 'ACTIF', 'LEADER'].includes(p.etape)) {
+        const cur = await db.contact.findFirst({ where: { id: contact.id, userId }, select: { kind: true } })
+        data.kind = 'PARTENAIRE'
+        data.partnerStage = p.etape
+        if (cur?.kind !== 'PARTENAIRE') { data.signedAt = new Date(); data.lastContact = new Date() } // 1re bascule = signature (compteur du mois)
+      }
 
       // Qualification : fusion clé à clé dans le JSON existant (jamais d'écrasement global)
       const QUAL: Record<string, string> = { situation: 'situation', interets: 'interests', motivation: 'motivation', insatisfaction: 'insatisfaction', reseau: 'reseau', ouverture: 'ouverture' }
