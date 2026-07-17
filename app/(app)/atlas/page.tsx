@@ -157,7 +157,8 @@ export default function AtlasPage() {
   const [typedMantra, setTypedMantra] = useState('')
   const [firstName, setFirstName] = useState('')
   const scrollRef = useRef<HTMLDivElement>(null)
-  const loadedRef = useRef<string | null>(null)
+  // Sentinelle ≠ null : le fil DOIT se charger au premier passage même sans ?c (fil continu)
+  const loadedRef = useRef<string | null | undefined>(undefined)
   const atBottomRef = useRef(true)
   // Capture d'une info à texte libre demandée par Atlas (ex. métier) + file de champs manquants à combler
   const captureRef = useRef<{ field: string; item: PlanItem } | null>(null)
