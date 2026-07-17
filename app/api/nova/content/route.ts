@@ -5,6 +5,21 @@ import { db } from '@/lib/db'
 
 const PLATFORMS = ['INSTAGRAM', 'TIKTOK', 'FACEBOOK', 'LINKEDIN', 'YOUTUBE', 'TWITTER']
 
+// Nav messagerie T8 — le fil Nova liste ses derniers livrables (posts réels, pas de mock).
+export async function GET() {
+  const session = await getServerSession(authOptions)
+  const userId = session?.user?.id
+  if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  const posts = await db.contentPost.findMany({
+    where: { userId },
+    orderBy: { createdAt: 'desc' },
+    take: 20,
+    select: { id: true, caption: true, platform: true, status: true, format: true, createdAt: true, campaignId: true },
+  })
+  return NextResponse.json(posts)
+}
+
 // Crée OU met à jour un contenu de campagne (ex. le BOFU / contenu de conversion généré par Nova).
 export async function POST(req: Request) {
   const session = await getServerSession(authOptions)
