@@ -2,10 +2,11 @@
 
 import { use, useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { ChevronLeft, Loader2, PhoneCall, PenLine } from 'lucide-react'
+import { ChevronLeft, Loader2, PhoneCall, PenLine, MoreVertical } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { AppComposer } from '@/components/mobile/app-composer'
 import { AtlasDraftCard } from '@/components/atlas-plan-card'
+import { useFilSearch, FilSearchRow } from '@/components/fil-search'
 
 // ═══ NAV MESSAGERIE T5 — le fil contact ═══
 // Ici on parle à ATLAS, À PROPOS du contact (jamais au contact : ses vrais messages
@@ -37,6 +38,8 @@ export default function ContactThreadPage({ params }: { params: Promise<{ contac
   const [loading, setLoading] = useState(true)
   const convRef = useRef<string | null>(null)
   const endRef = useRef<HTMLDivElement>(null)
+  // Recherche DANS la conversation (⋮ de l'en-tête)
+  const filSearch = useFilSearch(msgs.map((m) => m.text ?? ''))
 
   const prenom = c?.firstName || c?.name?.split(' ')[0] || 'ce contact'
 
@@ -139,23 +142,32 @@ export default function ContactThreadPage({ params }: { params: Promise<{ contac
 
   return (
     <div className="mx-auto flex h-dvh w-full max-w-2xl flex-col bg-background">
-      {/* En-tête contact — tap = la fiche (l'« info du contact » de la messagerie) */}
-      <div className="flex shrink-0 items-center gap-2.5 border-b border-border bg-background/90 px-3 py-2 backdrop-blur" style={{ paddingTop: 'max(0.5rem, env(safe-area-inset-top))' }}>
-        <button type="button" aria-label="Retour" onClick={() => router.push('/chats')} className="flex size-9 shrink-0 items-center justify-center rounded-full text-muted-foreground active:bg-muted">
-          <ChevronLeft className="size-5 stroke-[1.5]" />
-        </button>
-        <button type="button" onClick={() => router.push(`/contacts/${contactId}`)} className="flex min-w-0 flex-1 items-center gap-2.5 text-left">
-          <span className="grid size-10 shrink-0 place-items-center rounded-full text-sm font-bold text-white" style={{ backgroundColor: c?.accent ?? '#F97316' }}>
-            {c?.initials ?? c?.name?.slice(0, 2).toUpperCase() ?? '…'}
-          </span>
-          <span className="min-w-0">
-            <span className="block truncate text-sm font-semibold text-foreground">{c?.name ?? 'Contact'}</span>
-            {/* présence : pendant la réponse, l'en-tête vit (« Atlas écrit… ») */}
-            <span className={cn('block truncate text-xs', streaming ? 'font-medium text-primary' : 'text-muted-foreground')}>
-              {streaming ? 'Atlas écrit…' : subtitle}
-            </span>
-          </span>
-        </button>
+      {/* En-tête contact — tap = la fiche ; ⋮ = recherche dans la conversation */}
+      <div className="shrink-0 border-b border-border bg-background/90 backdrop-blur">
+        {filSearch.open ? (
+          <FilSearchRow s={filSearch} />
+        ) : (
+          <div className="flex items-center gap-2.5 px-3 py-2" style={{ paddingTop: 'max(0.5rem, env(safe-area-inset-top))' }}>
+            <button type="button" aria-label="Retour" onClick={() => router.push('/chats')} className="flex size-9 shrink-0 items-center justify-center rounded-full text-muted-foreground active:bg-muted">
+              <ChevronLeft className="size-5 stroke-[1.5]" />
+            </button>
+            <button type="button" onClick={() => router.push(`/contacts/${contactId}`)} className="flex min-w-0 flex-1 items-center gap-2.5 text-left">
+              <span className="grid size-10 shrink-0 place-items-center rounded-full text-sm font-bold text-white" style={{ backgroundColor: c?.accent ?? '#F97316' }}>
+                {c?.initials ?? c?.name?.slice(0, 2).toUpperCase() ?? '…'}
+              </span>
+              <span className="min-w-0">
+                <span className="block truncate text-sm font-semibold text-foreground">{c?.name ?? 'Contact'}</span>
+                {/* présence : pendant la réponse, l'en-tête vit (« Atlas écrit… ») */}
+                <span className={cn('block truncate text-xs', streaming ? 'font-medium text-primary' : 'text-muted-foreground')}>
+                  {streaming ? 'Atlas écrit…' : subtitle}
+                </span>
+              </span>
+            </button>
+            <button type="button" aria-label="Chercher dans la conversation" onClick={() => filSearch.setOpen(true)} className="flex size-9 shrink-0 items-center justify-center rounded-full text-muted-foreground active:bg-muted">
+              <MoreVertical className="size-5 stroke-[1.5]" />
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Le bandeau qui lève l'ambiguïté — règle absolue du fil contact */}
@@ -174,7 +186,7 @@ export default function ContactThreadPage({ params }: { params: Promise<{ contac
         )}
         <div className="flex flex-col gap-3">
           {msgs.map((m, i) => (
-            <div key={i} className={m.from === 'user' ? 'max-w-[85%] self-end' : m.draft ? 'w-[92%] self-start' : 'max-w-[92%] self-start'}>
+            <div key={i} data-midx={i} className={cn(m.from === 'user' ? 'max-w-[85%] self-end' : m.draft ? 'w-[92%] self-start' : 'max-w-[92%] self-start', filSearch.highlight(i))}>
               {m.draft && c ? (
                 <AtlasDraftCard contactId={c.id} prenom={prenom} channel={m.draft.channel} phone={c.phone} email={c.email} initial={m.draft.initial} />
               ) : m.from === 'user' ? (

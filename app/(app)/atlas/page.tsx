@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { Mic, History, Plus, X, MoreHorizontal, Pencil, Trash2, FileText, Users, Loader2, Zap, Target, SquarePen, UserRound, Compass, Sparkles } from 'lucide-react'
+import { Mic, History, Plus, X, MoreHorizontal, MoreVertical, ChevronLeft as ChevronLeftIcon, Pencil, Trash2, FileText, Users, Loader2, Zap, Target, SquarePen, UserRound, Compass, Sparkles } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
 import { AppComposer } from '@/components/mobile/app-composer'
@@ -19,6 +19,7 @@ import { WhyValidateCard } from '@/components/atlas-why-card'
 import { AtlasNavCard, OPEN_MARK, OPEN_MARK_RE, cleanOpenRoute, stripOpenMarker } from '@/components/atlas-nav-card'
 import { SlashMenu } from '@/components/slash-menu'
 import { ATLAS_COMMANDS, type AtlasCommand } from '@/lib/atlas-commands'
+import { useFilSearch, FilSearchRow } from '@/components/fil-search'
 import { PageHeader } from '@/components/page-shell'
 import { AtlasActionCard, type AtlasAction } from '@/components/atlas-action-card'
 
@@ -96,6 +97,8 @@ export default function AtlasPage() {
   const c = sp.get('c')
   const sessionParam = sp.get('session')
   const [msgs, setMsgs] = useState<Msg[]>([])
+  // Recherche DANS la conversation (⋮ de l'en-tête, façon Telegram)
+  const filSearch = useFilSearch(msgs.map((m) => m.text ?? ''))
   const [plan, setPlan] = useState<PlanItem[]>([]) // plan du jour en cartes sur l'écran d'accueil du fil
   const [planObj, setPlanObj] = useState<{ mensuel: number; signed: number } | null>(null) // objectif du mois (partenaires signés)
   useEffect(() => {
@@ -1106,21 +1109,27 @@ TECHNIQUE (invisible pour moi, ne l'explique jamais)${NB}: le jour où je VALIDE
       {/* ── Zone principale : chat ── (l'historique desktop vit dans la sidebar 2) */}
       <div className="flex flex-1 flex-col min-h-0 min-w-0">
 
-        {/* Header — vide sur mobile (ancre du panneau historique) ; en-tête agent unifié sur desktop */}
-        {/* En-tête : mobile vide (ancre historique) ; desktop = l'en-tête UNIQUE (PageHeader) */}
-        <div ref={headerRef} className="shrink-0 lg:mx-auto lg:w-full lg:max-w-3xl">
-          <div className="hidden lg:block">
-            <PageHeader title="Atlas" actions={
-              <>
-                <button type="button" aria-label="Historique" onClick={() => window.dispatchEvent(new Event('agent:history'))} className="flex size-10 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted">
-                  <History className="size-5 stroke-[1.5]" />
-                </button>
-                <button type="button" aria-label="Nouvelle conversation" onClick={() => window.dispatchEvent(new Event('agent:new'))} className="flex size-10 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted">
-                  <Plus className="size-5 stroke-[1.5]" />
-                </button>
-              </>
-            } />
-          </div>
+        {/* En-tête messagerie unifié (comme les fils Aria/Nova/contact) : ‹ liste · Atlas · ⋮ = recherche dans la conversation */}
+        <div ref={headerRef} className="shrink-0 border-b border-border bg-background/90 backdrop-blur lg:mx-auto lg:w-full lg:max-w-3xl">
+          {filSearch.open ? (
+            <FilSearchRow s={filSearch} />
+          ) : (
+            <div className="flex items-center gap-2.5 px-3 py-2" style={{ paddingTop: 'max(0.5rem, env(safe-area-inset-top))' }}>
+              <button type="button" aria-label="Retour aux messages" onClick={() => router.push('/chats')} className="flex size-9 shrink-0 items-center justify-center rounded-full text-muted-foreground active:bg-muted">
+                <ChevronLeftIcon className="size-5 stroke-[1.5]" />
+              </button>
+              <span className="grid size-10 shrink-0 place-items-center rounded-full bg-primary text-sm font-bold text-white">A</span>
+              <span className="min-w-0 flex-1">
+                <span className="block text-sm font-semibold text-foreground">Atlas</span>
+                <span className={cn('block truncate text-xs', streaming ? 'font-medium text-primary' : 'text-muted-foreground')}>
+                  {streaming ? 'écrit…' : 'ton coach · toujours là'}
+                </span>
+              </span>
+              <button type="button" aria-label="Chercher dans la conversation" onClick={() => filSearch.setOpen(true)} className="flex size-9 shrink-0 items-center justify-center rounded-full text-muted-foreground active:bg-muted">
+                <MoreVertical className="size-5 stroke-[1.5]" />
+              </button>
+            </div>
+          )}
         </div>
 
         {/* Mobile : historique — slide depuis le header + backdrop (comme le menu Plus de l'accueil) */}
@@ -1296,7 +1305,7 @@ TECHNIQUE (invisible pour moi, ne l'explique jamais)${NB}: le jour où je VALIDE
           >
             <div className="mx-auto flex max-w-md flex-col gap-4 lg:max-w-3xl">
             {msgs.map((m, i) => (
-              <div key={i} className={cn('flex flex-col gap-2', m.from === 'user' ? 'items-end' : 'items-start')}>
+              <div key={i} data-midx={i} className={cn('flex flex-col gap-2', m.from === 'user' ? 'items-end' : 'items-start', filSearch.highlight(i))}>
                 {m.from === 'user' ? (
                   <div className="max-w-[82%] whitespace-pre-line rounded-2xl rounded-br-md bg-primary px-3.5 py-2.5 text-[19px] leading-[1.4] text-primary-foreground lg:text-base">
                     {frText(m.text)}

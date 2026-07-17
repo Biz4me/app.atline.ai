@@ -92,7 +92,7 @@ export function AppShell({ children, initialCollapsed, initialAtlasCollapsed }: 
         )}
       >
         {/* Chrome mobile global : barre du haut (hamburger → tiroir) + barre Atlas en bas */}
-        {!navHidden && !isChats && <TopBar />}
+        {!navHidden && !isChats && !isAtlasChat && <TopBar />}
         {/* Pages du menu « Plus » (plein écran) : entrée par la droite sur mobile — règle commune */}
         {navHidden ? (
           <div className="overflow-x-clip">
