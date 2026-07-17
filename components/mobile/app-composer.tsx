@@ -25,12 +25,13 @@ type Props = {
   showScrollBtn?: boolean
   onScrollBottom?: () => void
   onSlash?: () => void       // nav messagerie : bouton « / » (catalogue de commandes) — optionnel, surfaces agents uniquement
+  placeholder?: string       // nav messagerie : « Parle à Atlas de Sophie… » (défaut : « Écris à {agent}… »)
   children?: React.ReactNode // ex. input fichier caché (mobile)
 }
 
 export function AppComposer({
   value, onChange, onSubmit, onAttach, agentLabel = 'Atlas', accent, disabled, autoFocus,
-  desktop, bigText, showScrollBtn, onScrollBottom, onSlash, children,
+  desktop, bigText, showScrollBtn, onScrollBottom, onSlash, placeholder, children,
 }: Props) {
   const rootRef = useRef<HTMLDivElement>(null)
   // Dictée push-to-talk : la valeur courante en ref pour y accoler le texte reconnu.
@@ -101,7 +102,7 @@ export function AppComposer({
         value={value}
         onChange={(e) => onChange(e.target.value)}
         onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); onSubmit() } }}
-        placeholder={`Écris à ${agentLabel}…`}
+        placeholder={placeholder ?? `Écris à ${agentLabel}…`}
         className={cn('flex-1 resize-none overflow-y-auto no-scrollbar bg-transparent leading-[1.4] text-foreground outline-none placeholder:text-muted-foreground', textCls)}
         style={{ maxHeight: 120, paddingTop: 7, paddingBottom: 7 }}
       />

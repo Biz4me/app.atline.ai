@@ -165,8 +165,8 @@ export function ChatsSearch({ open, onClose, threads, onAddContact }: {
             avatarText={t.initials}
             title={t.name}
             line={t.recruiting ? 'Client · en recrutement' : t.kind === 'PARTENAIRE' ? 'Partenaire' : t.stage ? STAGE_LABEL[t.stage] ?? t.stage : 'Contact'}
-            endPill={{ label: 'fiche', cls: 'bg-muted text-muted-foreground' }}
-            onClick={() => go(`/contacts/${t.contactId}`, { emoji: '👤', label: t.name, href: `/contacts/${t.contactId}` })}
+            endPill={{ label: 'fil', cls: 'bg-primary/10 text-primary' }}
+            onClick={() => go(`/chats/${t.contactId}`, { emoji: '👤', label: t.name, href: `/chats/${t.contactId}` })}
           />
         ))}
         {cmds.length > 0 && <Label>Commandes</Label>}

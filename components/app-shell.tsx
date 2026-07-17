@@ -20,9 +20,12 @@ interface Props {
 export function AppShell({ children, initialCollapsed, initialAtlasCollapsed }: Props) {
   const pathname = usePathname()
   // Pages où le rail droit reste mais réduit aux agents (jamais déplié)
-  const railCollapsedOnly = ['/atlas', '/aria', '/nova', '/messages'].some(
+  const railCollapsedOnly = ['/atlas', '/aria', '/nova', '/messages', '/chats'].some(
     (p) => pathname === p || pathname.startsWith(p + '/'),
   )
+  // Nav messagerie (chantier parallèle) : /chats gère son propre chrome (rangée unique, composeur du fil)
+  const isChats = pathname === '/chats' || pathname.startsWith('/chats/')
+  const isChatFil = pathname.startsWith('/chats/') // fil contact : pleine hauteur, composeur fixed (comme Atlas)
   // UNE sidebar desktop (le tiroir mobile épinglé) — plus de rail + sidebar 2 à 2 étages
   const sidebarEdge = 260
 
@@ -81,16 +84,16 @@ export function AppShell({ children, initialCollapsed, initialAtlasCollapsed }: 
       <div
         className={cn(
           'app-shell lg:pb-0 lg:max-w-none lg:mx-0',
-          navHidden || isAtlasChat ? '' : 'pb-[76px]',
+          navHidden || isAtlasChat || isChats ? '' : 'pb-[76px]',
           // Atlas mobile : hauteur figée = zéro scroll du document (le résidu est clippé, le composeur est fixed)
-          isAtlasChat ? 'max-lg:h-[100dvh] max-lg:overflow-hidden' : '',
+          isAtlasChat || isChatFil ? 'max-lg:h-[100dvh] max-lg:overflow-hidden' : '',
           'transition-[padding-left,padding-right] duration-200 ease-out',
           collapsed ? 'lg:pl-0' : 'lg:pl-[260px]',
           railCollapsedOnly ? 'lg:pr-0' : atlasCollapsed ? 'lg:pr-16' : 'lg:pr-[360px]',
         )}
       >
         {/* Chrome mobile global : barre du haut (hamburger → tiroir) + barre Atlas en bas */}
-        {!navHidden && <TopBar />}
+        {!navHidden && !isChats && <TopBar />}
         {/* Pages du menu « Plus » (plein écran) : entrée par la droite sur mobile — règle commune */}
         {navHidden ? (
           <div className="overflow-x-clip">
@@ -99,7 +102,7 @@ export function AppShell({ children, initialCollapsed, initialAtlasCollapsed }: 
         ) : (
           children
         )}
-        {!navHidden && <ShellComposer />}
+        {!navHidden && !isChats && <ShellComposer />}
       </div>
       <MobileDrawer />
     </PageVisibilityProvider>

@@ -157,7 +157,7 @@ export default function ChatsPage() {
                 : undefined
               }
               dim={cold}
-              onClick={() => router.push(`/contacts/${t.contactId}`)}
+              onClick={() => router.push(`/chats/${t.contactId}`)}
             />
           )
         })}
@@ -220,7 +220,7 @@ export default function ChatsPage() {
                     : undefined
                   }
                   dim={cold}
-                  onClick={() => router.push(`/contacts/${t.contactId}`)}
+                  onClick={() => router.push(`/chats/${t.contactId}`)}
                 />
               )
             })}
