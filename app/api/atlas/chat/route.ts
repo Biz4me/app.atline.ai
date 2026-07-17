@@ -228,7 +228,8 @@ export async function POST(req: NextRequest) {
     skip,
     select: { role: true, content: true },
   })
-  const conversation_history = lastMsgs.map((m) => ({
+  // Les messages [[ACTION]] sont des cartes UI, pas du dialogue : jamais envoyés au modèle.
+  const conversation_history = lastMsgs.filter((m) => !m.content.startsWith('[[ACTION')).map((m) => ({
     role: m.role === 'USER' ? 'user' : 'assistant',
     content: m.content,
   }))
@@ -299,6 +300,7 @@ export async function POST(req: NextRequest) {
     }
     let full = ''
     const resolved: string[] = []
+    const proposals: unknown[] = []
     for (const line of raw.split('\n')) {
       if (!line.startsWith('data: ')) continue
       const p = line.slice(6).trim()
@@ -307,6 +309,7 @@ export async function POST(req: NextRequest) {
         const d = JSON.parse(p)
         if (d.text) full += d.text
         else if (Array.isArray(d.resolved_contacts)) resolved.push(...d.resolved_contacts.filter((x: unknown): x is string => typeof x === 'string'))
+        else if (d.action_proposal?.kind) proposals.push(d.action_proposal)
       } catch {
         /* ligne SSE partielle, ignorée */
       }
@@ -315,6 +318,13 @@ export async function POST(req: NextRequest) {
       if (full) {
         await db.atlasMessage.create({
           data: { conversationId: cid, role: 'ASSISTANT', content: full, qdrantChunks: [] },
+        })
+      }
+      // Les PROPOSITIONS d'action survivent au refresh : persistées en messages [[ACTION]]{json},
+      // rendues en cartes par les chargeurs de fil, marquées [[ACTION_DONE]] à la confirmation.
+      for (const a of proposals) {
+        await db.atlasMessage.create({
+          data: { conversationId: cid, role: 'ASSISTANT', content: `[[ACTION]]${JSON.stringify(a)}`, qdrantChunks: [] },
         })
       }
       await db.atlasConversation.update({ where: { id: cid }, data: { updatedAt: new Date() } })
@@ -350,7 +360,7 @@ export async function POST(req: NextRequest) {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             prior_summary: convMeta?.summary ?? '',
-            messages: older.map((m) => ({ role: m.role === 'USER' ? 'user' : 'assistant', content: m.content })),
+            messages: older.filter((m) => !m.content.startsWith('[[ACTION')).map((m) => ({ role: m.role === 'USER' ? 'user' : 'assistant', content: m.content })),
           }),
           signal: AbortSignal.timeout(30000),
         })

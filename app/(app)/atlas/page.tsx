@@ -286,6 +286,12 @@ TECHNIQUE (invisible pour moi, ne l'explique jamais)${NB}: le jour où je VALIDE
               out.push({ from: 'atlas', text: '', day: lastDay === todayKey ? "Aujourd'hui" : dt.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' }) })
             }
             if (m.role === 'USER') { out.push({ from: 'user', text: displayUserText(m.content) }); continue }
+            // Cartes d'action persistées : [[ACTION]] ressuscite la carte, [[ACTION_DONE]] est consommée.
+            if (m.content.startsWith('[[ACTION_DONE]]')) continue
+            if (m.content.startsWith('[[ACTION]]')) {
+              try { out.push({ from: 'atlas', text: '', actionCard: JSON.parse(m.content.slice(10)) as AtlasAction }) } catch { /* carte illisible, ignorée */ }
+              continue
+            }
             out.push({ from: 'atlas', text: stripOpenMarker(stripSaveMarker(m.content)) })
             const om = m.content.match(OPEN_MARK_RE)
             if (om) { const route = cleanOpenRoute(om[1]); if (route) out.push({ from: 'atlas', text: '', navCard: { route, label: om[2].trim() } }) }

@@ -18,6 +18,19 @@ function fromParis(dateStr: string, timeStr: string): Date {
   return new Date(naive.getTime() - (asParis.getTime() - asUtc.getTime()))
 }
 
+// Consomme la proposition persistée correspondante ([[ACTION]] → [[ACTION_DONE]]) :
+// la carte ne ressuscitera plus au rechargement du fil. Best-effort, jamais bloquant.
+async function consumeProposal(userId: string, kind: string) {
+  try {
+    const m = await db.atlasMessage.findFirst({
+      where: { conversation: { userId }, content: { startsWith: '[[ACTION]]', contains: `"kind":"${kind}"` } },
+      orderBy: { createdAt: 'desc' },
+      select: { id: true, content: true },
+    })
+    if (m) await db.atlasMessage.update({ where: { id: m.id }, data: { content: m.content.replace('[[ACTION]]', '[[ACTION_DONE]]') } })
+  } catch { /* best-effort */ }
+}
+
 async function findContact(userId: string, name: string) {
   const matches = await resolveContacts(userId, name)
   if (matches.length === 1) return { contact: matches[0] as { id: string; name: string } }
@@ -49,6 +62,7 @@ export async function POST(req: NextRequest) {
           ...(p.message ? { message: p.message } : {}),
         },
       })
+      void consumeProposal(userId, kind)
       return NextResponse.json({ ok: true, done: `Relance programmée pour ${contact.name}` })
     }
 
@@ -63,6 +77,7 @@ export async function POST(req: NextRequest) {
       await db.appointment.create({
         data: { userId, title: p.title.slice(0, 120), startAt, ...(contactId ? { contactId } : {}) },
       })
+      void consumeProposal(userId, kind)
       return NextResponse.json({ ok: true, done: `RDV posé : ${p.title}` })
     }
 
@@ -77,6 +92,7 @@ export async function POST(req: NextRequest) {
         where: { id: contact.id },
         data: { note: cur?.note ? `${cur.note}\n${line}` : line },
       })
+      void consumeProposal(userId, kind)
       return NextResponse.json({ ok: true, done: `Note ajoutée à la fiche de ${contact.name}` })
     }
 
@@ -125,6 +141,7 @@ export async function POST(req: NextRequest) {
 
       await db.contact.update({ where: { id: contact.id }, data })
       const n = Object.keys(data).filter((k) => k !== 'name').length
+      void consumeProposal(userId, kind)
       return NextResponse.json({ ok: true, done: `Fiche de ${contact.name} mise à jour (${n} info${n > 1 ? 's' : ''})` })
     }
 
@@ -149,6 +166,7 @@ export async function POST(req: NextRequest) {
       if (!Object.keys(data).length) return NextResponse.json({ error: 'aucune info à enregistrer' }, { status: 400 })
       await db.user.update({ where: { id: userId }, data })
       const n = Object.keys(data).filter((k) => k !== 'coaching').length + coachEntries.length
+      void consumeProposal(userId, kind)
       return NextResponse.json({ ok: true, done: `Ton profil est à jour (${n} info${n > 1 ? 's' : ''})` })
     }
 
@@ -175,6 +193,7 @@ export async function POST(req: NextRequest) {
       if (!Object.keys(data).length) return NextResponse.json({ error: 'aucune info à enregistrer' }, { status: 400 })
       await db.userMlmBusiness.update({ where: { id: biz.id }, data })
       const n = Object.keys(data).filter((k) => k !== 'objectif').length + objEntries.length
+      void consumeProposal(userId, kind)
       return NextResponse.json({ ok: true, done: `Activité ${biz.mlmName} mise à jour (${n} info${n > 1 ? 's' : ''})` })
     }
 

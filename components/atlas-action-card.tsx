@@ -127,7 +127,11 @@ export function AtlasActionCard({ action }: { action: AtlasAction }) {
         <span className="flex shrink-0 items-center gap-1.5">
           <button
             type="button"
-            onClick={() => setState('dismissed')}
+            onClick={() => {
+              setState('dismissed')
+              // Écarter = consommer la proposition persistée (elle ne reviendra pas au refresh)
+              void fetch('/api/atlas/actions/dismiss', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ kind: action.kind }) }).catch(() => {})
+            }}
             aria-label="Ignorer"
             className="grid size-8 place-items-center rounded-full text-muted-foreground active:bg-muted"
           >

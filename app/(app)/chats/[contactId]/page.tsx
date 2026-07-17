@@ -64,10 +64,15 @@ export default function ContactThreadPage({ params }: { params: Promise<{ contac
           if (!cancelled && rm.ok) {
             const d = await rm.json()
             convRef.current = last.id
-            loaded = (d.messages ?? []).map((m: { role: string; content: string }) => ({
-              from: m.role === 'USER' ? 'user' : 'atlas',
-              text: stripMarkers(m.content).trim(),
-            })).filter((m: Msg) => m.text)
+            loaded = (d.messages ?? []).flatMap((m: { role: string; content: string }): Msg[] => {
+              // Cartes d'action persistées : [[ACTION]] ressuscite, [[ACTION_DONE]] est consommée.
+              if (m.role !== 'USER' && m.content.startsWith('[[ACTION_DONE]]')) return []
+              if (m.role !== 'USER' && m.content.startsWith('[[ACTION]]')) {
+                try { return [{ from: 'atlas', text: '', actionCard: JSON.parse(m.content.slice(10)) as AtlasAction }] } catch { return [] }
+              }
+              const text = m.role === 'USER' ? m.content : stripMarkers(m.content).trim()
+              return text ? [{ from: m.role === 'USER' ? 'user' : 'atlas', text }] : []
+            })
           }
         }
         // Le brouillon en attente survit au refresh : la carte revient avec le TEXTE sauvé (lastDraft, T0).
