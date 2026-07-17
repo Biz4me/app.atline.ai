@@ -14,6 +14,10 @@ export type NavItem = { href: string; label: string; icon: LucideIcon }
 // Groupes = les 4 rubriques desktop. Chaque item porte un rôle mobile.
 // ─────────────────────────────────────────────────────────────
 export const NAV_GROUPS: NavGroup[] = [
+  // Bascule nav messagerie : l'accueil de l'app (desktop y accède par le rail ; T10b = colonne dédiée)
+  { label: 'Messages', head: '/chats', icon: MessageSquare, visKey: 'chats', items: [
+    { href: '/chats', label: 'Messages', icon: MessageSquare, mobile: 'hidden' },
+  ] },
   { label: 'Tableau de bord', head: '/home', icon: LayoutDashboard, visKey: 'home', items: [
     { href: '/home', label: 'Tableau de bord', icon: LayoutDashboard, mobile: 'drawer' },
     { href: '/rapport', label: 'Rapport', icon: TrendingUp, mobile: 'hidden' },

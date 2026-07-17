@@ -1,14 +1,13 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { usePathname } from 'next/navigation'
-import { History, Plus, Menu, ChevronLeft } from 'lucide-react'
-import { useOverlay } from '@/components/overlay-provider'
+import { usePathname, useRouter } from 'next/navigation'
+import { History, Plus, ChevronLeft } from 'lucide-react'
 import { titleForPath, isAgentPath, AGENTS } from '@/components/mobile/nav-config'
 
 export function TopBar() {
   const pathname = usePathname()
-  const { setOpenId } = useOverlay()
+  const router = useRouter()
 
   // Pastille du hamburger = VRAIES notifications non lues (rafraîchie à chaque navigation,
   // donc s'éteint dès qu'on revient de la page notifications)
@@ -28,19 +27,11 @@ export function TopBar() {
       style={{ paddingTop: 'max(0.75rem, env(safe-area-inset-top))' }}
     >
       <div className="flex flex-1 items-center gap-1">
-        {isAgentPath(pathname) ? (
-          // Atlas/agents (= maison) : hamburger → ouvre le menu
-          <button type="button" aria-label="Menu" onClick={() => setOpenId('drawer')} className={`relative ${iconCls(false)}`}>
-            <Menu className="size-6 stroke-[1.5]" />
-            {unread > 0 && <span className="absolute right-1.5 top-1.5 size-2.5 rounded-full bg-destructive ring-2 ring-background" />}
-          </button>
-        ) : (
-          // Pages atteintes via le menu : flèche retour → rouvre le tiroir
-          <button type="button" aria-label="Retour au menu" onClick={() => setOpenId('drawer')} className={`relative ${iconCls(false)}`}>
-            <ChevronLeft className="size-6 stroke-[1.5]" />
-            {unread > 0 && <span className="absolute right-1.5 top-1.5 size-2.5 rounded-full bg-destructive ring-2 ring-background" />}
-          </button>
-        )}
+        {/* Bascule nav messagerie : toute page revient à la LISTE (fil ← liste, geste Telegram) */}
+        <button type="button" aria-label="Retour aux messages" onClick={() => router.push('/chats')} className={`relative ${iconCls(false)}`}>
+          <ChevronLeft className="size-6 stroke-[1.5]" />
+          {unread > 0 && <span className="absolute right-1.5 top-1.5 size-2.5 rounded-full bg-destructive ring-2 ring-background" />}
+        </button>
       </div>
 
       {isAgentPath(pathname) ? (

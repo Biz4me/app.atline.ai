@@ -8,7 +8,6 @@ import { DesktopNav } from '@/components/desktop-nav'
 import { AtlasSidebar } from '@/components/atlas-sidebar'
 import { TopBar } from '@/components/top-bar'
 import { MobileDrawer } from '@/components/mobile/mobile-drawer'
-import { ShellComposer } from '@/components/mobile/shell-composer'
 import { PageVisibilityProvider } from '@/components/page-visibility-context'
 
 interface Props {
@@ -84,7 +83,7 @@ export function AppShell({ children, initialCollapsed, initialAtlasCollapsed }: 
       <div
         className={cn(
           'app-shell lg:pb-0 lg:max-w-none lg:mx-0',
-          navHidden || isAtlasChat || isChats ? '' : 'pb-[76px]',
+          // Bascule nav messagerie : plus de composeur de shell en bas → plus de padding réservé
           // Atlas mobile : hauteur figée = zéro scroll du document (le résidu est clippé, le composeur est fixed)
           isAtlasChat || isChatFil ? 'max-lg:h-[100dvh] max-lg:overflow-hidden' : '',
           'transition-[padding-left,padding-right] duration-200 ease-out',
@@ -102,7 +101,7 @@ export function AppShell({ children, initialCollapsed, initialAtlasCollapsed }: 
         ) : (
           children
         )}
-        {!navHidden && !isChats && <ShellComposer />}
+        {/* ShellComposer retiré à la bascule : Atlas est une conversation, les feuilles restent propres */}
       </div>
       <MobileDrawer />
     </PageVisibilityProvider>
