@@ -28,7 +28,7 @@ export async function GET() {
 
   // ── Agents épinglés : la dernière trace de chacun (best-effort, jamais bloquant) ──
   const now = new Date()
-  const [lastAtlas, lastSim, lastIdea, lastForum, nextRdv, simToday, contacts] = await Promise.all([
+  const [lastAtlas, lastSim, lastIdea, lastForum, nextRdv, simToday, contacts, contactChats] = await Promise.all([
     db.atlasMessage.findFirst({
       where: { conversation: { userId, contactId: null, agent: 'atlas' } },
       orderBy: { createdAt: 'desc' },
@@ -69,7 +69,17 @@ export async function GET() {
           },
         })
       : Promise.resolve([]),
+    // Activité de MESSAGERIE par contact : la liste vit au rythme des conversations, pas seulement du terrain
+    db.atlasConversation.findMany({
+      where: { userId, contactId: { not: null } },
+      orderBy: { updatedAt: 'desc' },
+      take: 300,
+      select: { contactId: true, updatedAt: true },
+    }).catch(() => [] as { contactId: string | null; updatedAt: Date }[]),
   ])
+
+  const chatAt = new Map<string, Date>()
+  for (const cv of contactChats) { if (cv.contactId && !chatAt.has(cv.contactId)) chatAt.set(cv.contactId, cv.updatedAt) }
 
   const clip = (s: string, n = 90) => (s.length > n ? `${s.slice(0, n).trimEnd()}…` : s)
 
@@ -122,6 +132,7 @@ export async function GET() {
     market: c.market,
     personality: c.personality,
     lastContact: c.lastContact,
+    lastChatAt: chatAt.get(c.id) ?? null,
     // « ✍️ Brouillon : … » — seulement si plus récent que le dernier échange (sinon il a été envoyé/dépassé)
     draft: c.lastDraft && (!c.lastContact || !c.lastDraftAt || c.lastDraftAt > c.lastContact) ? clip(c.lastDraft, 80) : null,
     birthdayToday: c.birthDate

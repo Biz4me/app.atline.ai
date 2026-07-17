@@ -639,7 +639,7 @@ export default function OnboardingPage() {
         // Déjà complété en base mais JWT périmé → on rafraîchit le token AVANT de naviguer,
         // sinon le middleware reboucle vers /onboarding = page blanche infinie.
         try { await update() } catch { /* ignore */ }
-        window.location.href = '/home'
+        window.location.href = '/welcome'
         return
       }
       if (u?.firstName) nameRef.current = u.firstName
@@ -662,12 +662,12 @@ export default function OnboardingPage() {
       nameRef.current,
       async (D) => {
         // Mode test : on ne réécrit rien, on revient juste à l'accueil
-        if (previewRef.current) { window.location.href = '/home'; return }
+        if (previewRef.current) { window.location.href = '/welcome'; return }
         try { await fetch('/api/onboarding', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(D) }) } catch { /* non bloquant */ }
         // CRITIQUE : rafraîchir le JWT (onboardingCompleted) sinon le middleware re-redirige vers /onboarding → boucle
         try { await update() } catch { /* ignore */ }
         // Navigation dure : garantit que le middleware relit le cookie de session frais
-        window.location.href = '/home'
+        window.location.href = '/welcome'
       },
     )
   }, [loaded, router, update])

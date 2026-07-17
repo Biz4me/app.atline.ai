@@ -7,6 +7,7 @@ import { cn } from '@/lib/utils'
 import { AppComposer } from '@/components/mobile/app-composer'
 import { AtlasDraftCard } from '@/components/atlas-plan-card'
 import { useFilSearch, FilSearchRow } from '@/components/fil-search'
+import { AtlasActionCard, type AtlasAction } from '@/components/atlas-action-card'
 
 // ═══ NAV MESSAGERIE T5 — le fil contact ═══
 // Ici on parle à ATLAS, À PROPOS du contact (jamais au contact : ses vrais messages
@@ -19,7 +20,7 @@ type Contact = {
   exposures: number; phone: string | null; email: string | null
   lastDraft: string | null; lastDraftAt: string | null; lastContact: string | null
 }
-type Msg = { from: 'user' | 'atlas'; text: string; draft?: { channel: string; initial?: string } }
+type Msg = { from: 'user' | 'atlas'; text: string; draft?: { channel: string; initial?: string }; actionCard?: AtlasAction }
 
 const STAGE_LABEL: Record<string, string> = {
   NOUVEAU: 'Nouveau', INVITATION: 'Invitation', PRESENTATION: 'Présentation', SUIVI: 'Suivi', CLOSING: 'Closing',
@@ -102,6 +103,7 @@ export default function ContactThreadPage({ params }: { params: Promise<{ contac
       const dec = new TextDecoder()
       let buf = ''
       let full = ''
+      const pendingActions: AtlasAction[] = []
       for (;;) {
         const { done, value } = await reader.read()
         if (done) break
@@ -118,10 +120,12 @@ export default function ContactThreadPage({ params }: { params: Promise<{ contac
               full += d.text
               const shown = stripMarkers(full)
               setMsgs((m) => { const cp = [...m]; cp[cp.length - 1] = { from: 'atlas', text: shown }; return cp })
-            }
+            } else if (d.action_proposal?.kind) pendingActions.push(d.action_proposal as AtlasAction)
           } catch { /* ligne SSE partielle */ }
         }
       }
+      // Atlas AGIT depuis le fil : relance, RDV, note, mise à jour de fiche → cartes de confirmation
+      if (pendingActions.length) setMsgs((m) => [...m, ...pendingActions.map((a) => ({ from: 'atlas' as const, text: '', actionCard: a }))])
       if (!full.trim()) setMsgs((m) => { const cp = [...m]; cp[cp.length - 1] = { from: 'atlas', text: "Je n'ai pas de réponse là — reformule ?" }; return cp })
     } catch {
       setMsgs((m) => { const cp = [...m]; cp[cp.length - 1] = { from: 'atlas', text: 'Souci de connexion, réessaie dans un moment.' }; return cp })
@@ -187,7 +191,9 @@ export default function ContactThreadPage({ params }: { params: Promise<{ contac
         <div className="flex flex-col gap-3">
           {msgs.map((m, i) => (
             <div key={i} data-midx={i} className={cn(m.from === 'user' ? 'max-w-[85%] self-end' : m.draft ? 'w-[92%] self-start' : 'max-w-[92%] self-start', filSearch.highlight(i))}>
-              {m.draft && c ? (
+              {m.actionCard ? (
+                <AtlasActionCard action={m.actionCard} />
+              ) : m.draft && c ? (
                 <AtlasDraftCard contactId={c.id} prenom={prenom} channel={m.draft.channel} phone={c.phone} email={c.email} initial={m.draft.initial} />
               ) : m.from === 'user' ? (
                 <div className="rounded-2xl rounded-br-md bg-primary/15 px-3.5 py-2 text-[19px] leading-[1.45] text-foreground lg:text-base">{m.text}</div>

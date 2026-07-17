@@ -19,7 +19,7 @@ type Agent = { id: string; name: string; role: string; line: string; at: string 
 type Thread = {
   contactId: string; name: string; prenom: string; initials: string; accent: string
   kind: string; stage: string | null; recruiting: boolean
-  lastContact: string | null; draft: string | null; birthdayToday: boolean
+  lastContact: string | null; lastChatAt: string | null; draft: string | null; birthdayToday: boolean
 }
 
 const AGENT_COLOR: Record<string, string> = { atlas: '#F97316', aria: '#14B8A6', nova: '#8B5CF6', communaute: '#3f434b' }
@@ -88,11 +88,14 @@ export default function ChatsPage() {
   plan.forEach((it, i) => { if (it.contactId && !planRank.has(it.contactId)) planRank.set(it.contactId, i) })
   const atlasBadge = plan.filter((it) => !it.contactId).length
 
-  // Tri : les fils à traiter d'abord (dans l'ordre du plan), puis par dernier échange (ordre API).
+  // Tri : les fils à traiter d'abord (ordre du plan), puis par ACTIVITÉ de messagerie (conversation récente
+  // en tête, comme Telegram) avec repli sur le dernier contact terrain.
+  const act = (t: Thread) => new Date(t.lastChatAt ?? t.lastContact ?? 0).getTime()
   const sorted = [...threads].sort((a, b) => {
     const ra = planRank.has(a.contactId) ? planRank.get(a.contactId)! : Infinity
     const rb = planRank.has(b.contactId) ? planRank.get(b.contactId)! : Infinity
-    return ra - rb
+    if (ra !== rb) return ra - rb
+    return act(b) - act(a)
   })
 
   // Picker « Nouveau message » : tri par SUIVI À FAIRE — jamais contactés en tête,
@@ -161,7 +164,7 @@ export default function ChatsPage() {
               title={t.name}
               line={line}
               lineOrange={!!planItem || !!t.draft}
-              time={when(t.lastContact)}
+              time={when(t.lastChatAt ?? t.lastContact)}
               count={planItem ? 1 : 0}
               endPill={
                 t.recruiting ? { label: 'En recrutement', cls: 'bg-primary/10 text-primary' }
