@@ -704,28 +704,13 @@ TECHNIQUE (invisible pour moi, ne l'explique jamais)${NB}: quand tu as balayé l
       setTimeout(scrollToBottom, 60)
       return
     }
-    // Débrief guidé : Atlas demande l'issue, les ronds déclenchent les mutations EN CODE.
-    if (item.action === 'DEBRIEF') {
-      setMsgs((prev) => [...prev, {
-        from: 'atlas',
-        text: `Alors, ce rendez-vous avec ${item.prenom} — comment ça s'est terminé ?`,
-        choices: [
-          { label: '✅ Signé !', value: 'deb:signed' },
-          { label: '🤔 Réfléchit encore', value: 'deb:thinking' },
-          { label: '❌ Pas maintenant', value: 'deb:no' },
-          { label: '📅 Reporté', value: 'deb:postponed' },
-        ],
-        item,
-      }])
-      setTimeout(scrollToBottom, 60)
-      return
-    }
-    if (item.action !== 'MESSAGE' && item.action !== 'PRESENTER') {
-      setMsgs((prev) => [...prev, { from: 'atlas', text: `On s'occupe de ${item.prenom} — dis-moi :`, choices: [{ label: 'Ouvre sa fiche', value: 'fiche' }, { label: "Je m'entraîne avec Aria", value: 'aria' }], item }])
-      setTimeout(scrollToBottom, 60)
-      return
-    }
-    pointAndGather(item)
+    // CLOISONNEMENT : une action SUR un contact identifié vit dans SON fil (Atlas y a tout son
+    // contexte : snapshot, mémoire, faits). Le fil Atlas ne déroule plus — il propose la bascule.
+    const label = item.action === 'DEBRIEF' ? `💬 Débriefer avec ${item.prenom}`
+      : (item.action === 'MESSAGE' || item.action === 'PRESENTER') ? `💬 Préparer le message avec ${item.prenom}`
+      : `💬 En parler avec ${item.prenom}`
+    setMsgs((prev) => [...prev, { from: 'atlas', text: `Ça se passe dans le fil de ${item.prenom} — j'y ai tout son contexte sous la main.`, choices: [{ label, value: 'openchat' }], item }])
+    setTimeout(scrollToBottom, 60)
   }
 
   // « Mon plan du jour » : Atlas présente EN CONVERSATION, puis lance le flux guidé sur la priorité n°1.
@@ -935,6 +920,13 @@ TECHNIQUE (invisible pour moi, ne l'explique jamais)${NB}: quand tu as balayé l
 
   const handleChoice = (item: PlanItem, value: string, label: string, idx: number) => {
     setMsgs((prev) => [...prev.map((m, j) => (j === idx ? { ...m, choices: undefined } : m)), { from: 'user', text: label }])
+    // Bascule vers le fil du contact avec l'intention (?do=…) : l'action s'y exécute (cloisonnement).
+    if (value === 'openchat') {
+      const doMap: Record<string, string> = { DEBRIEF: 'debrief', MESSAGE: 'message', PRESENTER: 'presenter' }
+      const q = doMap[item.action] ? `?do=${doMap[item.action]}${item.apptId ? `&appt=${item.apptId}` : ''}` : ''
+      router.push(`/chats/${item.contactId}${q}`)
+      return
+    }
     // Débrief : l'issue choisie déclenche les mutations EN CODE (RDV soldé, contact muté, relance posée),
     // puis Atlas réagit à sa voix — dont le passage Closing → Démarrage et le compteur d'objectif.
     if (value.startsWith('deb:')) {

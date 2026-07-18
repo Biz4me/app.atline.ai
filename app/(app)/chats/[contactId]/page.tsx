@@ -1,11 +1,11 @@
 'use client'
 
 import { use, useEffect, useRef, useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { ChevronLeft, Loader2, PhoneCall, PenLine, MoreVertical } from 'lucide-react'
 import { cn, cleanChat } from '@/lib/utils'
 import { AppComposer } from '@/components/mobile/app-composer'
-import { AtlasDraftCard } from '@/components/atlas-plan-card'
+import { AtlasDraftCard, ChatChoices } from '@/components/atlas-plan-card'
 import { useFilSearch, FilSearchRow } from '@/components/fil-search'
 import { AtlasActionCard, type AtlasAction } from '@/components/atlas-action-card'
 
@@ -20,7 +20,7 @@ type Contact = {
   exposures: number; phone: string | null; email: string | null
   lastDraft: string | null; lastDraftAt: string | null; lastContact: string | null
 }
-type Msg = { from: 'user' | 'atlas'; text: string; draft?: { channel: string; initial?: string; conversationId?: string }; actionCard?: AtlasAction }
+type Msg = { from: 'user' | 'atlas'; text: string; draft?: { channel: string; initial?: string; conversationId?: string }; actionCard?: AtlasAction; choices?: { label: string; value: string }[] }
 
 const STAGE_LABEL: Record<string, string> = {
   NOUVEAU: 'Nouveau', INVITATION: 'Invitation', PRESENTATION: 'Présentation', SUIVI: 'Suivi', CLOSING: 'Closing',
@@ -32,6 +32,7 @@ const stripMarkers = (s: string) => s.replace(/\s*\[\[[A-Z]+\]\][\s\S]*$/, '')
 export default function ContactThreadPage({ params }: { params: Promise<{ contactId: string }> }) {
   const { contactId } = use(params)
   const router = useRouter()
+  const sp = useSearchParams()
   const [c, setC] = useState<Contact | null>(null)
   const [msgs, setMsgs] = useState<Msg[]>([])
   const [input, setInput] = useState('')
@@ -146,6 +147,62 @@ export default function ContactThreadPage({ params }: { params: Promise<{ contac
     setMsgs((m) => [...m, { from: 'atlas', text: `Je te prépare un message pour ${prenom} — régénère-le si besoin, puis envoie-le direct.`, }, { from: 'atlas', text: '', draft: { channel, conversationId: convRef.current ?? undefined } }])
   }
 
+  // Débrief guidé DANS le fil du contact (bascule depuis le plan) : ronds → mutations en code → réaction d'Atlas.
+  const startDebrief = () => {
+    setMsgs((m) => [...m, {
+      from: 'atlas',
+      text: `Alors, ce rendez-vous avec ${prenom} — comment ça s'est terminé ?`,
+      choices: [
+        { label: '✅ Signé !', value: 'deb:signed' },
+        { label: '🤔 Réfléchit encore', value: 'deb:thinking' },
+        { label: '❌ Pas maintenant', value: 'deb:no' },
+        { label: '📅 Reporté', value: 'deb:postponed' },
+      ],
+    }])
+  }
+
+  const onChoice = (value: string, label: string, idx: number) => {
+    setMsgs((prev) => [...prev.map((m, j) => (j === idx ? { ...m, choices: undefined } : m)), { from: 'user', text: label }])
+    if (value === 'goto:agenda') { router.push('/agenda'); return }
+    if (!value.startsWith('deb:')) return
+    const outcome = value.slice(4)
+    const appt = sp.get('appt') || undefined
+    void (async () => {
+      let d: { signedThisMonth?: number; objectifMensuel?: number | null } = {}
+      try {
+        const r = await fetch(`/api/contacts/${contactId}/debrief`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ outcome, appointmentId: appt }) })
+        if (r.ok) d = await r.json()
+      } catch { /* best-effort : Atlas réagit quand même */ }
+      if (outcome === 'signed') {
+        const n = d.signedThisMonth ?? 1
+        const score = d.objectifMensuel ? ` Ça fait ${n} partenaire${n > 1 ? 's' : ''} sur ton objectif de ${d.objectifMensuel} ce mois-ci${n >= d.objectifMensuel ? ' — objectif ATTEINT 🎯' : ''}.` : ''
+        setMsgs((prev) => [...prev, { from: 'atlas', text: `Énorme 🎉 ${prenom} rejoint ton équipe — je passe sa fiche en partenaire, phase démarrage.${score}\n\nTon prochain pas : cadre ses premières 48 heures (ses objectifs, sa liste, son premier contact accompagné).` }])
+        setC((cur) => (cur ? { ...cur, kind: 'PARTENAIRE' } : cur))
+      } else if (outcome === 'thinking') {
+        setMsgs((prev) => [...prev, { from: 'atlas', text: `C'est un « pas encore », pas un non. Je remets ${prenom} en suivi et je t'ai posé une relance dans 3 jours — on garde le fer chaud, sans pression.` }])
+      } else if (outcome === 'no') {
+        setMsgs((prev) => [...prev, { from: 'atlas', text: `Ça arrive, et tu l'as tenté — c'est ça le métier. ${prenom} reste en suivi, je te le rappelle dans un mois.` }])
+      } else {
+        setMsgs((prev) => [...prev, { from: 'atlas', text: `Pas grave — replanifie-le tant que c'est chaud.`, choices: [{ label: '📅 Ouvrir l\'agenda', value: 'goto:agenda' }] }])
+      }
+      setTimeout(() => endRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' }), 80)
+    })()
+  }
+
+  // Bascule depuis le fil Atlas (?do=…) : l'ACTION sur un contact vit dans SON fil (cloisonnement).
+  const doneDoRef = useRef(false)
+  useEffect(() => {
+    if (loading || doneDoRef.current || !c) return
+    const doAction = sp.get('do')
+    if (!doAction) return
+    doneDoRef.current = true
+    if (doAction === 'message' || doAction === 'presenter') addDraft()
+    else if (doAction === 'debrief') startDebrief()
+    else if (doAction === 'call' && c.phone) window.location.href = `tel:${c.phone}`
+    router.replace(`/chats/${contactId}`, { scroll: false }) // URL propre → pas de re-déclenchement au refresh
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loading, c])
+
   // Sous le nom : le statut seul (le détail vit dans la fiche, un tap sur l'en-tête)
   const subtitle = c ? (c.kind === 'PARTENAIRE' ? 'Partenaire' : c.kind === 'CLIENT' ? 'Client' : 'Prospect') : ''
 
@@ -198,6 +255,11 @@ export default function ContactThreadPage({ params }: { params: Promise<{ contac
             <div key={i} data-midx={i} className={cn(m.from === 'user' ? 'max-w-[85%] self-end' : m.draft ? 'w-[92%] self-start' : 'max-w-[92%] self-start', filSearch.highlight(i))}>
               {m.actionCard ? (
                 <AtlasActionCard action={m.actionCard} />
+              ) : m.choices ? (
+                <div className="flex w-full flex-col gap-2">
+                  {m.text && <p className="text-[19px] leading-[1.65] text-foreground lg:text-base">{m.text}</p>}
+                  <ChatChoices choices={m.choices} onPick={(v, l) => onChoice(v, l, i)} />
+                </div>
               ) : m.draft && c ? (
                 <AtlasDraftCard contactId={c.id} prenom={prenom} channel={m.draft.channel} phone={c.phone} email={c.email} initial={m.draft.initial} conversationId={m.draft.conversationId} />
               ) : m.from === 'user' ? (
