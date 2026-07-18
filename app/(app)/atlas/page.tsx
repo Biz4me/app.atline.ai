@@ -689,6 +689,7 @@ TECHNIQUE (invisible pour moi, ne l'explique jamais)${NB}: quand tu as balayé l
   const startActionFlow = (item: PlanItem) => {
     // Item de FONDATION (socle, pas de contact) : le gate de phase prime → on route vers la bonne surface.
     if (!item.contactId) {
+      if (item.action === 'FOUND_DIAGNOSTIC') { setTimeout(() => startSessionRef.current('diagnostic'), 300); return }
       if (item.action === 'FOUND_WHY') { setTimeout(() => startSessionRef.current('why'), 300); return }
       if (item.action === 'FOUND_RENCONTRE') { setTimeout(() => startSessionRef.current('rencontre'), 300); return }
       if (item.action === 'FOUND_MINDSET') { setTimeout(() => startSessionRef.current('mindset'), 300); return }

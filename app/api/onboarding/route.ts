@@ -14,10 +14,16 @@ export async function POST(req: Request) {
 
   const {
     personality, phone, network, objectives, objective, gender, mode, contactColor,
-    contactFirstName, contactLastName, market, prospectPhone, prospectEmail, links,
+    contactFirstName, contactLastName, market, prospectPhone, prospectEmail, links, experience,
   } = await req.json()
   // Mode Atline (débutant sans société) : l'affilié est rattaché à un business « Atline »
   const biz = (typeof network === 'string' && network.trim()) ? network.trim() : (mode === 'ATLINE' ? 'Atline' : '')
+
+  // Aiguillage débutant/établi (nourrit le gate du plan : établi → session Diagnostic ; débutant → Bon Départ).
+  // Sans société = débutant certain ; sinon, la réponse à la question d'onboarding tranche.
+  const exp = mode === 'ATLINE' ? 'debutant' : (experience === 'etabli' ? 'etabli' : 'debutant')
+  const cur = await db.user.findUnique({ where: { id: userId }, select: { coaching: true } })
+  const coaching = { ...(cur?.coaching && typeof cur.coaching === 'object' && !Array.isArray(cur.coaching) ? cur.coaching : {}), experience: exp }
 
   // ── Utilisateur : couleur, téléphone, onboarding terminé ──
   // Atline n'est plus un MLM : l'affilié est identifié par son business « Atline »,
@@ -27,6 +33,7 @@ export async function POST(req: Request) {
     data: {
       onboardingCompleted: true,
       onboardingFlow: 'STANDARD' as any,
+      coaching,
       ...(personality && { personality: personality as any }),
       ...(typeof gender === 'string' && gender && { gender }),
       ...(typeof phone === 'string' && phone.trim() && { phone: phone.trim() }),

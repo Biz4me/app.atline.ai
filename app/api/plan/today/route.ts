@@ -137,12 +137,17 @@ export async function GET() {
   const objectif = (business?.objectif && typeof business.objectif === 'object' && !Array.isArray(business.objectif)) ? (business.objectif as Record<string, unknown>) : {}
   const hasObjectif = typeof objectif.mensuel === 'string' && (objectif.mensuel as string).trim().length > 0
   const listCount = contacts.length
+  // Aiguillage débutant/établi (posé à l'onboarding) : un établi commence par un AUDIT, pas par « construis ta liste ».
+  const isEstabli = coaching.experience === 'etabli'
+  const hasDiagnostic = typeof coaching.diagnostic === 'string' && (coaching.diagnostic as string).trim().length > 0
 
   const foundItem = (action: string, rank: number, headline: string, reason: string, route: string | null): Cand => ({
     contactId: '', name: '', prenom: '', initials: '', accent: '#F97316',
     level: 1.5, priority: 100 + rank, action, headline, reason, channel: null, stage: 'SOCLE',
     phone: null, email: null, market: null, route,
   })
+  // Établi sans diagnostic : l'audit prime sur tout le reste de la fondation (rang le plus haut).
+  if (isEstabli && !hasDiagnostic) cands.push(foundItem('FOUND_DIAGNOSTIC', 5, 'Faisons ton diagnostic complet', 'Tu as déjà de la bouteille — 10 min pour un audit honnête de ton activité : tes forces, tes failles, et LA priorité de ta semaine. On part de là.', null))
   // Le bon départ (dans l'ordre) : brise-glace (rencontre) → posture (mindset) → profondeur (pourquoi) → matière (liste).
   if (!hasStory)               cands.push(foundItem('FOUND_RENCONTRE', 4, 'Raconte-moi ta rencontre avec ton activité', 'Ton histoire avec ce business : comment tu l’as découvert et pourquoi tu y crois. C’est mon point de départ pour te coacher juste.', null))
   // Mindset : session « établir & vérifier » (posé si session faite OU module M1 terminé).

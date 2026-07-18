@@ -414,7 +414,16 @@ function runEngine(R: Refs, name: string, onDone: Done) {
               chatAtlas('Et avec quelle société travailles-tu ?', () => {
                 chatDropdown(MLM, { trigger: 'Sélectionne ta société', otherInput: 'Nom de ta société…', none: 'Pas encore de société' }, (v2) => {
                   if (v2.indexOf('Pas encore') < 0) D.network = v2; else D.mode = 'ATLINE'
-                  chatAtlas(ackSociete(v2), () => { if (D.mode === 'ATLINE') chatCta('Continuer', then); else objectifs(then) })
+                  chatAtlas(ackSociete(v2), () => {
+                    if (D.mode === 'ATLINE') { D.experience = 'debutant'; chatCta('Continuer', then); return }
+                    // Aiguillage : débutant → Bon Départ · établi → session Diagnostic (côté Atlas, plus tard)
+                    chatAtlas('Et où tu en es avec cette activité ?', () => {
+                      chatChoices([{ label: 'Je démarre' }, { label: "J'ai déjà une activité qui tourne" }], (e) => {
+                        D.experience = e.indexOf('démarre') >= 0 ? 'debutant' : 'etabli'
+                        objectifs(then)
+                      })
+                    })
+                  })
                 }, (name) => customSociete(name, then))
               })
             })
