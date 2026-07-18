@@ -256,7 +256,7 @@ export function PersonalityQuiz({ onClose, onResult, firstName = '', gender = ''
       {phase === 'result' && result ? (
         <div className="flex flex-1 flex-col items-center px-6 pt-10 text-center">
           <div className="size-24 shrink-0 rounded-full" style={{ backgroundColor: PROFILES[result].color }} />
-          <h1 className="mt-5 font-display text-[27px] font-extrabold leading-tight" style={{ color: PROFILES[result].color }}>
+          <h1 className="mt-5 font-display text-2xl font-extrabold leading-tight" style={{ color: PROFILES[result].color }}>
             {subjectName ? `${subjectName} est ` : 'Tu es '}{arche(result)}
           </h1>
           <p className="mt-1 text-base font-semibold text-muted-foreground">Couleur {PROFILES[result].name}</p>

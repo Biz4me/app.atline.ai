@@ -100,7 +100,7 @@ function DebriefContent() {
           <>
             {/* Score réel */}
             <div className="flex flex-col items-center gap-3 rounded-2xl border border-border bg-surface p-6">
-              <p className="font-display text-7xl font-extrabold text-[#14B8A6]">{data.score ?? '—'}</p>
+              <p className="font-display text-[44px] font-extrabold text-[#14B8A6]">{data.score ?? '—'}</p>
               <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
                 <div className="h-2 rounded-full bg-[#14B8A6] transition-all" style={{ width: `${data.score ?? 0}%` }} />
               </div>
