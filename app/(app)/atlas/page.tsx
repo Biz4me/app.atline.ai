@@ -521,6 +521,8 @@ TECHNIQUE (invisible pour moi, ne l'explique jamais)${NB}: quand tu as balayé l
     let full = ''
     const pendingActions: AtlasAction[] = [] // actions proposées par les outils d'Atlas (cartes à confirmer)
     let markerIdx = -1
+    const resolvedIds: string[] = []         // contacts identifiés par Atlas (get_contact) → bascule proposée
+    let lastContactName = ''
     let shown = 0
     let streamDone = false
     let resolveDone: () => void = () => {}
@@ -584,9 +586,10 @@ TECHNIQUE (invisible pour moi, ne l'explique jamais)${NB}: quand tu as balayé l
           try {
             const data = JSON.parse(payload)
             if (data.text) { setToolHint(''); full += data.text; if (sessionKind && markerIdx < 0) { const k = full.indexOf(MARK); if (k >= 0) markerIdx = k } }
-            else if (data.tool === 'get_contact' && data.name) setToolHint(`Je regarde la fiche de ${data.name}…`)
+            else if (data.tool === 'get_contact' && data.name) { setToolHint(`Je regarde la fiche de ${data.name}…`); lastContactName = data.name }
             else if (data.tool === 'memory_search') setToolHint('Je fouille ma mémoire…')
             else if (data.tool) setToolHint('Je prépare une action…')
+            else if (Array.isArray(data.resolved_contacts)) resolvedIds.push(...data.resolved_contacts.filter((x: unknown): x is string => typeof x === 'string'))
             else if (data.action_proposal?.kind) pendingActions.push(data.action_proposal as AtlasAction)
           } catch {
             /* ligne SSE incomplète, ignorée */
@@ -612,6 +615,14 @@ TECHNIQUE (invisible pour moi, ne l'explique jamais)${NB}: quand tu as balayé l
       // Actions proposées par Atlas (relance, RDV, note) → cartes de confirmation dans le fil.
       if (pendingActions.length) {
         setMsgs((prev) => [...prev, ...pendingActions.map((a) => ({ from: 'atlas' as const, text: '', actionCard: a }))])
+        setTimeout(scrollToBottom, 80)
+      }
+      // CLOISONNEMENT (conversation libre) : Atlas a identifié UN contact précis → on propose de basculer dans SON fil.
+      if (!sessionKind && resolvedIds.length === 1) {
+        const id = resolvedIds[0]
+        const nm = lastContactName || 'ce contact'
+        const fake: PlanItem = { contactId: id, name: nm, prenom: nm, initials: '', accent: '#F97316', level: 0, action: '', headline: '', reason: '', channel: null, stage: '' }
+        setMsgs((prev) => [...prev, { from: 'atlas', text: '', choices: [{ label: `💬 On en parle dans le fil de ${nm}`, value: 'openchat' }], item: fake }])
         setTimeout(scrollToBottom, 80)
       }
       afterDone?.()
