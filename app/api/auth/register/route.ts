@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { cookies } from 'next/headers'
 import bcrypt from 'bcryptjs'
 import { db } from '@/lib/db'
+import { sendVerificationEmail } from '@/lib/email-verification'
 
 const FORMAT = /^[a-z0-9._]{3,20}$/
 
@@ -77,6 +78,10 @@ export async function POST(req: Request) {
       }
     }
   } catch {}
+
+  // Vérification email DOUCE : on envoie le lien de confirmation sans bloquer l'inscription.
+  // Inerte tant que Brevo n'est pas configuré (voir lib/brevo.ts) → l'inscription marche quand même.
+  await sendVerificationEmail(user.id, cleanEmail, cleanFirst)
 
   const res = NextResponse.json({ ok: true })
   res.cookies.delete('atline_ref')
