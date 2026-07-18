@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
-import { History, Plus, ChevronLeft } from 'lucide-react'
+import { Plus, ChevronLeft } from 'lucide-react'
 import { titleForPath, isAgentPath, AGENTS } from '@/components/mobile/nav-config'
 
 export function TopBar() {
@@ -53,17 +53,11 @@ export function TopBar() {
       )}
 
       <div className="flex flex-1 items-center justify-end gap-1">
-        {isAgentPath(pathname) && (
-          <>
-            <button type="button" aria-label="Historique" onClick={() => window.dispatchEvent(new Event('agent:history'))} className={iconCls(false)}>
-              <History className="size-5 stroke-[1.5]" />
-            </button>
-            {!isAtlas && (
-              <button type="button" aria-label="Nouvelle conversation" onClick={() => window.dispatchEvent(new Event('agent:new'))} className={iconCls(false)}>
-                <Plus className="size-5 stroke-[1.5]" />
-              </button>
-            )}
-          </>
+        {/* Atlas = fil unique : ni « nouveau chat » ni historique. Le « + » reste pour Nova (nouvelle campagne). */}
+        {isAgentPath(pathname) && !isAtlas && (
+          <button type="button" aria-label="Nouvelle conversation" onClick={() => window.dispatchEvent(new Event('agent:new'))} className={iconCls(false)}>
+            <Plus className="size-5 stroke-[1.5]" />
+          </button>
         )}
       </div>
     </header>

@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { Mic, History, Plus, X, MoreHorizontal, MoreVertical, ChevronLeft as ChevronLeftIcon, Pencil, Trash2, FileText, Users, Loader2, Zap, Target, SquarePen, UserRound, Compass, Sparkles } from 'lucide-react'
+import { Mic, X, MoreVertical, ChevronLeft as ChevronLeftIcon, FileText, Users, Loader2, Zap, Target, SquarePen, UserRound, Compass, Sparkles } from 'lucide-react'
 import { cn, cleanChat } from '@/lib/utils'
 import { toast } from 'sonner'
 import { AppComposer } from '@/components/mobile/app-composer'
@@ -90,7 +90,6 @@ const suggestions = [
 ]
 
 
-type Conv = { id: string; title: string | null; updatedAt: string }
 
 export default function AtlasPage() {
   const router = useRouter()
@@ -109,14 +108,6 @@ export default function AtlasPage() {
   }, [])
   const [input, setInput] = useState('')
   const [slashOpen, setSlashOpen] = useState(false) // sheet des commandes « / » (T4)
-  const [histMounted, setHistMounted] = useState(false)
-  const [histVisible, setHistVisible] = useState(false)
-  const [histTop, setHistTop] = useState(0)
-  const [histMenuId, setHistMenuId] = useState<string | null>(null)
-  const [histMenuPos, setHistMenuPos] = useState<{ top: number; right: number } | null>(null)
-  const [histEditingId, setHistEditingId] = useState<string | null>(null)
-  const [histDraft, setHistDraft] = useState('')
-  const headerRef = useRef<HTMLDivElement>(null)
   const [streaming, setStreaming] = useState(false)
   const [toolHint, setToolHint] = useState('')   // « Atlas regarde la fiche de … » pendant un appel d'outil
   // true tant qu'on charge une conversation depuis l'URL → évite le flash de l'état vide
@@ -153,7 +144,6 @@ export default function AtlasPage() {
     }
     reader.readAsText(pendingFile)
   }
-  const [convs, setConvs] = useState<Conv[]>([])
   const [mantra, setMantra] = useState('On avance ensemble ?')
   const [typedMantra, setTypedMantra] = useState('')
   const [firstName, setFirstName] = useState('')
@@ -362,16 +352,6 @@ TECHNIQUE (invisible pour moi, ne l'explique jamais)${NB}: quand tu as balayé l
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [c])
 
-  // Liste des conversations (historique mobile) — rafraîchie quand une nouvelle conv est créée
-  const loadConvs = useCallback(async () => {
-    try {
-      const r = await fetch('/api/atlas/conversations')
-      if (r.ok) setConvs(await r.json())
-    } catch {
-      /* ignore */
-    }
-  }, [])
-  useEffect(() => { loadConvs() }, [loadConvs, c])
 
   // Mantra aléatoire pour l'écran d'accueil Atlas (proxy local → pas de CORS)
   const pickMantra = useCallback(() => {
@@ -444,44 +424,6 @@ TECHNIQUE (invisible pour moi, ne l'explique jamais)${NB}: quand tu as balayé l
     }, 200)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cmdParam, askParam, prefillParam, loadingConv])
-
-  // Historique mobile — déploiement type menu « Plus » de l'accueil (slide depuis le header + backdrop)
-  const openHist = () => {
-    loadConvs()
-    if (headerRef.current) setHistTop(headerRef.current.getBoundingClientRect().bottom)
-    setHistMounted(true)
-    requestAnimationFrame(() => setHistVisible(true))
-  }
-  const closeHist = () => {
-    setHistVisible(false)
-    setHistMenuId(null)
-    setHistEditingId(null)
-    setTimeout(() => setHistMounted(false), 300)
-  }
-  const toggleHist = () => { histMounted ? closeHist() : openHist() }
-
-  // Historique : renommer / supprimer (mobile, même logique que desktop)
-  const renameConv = async () => {
-    const id = histEditingId
-    const title = histDraft.trim()
-    setHistEditingId(null)
-    if (!id || !title) return
-    setConvs((prev) => prev.map((cv) => (cv.id === id ? { ...cv, title } : cv)))
-    await fetch(`/api/atlas/conversations/${id}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ title }),
-    }).catch(() => {})
-  }
-  const deleteConv = async (id: string) => {
-    setHistMenuId(null)
-    setConvs((prev) => prev.filter((cv) => cv.id !== id))
-    await fetch(`/api/atlas/conversations/${id}`, { method: 'DELETE' }).catch(() => {})
-    if (id === c) {
-      localStorage.removeItem('atlas-last-conv')
-      router.replace('/atlas')
-    }
-  }
 
   const scrollToBottom = () =>
     setTimeout(() => scrollRef.current?.scrollTo({ top: 999999, behavior: 'smooth' }), 50)
@@ -978,14 +920,6 @@ TECHNIQUE (invisible pour moi, ne l'explique jamais)${NB}: quand tu as balayé l
   showPlanRef.current = showPlan
   cmdSendRef.current = sendMsg
 
-  // Historique piloté depuis la barre du haut globale (via événement). Atlas = fil unique : plus de « nouveau chat ».
-  const toggleHistRef = useRef(toggleHist); toggleHistRef.current = toggleHist
-  useEffect(() => {
-    const onHist = () => toggleHistRef.current()
-    window.addEventListener('agent:history', onHist)
-    return () => window.removeEventListener('agent:history', onHist)
-  }, [])
-
   // Relais du composeur global : message tapé sur une autre page → envoyé ici une fois la conv chargée.
   // ⚠️ Anti-course : au premier rendu (?c absent, redirection de reprise pas encore faite), on ATTEND —
   // sinon le message partait sans conversationId et ouvrait une NOUVELLE conversation (perte de session perçue).
@@ -1008,7 +942,7 @@ TECHNIQUE (invisible pour moi, ne l'explique jamais)${NB}: quand tu as balayé l
       <div className="flex flex-1 flex-col min-h-0 min-w-0">
 
         {/* En-tête messagerie unifié (comme les fils Aria/Nova/contact) : ‹ liste · Atlas · ⋮ = recherche dans la conversation */}
-        <div ref={headerRef} className="shrink-0 border-b border-border bg-background/90 backdrop-blur lg:mx-auto lg:w-full lg:max-w-3xl">
+        <div className="shrink-0 border-b border-border bg-background/90 backdrop-blur lg:mx-auto lg:w-full lg:max-w-3xl">
           {filSearch.open ? (
             <FilSearchRow s={filSearch} />
           ) : (
@@ -1029,109 +963,6 @@ TECHNIQUE (invisible pour moi, ne l'explique jamais)${NB}: quand tu as balayé l
             </div>
           )}
         </div>
-
-        {/* Mobile : historique — slide depuis le header + backdrop (comme le menu Plus de l'accueil) */}
-        {histMounted && (
-          <>
-            <div
-              className="lg:hidden fixed inset-x-0 bottom-0 z-[55] bg-black/40 transition-opacity duration-300"
-              style={{ top: histTop, opacity: histVisible ? 1 : 0 }}
-              onClick={closeHist}
-            />
-            <div
-              data-hist-sheet
-              className="lg:hidden fixed inset-x-0 z-[60] mx-auto max-w-[480px]"
-              style={{ top: histTop, clipPath: 'inset(0 0 0 0)' }}
-            >
-              <div
-                className="max-h-[60vh] overflow-y-auto no-scrollbar border-b border-border bg-background transition-transform duration-300 ease-out"
-                style={{ transform: histVisible ? 'translateY(0)' : 'translateY(-100%)' }}
-              >
-                <div className="divide-y divide-border">
-                  {convs.length === 0 && (
-                    <p className="px-5 py-4 text-sm text-muted-foreground">Aucune conversation.</p>
-                  )}
-                  {convs.map((cv) =>
-                    histEditingId === cv.id ? (
-                      <div key={cv.id} className="px-3 py-2">
-                        <input
-                          autoFocus
-                          value={histDraft}
-                          onChange={(e) => setHistDraft(e.target.value)}
-                          onBlur={renameConv}
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter') renameConv()
-                            if (e.key === 'Escape') setHistEditingId(null)
-                          }}
-                          className="w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-foreground outline-none"
-                        />
-                      </div>
-                    ) : (
-                      <div key={cv.id} className="relative flex items-center">
-                        <button
-                          type="button"
-                          onClick={() => { closeHist(); router.push(`/atlas?c=${cv.id}`) }}
-                          className={cn(
-                            'flex flex-1 items-center gap-3 px-5 py-3.5 pr-12 text-left transition-colors active:bg-muted',
-                            cv.id === c && 'bg-muted',
-                          )}
-                        >
-                          <History className="size-4 shrink-0 stroke-[1.5] text-muted-foreground" />
-                          <span className="min-w-0 flex-1 truncate text-sm text-foreground">{cv.title || 'Sans titre'}</span>
-                        </button>
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            const btn = e.currentTarget.getBoundingClientRect()
-                            const sheet = (e.currentTarget.closest('[data-hist-sheet]') as HTMLElement | null)?.getBoundingClientRect()
-                            const right = sheet ? window.innerWidth - sheet.right : window.innerWidth - btn.right
-                            setHistMenuPos({ top: btn.bottom + 6, right })
-                            setHistMenuId(cv.id)
-                          }}
-                          className="absolute right-3 flex size-8 items-center justify-center rounded-lg text-muted-foreground active:bg-muted"
-                        >
-                          <MoreHorizontal className="size-4" />
-                        </button>
-                      </div>
-                    ),
-                  )}
-                </div>
-              </div>
-            </div>
-
-            {/* Menu ••• en position fixe → jamais coupé par l'overflow/clip du panneau */}
-            {histMenuId && histMenuPos && (
-              <>
-                <div className="lg:hidden fixed inset-0 z-[64]" onClick={() => setHistMenuId(null)} />
-                <div
-                  className="lg:hidden fixed z-[65] w-40 overflow-hidden rounded-xl border border-border bg-background py-1 shadow-card"
-                  style={{ top: histMenuPos.top, right: histMenuPos.right }}
-                >
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const id = histMenuId
-                      const cv = convs.find((x) => x.id === id)
-                      setHistMenuId(null)
-                      setHistEditingId(id)
-                      setHistDraft(cv?.title ?? '')
-                    }}
-                    className="flex w-full items-center gap-2.5 px-3 py-2 text-left text-xs font-medium text-foreground active:bg-muted"
-                  >
-                    <Pencil className="size-3.5 stroke-[1.5] text-muted-foreground" />Renommer
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => { if (histMenuId) deleteConv(histMenuId) }}
-                    className="flex w-full items-center gap-2.5 px-3 py-2 text-left text-xs font-medium text-destructive active:bg-destructive/10"
-                  >
-                    <Trash2 className="size-3.5 stroke-[1.5]" />Supprimer
-                  </button>
-                </div>
-              </>
-            )}
-          </>
-        )}
 
         {/* Conversation / empty state */}
         {loadingConv ? (
