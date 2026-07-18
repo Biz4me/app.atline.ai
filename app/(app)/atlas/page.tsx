@@ -972,30 +972,18 @@ TECHNIQUE (invisible pour moi, ne l'explique jamais)${NB}: quand tu as balayé l
     sendMsg(v)
   }
 
-  const newSession = () => {
-    closeHist()
-    localStorage.removeItem('atlas-last-conv')
-    loadedRef.current = null
-    setMsgs([])
-    pickMantra()
-    if (c) router.push('/atlas')
-  }
-
   // Permet à l'effet ?session=why de déclencher la session une fois la fonction définie.
   startSessionRef.current = startSession
   // Idem pour ?cmd (plan/objectif) et ?ask (recherche « Demander à Atlas »).
   showPlanRef.current = showPlan
   cmdSendRef.current = sendMsg
 
-  // Historique + nouveau chat pilotés depuis la barre du haut globale (via événements)
+  // Historique piloté depuis la barre du haut globale (via événement). Atlas = fil unique : plus de « nouveau chat ».
   const toggleHistRef = useRef(toggleHist); toggleHistRef.current = toggleHist
-  const newSessionRef = useRef(newSession); newSessionRef.current = newSession
   useEffect(() => {
     const onHist = () => toggleHistRef.current()
-    const onNew = () => newSessionRef.current()
     window.addEventListener('agent:history', onHist)
-    window.addEventListener('agent:new', onNew)
-    return () => { window.removeEventListener('agent:history', onHist); window.removeEventListener('agent:new', onNew) }
+    return () => window.removeEventListener('agent:history', onHist)
   }, [])
 
   // Relais du composeur global : message tapé sur une autre page → envoyé ici une fois la conv chargée.

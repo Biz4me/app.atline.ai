@@ -8,6 +8,9 @@ import { titleForPath, isAgentPath, AGENTS } from '@/components/mobile/nav-confi
 export function TopBar() {
   const pathname = usePathname()
   const router = useRouter()
+  // Atlas = fil UNIQUE et continu (façon WhatsApp) : pas de « nouveau chat » (on n'ouvre pas un 2e fil
+  // avec le même interlocuteur). Le « + » reste pour les autres agents (Nova : nouvelle campagne).
+  const isAtlas = pathname === '/atlas' || pathname.startsWith('/atlas/')
 
   // Pastille du hamburger = VRAIES notifications non lues (rafraîchie à chaque navigation,
   // donc s'éteint dès qu'on revient de la page notifications)
@@ -55,9 +58,11 @@ export function TopBar() {
             <button type="button" aria-label="Historique" onClick={() => window.dispatchEvent(new Event('agent:history'))} className={iconCls(false)}>
               <History className="size-5 stroke-[1.5]" />
             </button>
-            <button type="button" aria-label="Nouvelle conversation" onClick={() => window.dispatchEvent(new Event('agent:new'))} className={iconCls(false)}>
-              <Plus className="size-5 stroke-[1.5]" />
-            </button>
+            {!isAtlas && (
+              <button type="button" aria-label="Nouvelle conversation" onClick={() => window.dispatchEvent(new Event('agent:new'))} className={iconCls(false)}>
+                <Plus className="size-5 stroke-[1.5]" />
+              </button>
+            )}
           </>
         )}
       </div>
