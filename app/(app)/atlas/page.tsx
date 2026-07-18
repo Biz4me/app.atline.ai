@@ -621,7 +621,7 @@ TECHNIQUE (invisible pour moi, ne l'explique jamais)${NB}: quand tu as balayé l
       if (!sessionKind && resolvedIds.length === 1) {
         const id = resolvedIds[0]
         const nm = lastContactName || 'ce contact'
-        const fake: PlanItem = { contactId: id, name: nm, prenom: nm, initials: '', accent: '#F97316', level: 0, action: '', headline: '', reason: '', channel: null, stage: '' }
+        const fake: PlanItem = { contactId: id, name: nm, prenom: nm, initials: '', accent: '#F97316', level: 0, action: '', headline: '', reason: '', channel: null, stage: '', phone: null, email: null, market: null }
         setMsgs((prev) => [...prev, { from: 'atlas', text: '', choices: [{ label: `💬 On en parle dans le fil de ${nm}`, value: 'openchat' }], item: fake }])
         setTimeout(scrollToBottom, 80)
       }
