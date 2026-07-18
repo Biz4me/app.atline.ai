@@ -9,6 +9,7 @@ import { AddContactSheet } from '@/components/add-contact-sheet'
 import { ThreadRow } from '@/components/thread-row'
 import { ChatsSearch } from '@/components/chats-search'
 import { ChatsDrawer } from '@/components/chats-drawer'
+import { AtlineWordmark } from '@/components/atline-wordmark'
 
 // ═══ NAV MESSAGERIE — T0 socle + T1 badges ═══
 // Page Conversations en PARALLÈLE de la nav actuelle (URL /chats, aucun lien) jusqu'à la bascule (T10).
@@ -112,14 +113,15 @@ export function ChatsHome() {
 
   return (
     <div className="mx-auto flex min-h-dvh w-full max-w-2xl flex-col bg-background">
-      {/* Rangée unique : ☰ + atline + recherche (tiroir = T6, recherche plein écran = T3) */}
-      <div className="sticky top-0 z-30 flex items-center gap-2.5 bg-background/90 px-4 py-2.5 backdrop-blur" style={{ paddingTop: 'max(0.625rem, env(safe-area-inset-top))' }}>
+      {/* Rangée unique teintée Atlas : ☰ · logo atline · loupe (recherche plein écran = T3) */}
+      <div className="sticky top-0 z-30 flex items-center gap-2.5 bg-primary/10 px-4 py-2.5 backdrop-blur" style={{ paddingTop: 'max(0.625rem, env(safe-area-inset-top))' }}>
         <button type="button" aria-label="Menu" onClick={() => setDrawerOpen(true)} className="flex size-9 shrink-0 items-center justify-center rounded-full text-muted-foreground active:bg-muted">
           <Menu className="size-5 stroke-[1.5]" />
         </button>
-        <p className="shrink-0 text-lg font-bold tracking-tight text-foreground">atl<span className="text-primary">i</span>ne</p>
-        <button type="button" onClick={() => setSearchOpen(true)} className="flex flex-1 items-center gap-2 rounded-full border border-border bg-surface px-3.5 py-2 text-sm text-muted-foreground">
-          <Search className="size-4 shrink-0 stroke-[1.5]" /> Rechercher…
+        <AtlineWordmark className="h-5 w-auto shrink-0 text-foreground" />
+        <span className="flex-1" />
+        <button type="button" aria-label="Rechercher" onClick={() => setSearchOpen(true)} className="flex size-9 shrink-0 items-center justify-center rounded-full text-muted-foreground active:bg-muted">
+          <Search className="size-5 stroke-[1.5]" />
         </button>
       </div>
 
@@ -137,6 +139,7 @@ export function ChatsHome() {
             time={when(a.at)}
             count={a.id === 'atlas' ? atlasBadge : a.badge ?? 0}
             online={a.id !== 'communaute'}
+            big
             onClick={() => router.push(AGENT_ROUTE[a.id] ?? '/atlas')}
           />
         ))}
@@ -173,6 +176,7 @@ export function ChatsHome() {
                 : undefined
               }
               dim={cold}
+              big
               onClick={() => router.push(`/chats/${t.contactId}`)}
             />
           )
@@ -236,6 +240,7 @@ export function ChatsHome() {
                     : undefined
                   }
                   dim={cold}
+                  big
                   onClick={() => router.push(`/chats/${t.contactId}`)}
                 />
               )

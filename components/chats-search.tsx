@@ -126,7 +126,7 @@ export function ChatsSearch({ open, onClose, threads, onAddContact }: {
             autoFocus
             value={q}
             onChange={(e) => setQ(e.target.value)}
-            placeholder="Contact, commande, RDV, module…"
+            placeholder="Rechercher"
             className="w-full bg-transparent text-sm text-foreground outline-none placeholder:text-muted-foreground"
           />
           {micOk && (
