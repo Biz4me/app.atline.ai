@@ -312,19 +312,25 @@ TECHNIQUE (invisible pour moi, ne l'explique jamais)${NB}: quand tu as balayé l
           }
           setMsgs(out)
           scrollToBottom()
-          // Reprise d'une session de fondation non finalisée : cadre présent + valeur pas encore enregistrée.
-          // On ne scanne QUE la conversation la plus récente (pas les vieilles sessions du fil fusionné).
+          // Reprise d'une session de fondation non finalisée. FIL UNIQUE : tout s'accumule dans un seul
+          // fil, donc on ne reprend QUE si le cadre [SESSION_X] est RÉCENT (aujourd'hui) et en QUEUE du fil
+          // (14 derniers messages) — sinon un vieux cadre resté dans le fil rebrancherait la session à tort.
           const rawLast = raw.filter((m) => m.conversationId === d.conversationId)
-          const kind: SessionKind | null =
-            rawLast.some((m) => m.role === 'USER' && m.content.startsWith('[SESSION_DIAGNOSTIC]')) ? 'diagnostic'
-            : rawLast.some((m) => m.role === 'USER' && m.content.startsWith('[SESSION_RENCONTRE]')) ? 'rencontre'
-            : rawLast.some((m) => m.role === 'USER' && m.content.startsWith('[SESSION_MINDSET]')) ? 'mindset'
-            : rawLast.some((m) => m.role === 'USER' && m.content.startsWith('[SESSION_OBJECTIFS]')) ? 'objectifs'
-            : rawLast.some((m) => m.role === 'USER' && m.content.startsWith('[SESSION_AUDIENCE]')) ? 'audience'
-            : rawLast.some((m) => m.role === 'USER' && m.content.startsWith('[SESSION_PARCOURS]')) ? 'parcours'
-            : rawLast.some((m) => m.role === 'USER' && m.content.startsWith('[SESSION_PRODUIT]')) ? 'produit'
-            : rawLast.some((m) => m.role === 'USER' && m.content.startsWith('[SESSION_POURQUOI]')) ? 'why'
-            : null
+          const FRAMES: [string, SessionKind][] = [
+            ['[SESSION_DIAGNOSTIC]', 'diagnostic'], ['[SESSION_RENCONTRE]', 'rencontre'], ['[SESSION_MINDSET]', 'mindset'],
+            ['[SESSION_OBJECTIFS]', 'objectifs'], ['[SESSION_AUDIENCE]', 'audience'], ['[SESSION_PARCOURS]', 'parcours'],
+            ['[SESSION_PRODUIT]', 'produit'], ['[SESSION_POURQUOI]', 'why'],
+          ]
+          let kind: SessionKind | null = null
+          let frameIdx = -1
+          for (let i = rawLast.length - 1; i >= 0 && i >= rawLast.length - 14; i--) {
+            const m = rawLast[i]
+            if (m.role !== 'USER') continue
+            const hit = FRAMES.find(([p]) => m.content.startsWith(p))
+            if (!hit) continue
+            if (new Date(m.createdAt).toDateString() === todayKey) { kind = hit[1]; frameIdx = i }
+            break // premier cadre en remontant : récent+jour → reprise, sinon on ne reprend pas
+          }
           if (kind) {
             let saved = false
             try {
@@ -337,7 +343,7 @@ TECHNIQUE (invisible pour moi, ne l'explique jamais)${NB}: quand tu as balayé l
             if (!cancelled && !saved) {
               // Reprise transparente : on rebranche le composeur sur la session, la conversation continue naturellement.
               sessionRef.current = kind
-              whyTurnsRef.current = rawLast.filter((m) => m.role === 'USER' && !m.content.startsWith('[SESSION')).length
+              whyTurnsRef.current = rawLast.slice(frameIdx + 1).filter((m) => m.role === 'USER').length
               // Si Atlas avait déjà proposé une formulation validée (dernier marqueur), on rétablit la carte « Je valide ».
               const lastMarked = [...rawLast].reverse().find((m) => m.role !== 'USER' && SAVE_MARK_RE.test(m.content))
               const finalText = lastMarked ? extractSaved(lastMarked.content) : ''
@@ -408,11 +414,7 @@ TECHNIQUE (invisible pour moi, ne l'explique jamais)${NB}: quand tu as balayé l
     if (!sessionParam || !valid.includes(sessionParam as SessionKind) || sessionStartedRef.current || loadingConv) return
     sessionStartedRef.current = true
     const kind = sessionParam as SessionKind
-    // On repart d'un chat vierge pour la session, puis on retire le paramètre de l'URL.
-    localStorage.removeItem('atlas-last-conv')
-    loadedRef.current = null
-    filConvRef.current = null // la session démarre sa PROPRE conversation (cadre propre), le fil la fusionnera
-    setMsgs([])
+    // FIL UNIQUE : la session s'inscrit DANS le fil continu (pas de conversation à part) — on retire juste le paramètre d'URL.
     router.replace('/atlas', { scroll: false })
     setTimeout(() => startSessionRef.current(kind), 100)
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -700,11 +702,15 @@ TECHNIQUE (invisible pour moi, ne l'explique jamais)${NB}: quand tu as balayé l
   const startActionFlow = (item: PlanItem) => {
     // Item de FONDATION (socle, pas de contact) : le gate de phase prime → on route vers la bonne surface.
     if (!item.contactId) {
-      if (item.action === 'FOUND_DIAGNOSTIC') { setTimeout(() => startSessionRef.current('diagnostic'), 300); return }
-      if (item.action === 'FOUND_WHY') { setTimeout(() => startSessionRef.current('why'), 300); return }
-      if (item.action === 'FOUND_RENCONTRE') { setTimeout(() => startSessionRef.current('rencontre'), 300); return }
-      if (item.action === 'FOUND_MINDSET') { setTimeout(() => startSessionRef.current('mindset'), 300); return }
-      if (item.action === 'FOUND_OBJECTIFS') { setTimeout(() => startSessionRef.current('objectifs'), 300); return }
+      // Sessions de fondation : on PROPOSE (bouton « Commencer »), on n'IMPOSE plus le lancement.
+      // Le fil reste maître : demander « mon plan » ne doit jamais embarquer d'office dans le socle.
+      const SESSION_OF: Partial<Record<string, SessionKind>> = { FOUND_DIAGNOSTIC: 'diagnostic', FOUND_WHY: 'why', FOUND_RENCONTRE: 'rencontre', FOUND_MINDSET: 'mindset', FOUND_OBJECTIFS: 'objectifs' }
+      const sk = SESSION_OF[item.action]
+      if (sk) {
+        setMsgs((prev) => [...prev, { from: 'atlas', text: item.reason, choices: [{ label: 'Commencer', value: `session:${sk}` }], item }])
+        setTimeout(scrollToBottom, 60)
+        return
+      }
       if (item.action === 'FOUND_PROFILE') { setTimeout(() => showProfileForm(), 300); return }
       const label = item.action === 'FOUND_LIST' ? 'Construire ma liste'
         : item.action === 'FOUND_MINDSET' ? 'Ouvrir le module'
@@ -931,6 +937,8 @@ TECHNIQUE (invisible pour moi, ne l'explique jamais)${NB}: quand tu as balayé l
 
   const handleChoice = (item: PlanItem, value: string, label: string, idx: number) => {
     setMsgs((prev) => [...prev.map((m, j) => (j === idx ? { ...m, choices: undefined } : m)), { from: 'user', text: label }])
+    // Session de fondation proposée par le plan (« Commencer ») → elle démarre DANS le fil continu.
+    if (value.startsWith('session:')) { startSession(value.slice(8) as SessionKind); return }
     // Bascule vers le fil du contact avec l'intention (?do=…) : l'action s'y exécute (cloisonnement).
     if (value === 'openchat') {
       const doMap: Record<string, string> = { DEBRIEF: 'debrief', MESSAGE: 'message', PRESENTER: 'presenter' }
