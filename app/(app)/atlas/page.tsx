@@ -26,11 +26,11 @@ import { AtlasActionCard, type AtlasAction } from '@/components/atlas-action-car
 type Choice = { label: string; value: string }
 type Msg = { from: 'user' | 'atlas'; text: string; day?: string; chips?: string[]; choices?: Choice[]; item?: PlanItem; draft?: { contactId: string; prenom: string; channel: string; phone: string | null; email: string | null; instruction?: string; conversationId?: string }; profileForm?: { me: Record<string, unknown> }; whyCard?: { text: string; kind: SessionKind; title: string; obj?: Objectifs; superseded?: boolean; done?: boolean }; navCard?: { route: string; label: string }; actionCard?: AtlasAction }
 
-type SessionKind = 'why' | 'rencontre' | 'mindset' | 'objectifs' | 'audience' | 'parcours' | 'produit'
+type SessionKind = 'why' | 'rencontre' | 'mindset' | 'objectifs' | 'audience' | 'parcours' | 'produit' | 'diagnostic'
 type Objectifs = { mensuel: string; m3: string; m6: string; m12: string }
 
 // Sessions enregistrées dans le profil (coaching.*) → clé du champ.
-const COACHING_FIELD: Partial<Record<SessionKind, string>> = { why: 'why', mindset: 'mindset', parcours: 'background' }
+const COACHING_FIELD: Partial<Record<SessionKind, string>> = { why: 'why', mindset: 'mindset', parcours: 'background', diagnostic: 'diagnostic' }
 // Sessions enregistrées dans l'activité (champ texte simple) → clé du champ.
 const ACTIVITY_FIELD: Partial<Record<SessionKind, string>> = { rencontre: 'story', audience: 'audience', produit: 'produit' }
 
@@ -66,6 +66,7 @@ const displayUserText = (content: string): string => {
   if (content.startsWith('[SESSION_AUDIENCE]')) return 'Je veux définir mon audience cible avec toi'
   if (content.startsWith('[SESSION_PARCOURS]')) return 'Je veux te raconter mon parcours'
   if (content.startsWith('[SESSION_PRODUIT]')) return 'Je veux choisir mon offre phare avec toi'
+  if (content.startsWith('[SESSION_DIAGNOSTIC]')) return 'Je veux faire mon diagnostic complet avec toi'
   if (content.startsWith('Voici mes priorités') || content.startsWith('Avant de courir après les contacts') || content.startsWith("Je n'ai aucune priorité")) return 'Mon plan du jour'
   return content
 }
@@ -261,6 +262,18 @@ Comporte-toi comme un excellent coach lucide${NB}: un vrai échange, pas un cour
 
 TECHNIQUE (invisible pour moi, ne l'explique jamais)${NB}: le jour où je VALIDE explicitement, écris ta phrase de clôture, PUIS ajoute tout à la fin, sur une nouvelle ligne, EXACTEMENT ce format${NB}: [[SAVE]] suivi de mon offre phare en 1-2 phrases. N'écris [[SAVE]] QU'APRÈS ma validation explicite, jamais avant.`,
     },
+    diagnostic: {
+      display: 'Je veux faire mon diagnostic complet avec toi',
+      title: 'Ton diagnostic',
+      frame: `[SESSION_DIAGNOSTIC] On fait le POINT COMPLET sur mon activité${NB}: un audit honnête pour savoir où j'en suis vraiment et quoi corriger en priorité. Environ 10 minutes, une question à la fois.
+
+Comporte-toi comme un coach de terrain lucide qui a vu des milliers de networkers${NB}: un vrai échange, jamais un formulaire.
+- Accueille-moi en UNE phrase, puis mène l'audit UNE question à la fois, dans cet ordre souple${NB}: mon ancienneté et ma société ; mes chiffres actuels (partenaires actifs, ordre de grandeur de revenu, heures par semaine) ; ma prospection (combien de messages par semaine, quel canal, quel taux de réponse) ; mon closing (présentations par semaine, mon objection la plus fréquente) ; mon rapport à l'IA (ce que j'utilise déjà, mon niveau de confort) ; et ce qui me BLOQUE le plus en ce moment.
+- Ce que tu SAIS déjà de moi (dans les données), ne le redemande pas${NB}: confirme-le brièvement et enchaîne. Si une réponse est floue ou fait moins de quelques mots, relance UNE fois pour préciser, pas plus.
+- Situe mes chiffres face aux repères du marché SANS flatterie${NB}: factuel, direct. Une idée par tour, jamais de liste, pas de cours.
+
+TECHNIQUE (invisible pour moi, ne l'explique jamais)${NB}: quand tu as balayé l'essentiel (pas besoin des 6 blocs si j'ai déjà donné le gros), écris ta SYNTHÈSE en style messagerie (texte simple, sans titres ni tableaux)${NB}: mon profil de networker en 1 phrase, mes 3 forces concrètes, mes 3 failles prioritaires (pour chacune, le vrai problème et le fix), et surtout MON RACCOURCI N°1 — la seule chose à faire en priorité cette semaine. Termine par une question${NB}: est-ce que ça te parle, ou tu ajustes ? PUIS, seulement APRÈS ma validation, ajoute tout à la fin sur une nouvelle ligne EXACTEMENT ce format${NB}: [[SAVE]] suivi d'un résumé de mon diagnostic en 3-4 phrases (mon profil + mon raccourci n°1 + mes 2 axes prioritaires). N'écris [[SAVE]] QU'APRÈS ma validation.`,
+    },
   }
 
   // FIL CONTINU (nav messagerie) : charge les derniers messages TOUTES conversations confondues,
@@ -303,7 +316,8 @@ TECHNIQUE (invisible pour moi, ne l'explique jamais)${NB}: le jour où je VALIDE
           // On ne scanne QUE la conversation la plus récente (pas les vieilles sessions du fil fusionné).
           const rawLast = raw.filter((m) => m.conversationId === d.conversationId)
           const kind: SessionKind | null =
-            rawLast.some((m) => m.role === 'USER' && m.content.startsWith('[SESSION_RENCONTRE]')) ? 'rencontre'
+            rawLast.some((m) => m.role === 'USER' && m.content.startsWith('[SESSION_DIAGNOSTIC]')) ? 'diagnostic'
+            : rawLast.some((m) => m.role === 'USER' && m.content.startsWith('[SESSION_RENCONTRE]')) ? 'rencontre'
             : rawLast.some((m) => m.role === 'USER' && m.content.startsWith('[SESSION_MINDSET]')) ? 'mindset'
             : rawLast.some((m) => m.role === 'USER' && m.content.startsWith('[SESSION_OBJECTIFS]')) ? 'objectifs'
             : rawLast.some((m) => m.role === 'USER' && m.content.startsWith('[SESSION_AUDIENCE]')) ? 'audience'
@@ -390,7 +404,7 @@ TECHNIQUE (invisible pour moi, ne l'explique jamais)${NB}: le jour où je VALIDE
   const sessionStartedRef = useRef(false)
   const startSessionRef = useRef<(k: SessionKind) => void>(() => {})
   useEffect(() => {
-    const valid: SessionKind[] = ['why', 'rencontre', 'mindset', 'objectifs', 'audience', 'parcours', 'produit']
+    const valid: SessionKind[] = ['why', 'rencontre', 'mindset', 'objectifs', 'audience', 'parcours', 'produit', 'diagnostic']
     if (!sessionParam || !valid.includes(sessionParam as SessionKind) || sessionStartedRef.current || loadingConv) return
     sessionStartedRef.current = true
     const kind = sessionParam as SessionKind
