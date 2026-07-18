@@ -4,9 +4,9 @@ import { cn } from '@/lib/utils'
 
 // Rangée unique de la nav messagerie — agents épinglés, contacts, résultats de recherche :
 // UN composant pour toutes les listes (règle des 7). Avatar lettré OU emoji (fond neutre).
-export function ThreadRow({ avatarBg, avatarText, title, titlePill, line, lineOrange, time, count, endPill, dim, online, big, onClick }: {
+export function ThreadRow({ avatarBg, avatarText, title, titlePill, line, time, count, endPill, dim, online, big, onClick }: {
   avatarBg: string; avatarText: string; title: string; titlePill?: { label: string; cls: string }
-  line: string; lineOrange?: boolean; time?: string; count?: number
+  line: string; time?: string; count?: number
   endPill?: { label: string; cls: string }; dim?: boolean; online?: boolean; big?: boolean; onClick: () => void
 }) {
   // big (page /chats) : avatars agrandis + nom ET descriptif en 18px. La hiérarchie tient au POIDS + COULEUR.
@@ -22,7 +22,7 @@ export function ThreadRow({ avatarBg, avatarText, title, titlePill, line, lineOr
           {title}
           {titlePill && <span className={cn('rounded-full px-2 py-0.5 text-[10px] font-semibold', titlePill.cls)}>{titlePill.label}</span>}
         </span>
-        <span className={cn('block truncate', big ? 'text-lg' : 'text-xs', lineOrange ? 'font-medium text-primary' : 'text-muted-foreground')}>{line}</span>
+        <span className={cn('block truncate text-muted-foreground', big ? 'text-lg' : 'text-xs')}>{line}</span>
       </span>
       <span className="flex shrink-0 flex-col items-end gap-1">
         {time !== undefined && <span className="text-[10px] text-muted-foreground">{time}</span>}

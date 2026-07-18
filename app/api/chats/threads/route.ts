@@ -28,12 +28,13 @@ export async function GET() {
 
   // ── Agents épinglés : la dernière trace de chacun (best-effort, jamais bloquant) ──
   const now = new Date()
-  const [lastAtlas, lastSim, lastIdea, lastForum, nextRdv, simToday, contacts, contactChats] = await Promise.all([
-    db.atlasMessage.findFirst({
+  const [atlasMsgs, lastSim, lastIdea, lastForum, nextRdv, simToday, contacts, contactChats] = await Promise.all([
+    db.atlasMessage.findMany({
       where: { conversation: { userId, contactId: null, agent: 'atlas' } },
       orderBy: { createdAt: 'desc' },
+      take: 10,
       select: { content: true, role: true, createdAt: true },
-    }).catch(() => null),
+    }).catch(() => [] as { content: string; role: string; createdAt: Date }[]),
     db.simSession.findFirst({
       where: { userId, score: { not: null } },
       orderBy: { startedAt: 'desc' },
@@ -83,24 +84,31 @@ export async function GET() {
 
   const clip = (s: string, n = 90) => (s.length > n ? `${s.slice(0, n).trimEnd()}…` : s)
 
+  // Atlas : aperçu = dernier message VISIBLE d'Atlas. On saute les messages injectés côté user
+  // (cadres [SESSION_…], prompt du plan) et les cartes [[ACTION]], et on coupe les marqueurs [[SAVE]]/[[OPEN]].
+  // Le nombre d'actions du jour vit dans la pastille, pas dans cette ligne (aperçu calme, jamais un ordre).
+  const cleanPreview = (s: string) => s.split('[[')[0].replace(/\s+/g, ' ').trim()
+  const atlasVisible = atlasMsgs.find((m) => m.role !== 'USER' && !m.content.startsWith('[[ACTION') && cleanPreview(m.content))
+  const atlasLine = atlasVisible ? clip(cleanPreview(atlasVisible.content)) : 'Ton coach, chaque jour'
+
   const agents = [
     {
       id: 'atlas',
       name: 'Atlas',
       role: 'coach',
-      line: lastAtlas ? clip(lastAtlas.content.replace(/\s+/g, ' ')) : 'Ton coach — dis-lui bonjour',
-      at: lastAtlas?.createdAt ?? null,
+      line: atlasLine,
+      at: atlasVisible?.createdAt ?? atlasMsgs[0]?.createdAt ?? null,
     },
     {
       id: 'aria',
       name: 'Aria',
       role: 'simulateur',
-      // Veille de RDV : Aria propose l'échauffement d'avant-match (badge), sauf si déjà entraîné aujourd'hui.
+      // Aperçu calme : un RDV approche (état, pas un ordre — la pastille signale « à faire »), sinon dernière simu.
       line: nextRdv && !simToday
-        ? `Tu vois ${nextRdv.contact?.firstName ?? nextRdv.contact?.name ?? "quelqu'un"} ${nextRdv.startAt.toDateString() === now.toDateString() ? "aujourd'hui" : 'demain'} — on s'échauffe avant ?`
+        ? `RDV avec ${nextRdv.contact?.firstName ?? nextRdv.contact?.name ?? 'un contact'} ${nextRdv.startAt.toDateString() === now.toDateString() ? "aujourd'hui" : 'demain'}`
         : lastSim
-          ? `Simulation « ${lastSim.characterId.replace(/_/g, ' ')} » : ${lastSim.score}/100`
-          : "Ton sparring-partner — entraîne-toi avant d'appeler",
+          ? `Dernière simu : ${lastSim.characterId.replace(/_/g, ' ')} · ${lastSim.score}/100`
+          : "Ton simulateur d'appels",
       at: (nextRdv && !simToday ? now : lastSim?.startedAt) ?? null,
       badge: nextRdv && !simToday ? 1 : 0,
     },
@@ -108,14 +116,14 @@ export async function GET() {
       id: 'nova',
       name: 'Nova',
       role: 'social',
-      line: lastIdea ? `Idée de post : ${clip(lastIdea.title, 70)}` : 'Ta community manager — bientôt tes idées de posts',
+      line: lastIdea ? `Dernière idée : ${clip(lastIdea.title, 70)}` : 'Tes idées de contenu',
       at: lastIdea?.createdAt ?? null,
     },
     {
       id: 'communaute',
       name: 'Communauté',
       role: 'groupe',
-      line: lastForum ? `${lastForum.author?.firstName ?? 'Un membre'} : ${clip(lastForum.content.replace(/\s+/g, ' '), 70)}` : 'Les distributeurs Atline échangent ici',
+      line: lastForum ? `${lastForum.author?.firstName ?? 'Un membre'} : ${clip(lastForum.content.replace(/\s+/g, ' '), 70)}` : 'Le fil des distributeurs',
       at: lastForum?.createdAt ?? null,
     },
   ]

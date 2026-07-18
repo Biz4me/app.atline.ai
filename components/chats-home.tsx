@@ -134,8 +134,7 @@ export function ChatsHome() {
             avatarText={a.id === 'communaute' ? '👥' : a.name[0]}
             title={a.name}
             titlePill={{ label: a.role, cls: AGENT_PILL[a.id] ?? AGENT_PILL.communaute }}
-            line={a.id === 'atlas' && atlasBadge > 0 ? `Ton plan est prêt · ${atlasBadge} action${atlasBadge > 1 ? 's' : ''} aujourd'hui 🎯` : a.line}
-            lineOrange={(a.id === 'atlas' && atlasBadge > 0) || (a.badge ?? 0) > 0}
+            line={a.line}
             time={when(a.at)}
             count={a.id === 'atlas' ? atlasBadge : a.badge ?? 0}
             online={a.id !== 'communaute'}
@@ -154,11 +153,15 @@ export function ChatsHome() {
           const days = daysSince(t.lastContact)
           const cold = days !== null && days >= 30 && !planRank.has(t.contactId)
           const planItem = planRank.has(t.contactId) ? plan[planRank.get(t.contactId)!] : null
-          const line = planItem ? planItem.headline
-            : t.birthdayToday ? "🎂 C'est son anniversaire aujourd'hui"
-            : t.draft ? `✍️ Brouillon : ${t.draft}`
-            : days !== null ? `dernier contact il y a ${days} j${cold ? ' 🥶' : ''}`
-            : 'jamais contacté — lance la conversation'
+          // Aperçu CALME (jamais un ordre) : événement précis, sinon fraîcheur. Le « à traiter » = la pastille ;
+          // le stade = le badge de droite ; la consigne d'action réapparaît dans le fil, dite par Atlas.
+          const line =
+              t.draft ? "✍️ Message prêt à envoyer"
+            : t.birthdayToday ? "🎂 Anniversaire aujourd'hui"
+            : planItem?.action === 'DEBRIEF' ? "RDV à débriefer"
+            : planItem?.action === 'RDV' ? "RDV à venir"
+            : days !== null ? `Vu il y a ${days} j`
+            : "Pas encore contacté"
           return (
             <ThreadRow
               key={t.contactId}
@@ -166,7 +169,6 @@ export function ChatsHome() {
               avatarText={t.initials}
               title={t.name}
               line={line}
-              lineOrange={!!planItem || !!t.draft}
               time={when(t.lastChatAt ?? t.lastContact)}
               count={planItem ? 1 : 0}
               endPill={
