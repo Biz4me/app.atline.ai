@@ -115,6 +115,8 @@ export function ChatsSearch({ open, onClose, threads, onAddContact }: {
 
   return (
     <div className="fixed inset-0 z-[60] mx-auto flex w-full max-w-2xl flex-col bg-background lg:mx-0 lg:w-[340px] lg:max-w-none lg:border-r lg:border-border">
+      {/* Zone teintée Atlas (même orange pâle que la rangée d'accueil) : barre + filtres */}
+      <div className="bg-primary/10">
       {/* ← + barre (dictée intégrée) */}
       <div className="flex items-center gap-2.5 px-4 py-2.5" style={{ paddingTop: 'max(0.625rem, env(safe-area-inset-top))' }}>
         <button type="button" aria-label="Retour" onClick={onClose} className="flex size-9 shrink-0 items-center justify-center rounded-full text-muted-foreground active:bg-muted">
@@ -147,12 +149,13 @@ export function ChatsSearch({ open, onClose, threads, onAddContact }: {
       </div>
 
       {/* Onglets — remplacent les 3 déroulants de l'ancienne liste */}
-      <div className="flex gap-1.5 overflow-x-auto no-scrollbar border-b border-border px-4 pb-2">
+      <div className="flex gap-1.5 overflow-x-auto no-scrollbar px-4 pb-2.5">
         {TABS.map((t) => (
-          <button key={t} type="button" onClick={() => setTab(t)} className={cn('shrink-0 rounded-full px-3 py-1.5 text-xs font-medium', tab === t ? 'bg-primary/10 font-semibold text-primary' : 'border border-border bg-surface text-muted-foreground')}>
+          <button key={t} type="button" onClick={() => setTab(t)} className={cn('shrink-0 rounded-full px-3 py-1.5 text-xs font-medium', tab === t ? 'bg-primary font-semibold text-primary-foreground' : 'border border-border bg-background text-muted-foreground')}>
             {t}
           </button>
         ))}
+      </div>
       </div>
 
       <div className="flex-1 overflow-y-auto pb-10">

@@ -118,7 +118,7 @@ export function ChatsHome() {
         <button type="button" aria-label="Menu" onClick={() => setDrawerOpen(true)} className="flex size-9 shrink-0 items-center justify-center rounded-full text-muted-foreground active:bg-muted">
           <Menu className="size-5 stroke-[1.5]" />
         </button>
-        <AtlineWordmark className="h-5 w-auto shrink-0 text-foreground" />
+        <AtlineWordmark className="h-6 w-auto shrink-0 text-foreground" />
         <span className="flex-1" />
         <button type="button" aria-label="Rechercher" onClick={() => setSearchOpen(true)} className="flex size-9 shrink-0 items-center justify-center rounded-full text-muted-foreground active:bg-muted">
           <Search className="size-5 stroke-[1.5]" />
