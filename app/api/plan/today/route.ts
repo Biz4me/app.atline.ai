@@ -76,7 +76,7 @@ export async function GET() {
       select: {
         id: true, name: true, firstName: true, initials: true, accent: true, kind: true,
         prospectStage: true, partnerStage: true, market: true, exposures: true,
-        lastContact: true, birthDate: true, phone: true, email: true, qualification: true,
+        lastContact: true, birthDate: true, phone: true, email: true, qualification: true, lastDraft: true,
       },
     }),
     db.appointment.findMany({ where: { userId, done: false }, select: { id: true, contactId: true, title: true, startAt: true } }),
@@ -156,6 +156,23 @@ export async function GET() {
   if (listCount < 10)         cands.push(foundItem('FOUND_LIST', 1, 'Construis ta liste de noms', `Module 4 — la matière première de ton activité. Tu as ${listCount} contact${listCount > 1 ? 's' : ''}, vise 100 noms.`, '/contacts'))
   // Objectifs : APRÈS la liste (rang le plus bas) — pour fixer des cibles réalistes, pas dans le vide.
   else if (!hasObjectif)      cands.push(foundItem('FOUND_OBJECTIFS', 0, 'Fixe tes objectifs de partenaires', 'Maintenant que ta liste tourne, on pose de vrais objectifs mesurables — un cap mensuel et ta trajectoire à 3, 6, 12 mois.', null))
+
+  // ── ÉLAN D'ONBOARDING : le 1er message est PRÊT → « envoie-le » passe AVANT le socle ──
+  // On a promis cette action à la fin de l'onboarding. Un nouveau qui agit une fois dans les 5 min reste ;
+  // lui demander de « raconter sa rencontre » avant d'avoir envoyé un seul message, c'est le perdre.
+  // priority 110 > tout le socle (max 105) → n°1 ; se dissout dès qu'il a écrit (lastContact posé).
+  for (const c of contacts) {
+    if (c.kind !== 'PROSPECT' || c.prospectStage !== 'NOUVEAU' || c.lastContact) continue
+    if (typeof c.lastDraft !== 'string' || !c.lastDraft.trim()) continue
+    cands.push({
+      contactId: c.id, name: c.name, prenom: prenom(c), initials: initialsOf(c), accent: c.accent ?? '#F97316',
+      level: 1.5, priority: 110, action: 'MESSAGE',
+      headline: `Envoie ton premier message à ${prenom(c)}`,
+      reason: `Ton message est prêt — un tap, tu l'ajustes si tu veux, et tu lances ta toute première conversation.`,
+      channel: c.phone ? 'WHATSAPP' : c.email ? 'EMAIL' : null,
+      stage: c.prospectStage ?? '', phone: c.phone, email: c.email, market: c.market, route: null,
+    })
+  }
 
   // ── Niveau 1 — Temporel (fenêtres qui se ferment) ──
   const today = new Date()

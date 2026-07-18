@@ -134,8 +134,8 @@ export function ChatsHome() {
             avatarText={a.id === 'communaute' ? '👥' : a.name[0]}
             title={a.name}
             titlePill={{ label: a.role, cls: AGENT_PILL[a.id] ?? AGENT_PILL.communaute }}
-            line={a.id === 'atlas' && plan.length > 0 ? `Ton plan est prêt · ${plan.length} action${plan.length > 1 ? 's' : ''} aujourd'hui 🎯` : a.line}
-            lineOrange={(a.id === 'atlas' && plan.length > 0) || (a.badge ?? 0) > 0}
+            line={a.id === 'atlas' && atlasBadge > 0 ? `Ton plan est prêt · ${atlasBadge} action${atlasBadge > 1 ? 's' : ''} aujourd'hui 🎯` : a.line}
+            lineOrange={(a.id === 'atlas' && atlasBadge > 0) || (a.badge ?? 0) > 0}
             time={when(a.at)}
             count={a.id === 'atlas' ? atlasBadge : a.badge ?? 0}
             online={a.id !== 'communaute'}

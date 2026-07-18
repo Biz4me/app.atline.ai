@@ -45,6 +45,11 @@ export default function AuthPage() {
       }
       router.push('/welcome')
     } else {
+      if (password.length < 8) {
+        setError('Le mot de passe doit faire au moins 8 caractères')
+        setLoading(false)
+        return
+      }
       if (password !== confirm) {
         setError('Les mots de passe ne correspondent pas')
         setLoading(false)
@@ -79,10 +84,11 @@ export default function AuthPage() {
       redirect: false,
     })
     if (res?.error) {
-      router.push('/welcome')
-    } else {
-      router.push('/welcome')
+      setError('Le compte démo est indisponible pour le moment.')
+      setLoading(false)
+      return
     }
+    router.push('/welcome')
   }
 
   return (

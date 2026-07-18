@@ -388,7 +388,7 @@ function runEngine(R: Refs, name: string, onDone: Done) {
       const ack = known
         ? `${cap} — un terrain que je connais bien : j'adapterai mes conseils et tes scripts à ce marché.`
         : `${cap}, noté : j'adapterai mes conseils et tes scripts à ce marché.`
-      chatAtlas(ack, () => objectifs(then))
+      chatAtlas(ack, () => askExperience(then))
     }
     chatAtlas(`${name}, je ne connais pas encore — c'est quel secteur ?`, () => {
       chatDropdown(SECTORS.map((s) => s.label), { trigger: 'Sélectionne ton secteur', otherInput: 'Ton secteur…' },
@@ -416,19 +416,23 @@ function runEngine(R: Refs, name: string, onDone: Done) {
                   if (v2.indexOf('Pas encore') < 0) D.network = v2; else D.mode = 'ATLINE'
                   chatAtlas(ackSociete(v2), () => {
                     if (D.mode === 'ATLINE') { D.experience = 'debutant'; chatCta('Continuer', then); return }
-                    // Aiguillage : débutant → Bon Départ · établi → session Diagnostic (côté Atlas, plus tard)
-                    chatAtlas('Et où tu en es avec cette activité ?', () => {
-                      chatChoices([{ label: 'Je démarre' }, { label: "J'ai déjà une activité qui tourne" }], (e) => {
-                        D.experience = e.indexOf('démarre') >= 0 ? 'debutant' : 'etabli'
-                        objectifs(then)
-                      })
-                    })
+                    askExperience(then)
                   })
                 }, (name) => customSociete(name, then))
               })
             })
           })
         })
+      })
+    })
+  }
+  // Aiguillage débutant/établi (nourrit le gate du plan : établi → session Diagnostic ; débutant → Bon Départ).
+  // Posé quelle que soit la façon de renseigner la société (liste OU saisie libre « Autre… »).
+  function askExperience(then: () => void) {
+    chatAtlas('Et où tu en es avec cette activité ?', () => {
+      chatChoices([{ label: 'Je démarre' }, { label: "J'ai déjà une activité qui tourne" }], (e) => {
+        D.experience = e.indexOf('démarre') >= 0 ? 'debutant' : 'etabli'
+        objectifs(then)
       })
     })
   }
@@ -575,12 +579,12 @@ function runEngine(R: Refs, name: string, onDone: Done) {
   // Page finale (hyper sobre) : titre → 3 actions déposées (couleur d'agent) → message de coach → lancement
   function cestParti() {
     chatSetup(`C'est parti, ${name}.`, 'atlas'); setProgPct(100)
-    chatAtlas(`Tes 3 premières actions t'attendent sur ton tableau de bord :`, () => {
-      actionChip('send', AGC.atlas, `Envoyer ton message à ${firstName}`)
-      actionChip('mic', AGC.aria, `Simuler ton appel à ${firstName}`)
-      actionChip('squarePen', AGC.nova, `Publier ton premier post`)
+    chatAtlas(`Ta première action est prête, il ne reste qu'à l'envoyer :`, () => {
+      actionChip('send', AGC.atlas, `Ton message à ${firstName}, prêt à envoyer`)
+      actionChip('mic', AGC.aria, `Aria t'entraîne quand tu veux répéter`)
+      actionChip('squarePen', AGC.nova, `Nova te crée tes posts dès que tu es prêt`)
       chatAtlas(`Mon rôle désormais : que chaque jour te rapproche du but, et que tu ne doutes jamais du prochain pas. Avançons.`, () => {
-        chatCta('Ouvrir mon tableau de bord', finish)
+        chatCta('Ouvrir Atline', finish)
       })
     })
   }

@@ -14,7 +14,7 @@ export async function POST(req: Request) {
 
   const {
     personality, phone, network, objectives, objective, gender, mode, contactColor,
-    contactFirstName, contactLastName, market, prospectPhone, prospectEmail, links, experience,
+    contactFirstName, contactLastName, market, prospectPhone, prospectEmail, links, experience, message,
   } = await req.json()
   // Mode Atline (débutant sans société) : l'affilié est rattaché à un business « Atline »
   const biz = (typeof network === 'string' && network.trim()) ? network.trim() : (mode === 'ATLINE' ? 'Atline' : '')
@@ -90,6 +90,9 @@ export async function POST(req: Request) {
           prospectStage: 'NOUVEAU' as any,
           ...(market && { market: market as any }),
           ...(contactColor && { personality: contactColor as any }),
+          // Brouillon du 1er message généré à l'onboarding : on le GARDE (promesse « prêt à envoyer »).
+          // Il s'affiche « ✍️ Brouillon » sur la liste et pré-remplit le fil du contact.
+          ...(typeof message === 'string' && message.trim() && { lastDraft: message.trim(), lastDraftAt: new Date() }),
         },
       })
 
