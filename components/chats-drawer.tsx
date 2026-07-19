@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useTheme } from 'next-themes'
-import { UserRound, Briefcase, Calendar, BarChart3, CreditCard, Settings, Moon, Sun, ChevronDown, Check } from 'lucide-react'
+import { UserRound, Briefcase, Users, Calendar, BookOpen, BarChart3, CreditCard, Settings, Moon, Sun, ChevronDown, Check } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 // ═══ NAV MESSAGERIE T6 — le ☰ gère : le tiroir COMPTE, pur ═══
@@ -17,7 +17,9 @@ type Me = { firstName?: string; lastName?: string; email?: string; photoUrl?: st
 const ITEMS = [
   { icon: UserRound, label: 'Mon profil', to: '/profile' },
   { icon: Briefcase, label: 'Mon activité', to: '/activities' },
+  { icon: Users, label: 'Contacts', to: '/contacts' },
   { icon: Calendar, label: 'Agenda', to: '/agenda' },
+  { icon: BookOpen, label: 'Formation', to: '/formation' },
   { icon: BarChart3, label: 'Mon bilan', to: '/home' },
   { icon: CreditCard, label: 'Abonnement', to: '/mon-abonnement' },
   { icon: Settings, label: 'Réglages', to: '/settings' },
