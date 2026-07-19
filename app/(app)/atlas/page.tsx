@@ -301,7 +301,8 @@ TECHNIQUE (invisible pour moi, ne l'explique jamais)${NB}: quand tu as balayé l
             if (om) { const route = cleanOpenRoute(om[1]); if (route) out.push({ from: 'atlas', text: '', navCard: { route, label: om[2].trim() } }) }
           }
           setMsgs(out)
-          jumpToBottom() // ouverture = dernier message visible (saut instantané, pas d'animation)
+          // (le saut tout en bas est déclenché par l'effet ci-dessous, UNE FOIS loadingConv=false et le
+          //  conteneur scrollable monté — sinon scrollRef.current est encore null pendant le chargement)
           // Reprise d'une session de fondation non finalisée. FIL UNIQUE : tout s'accumule dans un seul
           // fil, donc on ne reprend QUE si le cadre [SESSION_X] est RÉCENT (aujourd'hui) et en QUEUE du fil
           // (14 derniers messages) — sinon un vieux cadre resté dans le fil rebrancherait la session à tort.
@@ -448,6 +449,13 @@ TECHNIQUE (invisible pour moi, ne l'explique jamais)${NB}: quand tu as balayé l
   }
 
   const goToBottom = () => { atBottomRef.current = true; setShowScrollBtn(false); scrollToBottom() }
+
+  // OUVERTURE = dernier message visible : le conteneur scrollable (scrollRef) n'est monté qu'une fois le
+  // fil chargé (loadingConv=false + msgs>0). On saute tout en bas À CE MOMENT-LÀ (pas pendant le chargement).
+  useEffect(() => {
+    if (!loadingConv && msgs.length > 0) jumpToBottom()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loadingConv])
 
   const setLastAtlas = (text: string) =>
     setMsgs((prev) => {
