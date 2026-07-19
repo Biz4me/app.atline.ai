@@ -86,16 +86,18 @@ pm2 restart atline-app
 
 ---
 
-## AppShell — structure layout desktop (refonte 12 juil, MAJ messagerie 18 juil 2026)
+## AppShell — nav UNIFIÉE façon Telegram Web (refonte 12 juil, messagerie + nav unifiée 18 juil 2026)
 
 ```
-Surfaces messagerie (/chats, /atlas) : |← colonne Conversations →|← fil / contenu →|
-Autres pages :                          |← DesktopNav (260px, fixe) →|← contenu →|
-   = le tiroir mobile épinglé (nav-config partagée)
+Desktop, PARTOUT : |← colonne Conversations (340px) →|← fil au centre →|  (+ feuille outil par-dessus)
+   colonne = components/chats-home.tsx (ChatsHome). Sur /chats /atlas : fournie par le layout ChatsShell.
+   Ailleurs : épinglée par AppShell (aside fixed left-0 w-[340px]). Mobile : masquée (chrome mobile propre).
 ```
-- **PLUS d'AtlasSidebar (rail droit)** : supprimé le 18 juil. Atlas est une CONVERSATION (le fil /atlas), pas un composeur permanent. `AppShell` n'a plus de padding droit ni d'état `atlasCollapsed`.
-- Plus de top bar desktop (supprimé) : le titre vit dans la page, le thème dans Mon compte.
-- Feuilles = routes interceptées `app/(app)/@sheet/(.)route` : plein écran mobile, panneau droit desktop, la page derrière reste montée. URL directe = vraie page.
+- **PLUS de DesktopNav** (supprimé le 18 juil, `desktop-nav.tsx` retiré) : la colonne Conversations EST la nav unique. Les entrées outils (Contacts, Agenda, Formation, Bilan, Profil, Activité, Abonnement, Réglages) vivent dans le **tiroir ☰** de la colonne (`chats-drawer.tsx`).
+- **PLUS d'AtlasSidebar (rail droit)** : supprimé. Atlas est une CONVERSATION (le fil /atlas), pas un composeur permanent.
+- **Écrans outils = FEUILLES** : routes interceptées `app/(app)/@sheet/(.)route/page.tsx` via la coquille `components/sheet-panel.tsx` (panneau droit desktop, plein écran mobile, la page/fil derrière reste montée, backdrop→retour). Déjà en feuille : contacts (liste + fiche), agenda, formation, home (bilan), compte. URL directe/refresh = vraie page pleine.
+- `(app)/layout.tsx` : `export const dynamic = 'force-dynamic'` (ChatsHome/useSearchParams monté partout → pas de prérendu statique).
+- Plus de top bar desktop : le titre vit dans la page, le thème dans le ☰.
 
 ### Gabarits de largeur desktop — RÈGLE STRICTE (2 gabarits + 2 exceptions)
 | Gabarit | Classe | Pages |
