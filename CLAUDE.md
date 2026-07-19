@@ -86,13 +86,14 @@ pm2 restart atline-app
 
 ---
 
-## AppShell — structure layout desktop (refonte 12 juil 2026)
+## AppShell — structure layout desktop (refonte 12 juil, MAJ messagerie 18 juil 2026)
 
 ```
-|← DesktopNav (260px, fixe) →|← contenu →|← AtlasSidebar (360px / 64px replié) →|
-   = le tiroir mobile épinglé                = composeur Atlas contextuel permanent
-   (nav-config partagée)                     (masqué sur /atlas /aria /nova /messages)
+Surfaces messagerie (/chats, /atlas) : |← colonne Conversations →|← fil / contenu →|
+Autres pages :                          |← DesktopNav (260px, fixe) →|← contenu →|
+   = le tiroir mobile épinglé (nav-config partagée)
 ```
+- **PLUS d'AtlasSidebar (rail droit)** : supprimé le 18 juil. Atlas est une CONVERSATION (le fil /atlas), pas un composeur permanent. `AppShell` n'a plus de padding droit ni d'état `atlasCollapsed`.
 - Plus de top bar desktop (supprimé) : le titre vit dans la page, le thème dans Mon compte.
 - Feuilles = routes interceptées `app/(app)/@sheet/(.)route` : plein écran mobile, panneau droit desktop, la page derrière reste montée. URL directe = vraie page.
 

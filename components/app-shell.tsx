@@ -1,11 +1,10 @@
 'use client'
 
-import { useState, useEffect, type ReactNode } from 'react'
+import { useState, type ReactNode } from 'react'
 import { usePathname } from 'next/navigation'
 import { ChevronRight } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { DesktopNav } from '@/components/desktop-nav'
-import { AtlasSidebar } from '@/components/atlas-sidebar'
 import { TopBar } from '@/components/top-bar'
 import { MobileDrawer } from '@/components/mobile/mobile-drawer'
 import { PageVisibilityProvider } from '@/components/page-visibility-context'
@@ -13,20 +12,13 @@ import { PageVisibilityProvider } from '@/components/page-visibility-context'
 interface Props {
   children: ReactNode
   initialCollapsed: boolean
-  initialAtlasCollapsed: boolean
 }
 
-export function AppShell({ children, initialCollapsed, initialAtlasCollapsed }: Props) {
+export function AppShell({ children, initialCollapsed }: Props) {
   const pathname = usePathname()
-  // Pages où le rail droit reste mais réduit aux agents (jamais déplié)
-  const railCollapsedOnly = ['/atlas', '/aria', '/nova', '/messages', '/chats'].some(
-    (p) => pathname === p || pathname.startsWith(p + '/'),
-  )
-  // Nav messagerie (chantier parallèle) : /chats gère son propre chrome (rangée unique, composeur du fil)
+  // Nav messagerie : /chats gère son propre chrome (rangée unique, composeur du fil)
   const isChats = pathname === '/chats' || pathname.startsWith('/chats/')
   const isChatFil = pathname.startsWith('/chats/') // fil contact : pleine hauteur, composeur fixed (comme Atlas)
-  // UNE sidebar desktop (le tiroir mobile épinglé) — plus de rail + sidebar 2 à 2 étages
-  const sidebarEdge = 260
 
   // Pages atteintes via le menu « ⋯ » → plein écran, sans bottom bar (mobile)
   // La fiche contact /contacts/[id] est plein écran (charte profil), mais PAS la liste /contacts.
@@ -37,13 +29,6 @@ export function AppShell({ children, initialCollapsed, initialAtlasCollapsed }: 
   const isAtlasChat = pathname === '/atlas' || pathname.startsWith('/atlas/')
 
   const [collapsed, setCollapsed] = useState(initialCollapsed)
-  const [atlasCollapsed, setAtlasCollapsed] = useState(initialAtlasCollapsed)
-
-  useEffect(() => {
-    if (pathname.startsWith('/contacts')) {
-      setAtlasCollapsed(false)
-    }
-  }, [pathname])
 
   const toggle = () => {
     setCollapsed((v) => {
@@ -54,20 +39,11 @@ export function AppShell({ children, initialCollapsed, initialAtlasCollapsed }: 
     })
   }
 
-  const toggleAtlas = () => {
-    setAtlasCollapsed((v) => {
-      const next = !v
-      localStorage.setItem('atlas-sidebar-collapsed', next ? '1' : '0')
-      document.cookie = `atlas-sidebar-collapsed=${next ? '1' : '0'};path=/;max-age=31536000;samesite=lax`
-      return next
-    })
-  }
-
   return (
     <PageVisibilityProvider>
-      {/* T10b : sur les surfaces messagerie, la colonne Conversations REMPLACE l'ancienne nav desktop */}
+      {/* T10b : sur les surfaces messagerie, la colonne Conversations REMPLACE l'ancienne nav desktop.
+          Plus de rail droit (AtlasSidebar) : Atlas est une CONVERSATION, pas un composeur permanent. */}
       <DesktopNav hidden={collapsed || isChats || isAtlasChat} onToggle={toggle} />
-      <AtlasSidebar collapsed={atlasCollapsed} onToggle={toggleAtlas} />
 
       {/* Rouvrir la nav — visible SEULEMENT quand elle est repliée (le repli vit DANS la sidebar) */}
       {collapsed && !isChats && !isAtlasChat && (
@@ -84,15 +60,13 @@ export function AppShell({ children, initialCollapsed, initialAtlasCollapsed }: 
       <div
         className={cn(
           'app-shell lg:pb-0 lg:max-w-none lg:mx-0',
-          // Bascule nav messagerie : plus de composeur de shell en bas → plus de padding réservé
-          // Atlas mobile : hauteur figée = zéro scroll du document (le résidu est clippé, le composeur est fixed)
+          // Atlas/fil mobile : hauteur figée = zéro scroll du document (composeur fixed)
           isAtlasChat || isChatFil ? 'max-lg:h-[100dvh] max-lg:overflow-hidden' : '',
-          'transition-[padding-left,padding-right] duration-200 ease-out',
+          'transition-[padding-left] duration-200 ease-out',
           collapsed || isChats || isAtlasChat ? 'lg:pl-0' : 'lg:pl-[260px]',
-          railCollapsedOnly ? 'lg:pr-0' : atlasCollapsed ? 'lg:pr-16' : 'lg:pr-[360px]',
         )}
       >
-        {/* Chrome mobile global : barre du haut (hamburger → tiroir) + barre Atlas en bas */}
+        {/* Chrome mobile global : barre du haut (hamburger → tiroir) */}
         {!navHidden && !isChats && !isAtlasChat && <TopBar />}
         {/* Pages du menu « Plus » (plein écran) : entrée par la droite sur mobile — règle commune */}
         {navHidden ? (
@@ -102,7 +76,6 @@ export function AppShell({ children, initialCollapsed, initialAtlasCollapsed }: 
         ) : (
           children
         )}
-        {/* ShellComposer retiré à la bascule : Atlas est une conversation, les feuilles restent propres */}
       </div>
       <MobileDrawer />
     </PageVisibilityProvider>
