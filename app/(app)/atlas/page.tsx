@@ -301,7 +301,7 @@ TECHNIQUE (invisible pour moi, ne l'explique jamais)${NB}: quand tu as balayé l
             if (om) { const route = cleanOpenRoute(om[1]); if (route) out.push({ from: 'atlas', text: '', navCard: { route, label: om[2].trim() } }) }
           }
           setMsgs(out)
-          scrollToBottom()
+          jumpToBottom() // ouverture = dernier message visible (saut instantané, pas d'animation)
           // Reprise d'une session de fondation non finalisée. FIL UNIQUE : tout s'accumule dans un seul
           // fil, donc on ne reprend QUE si le cadre [SESSION_X] est RÉCENT (aujourd'hui) et en QUEUE du fil
           // (14 derniers messages) — sinon un vieux cadre resté dans le fil rebrancherait la session à tort.
@@ -427,6 +427,14 @@ TECHNIQUE (invisible pour moi, ne l'explique jamais)${NB}: quand tu as balayé l
 
   const scrollToBottom = () =>
     setTimeout(() => scrollRef.current?.scrollTo({ top: 999999, behavior: 'smooth' }), 50)
+
+  // Ouverture du fil : on SAUTE tout en bas INSTANTANÉMENT (pas d'animation), répété pour rattraper la
+  // mise en page tardive (cartes, séparateurs de jour) — sinon on atterrit à mi-hauteur. Messagerie = dernier message visible.
+  const jumpToBottom = () => {
+    atBottomRef.current = true
+    const go = () => { const el = scrollRef.current; if (el) el.scrollTop = el.scrollHeight }
+    requestAnimationFrame(go); setTimeout(go, 120); setTimeout(go, 320)
+  }
 
   // Auto-scroll poli : ne suit la génération que si l'utilisateur est déjà en bas
   const autoScroll = () => { if (atBottomRef.current) scrollToBottom() }

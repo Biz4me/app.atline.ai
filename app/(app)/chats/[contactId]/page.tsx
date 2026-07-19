@@ -40,6 +40,7 @@ export default function ContactThreadPage({ params }: { params: Promise<{ contac
   const [loading, setLoading] = useState(true)
   const convRef = useRef<string | null>(null)
   const endRef = useRef<HTMLDivElement>(null)
+  const initialScrolled = useRef(false)
   // Recherche DANS la conversation (⋮ de l'en-tête)
   const filSearch = useFilSearch(msgs.map((m) => m.text ?? ''))
 
@@ -87,7 +88,19 @@ export default function ContactThreadPage({ params }: { params: Promise<{ contac
     return () => { cancelled = true }
   }, [contactId])
 
-  useEffect(() => { endRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' }) }, [msgs, streaming])
+  // Ouverture d'un fil (y compris en changeant de contact) = SAUT instantané tout en bas (dernier message
+  // visible) ; les messages qui arrivent ENSUITE glissent en douceur.
+  useEffect(() => { initialScrolled.current = false }, [contactId])
+  useEffect(() => {
+    if (!endRef.current || msgs.length === 0) return
+    if (!initialScrolled.current) {
+      endRef.current.scrollIntoView({ block: 'end' }) // instantané
+      setTimeout(() => endRef.current?.scrollIntoView({ block: 'end' }), 200) // rattrape la mise en page tardive
+      initialScrolled.current = true
+    } else {
+      endRef.current.scrollIntoView({ behavior: 'smooth', block: 'end' })
+    }
+  }, [msgs, streaming])
 
   // Envoi → Atlas contact-scopé (même proxy que la fiche : snapshot + mémoire du contact inclus côté serveur).
   const send = async () => {
