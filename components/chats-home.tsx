@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, usePathname } from 'next/navigation'
 import { Menu, Search, Pencil, X, ChevronLeft, MessageSquarePlus, UserPlus } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { PlanItem } from '@/components/atlas-plan-card'
@@ -76,13 +76,16 @@ export function ChatsHome() {
 
   // Règle d'ouverture (T9) : tant qu'il n'y a aucun fil contact, la liste est pauvre —
   // on atterrit directement chez Atlas (l'onboarding progressif peuplera la liste).
+  // En COLONNE persistante (desktop), ChatsHome est monté sur TOUTES les pages : le rebond ne doit
+  // se déclencher que quand on est VRAIMENT sur /chats, sinon il détournerait toute la navigation.
+  const pathname = usePathname()
   const bouncedRef = useRef(false)
   useEffect(() => {
-    if (loading || bouncedRef.current || threads.length > 0) return
+    if (loading || bouncedRef.current || threads.length > 0 || pathname !== '/chats') return
     bouncedRef.current = true
     router.replace('/atlas')
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [loading, threads.length])
+  }, [loading, threads.length, pathname])
 
   // Badges = le plan du jour : rang par contact (pour le tri), le reste (fondation/formation) au fil Atlas.
   const planRank = new Map<string, number>()
