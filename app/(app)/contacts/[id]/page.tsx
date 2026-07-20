@@ -457,51 +457,23 @@ export default function ContactDetailPage({ params, contactId, embedded, onClose
 
         {/* — Sous-onglet SUIVI : le journal terrain (échanges, à venir, historique) — */}
         {dsub === 'suivi' && (<>
-        {isPartner && c.signedAt && (
-          <div className="rounded-2xl border border-border bg-surface p-4">
-            <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Partenaire</p>
-            <p className="mt-1 text-lg font-medium text-foreground lg:text-sm">Depuis le {new Date(c.signedAt).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
-          </div>
-        )}
-        {/* Dernier contact + planifier + convertir — descendus d'Aperçu pour l'alléger */}
-        <p className="text-xs text-muted-foreground">
-          dernier contact : <span className="font-medium text-foreground">{c.lastContact ? new Date(c.lastContact).toLocaleDateString('fr-FR') : 'jamais'}</span>
+        {/* Repères — l'état du suivi en une ligne (au lieu d'un signal par carte) */}
+        <p className="text-xs leading-relaxed text-muted-foreground">
+          Dernier contact : <span className="font-medium text-foreground">{c.lastContact ? new Date(c.lastContact).toLocaleDateString('fr-FR') : 'jamais'}</span>
+          {isPartner && c.signedAt && <> · partenaire depuis <span className="font-medium text-foreground">{new Date(c.signedAt).toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' })}</span></>}
+          {(isProspect || recruiting) && <> · <span className="font-medium text-foreground">{c.exposures}</span> exposition{c.exposures > 1 ? 's' : ''}</>}
         </p>
-        <div className="grid grid-cols-2 gap-1">
-          <button type="button" onClick={() => setSchedule('rdv')} className="flex flex-col items-center gap-1.5 rounded-xl py-2 active:bg-muted"><span className="grid size-11 place-items-center rounded-full bg-primary/10"><CalendarPlus className="size-5 stroke-[1.5] text-primary" /></span><span className="text-xs font-medium text-foreground">RDV</span></button>
-          <button type="button" onClick={() => setSchedule('relance')} className="flex flex-col items-center gap-1.5 rounded-xl py-2 active:bg-muted"><span className="grid size-11 place-items-center rounded-full bg-primary/10"><Bell className="size-5 stroke-[1.5] text-primary" /></span><span className="text-xs font-medium text-foreground">Relance</span></button>
-        </div>
-        {(isProspect || isClient) && (
-          <div className="flex flex-wrap items-center gap-1">
-            <span className="mr-1 text-xs text-muted-foreground">Convertir en</span>
-            {isProspect && (
-              <button type="button" onClick={() => save({ convert: 'client' }, 'Converti en client')} className="rounded-md px-2 py-0.5 text-sm font-semibold text-primary active:bg-primary/10">client</button>
-            )}
-            {isProspect && <span className="text-xs text-muted-foreground">·</span>}
-            <button type="button" onClick={() => save({ convert: 'partenaire' }, 'Converti en partenaire')} className="rounded-md px-2 py-0.5 text-sm font-semibold text-primary active:bg-primary/10">partenaire</button>
+        {/* À venir — RDV/relances programmés ; on planifie depuis l'en-tête (créer là où on regarde) */}
+        <Section title="À venir" action={
+          <div className="flex gap-1">
+            <button type="button" onClick={() => setSchedule('rdv')} className="flex items-center gap-1 rounded-full px-2 py-1 text-xs font-semibold text-primary active:bg-primary/10"><CalendarPlus className="size-3.5 stroke-[1.5]" />RDV</button>
+            <button type="button" onClick={() => setSchedule('relance')} className="flex items-center gap-1 rounded-full px-2 py-1 text-xs font-semibold text-primary active:bg-primary/10"><Bell className="size-3.5 stroke-[1.5]" />Relance</button>
           </div>
-        )}
-        {/* ÉCHANGES AVEC ATLAS — conversations passées sur ce contact (rouvrir dans le composeur) */}
-        {contactConvs.length > 0 && (
-          <Section title="Échanges avec Atlas">
-            <div className="flex flex-col">
-              {contactConvs.map((cv) => (
-                <button key={cv.id} type="button" onClick={() => setOpenConvId(cv.id)} className="flex items-center gap-3 rounded-xl px-1 py-2.5 text-left active:bg-muted">
-                  <Sparkles className="size-4 shrink-0 stroke-[1.5] text-primary" />
-                  <span className="min-w-0 flex-1 truncate text-lg text-foreground lg:text-sm">{cv.title || 'Échange'}</span>
-                  <span className="shrink-0 text-[10px] text-muted-foreground">{new Date(cv.updatedAt).toLocaleDateString('fr-FR')}</span>
-                </button>
-              ))}
-            </div>
-          </Section>
-        )}
-
-        {/* À VENIR (RDV + relances programmées) */}
-        {(appointments.length > 0 || relances.length > 0) && (
-          <Section title="À venir">
-            <div className="flex flex-col gap-2">
+        }>
+          {(appointments.length > 0 || relances.length > 0) ? (
+            <div className="flex flex-col divide-y divide-border">
               {appointments.map((a) => (
-                <div key={a.id} className="flex items-center gap-3 rounded-xl border border-border bg-background px-4 py-3">
+                <div key={a.id} className="flex items-center gap-3 py-2.5 first:pt-0 last:pb-0">
                   <CalendarPlus className="size-4 shrink-0 stroke-[1.5] text-primary" />
                   <div className="min-w-0 flex-1">
                     <p className="text-lg font-medium text-foreground lg:text-sm">{a.title}</p>
@@ -510,13 +482,30 @@ export default function ContactDetailPage({ params, contactId, embedded, onClose
                 </div>
               ))}
               {relances.map((r) => (
-                <div key={r.id} className="flex items-center gap-3 rounded-xl border border-border bg-background px-4 py-3">
+                <div key={r.id} className="flex items-center gap-3 py-2.5 first:pt-0 last:pb-0">
                   <Bell className="size-4 shrink-0 stroke-[1.5] text-primary" />
                   <div className="min-w-0 flex-1">
                     <p className="text-lg font-medium text-foreground lg:text-sm">Relance · {r.channel}</p>
                     <p className="text-xs text-muted-foreground">{new Date(r.dueAt).toLocaleDateString('fr-FR')}{r.message ? ` · ${r.message}` : ''}</p>
                   </div>
                 </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground">Rien de prévu. Planifie un RDV ou une relance.</p>
+          )}
+        </Section>
+
+        {/* Échanges avec Atlas — les conversations de coaching sur ce contact (rouvrir) */}
+        {contactConvs.length > 0 && (
+          <Section title="Échanges avec Atlas">
+            <div className="flex flex-col divide-y divide-border">
+              {contactConvs.map((cv) => (
+                <button key={cv.id} type="button" onClick={() => setOpenConvId(cv.id)} className="flex items-center gap-3 py-2.5 text-left first:pt-0 last:pb-0 active:opacity-70">
+                  <Sparkles className="size-4 shrink-0 stroke-[1.5] text-primary" />
+                  <span className="min-w-0 flex-1 truncate text-lg text-foreground lg:text-sm">{cv.title || 'Échange'}</span>
+                  <span className="shrink-0 text-[10px] text-muted-foreground">{new Date(cv.updatedAt).toLocaleDateString('fr-FR')}</span>
+                </button>
               ))}
             </div>
           </Section>
@@ -550,6 +539,24 @@ export default function ContactDetailPage({ params, contactId, embedded, onClose
             )}
           </Card>
         )}
+
+        {/* Gérer — administration (statut, suppression), séparée du suivi */}
+        <div className="mt-2 flex flex-col gap-3 border-t border-border pt-4">
+          {(isProspect || isClient) && (
+            <div className="flex flex-wrap items-center gap-1">
+              <span className="mr-1 text-xs text-muted-foreground">Convertir en</span>
+              {isProspect && (
+                <button type="button" onClick={() => save({ convert: 'client' }, 'Converti en client')} className="rounded-md px-2 py-0.5 text-sm font-semibold text-primary active:bg-primary/10">client</button>
+              )}
+              {isProspect && <span className="text-xs text-muted-foreground">·</span>}
+              <button type="button" onClick={() => save({ convert: 'partenaire' }, 'Converti en partenaire')} className="rounded-md px-2 py-0.5 text-sm font-semibold text-primary active:bg-primary/10">partenaire</button>
+            </div>
+          )}
+          <button type="button" onClick={() => { if (window.confirm('Supprimer définitivement ce contact ?')) { fetch(`/api/contacts/${id}`, { method: 'DELETE' }).then((r) => { if (r.ok) { toast.success('Contact supprimé'); router.push('/contacts') } else toast.error('Échec de la suppression') }) } }}
+            className="flex items-center gap-1.5 self-start text-sm font-medium text-muted-foreground transition-colors active:text-destructive">
+            <Trash2 className="size-4" /> Supprimer ce contact
+          </button>
+        </div>
 
         {/* fin sous-onglet Suivi */}
         </>)}
@@ -659,15 +666,6 @@ export default function ContactDetailPage({ params, contactId, embedded, onClose
             })()}
             <button type="button" onClick={saveAll} className="flex w-full items-center justify-center gap-2 rounded-2xl bg-primary py-3 text-base font-bold text-primary-foreground transition-transform active:scale-[0.98]">Enregistrer</button>
           </div>
-        )}
-        {/* Suppression du contact — dans Détails › Suivi (gérer le contact) */}
-        {tab === 'details' && dsub === 'suivi' && (
-        <div className="flex justify-center pt-2">
-          <button type="button" onClick={() => { if (window.confirm('Supprimer définitivement ce contact ?')) { fetch(`/api/contacts/${id}`, { method: 'DELETE' }).then((r) => { if (r.ok) { toast.success('Contact supprimé'); router.push('/contacts') } else toast.error('Échec de la suppression') }) } }}
-            className="flex items-center gap-1.5 text-base font-medium text-muted-foreground transition-colors active:text-destructive">
-            <Trash2 className="size-4" /> Supprimer ce contact
-          </button>
-        </div>
         )}
       </div>
       {/* Intermédiaire d'action — Message (choix du canal) · Appel (appeler ou s'entraîner) */}
