@@ -15,7 +15,7 @@ export function SheetPanel({ title, widthClass = 'lg:w-[720px]', children }: { t
       <div className="hidden lg:block absolute inset-0 bg-black/40" onClick={() => router.back()} />
       <div
         style={{ transform: 'translateZ(0)' }}
-        className={cn('absolute inset-0 flex flex-col overflow-hidden bg-background lg:left-auto lg:border-l lg:border-border lg:shadow-2xl lg:animate-slide-in-right', widthClass)}
+        className={cn('absolute inset-0 flex flex-col overflow-hidden bg-background lg:left-auto lg:border-l lg:border-border lg:animate-slide-in-right', widthClass)}
       >
         <div className="flex shrink-0 items-center gap-1.5 border-b border-border px-2 py-2" style={{ paddingTop: 'max(0.5rem, env(safe-area-inset-top))' }}>
           <button type="button" aria-label="Fermer" onClick={() => router.back()} className="flex size-9 shrink-0 items-center justify-center rounded-full text-muted-foreground active:bg-muted">

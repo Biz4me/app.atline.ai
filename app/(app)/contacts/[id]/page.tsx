@@ -341,8 +341,8 @@ export default function ContactDetailPage({ params, contactId, embedded, onClose
   const oppStages = isPartner ? PARTNER_STAGES : PROSPECT_STAGES
   const oppCurrent = isPartner ? c.partnerStage : c.prospectStage
   // Pastilles de statut + compteur « Détails »
-  const stadeLabel = showOppCursor ? (oppStages.find((s) => s.id === oppCurrent)?.label ?? null) : null
-  const marketLabel = qual.market ? ({ CHAUD: 'Marché chaud', TIEDE: 'Marché tiède', FROID: 'Marché froid' } as Record<string, string>)[qual.market] : null
+  // Un seul save (toute la fiche) réutilisé par les onglets éditables — plus de code copié 3×.
+  const saveAll = () => save({ ...pf, personality: qual.personality || null, market: qual.market || null, qualification: { situation: qual.situation, interests: qual.interests, motivation: qual.motivation, insatisfaction: qual.insatisfaction, reseau: qual.reseau, ouverture: qual.ouverture } }, 'Fiche enregistrée')
 
   return (
     <div className={cn('flex w-full flex-col bg-background', embedded ? '' : 'mx-auto min-h-dvh max-w-2xl')}>
@@ -362,14 +362,13 @@ export default function ContactDetailPage({ params, contactId, embedded, onClose
         <div className="flex flex-col items-center gap-2.5">
           <div className="grid size-20 place-items-center rounded-full text-2xl font-bold text-white" style={{ backgroundColor: perso?.hex ?? c.accent }}>{c.initials}</div>
           <p className="text-lg font-semibold text-foreground">{c.name || 'Contact'}</p>
-          {/* Statut d'un coup d'œil — le segment est déjà dans le header, pastilles gris uniforme */}
-          <div className="flex flex-wrap items-center justify-center gap-1.5">
-            {recruiting && <span className="rounded-full bg-muted px-2.5 py-0.5 text-xs font-medium text-muted-foreground">En recrutement</span>}
-            {stadeLabel && <span className="rounded-full bg-muted px-2.5 py-0.5 text-xs font-medium text-muted-foreground">{stadeLabel}</span>}
-            {marketLabel && <span className="rounded-full bg-muted px-2.5 py-0.5 text-xs font-medium text-muted-foreground">{marketLabel}</span>}
-            {(isProspect || recruiting) && <span className="rounded-full bg-muted px-2.5 py-0.5 text-xs font-medium text-muted-foreground">{c.exposures} exposition{c.exposures > 1 ? 's' : ''}</span>}
-            {perso && <span className="flex items-center gap-1 rounded-full bg-muted px-2.5 py-0.5 text-xs font-medium text-muted-foreground"><span className="size-2 rounded-full" style={{ backgroundColor: perso.hex }} />{perso.label}</span>}
-          </div>
+          {/* Statut : uniquement ce qui n'est PAS déjà ailleurs (stade→tunnel Aperçu, marché+couleur→Qualification) */}
+          {(recruiting || isProspect) && (
+            <div className="flex flex-wrap items-center justify-center gap-1.5">
+              {recruiting && <span className="rounded-full bg-muted px-2.5 py-0.5 text-xs font-medium text-muted-foreground">En recrutement</span>}
+              {(isProspect || recruiting) && <span className="rounded-full bg-muted px-2.5 py-0.5 text-xs font-medium text-muted-foreground">{c.exposures} exposition{c.exposures > 1 ? 's' : ''}</span>}
+            </div>
+          )}
         </div>
       </div>
 
@@ -576,7 +575,7 @@ export default function ContactDetailPage({ params, contactId, embedded, onClose
               <input className={fieldCls} value={pf.profession} onChange={(e) => setPfField('profession', e.target.value)} placeholder="Profession" />
               <SelectMenu className={fieldCls} placeholder="Niveau d'études" value={pf.education} onChange={(v) => setPfField('education', v)} options={EDUCATIONS.map((o) => ({ value: o, label: o }))} />
             </div>
-            <button type="button" onClick={() => save({ ...pf, personality: qual.personality || null, market: qual.market || null, qualification: { situation: qual.situation, interests: qual.interests, motivation: qual.motivation, insatisfaction: qual.insatisfaction, reseau: qual.reseau, ouverture: qual.ouverture } }, 'Fiche enregistrée')} className="flex w-full items-center justify-center gap-2 rounded-2xl bg-primary py-3 text-base font-bold text-primary-foreground transition-transform active:scale-[0.98]">Enregistrer</button>
+            <button type="button" onClick={saveAll} className="flex w-full items-center justify-center gap-2 rounded-2xl bg-primary py-3 text-base font-bold text-primary-foreground transition-transform active:scale-[0.98]">Enregistrer</button>
           </div>
         )}
 
@@ -593,7 +592,7 @@ export default function ContactDetailPage({ params, contactId, embedded, onClose
               <input className={fieldCls} value={pf.city} onChange={(e) => setPfField('city', e.target.value)} placeholder="Ville" />
               <SelectMenu className={fieldCls} placeholder="Pays" value={pf.country} onChange={(v) => setPfField('country', v)} options={PAYS.map((p) => ({ value: p, label: p }))} />
             </div>
-            <button type="button" onClick={() => save({ ...pf, personality: qual.personality || null, market: qual.market || null, qualification: { situation: qual.situation, interests: qual.interests, motivation: qual.motivation, insatisfaction: qual.insatisfaction, reseau: qual.reseau, ouverture: qual.ouverture } }, 'Fiche enregistrée')} className="flex w-full items-center justify-center gap-2 rounded-2xl bg-primary py-3 text-base font-bold text-primary-foreground transition-transform active:scale-[0.98]">Enregistrer</button>
+            <button type="button" onClick={saveAll} className="flex w-full items-center justify-center gap-2 rounded-2xl bg-primary py-3 text-base font-bold text-primary-foreground transition-transform active:scale-[0.98]">Enregistrer</button>
           </div>
         )}
         </>)}
@@ -664,7 +663,7 @@ export default function ContactDetailPage({ params, contactId, embedded, onClose
                 </div>
               )
             })()}
-            <button type="button" onClick={() => save({ ...pf, personality: qual.personality || null, market: qual.market || null, qualification: { situation: qual.situation, interests: qual.interests, motivation: qual.motivation, insatisfaction: qual.insatisfaction, reseau: qual.reseau, ouverture: qual.ouverture } }, 'Fiche enregistrée')} className="flex w-full items-center justify-center gap-2 rounded-2xl bg-primary py-3 text-base font-bold text-primary-foreground transition-transform active:scale-[0.98]">Enregistrer</button>
+            <button type="button" onClick={saveAll} className="flex w-full items-center justify-center gap-2 rounded-2xl bg-primary py-3 text-base font-bold text-primary-foreground transition-transform active:scale-[0.98]">Enregistrer</button>
           </div>
         )}
         {/* Suppression du contact — dans Détails › Suivi (gérer le contact) */}

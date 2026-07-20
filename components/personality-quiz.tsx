@@ -270,7 +270,7 @@ export function PersonalityQuiz({ onClose, onResult, firstName = '', gender = ''
             <button
               type="button"
               onClick={() => onResult(result)}
-              className="w-full rounded-2xl bg-primary py-3.5 text-base font-bold text-primary-foreground shadow-md transition-transform active:scale-[0.98]"
+              className="w-full rounded-2xl bg-primary py-3.5 text-base font-bold text-primary-foreground transition-transform active:scale-[0.98]"
             >
               {subjectName ? 'Valider' : "C'est tout moi"}
             </button>
@@ -296,7 +296,7 @@ export function PersonalityQuiz({ onClose, onResult, firstName = '', gender = ''
                     key={c}
                     type="button"
                     onClick={() => answer(c)}
-                    className="flex w-full items-start gap-3 rounded-2xl border border-border bg-surface px-4 py-4 text-left shadow-card transition-colors active:bg-muted active:border-primary"
+                    className="flex w-full items-start gap-3 rounded-2xl border border-border bg-surface px-4 py-4 text-left transition-colors active:bg-muted active:border-primary"
                   >
                     <span className="mt-1 size-6 shrink-0 rounded-full" style={{ backgroundColor: PROFILES[c].color }} />
                     <span className="min-w-0 flex-1">
@@ -317,7 +317,7 @@ export function PersonalityQuiz({ onClose, onResult, firstName = '', gender = ''
                     key={opt.text}
                     type="button"
                     onClick={() => answer(opt.color)}
-                    className="w-full rounded-2xl border border-border bg-surface px-4 py-4 text-left text-lg font-medium text-foreground shadow-card transition-colors active:bg-muted active:border-primary"
+                    className="w-full rounded-2xl border border-border bg-surface px-4 py-4 text-left text-lg font-medium text-foreground transition-colors active:bg-muted active:border-primary"
                   >
                     {opt.text}
                   </button>
