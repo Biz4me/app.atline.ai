@@ -39,7 +39,7 @@ export default function ContactThreadPage({ params }: { params: Promise<{ contac
   const [input, setInput] = useState('')
   const [streaming, setStreaming] = useState(false)
   const [loading, setLoading] = useState(true)
-  const [infoOpen, setInfoOpen] = useState(false) // fiche en panneau droit (desktop, façon Telegram)
+  const [infoOpen, setInfoOpen] = useState(() => sp.get('info') === '1') // fiche en panneau droit (desktop) ; ?info=1 survit au refresh
   const convRef = useRef<string | null>(null)
   const endRef = useRef<HTMLDivElement>(null)
   const initialScrolled = useRef(false)
@@ -224,9 +224,12 @@ export default function ContactThreadPage({ params }: { params: Promise<{ contac
   // Tap sur l'avatar = ouvrir la fiche. Desktop : panneau droit (le fil reste au centre, façon Telegram).
   // Mobile : feuille plein écran (route dédiée → bouton retour natif conservé).
   const openInfo = () => {
-    if (typeof window !== 'undefined' && window.matchMedia('(min-width: 1024px)').matches) setInfoOpen(true)
-    else router.push(`/contacts/${contactId}`)
+    if (typeof window !== 'undefined' && window.matchMedia('(min-width: 1024px)').matches) {
+      setInfoOpen(true)
+      router.replace(`/chats/${contactId}?info=1`, { scroll: false }) // reflété dans l'URL → rouvre au refresh
+    } else router.push(`/contacts/${contactId}`)
   }
+  const closeInfo = () => { setInfoOpen(false); router.replace(`/chats/${contactId}`, { scroll: false }) }
 
   return (
     <div className="flex h-dvh w-full">
@@ -328,7 +331,7 @@ export default function ContactThreadPage({ params }: { params: Promise<{ contac
       {/* Panneau fiche (desktop) — le fil reste au centre, la fiche s'ouvre à droite avec une croix pour fermer */}
       {infoOpen && (
         <aside className="hidden lg:flex w-[400px] shrink-0 flex-col overflow-y-auto border-l border-border bg-background" style={{ transform: 'translateZ(0)' }}>
-          <ContactFiche contactId={contactId} embedded onClose={() => setInfoOpen(false)} />
+          <ContactFiche contactId={contactId} embedded onClose={closeInfo} />
         </aside>
       )}
     </div>
