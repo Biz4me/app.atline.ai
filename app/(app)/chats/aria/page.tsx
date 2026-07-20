@@ -1,8 +1,9 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { ChevronLeft, Mic, TrendingUp, Check, ArrowRight } from 'lucide-react'
+import { AgentPanel } from '@/components/agent-panel'
 
 // ═══ NAV MESSAGERIE T7 — le fil Aria : le journal d'entraînement ═══
 // Aria n'est pas un chat libre : c'est un sparring-partner. Son fil = le carnet
@@ -27,9 +28,17 @@ const toLines = (v: unknown): string[] =>
 
 export default function AriaThreadPage() {
   const router = useRouter()
+  const sp = useSearchParams()
   const [sims, setSims] = useState<Sim[]>([])
   const [loading, setLoading] = useState(true)
   const endRef = useRef<HTMLDivElement>(null)
+  const [infoOpen, setInfoOpen] = useState(() => sp.get('info') === '1') // rail droit (desktop) ; ?info=1 survit au refresh
+  const openInfo = () => {
+    if (typeof window !== 'undefined' && window.matchMedia('(min-width: 1024px)').matches) {
+      setInfoOpen(true); router.replace('/chats/aria?info=1', { scroll: false })
+    } else setInfoOpen(true)
+  }
+  const closeInfo = () => { setInfoOpen(false); router.replace('/chats/aria', { scroll: false }) }
 
   useEffect(() => {
     fetch('/api/aria/sessions')
@@ -46,17 +55,20 @@ export default function AriaThreadPage() {
   const progress = [...byScenario.entries()].filter(([, sc]) => sc.length >= 2)
 
   return (
-    <div className="mx-auto flex h-dvh w-full max-w-2xl flex-col bg-background">
-      {/* En-tête Aria */}
+    <div className="flex h-dvh w-full">
+    <div className="mx-auto flex h-dvh min-w-0 max-w-2xl flex-1 flex-col bg-background">
+      {/* En-tête Aria — tap avatar/nom = ouvrir le panneau Aria (rail droit desktop) */}
       <div className="flex shrink-0 items-center gap-2.5 border-b border-border bg-background/90 px-3 py-2 backdrop-blur" style={{ paddingTop: 'max(0.5rem, env(safe-area-inset-top))' }}>
         <button type="button" aria-label="Retour" onClick={() => router.push('/chats')} className="flex size-9 shrink-0 items-center justify-center rounded-full text-muted-foreground active:bg-muted lg:hidden">
           <ChevronLeft className="size-5 stroke-[1.5]" />
         </button>
-        <span className="grid size-10 shrink-0 place-items-center overflow-hidden rounded-full text-sm font-bold text-white" style={{ backgroundColor: ARIA }}><img src="/avatars/aria.png" alt="" className="size-full rounded-full object-cover" /></span>
-        <span className="min-w-0 flex-1">
-          <span className="block text-sm font-semibold text-foreground">Aria</span>
-          <span className="block text-xs text-muted-foreground">ton sparring-partner · simulateur terrain</span>
-        </span>
+        <button type="button" onClick={openInfo} className="flex min-w-0 flex-1 items-center gap-2.5 text-left">
+          <span className="grid size-10 shrink-0 place-items-center overflow-hidden rounded-full text-sm font-bold text-white" style={{ backgroundColor: ARIA }}><img src="/avatars/aria.png" alt="" className="size-full rounded-full object-cover" /></span>
+          <span className="min-w-0 flex-1">
+            <span className="block text-sm font-semibold text-foreground">Aria</span>
+            <span className="block text-xs text-muted-foreground">ton sparring-partner · simulateur terrain</span>
+          </span>
+        </button>
       </div>
 
       {/* Le journal */}
@@ -131,6 +143,13 @@ export default function AriaThreadPage() {
           <Mic className="size-5 stroke-[1.5]" /> S'entraîner avec Aria
         </button>
       </div>
+    </div>
+    {/* Panneau Aria — rail droit (desktop) / plein écran (mobile) */}
+    {infoOpen && (
+      <div className="fixed inset-0 z-[55] flex flex-col overflow-y-auto bg-background lg:static lg:inset-auto lg:z-auto lg:w-[400px] lg:shrink-0 lg:border-l lg:border-border">
+        <AgentPanel agent="aria" onClose={closeInfo} />
+      </div>
+    )}
     </div>
   )
 }

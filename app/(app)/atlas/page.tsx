@@ -17,6 +17,7 @@ import { ChatChoices, AtlasDraftCard, type PlanItem } from '@/components/atlas-p
 import { ProfileFormCard } from '@/components/atlas-profile-form'
 import { WhyValidateCard } from '@/components/atlas-why-card'
 import { AtlasNavCard, OPEN_MARK, OPEN_MARK_RE, cleanOpenRoute, stripOpenMarker } from '@/components/atlas-nav-card'
+import { AgentPanel } from '@/components/agent-panel'
 import { SlashMenu } from '@/components/slash-menu'
 import { ATLAS_COMMANDS, type AtlasCommand } from '@/lib/atlas-commands'
 import { useFilSearch, FilSearchRow } from '@/components/fil-search'
@@ -95,6 +96,20 @@ export default function AtlasPage() {
   const router = useRouter()
   const sp = useSearchParams()
   const c = sp.get('c')
+  const [infoOpen, setInfoOpen] = useState(() => sp.get('info') === '1') // panneau Atlas en rail droit (desktop) ; ?info=1 survit au refresh
+  const openInfo = () => {
+    if (typeof window !== 'undefined' && window.matchMedia('(min-width: 1024px)').matches) {
+      setInfoOpen(true)
+      const p = new URLSearchParams(Array.from(sp.entries())); p.set('info', '1')
+      router.replace(`/atlas?${p.toString()}`, { scroll: false })
+    } else setInfoOpen(true)
+  }
+  const closeInfo = () => {
+    setInfoOpen(false)
+    const p = new URLSearchParams(Array.from(sp.entries())); p.delete('info')
+    const qs = p.toString()
+    router.replace(qs ? `/atlas?${qs}` : '/atlas', { scroll: false })
+  }
   const sessionParam = sp.get('session')
   const [msgs, setMsgs] = useState<Msg[]>([])
   // Recherche DANS la conversation (⋮ de l'en-tête, façon Telegram)
@@ -966,13 +981,15 @@ TECHNIQUE (invisible pour moi, ne l'explique jamais)${NB}: quand tu as balayé l
               <button type="button" aria-label="Retour aux messages" onClick={() => router.push('/chats')} className="flex size-9 shrink-0 items-center justify-center rounded-full text-muted-foreground active:bg-muted lg:hidden">
                 <ChevronLeftIcon className="size-5 stroke-[1.5]" />
               </button>
-              <span className="grid size-10 shrink-0 place-items-center overflow-hidden rounded-full bg-primary text-sm font-bold text-white"><img src="/avatars/atlas.png" alt="" className="size-full rounded-full object-cover" /></span>
-              <span className="min-w-0 flex-1">
-                <span className="block text-sm font-semibold text-foreground">Atlas</span>
-                <span className={cn('block truncate text-xs', streaming ? 'font-medium text-primary' : 'text-muted-foreground')}>
-                  {streaming ? 'écrit…' : 'ton coach · toujours là'}
+              <button type="button" onClick={openInfo} className="flex min-w-0 flex-1 items-center gap-2.5 text-left">
+                <span className="grid size-10 shrink-0 place-items-center overflow-hidden rounded-full bg-primary text-sm font-bold text-white"><img src="/avatars/atlas.png" alt="" className="size-full rounded-full object-cover" /></span>
+                <span className="min-w-0 flex-1">
+                  <span className="block text-sm font-semibold text-foreground">Atlas</span>
+                  <span className={cn('block truncate text-xs', streaming ? 'font-medium text-primary' : 'text-muted-foreground')}>
+                    {streaming ? 'écrit…' : 'ton coach · toujours là'}
+                  </span>
                 </span>
-              </span>
+              </button>
               <button type="button" aria-label="Chercher dans la conversation" onClick={() => filSearch.setOpen(true)} className="flex size-9 shrink-0 items-center justify-center rounded-full text-muted-foreground active:bg-muted">
                 <MoreVertical className="size-5 stroke-[1.5]" />
               </button>
@@ -1132,6 +1149,13 @@ TECHNIQUE (invisible pour moi, ne l'explique jamais)${NB}: quand tu as balayé l
           onPick={runSlash}
         />
       </div>
+
+      {/* Panneau Atlas — rail droit (desktop) / plein écran (mobile) */}
+      {infoOpen && (
+        <div className="fixed inset-0 z-[55] flex flex-col overflow-y-auto bg-background lg:static lg:inset-auto lg:z-auto lg:w-[400px] lg:shrink-0 lg:border-l lg:border-border">
+          <AgentPanel agent="atlas" onClose={closeInfo} />
+        </div>
+      )}
 
       {/* Sélecteur de destination pour un fichier joint */}
       {pendingFile && (() => {
