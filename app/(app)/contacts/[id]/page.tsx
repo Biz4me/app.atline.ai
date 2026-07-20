@@ -81,14 +81,26 @@ const DOB_YEARS = Array.from({ length: new Date().getFullYear() - 16 - 1929 }, (
 /* EditSheet retiré — l'édition se fait en ligne dans la charte ; la suppression est en bas de fiche */
 
 /* ── Carte famille ────────────────────────────────────────────── */
-function Section({ title, action, children }: { title: string; action?: React.ReactNode; children: React.ReactNode }) {
+function Section({ title, action, children, count, collapsible, defaultOpen = false }: { title: string; action?: React.ReactNode; children: React.ReactNode; count?: number; collapsible?: boolean; defaultOpen?: boolean }) {
+  const [open, setOpen] = useState(defaultOpen)
+  const shown = !collapsible || open
+  const label = <>{title}{count ? ` (${count})` : ''}</>
   return (
     <Card className="overflow-hidden">
-      <div className="flex items-center justify-between border-b border-border px-5 py-3">
-        <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">{title}</p>
+      <div className={cn('flex items-center gap-2 px-5 py-3', shown && 'border-b border-border')}>
+        {collapsible ? (
+          <button type="button" onClick={() => setOpen((o) => !o)} className="min-w-0 flex-1 text-left text-xs font-bold uppercase tracking-widest text-muted-foreground">{label}</button>
+        ) : (
+          <p className="min-w-0 flex-1 text-xs font-bold uppercase tracking-widest text-muted-foreground">{label}</p>
+        )}
         {action}
+        {collapsible && (
+          <button type="button" onClick={() => setOpen((o) => !o)} aria-label={open ? 'Réduire' : 'Déplier'} className="shrink-0 text-muted-foreground active:text-foreground">
+            <ChevronDown className={cn('size-4 transition-transform', open && 'rotate-180')} />
+          </button>
+        )}
       </div>
-      <div className="px-5 py-4">{children}</div>
+      {shown && <div className="px-5 py-4">{children}</div>}
     </Card>
   )
 }
@@ -243,7 +255,7 @@ export default function ContactDetailPage({ params, contactId, embedded, onClose
   const [memEditing, setMemEditing] = useState(false)
   const [contactConvs, setContactConvs] = useState<{ id: string; title: string | null; updatedAt: string }[]>([])
   const [openConvId, setOpenConvId] = useState<string | null>(null)
-  const [histOpen, setHistOpen] = useState(false)
+  const [memOpen, setMemOpen] = useState(true) // « À retenir » plié/déplié (ouvert par défaut)
   const [interactions, setInteractions] = useState<Interaction[]>([])
   const [appointments, setAppointments] = useState<Appt[]>([])
   const [relances, setRelances] = useState<Relance[]>([])
@@ -431,24 +443,31 @@ export default function ContactDetailPage({ params, contactId, embedded, onClose
           </div>
         )}
 
-        {/* Ce qu'Atlas retient — bloc mémoire auto-édité (MemGPT-style), éditable/corrigeable */}
-        <div className="rounded-2xl border border-border bg-surface p-4">
-          <div className="mb-1 flex items-center justify-between gap-2">
-            <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">À retenir</p>
+        {/* Ce qu'Atlas retient — bloc mémoire auto-édité (MemGPT-style), pliable ; « Corriger » le déplie */}
+        <Card className="overflow-hidden">
+          <div className={cn('flex items-center gap-2 px-5 py-3', memOpen && 'border-b border-border')}>
+            <button type="button" onClick={() => setMemOpen((o) => !o)} className="min-w-0 flex-1 text-left text-xs font-bold uppercase tracking-widest text-muted-foreground">À retenir</button>
             {memEditing ? (
               <button type="button" onClick={() => { save({ atlasMemory: memDraft.trim() }, 'Mémoire mise à jour'); setMemEditing(false) }} className="rounded-lg bg-primary px-3 py-1 text-xs font-bold text-primary-foreground">Enregistrer</button>
             ) : (
-              <button type="button" onClick={() => { setMemDraft(c.atlasMemory ?? ''); setMemEditing(true) }} className="text-xs font-medium text-primary"><Pencil className="mr-1 inline size-3" />{c.atlasMemory ? 'Corriger' : 'Ajouter une note'}</button>
+              <button type="button" onClick={() => { setMemDraft(c.atlasMemory ?? ''); setMemEditing(true); setMemOpen(true) }} className="text-xs font-medium text-primary"><Pencil className="mr-1 inline size-3" />{c.atlasMemory ? 'Corriger' : 'Ajouter'}</button>
             )}
+            <button type="button" onClick={() => setMemOpen((o) => !o)} aria-label={memOpen ? 'Réduire' : 'Déplier'} className="shrink-0 text-muted-foreground active:text-foreground">
+              <ChevronDown className={cn('size-4 transition-transform', memOpen && 'rotate-180')} />
+            </button>
           </div>
-          {memEditing ? (
-            <textarea value={memDraft} onChange={(e) => setMemDraft(e.target.value)} rows={4} autoFocus placeholder="Ce qu'Atlas doit retenir de ce contact… (vide = effacer)" className="w-full resize-none bg-transparent text-lg leading-relaxed text-foreground lg:text-sm outline-none placeholder:text-muted-foreground" />
-          ) : c.atlasMemory ? (
-            <p className="whitespace-pre-line text-lg leading-relaxed text-muted-foreground lg:text-sm">{c.atlasMemory}</p>
-          ) : (
-            <p className="text-lg leading-relaxed text-muted-foreground lg:text-sm">Rien pour l'instant. Atlas remplit ce bloc au fil de vos échanges, et tu peux noter toi-même l'essentiel.</p>
+          {memOpen && (
+            <div className="px-5 py-4">
+              {memEditing ? (
+                <textarea value={memDraft} onChange={(e) => setMemDraft(e.target.value)} rows={4} autoFocus placeholder="Ce qu'Atlas doit retenir de ce contact… (vide = effacer)" className="w-full resize-none bg-transparent text-lg leading-relaxed text-foreground lg:text-sm outline-none placeholder:text-muted-foreground" />
+              ) : c.atlasMemory ? (
+                <p className="whitespace-pre-line text-lg leading-relaxed text-muted-foreground lg:text-sm">{c.atlasMemory}</p>
+              ) : (
+                <p className="text-lg leading-relaxed text-muted-foreground lg:text-sm">Rien pour l'instant. Atlas remplit ce bloc au fil de vos échanges, et tu peux noter toi-même l'essentiel.</p>
+              )}
+            </div>
           )}
-        </div>
+        </Card>
 
         </>)}
 
@@ -469,7 +488,7 @@ export default function ContactDetailPage({ params, contactId, embedded, onClose
           {(isProspect || recruiting) && <> · <span className="font-medium text-foreground">{c.exposures}</span> exposition{c.exposures > 1 ? 's' : ''}</>}
         </p>
         {/* À venir — RDV/relances programmés ; on planifie depuis l'en-tête (créer là où on regarde) */}
-        <Section title="À venir" action={
+        <Section title="À venir" collapsible count={upAppts.length + upRelances.length} action={
           <div className="flex gap-1">
             <button type="button" onClick={() => setSchedule('rdv')} className="flex items-center gap-1 rounded-full px-2 py-1 text-xs font-semibold text-primary active:bg-primary/10"><CalendarPlus className="size-3.5 stroke-[1.5]" />RDV</button>
             <button type="button" onClick={() => setSchedule('relance')} className="flex items-center gap-1 rounded-full px-2 py-1 text-xs font-semibold text-primary active:bg-primary/10"><Bell className="size-3.5 stroke-[1.5]" />Relance</button>
@@ -503,7 +522,7 @@ export default function ContactDetailPage({ params, contactId, embedded, onClose
 
         {/* Échanges avec Atlas — les conversations de coaching sur ce contact (rouvrir) */}
         {contactConvs.length > 0 && (
-          <Section title="Échanges avec Atlas">
+          <Section title="Échanges avec Atlas" collapsible count={contactConvs.length}>
             <div className="flex flex-col divide-y divide-border">
               {contactConvs.map((cv) => (
                 <button key={cv.id} type="button" onClick={() => setOpenConvId(cv.id)} className="flex items-center gap-3 py-2.5 text-left first:pt-0 last:pb-0 active:opacity-70">
@@ -516,33 +535,26 @@ export default function ContactDetailPage({ params, contactId, embedded, onClose
           </Section>
         )}
 
-        {/* HISTORIQUE des interactions */}
-        {/* Historique — replié par défaut, masqué s'il est vide (journal terrain, secondaire) */}
+        {/* Historique — journal terrain, pliable comme les autres sections */}
         {interactions.length > 0 && (
-          <Card className="overflow-hidden">
-            <button type="button" onClick={() => setHistOpen((o) => !o)} className={cn('flex w-full items-center justify-between px-5 py-3', histOpen && 'border-b border-border')}>
-              <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Historique ({interactions.length})</p>
-              <ChevronDown className={cn('size-4 text-muted-foreground transition-transform', histOpen && 'rotate-180')} />
-            </button>
-            {histOpen && (
-              <ol className="flex flex-col gap-3 px-5 py-4">
-                {interactions.map((it) => {
-                  const m = INTERACTION_META[it.type] ?? INTERACTION_META.AUTRE
-                  return (
-                    <li key={it.id} className="flex items-start gap-3">
-                      <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground"><m.icon className="size-3.5 stroke-[1.5]" /></span>
-                      <div className="min-w-0 flex-1">
-                        <p className="text-lg font-medium text-foreground lg:text-sm">{m.label}{it.direction === 'IN' ? ' reçu' : ''}{it.outcome ? ` · ${it.outcome.toLowerCase()}` : ''}</p>
-                        {it.body && <p className="truncate text-xs text-muted-foreground">{it.body}</p>}
-                        <p className="mt-0.5 text-[10px] text-muted-foreground">{new Date(it.createdAt).toLocaleString('fr-FR', { dateStyle: 'medium', timeStyle: 'short' })}</p>
-                      </div>
-                      {it.isExposure && <span className="shrink-0 text-[10px] font-bold text-primary">+1 expo</span>}
-                    </li>
-                  )
-                })}
-              </ol>
-            )}
-          </Card>
+          <Section title="Historique" collapsible count={interactions.length}>
+            <ol className="flex flex-col gap-3">
+              {interactions.map((it) => {
+                const m = INTERACTION_META[it.type] ?? INTERACTION_META.AUTRE
+                return (
+                  <li key={it.id} className="flex items-start gap-3">
+                    <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground"><m.icon className="size-3.5 stroke-[1.5]" /></span>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-lg font-medium text-foreground lg:text-sm">{m.label}{it.direction === 'IN' ? ' reçu' : ''}{it.outcome ? ` · ${it.outcome.toLowerCase()}` : ''}</p>
+                      {it.body && <p className="truncate text-xs text-muted-foreground">{it.body}</p>}
+                      <p className="mt-0.5 text-[10px] text-muted-foreground">{new Date(it.createdAt).toLocaleString('fr-FR', { dateStyle: 'medium', timeStyle: 'short' })}</p>
+                    </div>
+                    {it.isExposure && <span className="shrink-0 text-[10px] font-bold text-primary">+1 expo</span>}
+                  </li>
+                )
+              })}
+            </ol>
+          </Section>
         )}
 
         {/* Gérer — administration (statut, suppression), séparée du suivi */}
