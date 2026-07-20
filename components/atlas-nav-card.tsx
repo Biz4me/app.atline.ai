@@ -19,12 +19,18 @@ export const cleanOpenRoute = (raw: string): string | null => {
   const r = raw.trim()
   if (!r.startsWith('/')) return null
   const path = r.split('?')[0]
-  return OPEN_ROUTES.some((base) => path === base || path.startsWith(base + '/')) ? r : null
+  if (!OPEN_ROUTES.some((base) => path === base || path.startsWith(base + '/'))) return null
+  // Modèle Telegram : la fiche d'un contact vit désormais dans SON fil (/chats/[id] + rail),
+  // plus l'ancienne page pleine /contacts/[id]. On réécrit /contacts/<id> → /chats/<id>?info=1.
+  const m = path.match(/^\/contacts\/([^/]+)$/)
+  if (m) return `/chats/${m[1]}?info=1`
+  return r
 }
 export const stripOpenMarker = (content: string): string => content.replace(/\s*\[\[OPEN\]\][\s\S]*$/, '')
 
 // Icône selon la destination (préfixe de route).
 const ICONS: { prefix: string; icon: LucideIcon }[] = [
+  { prefix: '/chats', icon: ContactRound }, // fiche d'un contact réécrite en fil /chats/[id]
   { prefix: '/contacts', icon: ContactRound },
   { prefix: '/activities', icon: Briefcase },
   { prefix: '/formation', icon: BookOpen },
