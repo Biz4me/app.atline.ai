@@ -59,7 +59,7 @@ type Contact = {
   id: string; name: string; firstName: string; lastName: string; gender: string; profession: string; education: string; birthDate: string; initials: string; accent: string
   kind: string; email: string; phone: string; phone2: string; address: string; address2: string; postal: string; city: string; country: string
   source: string; personality: string | null; market: string | null; qualification: Record<string, string>; prospectStage: string | null; partnerStage: string | null
-  score: number; exposures: number; lastContact: string | null; note: string; tags: string[]; convertedUserId: string | null
+  score: number; exposures: number; lastContact: string | null; signedAt: string | null; note: string; tags: string[]; convertedUserId: string | null
   atlasMemory: string
 }
 type Interaction = { id: string; type: string; direction: string; outcome: string | null; body: string | null; isExposure: boolean; createdAt: string }
@@ -380,8 +380,8 @@ export default function ContactDetailPage({ params, contactId, embedded, onClose
         <button type="button" onClick={() => { if (!c.email) { toast.error('Aucun email'); return } setCompose({ channel: 'EMAIL', label: 'Email' }) }} className="flex flex-1 flex-col items-center gap-1.5 rounded-2xl border border-border bg-surface py-3 active:bg-muted"><Mail className="size-5 stroke-[1.5] text-primary" /><span className="text-xs font-medium text-foreground">Email</span></button>
       </div>
 
-      {/* Onglets horizontaux — Aperçu / Qualification / Détails (fini la « page bloc ») */}
-      <div className="flex border-y border-border">
+      {/* Onglets horizontaux — Aperçu / Qualification / Détails (fini la « page bloc ») ; collés sous l'en-tête */}
+      <div className="sticky z-20 flex border-y border-border bg-background" style={{ top: 'calc(48px + max(0.75rem, env(safe-area-inset-top)))' }}>
         {([['apercu', 'Aperçu'], ['qualif', 'Qualification'], ['details', 'Détails']] as const).map(([tid, label]) => (
           <button key={tid} type="button" onClick={() => setTab(tid)} className={cn('flex-1 py-3 text-sm transition-colors', tab === tid ? 'border-b-2 border-primary font-medium text-primary' : 'text-muted-foreground active:bg-muted')}>{label}</button>
         ))}
@@ -482,6 +482,12 @@ export default function ContactDetailPage({ params, contactId, embedded, onClose
 
         {/* — Sous-onglet SUIVI : le journal terrain (échanges, à venir, historique) — */}
         {dsub === 'suivi' && (<>
+        {isPartner && c.signedAt && (
+          <div className="rounded-2xl border border-border bg-surface p-4">
+            <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Partenaire</p>
+            <p className="mt-1 text-lg font-medium text-foreground lg:text-sm">Depuis le {new Date(c.signedAt).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
+          </div>
+        )}
         {/* ÉCHANGES AVEC ATLAS — conversations passées sur ce contact (rouvrir dans le composeur) */}
         {contactConvs.length > 0 && (
           <Section title="Échanges avec Atlas">

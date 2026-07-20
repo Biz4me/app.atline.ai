@@ -72,6 +72,7 @@ export async function GET(_: Request, ctx: { params: Promise<{ id: string }> }) 
     score: computeScore(c),
     exposures: c.exposures,
     lastContact: c.lastContact?.toISOString() ?? null,
+    signedAt: c.signedAt?.toISOString() ?? null,
     note: c.note ?? '',
     atlasMemory: c.atlasMemory ?? '',
     tags: c.tags,

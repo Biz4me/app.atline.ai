@@ -327,7 +327,7 @@ export default function ContactThreadPage({ params }: { params: Promise<{ contac
       </div>
       {/* Panneau fiche (desktop) — le fil reste au centre, la fiche s'ouvre à droite avec une croix pour fermer */}
       {infoOpen && (
-        <aside className="hidden lg:flex w-[400px] shrink-0 flex-col overflow-y-auto border-l border-border bg-background">
+        <aside className="hidden lg:flex w-[400px] shrink-0 flex-col overflow-y-auto border-l border-border bg-background" style={{ transform: 'translateZ(0)' }}>
           <ContactFiche contactId={contactId} embedded onClose={() => setInfoOpen(false)} />
         </aside>
       )}
