@@ -9,6 +9,7 @@ import { AtlasDraftCard, ChatChoices } from '@/components/atlas-plan-card'
 import { useFilSearch, FilSearchRow } from '@/components/fil-search'
 import { AtlasActionCard, type AtlasAction } from '@/components/atlas-action-card'
 import ContactFiche from '@/app/(app)/contacts/[id]/page'
+import { FilShell } from '@/components/fil-shell'
 
 // ═══ NAV MESSAGERIE T5 — le fil contact ═══
 // Ici on parle à ATLAS, À PROPOS du contact (jamais au contact : ses vrais messages
@@ -225,17 +226,12 @@ export default function ContactThreadPage({ params }: { params: Promise<{ contac
 
   // Tap sur l'avatar = ouvrir la fiche. Desktop : panneau droit (le fil reste au centre, façon Telegram).
   // Mobile : feuille plein écran (route dédiée → bouton retour natif conservé).
-  const openInfo = () => {
-    if (typeof window !== 'undefined' && window.matchMedia('(min-width: 1024px)').matches) {
-      setInfoOpen(true)
-      router.replace(`/chats/${contactId}?info=1`, { scroll: false }) // reflété dans l'URL → rouvre au refresh
-    } else router.push(`/contacts/${contactId}`)
-  }
+  // Le responsive (rail droit desktop / overlay mobile) est géré par FilShell en CSS pur ; ici, un seul état.
+  const openInfo = () => { setInfoOpen(true); router.replace(`/chats/${contactId}?info=1`, { scroll: false }) }
   const closeInfo = () => { setInfoOpen(false); router.replace(`/chats/${contactId}`, { scroll: false }) }
 
   return (
-    <div className="flex h-dvh w-full">
-    <div className="mx-auto flex h-dvh min-w-0 max-w-2xl flex-1 flex-col bg-background">
+    <FilShell open={infoOpen} rail={<ContactFiche contactId={contactId} embedded onClose={closeInfo} />}>
       {/* En-tête contact — tap = la fiche ; ⋮ = recherche dans la conversation */}
       <div className="shrink-0 border-b border-border bg-background/90 backdrop-blur">
         {filSearch.open ? (
@@ -329,13 +325,6 @@ export default function ContactThreadPage({ params }: { params: Promise<{ contac
         disabled={streaming}
         placeholder={`Parle à Atlas de ${prenom}…`}
       />
-      </div>
-      {/* Panneau fiche (desktop) — le fil reste au centre, la fiche s'ouvre à droite avec une croix pour fermer */}
-      {infoOpen && (
-        <aside className="hidden lg:flex w-[400px] shrink-0 flex-col overflow-y-auto border-l border-border bg-background" style={{ transform: 'translateZ(0)' }}>
-          <ContactFiche contactId={contactId} embedded onClose={closeInfo} />
-        </aside>
-      )}
-    </div>
+    </FilShell>
   )
 }

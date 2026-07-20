@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { ChevronLeft, Rocket, ArrowUpRight } from 'lucide-react'
 import { AgentPanel } from '@/components/agent-panel'
+import { FilShell } from '@/components/fil-shell'
 
 // ═══ NAV MESSAGERIE T8 — le fil Nova : la vitrine de ses livrables ═══
 // Nova propose, tu décides. V1 honnête : ses VRAIS posts (ContentPost) en cartes,
@@ -29,11 +30,7 @@ export default function NovaThreadPage() {
   const [posts, setPosts] = useState<Post[]>([])
   const [loading, setLoading] = useState(true)
   const [infoOpen, setInfoOpen] = useState(() => sp.get('info') === '1') // rail droit (desktop) ; ?info=1 survit au refresh
-  const openInfo = () => {
-    if (typeof window !== 'undefined' && window.matchMedia('(min-width: 1024px)').matches) {
-      setInfoOpen(true); router.replace('/chats/nova?info=1', { scroll: false })
-    } else setInfoOpen(true)
-  }
+  const openInfo = () => { setInfoOpen(true); router.replace('/chats/nova?info=1', { scroll: false }) }
   const closeInfo = () => { setInfoOpen(false); router.replace('/chats/nova', { scroll: false }) }
 
   useEffect(() => {
@@ -45,8 +42,7 @@ export default function NovaThreadPage() {
   }, [])
 
   return (
-    <div className="flex h-dvh w-full">
-    <div className="mx-auto flex h-dvh min-w-0 max-w-2xl flex-1 flex-col bg-background">
+    <FilShell open={infoOpen} rail={<AgentPanel agent="nova" onClose={closeInfo} />}>
       {/* En-tête Nova — tap avatar/nom = ouvrir le panneau Nova (rail droit desktop) */}
       <div className="flex shrink-0 items-center gap-2.5 border-b border-border bg-background/90 px-3 py-2 backdrop-blur" style={{ paddingTop: 'max(0.5rem, env(safe-area-inset-top))' }}>
         <button type="button" aria-label="Retour" onClick={() => router.push('/chats')} className="flex size-9 shrink-0 items-center justify-center rounded-full text-muted-foreground active:bg-muted lg:hidden">
@@ -105,13 +101,6 @@ export default function NovaThreadPage() {
           <Rocket className="size-5 stroke-[1.5]" /> Ouvrir le cockpit Nova
         </button>
       </div>
-    </div>
-    {/* Panneau Nova — rail droit (desktop) / plein écran (mobile) */}
-    {infoOpen && (
-      <div className="fixed inset-0 z-[55] flex flex-col overflow-y-auto bg-background lg:static lg:inset-auto lg:z-auto lg:w-[400px] lg:shrink-0 lg:border-l lg:border-border">
-        <AgentPanel agent="nova" onClose={closeInfo} />
-      </div>
-    )}
-    </div>
+    </FilShell>
   )
 }

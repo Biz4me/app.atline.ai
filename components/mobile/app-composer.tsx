@@ -72,7 +72,7 @@ export function AppComposer({
         'relative mx-auto flex items-end gap-2 border border-border',
         variant === 'mobile'
           ? 'max-w-md rounded-[26px] bg-surface/95 px-3 py-1.5 shadow-[0_6px_24px_rgba(0,0,0,.12)] backdrop-blur-md'
-          : 'max-w-3xl rounded-2xl bg-surface px-4 py-2',
+          : 'max-w-2xl rounded-2xl bg-surface px-4 py-2',
       )}
     >
       {scrollBtn}

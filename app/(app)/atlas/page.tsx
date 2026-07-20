@@ -18,6 +18,7 @@ import { ProfileFormCard } from '@/components/atlas-profile-form'
 import { WhyValidateCard } from '@/components/atlas-why-card'
 import { AtlasNavCard, OPEN_MARK, OPEN_MARK_RE, cleanOpenRoute, stripOpenMarker } from '@/components/atlas-nav-card'
 import { AgentPanel } from '@/components/agent-panel'
+import { RAIL_CLS, CENTER_HIDDEN_WHEN_OPEN } from '@/components/fil-shell'
 import { SlashMenu } from '@/components/slash-menu'
 import { ATLAS_COMMANDS, type AtlasCommand } from '@/lib/atlas-commands'
 import { useFilSearch, FilSearchRow } from '@/components/fil-search'
@@ -98,11 +99,9 @@ export default function AtlasPage() {
   const c = sp.get('c')
   const [infoOpen, setInfoOpen] = useState(() => sp.get('info') === '1') // panneau Atlas en rail droit (desktop) ; ?info=1 survit au refresh
   const openInfo = () => {
-    if (typeof window !== 'undefined' && window.matchMedia('(min-width: 1024px)').matches) {
-      setInfoOpen(true)
-      const p = new URLSearchParams(Array.from(sp.entries())); p.set('info', '1')
-      router.replace(`/atlas?${p.toString()}`, { scroll: false })
-    } else setInfoOpen(true)
+    setInfoOpen(true)
+    const p = new URLSearchParams(Array.from(sp.entries())); p.set('info', '1')
+    router.replace(`/atlas?${p.toString()}`, { scroll: false })
   }
   const closeInfo = () => {
     setInfoOpen(false)
@@ -969,11 +968,11 @@ TECHNIQUE (invisible pour moi, ne l'explique jamais)${NB}: quand tu as balayé l
   return (
     <div className="flex h-[calc(100dvh-60px)] overflow-hidden lg:h-dvh">
 
-      {/* ── Zone principale : chat ── (l'historique desktop vit dans la sidebar 2) */}
-      <div className="flex flex-1 flex-col min-h-0 min-w-0">
+      {/* ── Zone principale : chat ── (masquée en 2 panneaux quand le rail est ouvert, cf. FilShell) */}
+      <div className={cn('flex flex-1 flex-col min-h-0 min-w-0', infoOpen && CENTER_HIDDEN_WHEN_OPEN)}>
 
         {/* En-tête messagerie unifié (comme les fils Aria/Nova/contact) : ‹ liste · Atlas · ⋮ = recherche dans la conversation */}
-        <div className="shrink-0 border-b border-border bg-background/90 backdrop-blur lg:mx-auto lg:w-full lg:max-w-3xl">
+        <div className="shrink-0 border-b border-border bg-background/90 backdrop-blur lg:mx-auto lg:w-full lg:max-w-2xl">
           {filSearch.open ? (
             <FilSearchRow s={filSearch} />
           ) : (
@@ -1065,7 +1064,7 @@ TECHNIQUE (invisible pour moi, ne l'explique jamais)${NB}: quand tu as balayé l
             onScroll={handleScroll}
             className="flex-1 overflow-y-auto no-scrollbar px-6 pt-4 pb-24 lg:pb-4"
           >
-            <div className="mx-auto flex max-w-md flex-col gap-4 lg:max-w-3xl">
+            <div className="mx-auto flex max-w-md flex-col gap-4 lg:max-w-2xl">
             {msgs.map((m, i) => (
               <div key={i} data-midx={i} className={cn('flex flex-col gap-2', m.from === 'user' ? 'items-end' : 'items-start', filSearch.highlight(i))}>
                 {m.day ? (
@@ -1150,11 +1149,11 @@ TECHNIQUE (invisible pour moi, ne l'explique jamais)${NB}: quand tu as balayé l
         />
       </div>
 
-      {/* Panneau Atlas — rail droit (desktop) / plein écran (mobile) */}
+      {/* Panneau Atlas — même coquille responsive que les autres fils (cf. FilShell) */}
       {infoOpen && (
-        <div className="fixed inset-0 z-[55] flex flex-col overflow-y-auto bg-background lg:static lg:inset-auto lg:z-auto lg:w-[400px] lg:shrink-0 lg:border-l lg:border-border">
+        <aside className={RAIL_CLS}>
           <AgentPanel agent="atlas" onClose={closeInfo} />
-        </div>
+        </aside>
       )}
 
       {/* Sélecteur de destination pour un fichier joint */}
