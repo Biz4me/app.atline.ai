@@ -343,6 +343,11 @@ export default function ContactDetailPage({ params, contactId, embedded, onClose
   // Pastilles de statut + compteur « Détails »
   // Un seul save (toute la fiche) réutilisé par les onglets éditables — plus de code copié 3×.
   const saveAll = () => save({ ...pf, personality: qual.personality || null, market: qual.market || null, qualification: { situation: qual.situation, interests: qual.interests, motivation: qual.motivation, insatisfaction: qual.insatisfaction, reseau: qual.reseau, ouverture: qual.ouverture } }, 'Fiche enregistrée')
+  // « À venir » = uniquement le futur : RDV pas encore passés, relances dues aujourd'hui ou après (pas de date passée).
+  const nowMs = Date.now()
+  const startOfToday = new Date(); startOfToday.setHours(0, 0, 0, 0)
+  const upAppts = appointments.filter((a) => new Date(a.startAt).getTime() >= nowMs)
+  const upRelances = relances.filter((r) => new Date(r.dueAt).getTime() >= startOfToday.getTime())
 
   return (
     <div className={cn('flex w-full flex-col bg-background', embedded ? '' : 'mx-auto min-h-dvh max-w-2xl')}>
@@ -470,9 +475,9 @@ export default function ContactDetailPage({ params, contactId, embedded, onClose
             <button type="button" onClick={() => setSchedule('relance')} className="flex items-center gap-1 rounded-full px-2 py-1 text-xs font-semibold text-primary active:bg-primary/10"><Bell className="size-3.5 stroke-[1.5]" />Relance</button>
           </div>
         }>
-          {(appointments.length > 0 || relances.length > 0) ? (
+          {(upAppts.length > 0 || upRelances.length > 0) ? (
             <div className="flex flex-col divide-y divide-border">
-              {appointments.map((a) => (
+              {upAppts.map((a) => (
                 <div key={a.id} className="flex items-center gap-3 py-2.5 first:pt-0 last:pb-0">
                   <CalendarPlus className="size-4 shrink-0 stroke-[1.5] text-primary" />
                   <div className="min-w-0 flex-1">
@@ -481,7 +486,7 @@ export default function ContactDetailPage({ params, contactId, embedded, onClose
                   </div>
                 </div>
               ))}
-              {relances.map((r) => (
+              {upRelances.map((r) => (
                 <div key={r.id} className="flex items-center gap-3 py-2.5 first:pt-0 last:pb-0">
                   <Bell className="size-4 shrink-0 stroke-[1.5] text-primary" />
                   <div className="min-w-0 flex-1">

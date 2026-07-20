@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { useRouter, usePathname } from 'next/navigation'
+import { useRouter, usePathname, useSearchParams } from 'next/navigation'
 import { Menu, Search, Pencil, X, ChevronLeft, MessageSquarePlus, UserPlus } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { PlanItem } from '@/components/atlas-plan-card'
@@ -48,6 +48,8 @@ const daysSince = (iso: string | null) => (iso ? Math.max(0, Math.floor((Date.no
 
 export function ChatsHome() {
   const router = useRouter()
+  // Rail fiche ouvert (?info=1) → on le garde en changeant de contact (l'état de la page ne bouge pas).
+  const infoSuffix = useSearchParams().get('info') === '1' ? '?info=1' : ''
   const [agents, setAgents] = useState<Agent[]>([])
   const [threads, setThreads] = useState<Thread[]>([])
   const [plan, setPlan] = useState<PlanItem[]>([])
@@ -182,7 +184,7 @@ export function ChatsHome() {
               }
               dim={cold}
               big
-              onClick={() => router.push(`/chats/${t.contactId}`)}
+              onClick={() => router.push(`/chats/${t.contactId}${infoSuffix}`)}
             />
           )
         })}
@@ -246,7 +248,7 @@ export function ChatsHome() {
                   }
                   dim={cold}
                   big
-                  onClick={() => router.push(`/chats/${t.contactId}`)}
+                  onClick={() => router.push(`/chats/${t.contactId}${infoSuffix}`)}
                 />
               )
             })}
