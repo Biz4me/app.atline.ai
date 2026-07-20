@@ -62,11 +62,13 @@ function Stats({ items, color }: { items: { n: string | number; l: string }[]; c
 // — Contenus par agent —
 type Me = { personality?: string | null }
 type Activity = { mlmName?: string; goal?: string; produit?: string; story?: string } | null
+// Adoucit une valeur « enum » tout en capitales (CLIENTS → Clients) ; laisse le texte libre intact.
+const soft = (v: string) => (/^[A-ZÀ-Ÿ_]+$/.test(v) ? ((s) => s.charAt(0).toUpperCase() + s.slice(1).toLowerCase())(v.replace(/_/g, ' ')) : v)
 function AtlasCards({ me, activity }: { me: Me | null; activity: Activity }) {
   const disc = me?.personality ? DISC[me.personality] : null
   const rows = [
     disc && { k: 'Ta couleur', v: <span className="inline-flex items-center gap-1.5"><span className="size-2.5 rounded-full" style={{ backgroundColor: disc.hex }} />{disc.l}</span> },
-    activity?.goal && { k: 'Ton objectif', v: activity.goal },
+    activity?.goal && { k: 'Ton objectif', v: soft(activity.goal) },
     activity?.produit && { k: 'Produit phare', v: activity.produit },
     activity?.mlmName && { k: 'Ton activité', v: activity.mlmName },
   ].filter(Boolean) as { k: string; v: ReactNode }[]
