@@ -963,7 +963,7 @@ TECHNIQUE (invisible pour moi, ne l'explique jamais)${NB}: quand tu as balayé l
             <FilSearchRow s={filSearch} />
           ) : (
             <div className="flex items-center gap-2.5 px-3 py-2" style={{ paddingTop: 'max(0.5rem, env(safe-area-inset-top))' }}>
-              <button type="button" aria-label="Retour aux messages" onClick={() => router.push('/chats')} className="flex size-9 shrink-0 items-center justify-center rounded-full text-muted-foreground active:bg-muted">
+              <button type="button" aria-label="Retour aux messages" onClick={() => router.push('/chats')} className="flex size-9 shrink-0 items-center justify-center rounded-full text-muted-foreground active:bg-muted lg:hidden">
                 <ChevronLeftIcon className="size-5 stroke-[1.5]" />
               </button>
               <span className="grid size-10 shrink-0 place-items-center overflow-hidden rounded-full bg-primary text-sm font-bold text-white"><img src="/avatars/atlas.png" alt="" className="size-full rounded-full object-cover" /></span>

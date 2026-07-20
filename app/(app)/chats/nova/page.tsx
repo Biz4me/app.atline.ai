@@ -39,7 +39,7 @@ export default function NovaThreadPage() {
     <div className="mx-auto flex h-dvh w-full max-w-2xl flex-col bg-background">
       {/* En-tête Nova */}
       <div className="flex shrink-0 items-center gap-2.5 border-b border-border bg-background/90 px-3 py-2 backdrop-blur" style={{ paddingTop: 'max(0.5rem, env(safe-area-inset-top))' }}>
-        <button type="button" aria-label="Retour" onClick={() => router.push('/chats')} className="flex size-9 shrink-0 items-center justify-center rounded-full text-muted-foreground active:bg-muted">
+        <button type="button" aria-label="Retour" onClick={() => router.push('/chats')} className="flex size-9 shrink-0 items-center justify-center rounded-full text-muted-foreground active:bg-muted lg:hidden">
           <ChevronLeft className="size-5 stroke-[1.5]" />
         </button>
         <span className="grid size-10 shrink-0 place-items-center overflow-hidden rounded-full text-sm font-bold text-white" style={{ backgroundColor: NOVA }}><img src="/avatars/nova.png" alt="" className="size-full rounded-full object-cover" /></span>
