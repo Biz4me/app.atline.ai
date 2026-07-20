@@ -353,8 +353,10 @@ export default function ContactDetailPage({ params, contactId, embedded, onClose
   // enregistrées → on les sauve en arrière-plan (keepalive). Plus de perte silencieuse.
   const leaveRef = useRef({ dirty: false, body: {} as Record<string, unknown> })
   leaveRef.current = { dirty, body: patchBody() }
-  useEffect(() => () => {
-    if (leaveRef.current.dirty) fetch(`/api/contacts/${id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(leaveRef.current.body), keepalive: true }).catch(() => {})
+  useEffect(() => {
+    const flush = () => { if (leaveRef.current.dirty) fetch(`/api/contacts/${id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(leaveRef.current.body), keepalive: true }).catch(() => {}) }
+    window.addEventListener('beforeunload', flush) // fermeture/reload brutal de l'onglet
+    return () => { window.removeEventListener('beforeunload', flush); flush() } // départ in-app (croix, switch, nav)
   }, [id])
 
   if (loading) return <div className="flex min-h-dvh items-center justify-center text-sm text-muted-foreground">Chargement…</div>
