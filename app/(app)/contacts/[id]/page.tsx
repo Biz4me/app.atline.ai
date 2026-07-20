@@ -256,8 +256,9 @@ export default function ContactDetailPage({ params, contactId, embedded, onClose
   const [memDraft, setMemDraft] = useState('')
   const [memEditing, setMemEditing] = useState(false)
   const [contactConvs, setContactConvs] = useState<{ id: string; title: string | null; updatedAt: string }[]>([])
-  // Accordéon : une seule carte ouverte à la fois (null = tout plié, l'état à l'arrivée).
-  const [openCard, setOpenCard] = useState<string | null>(null)
+  // Accordéon : une seule carte ouverte à la fois. À l'arrivée, « Prochain pas » ouvert (la reco d'Atlas),
+  // le reste plié ; ouvrir une autre carte le referme.
+  const [openCard, setOpenCard] = useState<string | null>('prochain')
   const toggleCard = (id: string) => setOpenCard((cur) => (cur === id ? null : id))
   const [interactions, setInteractions] = useState<Interaction[]>([])
   const [appointments, setAppointments] = useState<Appt[]>([])
