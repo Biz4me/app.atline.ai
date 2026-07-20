@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import {
   Pencil, Mail, Tag,
   MessageSquare, PhoneCall, CalendarPlus, Mic, Sparkles, ArrowRight, X, Plus, ChevronLeft,
-  MessageCircle, Bell, Share2, StickyNote, Check, ChevronDown, User as UserIcon, Contact, Trash2, ClipboardList,
+  MessageCircle, Bell, Share2, StickyNote, Check, ChevronDown, Trash2,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
@@ -89,26 +89,6 @@ function Section({ title, action, children }: { title: string; action?: React.Re
         {action}
       </div>
       <div className="px-5 py-4">{children}</div>
-    </Card>
-  )
-}
-
-/* ── Carte pliante (charte profil) ────────────────────────────── */
-function Collapsible({ icon: Icon, title, filled, total, open, onToggle, children }: { icon: typeof UserIcon; title: string; filled: number; total: number; open: boolean; onToggle: () => void; children: React.ReactNode }) {
-  const done = total > 0 && filled >= total
-  return (
-    <Card className="overflow-hidden p-0">
-      <button type="button" onClick={onToggle} className={cn('flex w-full items-center gap-2.5 px-4 py-3.5', open && 'border-b border-border')}>
-        <Icon className="size-5 shrink-0 text-muted-foreground stroke-[1.5]" />
-        <p className="flex-1 text-left text-lg font-semibold text-foreground">{title}</p>
-        {done ? (
-          <span className="grid size-5 shrink-0 place-items-center rounded-full bg-[#22C55E] text-white"><Check className="size-3.5" /></span>
-        ) : (
-          <span className="shrink-0 text-base font-semibold text-muted-foreground">{filled}/{total}</span>
-        )}
-        <ChevronDown className={cn('size-4 shrink-0 text-muted-foreground transition-transform', open && 'rotate-180')} />
-      </button>
-      {open && <div className="flex flex-col gap-3 p-4">{children}</div>}
     </Card>
   )
 }
@@ -270,6 +250,7 @@ export default function ContactDetailPage({ params, contactId, embedded, onClose
   const [confirm, setConfirm] = useState<{ type: string; label: string; body?: string } | null>(null)
   const [schedule, setSchedule] = useState<'rdv' | 'relance' | null>(null)
   const [compose, setCompose] = useState<{ channel: string; label: string; auto?: boolean } | null>(null)
+  const [sheet, setSheet] = useState<'message' | 'appel' | null>(null) // intermédiaire Message/Appel
   const [nextStep, setNextStep] = useState<{ action: string; headline: string; reason: string; channel: string | null } | null>(null)
 
   const load = useCallback(async () => {
@@ -312,7 +293,6 @@ export default function ContactDetailPage({ params, contactId, embedded, onClose
 
   // ── Structure charte-profil (nouveau) : formulaire inline des familles perso du contact ──
   const [pf, setPf] = useState({ firstName: '', lastName: '', gender: '', birthDate: '', profession: '', education: '', phone: '', phone2: '', email: '', address: '', address2: '', postal: '', city: '', country: '' })
-  const [pfOpen, setPfOpen] = useState<Record<string, boolean>>({})
   const [pfDob, setPfDob] = useState({ d: '', m: '', y: '' })
   useEffect(() => {
     if (!contact) return
@@ -346,8 +326,6 @@ export default function ContactDetailPage({ params, contactId, embedded, onClose
     setPf((s) => ({ ...s, birthDate: next.y && next.m && next.d ? `${next.y}-${next.m}-${next.d}` : '' }))
   }
   const pfDobDays = Array.from({ length: daysInMonth(pfDob.m, pfDob.y) }, (_, i) => ({ value: String(i + 1).padStart(2, '0'), label: String(i + 1) }))
-  const pfToggle = (k: string) => setPfOpen((o) => ({ ...o, [k]: !o[k] }))
-  const pfNf = (vals: string[]) => vals.filter((v) => v && String(v).trim()).length
 
   if (loading) return <div className="flex min-h-dvh items-center justify-center text-sm text-muted-foreground">Chargement…</div>
   if (!contact) return <div className="flex min-h-dvh flex-col items-center justify-center gap-3"><p className="text-sm text-muted-foreground">Contact introuvable.</p><button onClick={() => (embedded ? onClose?.() : router.back())} className="text-sm font-bold text-primary">Retour</button></div>
@@ -365,7 +343,6 @@ export default function ContactDetailPage({ params, contactId, embedded, onClose
   // Pastilles de statut + compteur « Détails »
   const stadeLabel = showOppCursor ? (oppStages.find((s) => s.id === oppCurrent)?.label ?? null) : null
   const marketLabel = qual.market ? ({ CHAUD: 'Marché chaud', TIEDE: 'Marché tiède', FROID: 'Marché froid' } as Record<string, string>)[qual.market] : null
-  const detailsFilled = pfNf([pf.firstName, pf.lastName, pf.gender, pf.birthDate, pf.profession, pf.education]) + pfNf([pf.phone, pf.email, pf.address, pf.postal, pf.city, pf.country]) + [qual.personality, qual.market, qual.situation, qual.interests, qual.motivation, qual.insatisfaction, qual.reseau, qual.ouverture].filter((v) => v && String(v).trim()).length
 
   return (
     <div className={cn('flex w-full flex-col bg-background', embedded ? '' : 'mx-auto min-h-dvh max-w-2xl')}>
@@ -394,6 +371,13 @@ export default function ContactDetailPage({ params, contactId, embedded, onClose
             {perso && <span className="flex items-center gap-1 rounded-full bg-muted px-2.5 py-0.5 text-xs font-medium text-muted-foreground"><span className="size-2 rounded-full" style={{ backgroundColor: perso.hex }} />{perso.label}</span>}
           </div>
         </div>
+      </div>
+
+      {/* Actions — Message / Appel / Email, toujours visibles ; chacune ouvre son intermédiaire */}
+      <div className="flex gap-2 px-4 pb-3 pt-1">
+        <button type="button" onClick={() => setSheet('message')} className="flex flex-1 flex-col items-center gap-1.5 rounded-2xl border border-border bg-surface py-3 active:bg-muted"><MessageSquare className="size-5 stroke-[1.5] text-primary" /><span className="text-xs font-medium text-foreground">Message</span></button>
+        <button type="button" onClick={() => setSheet('appel')} className="flex flex-1 flex-col items-center gap-1.5 rounded-2xl border border-border bg-surface py-3 active:bg-muted"><PhoneCall className="size-5 stroke-[1.5] text-primary" /><span className="text-xs font-medium text-foreground">Appel</span></button>
+        <button type="button" onClick={() => { if (!c.email) { toast.error('Aucun email'); return } setCompose({ channel: 'EMAIL', label: 'Email' }) }} className="flex flex-1 flex-col items-center gap-1.5 rounded-2xl border border-border bg-surface py-3 active:bg-muted"><Mail className="size-5 stroke-[1.5] text-primary" /><span className="text-xs font-medium text-foreground">Email</span></button>
       </div>
 
       {/* Onglets horizontaux — Aperçu / Qualification / Détails (fini la « page bloc ») */}
@@ -443,31 +427,10 @@ export default function ContactDetailPage({ params, contactId, embedded, onClose
           </div>
         )}
 
-        {/* Actions rapides (branchées à la prochaine étape : appel/message/email/SMS) */}
-        <div className="grid grid-cols-4 gap-2">
-          {[
-            { type: 'APPEL', label: 'Appel', icon: PhoneCall, href: c.phone ? `tel:${c.phone}` : '', err: 'Aucun numéro', external: false },
-            { type: 'SMS', label: 'SMS', icon: MessageSquare, href: c.phone ? `sms:${c.phone}` : '', err: 'Aucun numéro', external: false },
-            { type: 'WHATSAPP', label: 'WhatsApp', icon: MessageCircle, href: c.phone ? `https://wa.me/${c.phone.replace(/[^0-9]/g, '')}` : '', err: 'Aucun numéro', external: true },
-            { type: 'EMAIL', label: 'Email', icon: Mail, href: c.email ? `mailto:${c.email}` : '', err: 'Aucun email', external: false },
-          ].map((t) => (
-            <button key={t.type} type="button"
-              onClick={() => {
-                if (t.type === 'APPEL') { if (!c.phone) { toast.error('Aucun numéro'); return } window.location.href = `tel:${c.phone}`; setConfirm({ type: 'APPEL', label: 'Appel' }); return }
-                if (t.type === 'EMAIL' ? !c.email : !c.phone) { toast.error(t.err); return }
-                setCompose({ channel: t.type, label: t.label })
-              }}
-              className="flex flex-col items-center gap-1.5 rounded-2xl border border-border bg-surface py-3 active:bg-muted">
-              <t.icon className="size-5 stroke-[1.5] text-primary" />
-              <span className="text-xs font-medium text-foreground">{t.label}</span>
-            </button>
-          ))}
-        </div>
-        {/* Rangée secondaire compacte : planifier / relancer / répéter avec Aria */}
-        <div className="grid grid-cols-3 gap-2">
+        {/* Planifier — RDV / relance (Message · Appel · Email sont dans l'en-tête, toujours visibles) */}
+        <div className="grid grid-cols-2 gap-2">
           <button type="button" onClick={() => setSchedule('rdv')} className="flex flex-col items-center gap-1.5 rounded-2xl border border-border bg-surface py-3 active:bg-muted"><CalendarPlus className="size-5 stroke-[1.5] text-primary" /><span className="text-xs font-medium text-foreground">RDV</span></button>
           <button type="button" onClick={() => setSchedule('relance')} className="flex flex-col items-center gap-1.5 rounded-2xl border border-border bg-surface py-3 active:bg-muted"><Bell className="size-5 stroke-[1.5] text-primary" /><span className="text-xs font-medium text-foreground">Relance</span></button>
-          <button type="button" onClick={() => router.push(`/aria?contact=${c.id}`)} className="flex flex-col items-center gap-1.5 rounded-2xl bg-[#14B8A6]/10 py-3 active:bg-[#14B8A6]/20"><Mic className="size-5 stroke-[1.5] text-[#14B8A6]" /><span className="text-xs font-medium text-[#14B8A6]">Aria</span></button>
         </div>
 
         {/* Ce qu'Atlas retient — bloc mémoire auto-édité (MemGPT-style), éditable/corrigeable */}
@@ -708,6 +671,47 @@ export default function ContactDetailPage({ params, contactId, embedded, onClose
         </div>
         )}
       </div>
+      {/* Intermédiaire d'action — Message (choix du canal) · Appel (appeler ou s'entraîner) */}
+      {sheet && (
+        <div className="fixed inset-0 z-[80] flex flex-col">
+          <div className="flex-1 bg-black/40" onClick={() => setSheet(null)} />
+          <div className="rounded-t-3xl bg-background pb-[max(1.25rem,env(safe-area-inset-bottom))]">
+            <div className="mx-auto mb-4 mt-3 h-1 w-10 rounded-full bg-border" />
+            {sheet === 'message' ? (
+              <>
+                <p className="px-5 pb-1 text-lg font-bold text-foreground">Envoyer un message</p>
+                <p className="px-5 pb-2 text-xs text-muted-foreground">Choisis le canal. Atlas rédige, tu valides.</p>
+                <div className="flex flex-col gap-2 px-5 py-3">
+                  <button type="button" onClick={() => { if (!c.phone) { toast.error('Aucun numéro'); return } setCompose({ channel: 'SMS', label: 'SMS' }); setSheet(null) }} className="flex items-center gap-3 rounded-2xl border border-border bg-surface px-4 py-3.5 text-left active:bg-muted">
+                    <MessageSquare className="size-5 shrink-0 stroke-[1.5] text-primary" />
+                    <span className="text-lg font-medium text-foreground lg:text-sm">SMS</span>
+                  </button>
+                  <button type="button" onClick={() => { if (!c.phone) { toast.error('Aucun numéro'); return } setCompose({ channel: 'WHATSAPP', label: 'WhatsApp' }); setSheet(null) }} className="flex items-center gap-3 rounded-2xl border border-border bg-surface px-4 py-3.5 text-left active:bg-muted">
+                    <MessageCircle className="size-5 shrink-0 stroke-[1.5] text-[#25D366]" />
+                    <span className="text-lg font-medium text-foreground lg:text-sm">WhatsApp</span>
+                  </button>
+                </div>
+              </>
+            ) : (
+              <>
+                <p className="px-5 pb-1 text-lg font-bold text-foreground">Appeler {pf.firstName || c.name}</p>
+                <p className="px-5 pb-2 text-xs text-muted-foreground">Passe l&apos;appel, ou entraîne-toi d&apos;abord avec Aria.</p>
+                <div className="flex flex-col gap-2 px-5 py-3">
+                  <button type="button" onClick={() => { if (!c.phone) { toast.error('Aucun numéro'); return } window.location.href = `tel:${c.phone}`; setConfirm({ type: 'APPEL', label: 'Appel' }); setSheet(null) }} className="flex items-center gap-3 rounded-2xl border border-border bg-surface px-4 py-3.5 text-left active:bg-muted">
+                    <PhoneCall className="size-5 shrink-0 stroke-[1.5] text-primary" />
+                    <span className="text-lg font-medium text-foreground lg:text-sm">Appeler maintenant</span>
+                  </button>
+                  <button type="button" onClick={() => { router.push(`/aria?contact=${c.id}`); setSheet(null) }} className="flex items-center gap-3 rounded-2xl bg-[#14B8A6]/10 px-4 py-3.5 text-left active:bg-[#14B8A6]/20">
+                    <Mic className="size-5 shrink-0 stroke-[1.5] text-[#14B8A6]" />
+                    <span className="text-lg font-medium text-[#14B8A6] lg:text-sm">M&apos;entraîner avec Aria</span>
+                  </button>
+                </div>
+              </>
+            )}
+            <button type="button" onClick={() => setSheet(null)} className="w-full px-4 py-2 text-sm font-medium text-muted-foreground">Annuler</button>
+          </div>
+        </div>
+      )}
       {schedule && <ScheduleSheet mode={schedule} contactId={id} onClose={() => setSchedule(null)} onDone={load} />}
       {compose && <ComposeSheet contactId={id} channel={compose.channel} label={compose.label} phone={c.phone} email={c.email} autoDraft={compose.auto}
         onClose={() => setCompose(null)}
