@@ -4,8 +4,8 @@ import { cn } from '@/lib/utils'
 
 // Rangée unique de la nav messagerie — agents épinglés, contacts, résultats de recherche :
 // UN composant pour toutes les listes (règle des 7). Avatar lettré OU emoji (fond neutre).
-export function ThreadRow({ avatarBg, avatarText, title, titlePill, line, time, count, endPill, dim, online, big, onClick }: {
-  avatarBg: string; avatarText: string; title: string; titlePill?: { label: string; cls: string }
+export function ThreadRow({ avatarBg, avatarText, avatarSrc, title, titlePill, line, time, count, endPill, dim, online, big, onClick }: {
+  avatarBg: string; avatarText: string; avatarSrc?: string; title: string; titlePill?: { label: string; cls: string }
   line: string; time?: string; count?: number
   endPill?: { label: string; cls: string }; dim?: boolean; online?: boolean; big?: boolean; onClick: () => void
 }) {
@@ -13,7 +13,7 @@ export function ThreadRow({ avatarBg, avatarText, title, titlePill, line, time, 
   return (
     <button type="button" onClick={onClick} className={cn('flex w-full items-center gap-3 px-4 py-2.5 text-left active:bg-muted', dim && 'opacity-50')}>
       <span className={cn('relative grid shrink-0 place-items-center rounded-full font-bold text-white', big ? 'size-14 text-lg' : 'size-12 text-base')} style={{ backgroundColor: avatarBg }}>
-        {avatarText}
+        {avatarSrc ? <img src={avatarSrc} alt="" className="size-full rounded-full object-cover" /> : avatarText}
         {/* présence : les agents sont toujours là (point vert façon messagerie) */}
         {online && <span className="absolute bottom-0 right-0 size-3 rounded-full border-2 border-background bg-[#22C55E]" />}
       </span>

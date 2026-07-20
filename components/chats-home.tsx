@@ -140,6 +140,7 @@ export function ChatsHome() {
             key={a.id}
             avatarBg={AGENT_COLOR[a.id] ?? '#3f434b'}
             avatarText={a.id === 'communaute' ? '👥' : a.name[0]}
+            avatarSrc={['atlas', 'aria', 'nova'].includes(a.id) ? `/avatars/${a.id}.png` : undefined}
             title={a.name}
             titlePill={{ label: a.role, cls: AGENT_PILL[a.id] ?? AGENT_PILL.communaute }}
             line={a.line}
