@@ -1,6 +1,7 @@
 'use client'
 
 import { use, useEffect, useState, useCallback } from 'react'
+import { createPortal } from 'react-dom'
 import { useRouter } from 'next/navigation'
 import {
   Pencil, Mail, Tag,
@@ -664,7 +665,12 @@ export default function ContactDetailPage({ params }: { params: Promise<{ id: st
           </button>
         </div>
       </div>
-      {evalOpen && <PersonalityQuiz subjectName={pf.firstName || 'Ce contact'} gender={pf.gender} count={3} onClose={() => setEvalOpen(false)} onResult={(color) => { setQ('personality', color); setEvalOpen(false) }} />}
+      {/* PORTAIL vers document.body : le quiz est `fixed inset-0` et doit couvrir TOUT l'écran ; or la fiche
+          s'ouvre en feuille avec `transform` (qui piège les `fixed`). Le portail le fait échapper au panneau. */}
+      {evalOpen && typeof document !== 'undefined' && createPortal(
+        <PersonalityQuiz subjectName={pf.firstName || 'Ce contact'} gender={pf.gender} count={3} onClose={() => setEvalOpen(false)} onResult={(color) => { setQ('personality', color); setEvalOpen(false) }} />,
+        document.body,
+      )}
       {schedule && <ScheduleSheet mode={schedule} contactId={id} onClose={() => setSchedule(null)} onDone={load} />}
       {compose && <ComposeSheet contactId={id} channel={compose.channel} label={compose.label} phone={c.phone} email={c.email} autoDraft={compose.auto}
         onClose={() => setCompose(null)}
