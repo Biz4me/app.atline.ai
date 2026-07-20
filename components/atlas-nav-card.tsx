@@ -1,5 +1,6 @@
 'use client'
 
+import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import {
   ArrowUpRight, ContactRound, Briefcase, BookOpen, Calendar, MessageSquare,
@@ -50,12 +51,32 @@ const iconFor = (route: string): LucideIcon =>
 
 export function AtlasNavCard({ route, label }: { route: string; label: string }) {
   const router = useRouter()
+  const [busy, setBusy] = useState(false)
   const Icon = iconFor(route)
+  // Ouvrir un contact « par son nom » (Atlas ne connaît pas toujours l'id → route /contacts?q=<nom>) :
+  // on résout le nom → id et on ouvre SON fil /chats/[id] (+ fiche en rail), plus l'ancienne liste filtrée.
+  const go = async () => {
+    if (busy) return
+    const [base, qs] = route.split('?')
+    const q = base === '/contacts' && qs ? new URLSearchParams(qs).get('q') : null
+    if (q) {
+      setBusy(true)
+      try {
+        const r = await fetch(`/api/contacts?q=${encodeURIComponent(q)}`)
+        const list = r.ok ? await r.json() : null
+        const first = Array.isArray(list) && list.length ? list[0] : null
+        if (first?.id) { router.push(`/chats/${first.id}?info=1`); return }
+      } catch { /* repli sur la route d'origine */ }
+      finally { setBusy(false) }
+    }
+    router.push(route)
+  }
   return (
     <button
       type="button"
-      onClick={() => router.push(route)}
-      className="flex w-full items-center gap-3 rounded-2xl border border-border bg-surface px-4 py-3 text-left transition-transform active:scale-[0.99]"
+      onClick={go}
+      disabled={busy}
+      className="flex w-full items-center gap-3 rounded-2xl border border-border bg-surface px-4 py-3 text-left transition-transform active:scale-[0.99] disabled:opacity-70"
     >
       <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary">
         <Icon className="size-5 stroke-[1.5]" />
