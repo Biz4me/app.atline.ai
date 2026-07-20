@@ -127,7 +127,7 @@ function StageCursor({ stages, current, onPick }: { stages: { id: string; label:
                 </button>
                 <div className={cn('h-0.5 flex-1', i === stages.length - 1 ? 'opacity-0' : done ? 'bg-primary' : 'bg-border')} />
               </div>
-              <button type="button" onClick={() => onPick(s.id)} className={cn('mt-1.5 px-0.5 text-center text-xs leading-tight', cur ? 'font-bold text-foreground' : 'text-muted-foreground')}>{s.label}</button>
+              <button type="button" data-testid={`stage-${s.id}`} onClick={() => onPick(s.id)} className={cn('mt-1.5 px-0.5 text-center text-xs leading-tight', cur ? 'font-bold text-foreground' : 'text-muted-foreground')}>{s.label}</button>
             </div>
           )
         })}
@@ -391,7 +391,7 @@ export default function ContactDetailPage({ params, contactId, embedded, onClose
           <button type="button" onClick={() => router.push(`/chats/${id}`)} aria-label="Retour à la conversation" className="-ml-1 flex size-9 items-center justify-center rounded-full text-muted-foreground active:bg-muted"><ChevronLeft className="size-5 stroke-[1.5]" /></button>
         )}
         <h1 className="flex-1 text-center text-lg font-semibold text-foreground">{KIND_LABEL[c.kind]}</h1>
-        <button type="button" onClick={saveAll} disabled={!dirty} className={cn('shrink-0 text-lg font-semibold transition-colors', dirty ? 'text-primary active:opacity-70' : 'text-muted-foreground/40')}>Enregistrer</button>
+        <button type="button" data-testid="save-btn" onClick={saveAll} disabled={!dirty} className={cn('shrink-0 text-lg font-semibold transition-colors', dirty ? 'text-primary active:opacity-70' : 'text-muted-foreground/40')}>Enregistrer</button>
       </div>
 
       {/* ═══ STRUCTURE CHARTE PROFIL (nouveau — à adapter) ═══ */}
@@ -419,7 +419,7 @@ export default function ContactDetailPage({ params, contactId, embedded, onClose
       {/* Onglets horizontaux — Aperçu / Qualification / Détails (fini la « page bloc ») ; collés sous l'en-tête */}
       <div className="sticky z-20 flex border-y border-border bg-background" style={{ top: 'calc(48px + max(0.75rem, env(safe-area-inset-top)))' }}>
         {([['apercu', 'Aperçu'], ['qualif', 'Qualification'], ['details', 'Détails']] as const).map(([tid, label]) => (
-          <button key={tid} type="button" onClick={() => setTab(tid)} className={cn('flex-1 py-3 text-sm transition-colors', tab === tid ? 'border-b-2 border-primary font-medium text-primary' : 'text-muted-foreground active:bg-muted')}>{label}</button>
+          <button key={tid} data-testid={`tab-${tid}`} type="button" onClick={() => setTab(tid)} className={cn('flex-1 py-3 text-sm transition-colors', tab === tid ? 'border-b-2 border-primary font-medium text-primary' : 'text-muted-foreground active:bg-muted')}>{label}</button>
         ))}
       </div>
 
@@ -485,7 +485,7 @@ export default function ContactDetailPage({ params, contactId, embedded, onClose
         {tab === 'details' && (<>
         <div className="flex justify-between border-b border-border">
           {([['profil', 'Profil'], ['coord', 'Coordonnées'], ['contexte', 'Contexte'], ['suivi', 'Suivi']] as const).map(([sid, label]) => (
-            <button key={sid} type="button" onClick={() => setDsub(sid)} className={cn('py-2.5 text-sm transition-colors', dsub === sid ? 'border-b-2 border-primary font-medium text-primary' : 'text-muted-foreground active:bg-muted')}>{label}</button>
+            <button key={sid} data-testid={`subtab-${sid}`} type="button" onClick={() => setDsub(sid)} className={cn('py-2.5 text-sm transition-colors', dsub === sid ? 'border-b-2 border-primary font-medium text-primary' : 'text-muted-foreground active:bg-muted')}>{label}</button>
           ))}
         </div>
 
@@ -640,7 +640,7 @@ export default function ContactDetailPage({ params, contactId, embedded, onClose
             </div>
             <div className="flex flex-col gap-2">
               <SelectMenu className={fieldCls} placeholder="Marché d'origine (proximité)" value={qual.market} onChange={(v) => setQ('market', v)} options={[{ value: 'CHAUD', label: 'Marché chaud' }, { value: 'TIEDE', label: 'Marché tiède' }, { value: 'FROID', label: 'Marché froid' }]} />
-              <input className={fieldCls} value={qual.situation} onChange={(e) => setQ('situation', e.target.value)} placeholder="Sa situation (métier, famille, dispo)" />
+              <input data-testid="ctx-situation" className={fieldCls} value={qual.situation} onChange={(e) => setQ('situation', e.target.value)} placeholder="Sa situation (métier, famille, dispo)" />
               <input className={fieldCls} value={qual.interests} onChange={(e) => setQ('interests', e.target.value)} placeholder="Ses centres d'intérêt" />
             </div>
             <div className="border-t border-border pt-3">
@@ -695,7 +695,7 @@ export default function ContactDetailPage({ params, contactId, embedded, onClose
                     <button type="button" onClick={() => { setTab('details'); setDsub('contexte') }} className="rounded-2xl border border-dashed border-border p-4 text-left text-sm text-muted-foreground">Fais son test couleur dans <span className="font-medium text-foreground">Contexte</span> pour savoir comment lui parler.</button>
                   )}
                   {hasContext && (
-                    <div className="rounded-2xl border border-border bg-surface p-4">
+                    <div data-testid="qualif-son-contexte" className="rounded-2xl border border-border bg-surface p-4">
                       <p className="mb-1 text-xs font-bold uppercase tracking-widest text-muted-foreground">Son contexte</p>
                       {qual.situation?.trim() && <p className="text-lg leading-relaxed text-foreground lg:text-sm">{qual.situation}</p>}
                       {qual.interests?.trim() && <p className="mt-1 text-sm text-muted-foreground">Centres d&apos;intérêt : {qual.interests}</p>}

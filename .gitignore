@@ -25,3 +25,5 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+# E2E harness deps (installed ad-hoc, not part of the app build)
+e2e/node_modules

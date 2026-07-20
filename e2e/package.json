@@ -1,0 +1,13 @@
+{
+  "name": "atline-e2e",
+  "version": "1.0.0",
+  "description": "Harnais E2E fiche contact (puppeteer-core, session forgee)",
+  "scripts": {
+    "test": "node fiche-contact.cjs"
+  },
+  "type": "commonjs",
+  "dependencies": {
+    "puppeteer-core": "^25.3.0"
+  },
+  "private": true
+}
