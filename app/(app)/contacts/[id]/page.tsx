@@ -80,21 +80,24 @@ const DOB_YEARS = Array.from({ length: new Date().getFullYear() - 16 - 1929 }, (
 /* EditSheet retiré — l'édition se fait en ligne dans la charte ; la suppression est en bas de fiche */
 
 /* ── Carte famille ────────────────────────────────────────────── */
-function Section({ title, action, children, count, collapsible, defaultOpen = false }: { title: string; action?: React.ReactNode; children: React.ReactNode; count?: number; collapsible?: boolean; defaultOpen?: boolean }) {
-  const [open, setOpen] = useState(defaultOpen)
+function Section({ title, action, children, count, collapsible, defaultOpen = false, open: openProp, onToggle }: { title: string; action?: React.ReactNode; children: React.ReactNode; count?: number; collapsible?: boolean; defaultOpen?: boolean; open?: boolean; onToggle?: () => void }) {
+  const [openState, setOpenState] = useState(defaultOpen)
+  const controlled = onToggle !== undefined // piloté par le parent (accordéon) vs état interne
+  const open = controlled ? !!openProp : openState
+  const toggle = controlled ? onToggle! : () => setOpenState((o) => !o)
   const shown = !collapsible || open
   const label = <>{title}{count ? ` (${count})` : ''}</>
   return (
     <Card className="overflow-hidden">
       <div className={cn('flex items-center gap-2 px-5 py-3', shown && 'border-b border-border')}>
         {collapsible ? (
-          <button type="button" onClick={() => setOpen((o) => !o)} className="min-w-0 flex-1 text-left text-xs font-bold uppercase tracking-widest text-muted-foreground">{label}</button>
+          <button type="button" onClick={toggle} className="min-w-0 flex-1 text-left text-xs font-bold uppercase tracking-widest text-muted-foreground">{label}</button>
         ) : (
           <p className="min-w-0 flex-1 text-xs font-bold uppercase tracking-widest text-muted-foreground">{label}</p>
         )}
         {action}
         {collapsible && (
-          <button type="button" onClick={() => setOpen((o) => !o)} aria-label={open ? 'Réduire' : 'Déplier'} className="shrink-0 text-muted-foreground active:text-foreground">
+          <button type="button" onClick={toggle} aria-label={open ? 'Réduire' : 'Déplier'} className="shrink-0 text-muted-foreground active:text-foreground">
             <ChevronDown className={cn('size-4 transition-transform', open && 'rotate-180')} />
           </button>
         )}
@@ -253,7 +256,9 @@ export default function ContactDetailPage({ params, contactId, embedded, onClose
   const [memDraft, setMemDraft] = useState('')
   const [memEditing, setMemEditing] = useState(false)
   const [contactConvs, setContactConvs] = useState<{ id: string; title: string | null; updatedAt: string }[]>([])
-  const [memOpen, setMemOpen] = useState(true) // « À retenir » plié/déplié (ouvert par défaut)
+  // Accordéon : une seule carte ouverte à la fois (null = tout plié, l'état à l'arrivée).
+  const [openCard, setOpenCard] = useState<string | null>(null)
+  const toggleCard = (id: string) => setOpenCard((cur) => (cur === id ? null : id))
   const [interactions, setInteractions] = useState<Interaction[]>([])
   const [appointments, setAppointments] = useState<Appt[]>([])
   const [relances, setRelances] = useState<Relance[]>([])
@@ -422,10 +427,9 @@ export default function ContactDetailPage({ params, contactId, embedded, onClose
             Réengager vers l'opportunité
           </button>
         )}
-        {/* Prochain pas — simplifié, à la charte (carte standard, accent Atlas discret) */}
+        {/* Prochain pas — carte pliable (accordéon) */}
         {nextStep && (
-          <div className="rounded-2xl border border-border bg-surface p-4">
-            <p className="mb-1 text-xs font-bold uppercase tracking-widest text-muted-foreground">Prochain pas</p>
+          <Section title="Prochain pas" collapsible open={openCard === 'prochain'} onToggle={() => toggleCard('prochain')}>
             <p className="text-lg font-bold text-foreground lg:text-sm">{nextStep.headline}</p>
             <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">{nextStep.reason}</p>
             {nextStep.action === 'MESSAGE' && nextStep.channel && (
@@ -437,34 +441,25 @@ export default function ContactDetailPage({ params, contactId, embedded, onClose
             {nextStep.action === 'EDIT' && (
               <button type="button" onClick={() => setTab('details')} className="mt-3 flex w-full items-center justify-center gap-1.5 rounded-xl bg-primary py-2.5 text-xs font-bold text-primary-foreground active:opacity-90">Compléter la fiche</button>
             )}
-          </div>
+          </Section>
         )}
 
-        {/* Ce qu'Atlas retient — bloc mémoire auto-édité (MemGPT-style), pliable ; « Corriger » le déplie */}
-        <Card className="overflow-hidden">
-          <div className={cn('flex items-center gap-2 px-5 py-3', memOpen && 'border-b border-border')}>
-            <button type="button" onClick={() => setMemOpen((o) => !o)} className="min-w-0 flex-1 text-left text-xs font-bold uppercase tracking-widest text-muted-foreground">À retenir</button>
-            {memEditing ? (
-              <button type="button" onClick={() => { save({ atlasMemory: memDraft.trim() }, 'Mémoire mise à jour'); setMemEditing(false) }} className="rounded-lg bg-primary px-3 py-1 text-xs font-bold text-primary-foreground">Enregistrer</button>
-            ) : (
-              <button type="button" onClick={() => { setMemDraft(c.atlasMemory ?? ''); setMemEditing(true); setMemOpen(true) }} className="text-xs font-medium text-primary"><Pencil className="mr-1 inline size-3" />{c.atlasMemory ? 'Corriger' : 'Ajouter'}</button>
-            )}
-            <button type="button" onClick={() => setMemOpen((o) => !o)} aria-label={memOpen ? 'Réduire' : 'Déplier'} className="shrink-0 text-muted-foreground active:text-foreground">
-              <ChevronDown className={cn('size-4 transition-transform', memOpen && 'rotate-180')} />
-            </button>
-          </div>
-          {memOpen && (
-            <div className="px-5 py-4">
-              {memEditing ? (
-                <textarea value={memDraft} onChange={(e) => setMemDraft(e.target.value)} rows={4} autoFocus placeholder="Ce qu'Atlas doit retenir de ce contact… (vide = effacer)" className="w-full resize-none bg-transparent text-lg leading-relaxed text-foreground lg:text-sm outline-none placeholder:text-muted-foreground" />
-              ) : c.atlasMemory ? (
-                <p className="whitespace-pre-line text-lg leading-relaxed text-muted-foreground lg:text-sm">{c.atlasMemory}</p>
-              ) : (
-                <p className="text-lg leading-relaxed text-muted-foreground lg:text-sm">Rien pour l'instant. Atlas remplit ce bloc au fil de vos échanges, et tu peux noter toi-même l'essentiel.</p>
-              )}
-            </div>
+        {/* Ce qu'Atlas retient — carte pliable (accordéon) ; « Corriger » la déplie */}
+        <Section title="À retenir" collapsible open={openCard === 'retenir'} onToggle={() => toggleCard('retenir')} action={
+          memEditing ? (
+            <button type="button" onClick={() => { save({ atlasMemory: memDraft.trim() }, 'Mémoire mise à jour'); setMemEditing(false) }} className="rounded-lg bg-primary px-3 py-1 text-xs font-bold text-primary-foreground">Enregistrer</button>
+          ) : (
+            <button type="button" onClick={() => { setMemDraft(c.atlasMemory ?? ''); setMemEditing(true); setOpenCard('retenir') }} className="text-xs font-medium text-primary"><Pencil className="mr-1 inline size-3" />{c.atlasMemory ? 'Corriger' : 'Ajouter'}</button>
+          )
+        }>
+          {memEditing ? (
+            <textarea value={memDraft} onChange={(e) => setMemDraft(e.target.value)} rows={4} autoFocus placeholder="Ce qu'Atlas doit retenir de ce contact… (vide = effacer)" className="w-full resize-none bg-transparent text-lg leading-relaxed text-foreground lg:text-sm outline-none placeholder:text-muted-foreground" />
+          ) : c.atlasMemory ? (
+            <p className="whitespace-pre-line text-lg leading-relaxed text-muted-foreground lg:text-sm">{c.atlasMemory}</p>
+          ) : (
+            <p className="text-lg leading-relaxed text-muted-foreground lg:text-sm">Rien pour l'instant. Atlas remplit ce bloc au fil de vos échanges, et tu peux noter toi-même l'essentiel.</p>
           )}
-        </Card>
+        </Section>
 
         </>)}
 
@@ -485,7 +480,7 @@ export default function ContactDetailPage({ params, contactId, embedded, onClose
           {(isProspect || recruiting) && <> · <span className="font-medium text-foreground">{c.exposures}</span> exposition{c.exposures > 1 ? 's' : ''}</>}
         </p>
         {/* À venir — RDV/relances programmés ; on planifie depuis l'en-tête (créer là où on regarde) */}
-        <Section title="À venir" collapsible count={upAppts.length + upRelances.length} action={
+        <Section title="À venir" collapsible count={upAppts.length + upRelances.length} open={openCard === 'avenir'} onToggle={() => toggleCard('avenir')} action={
           <div className="flex gap-1">
             <button type="button" onClick={() => setSchedule('rdv')} className="flex items-center gap-1 rounded-full px-2 py-1 text-xs font-semibold text-primary active:bg-primary/10"><CalendarPlus className="size-3.5 stroke-[1.5]" />RDV</button>
             <button type="button" onClick={() => setSchedule('relance')} className="flex items-center gap-1 rounded-full px-2 py-1 text-xs font-semibold text-primary active:bg-primary/10"><Bell className="size-3.5 stroke-[1.5]" />Relance</button>
@@ -519,7 +514,7 @@ export default function ContactDetailPage({ params, contactId, embedded, onClose
 
         {/* Échanges avec Atlas — les conversations de coaching sur ce contact (rouvrir) */}
         {contactConvs.length > 0 && (
-          <Section title="Échanges avec Atlas" collapsible count={contactConvs.length}>
+          <Section title="Échanges avec Atlas" collapsible count={contactConvs.length} open={openCard === 'echanges'} onToggle={() => toggleCard('echanges')}>
             <div className="flex flex-col divide-y divide-border">
               {contactConvs.map((cv) => (
                 <button key={cv.id} type="button" onClick={() => router.push(`/chats/${id}`)} className="flex items-center gap-3 py-2.5 text-left first:pt-0 last:pb-0 active:opacity-70">
@@ -534,7 +529,7 @@ export default function ContactDetailPage({ params, contactId, embedded, onClose
 
         {/* Historique — journal terrain, pliable comme les autres sections */}
         {interactions.length > 0 && (
-          <Section title="Historique" collapsible count={interactions.length}>
+          <Section title="Historique" collapsible count={interactions.length} open={openCard === 'historique'} onToggle={() => toggleCard('historique')}>
             <ol className="flex flex-col gap-3">
               {interactions.map((it) => {
                 const m = INTERACTION_META[it.type] ?? INTERACTION_META.AUTRE
