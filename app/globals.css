@@ -210,8 +210,8 @@
   }
 }
 
-/* Desktop shell overrides */
-@media (min-width: 1024px) {
+/* Desktop shell overrides — le cap « téléphone » (480px) saute dès la tablette (md, 768px). */
+@media (min-width: 768px) {
   .app-shell {
     max-width: none;
     margin-left: 0;

@@ -35,7 +35,7 @@ export function AppShell({ children }: { children: ReactNode }) {
 
       <div
         className={cn(
-          'app-shell lg:pb-0 lg:max-w-none lg:mx-0',
+          'app-shell md:pb-0 md:max-w-none md:mx-0',
           // Atlas/fil mobile : hauteur figée = zéro scroll du document (composeur fixed)
           isAtlasChat || isChatFil ? 'max-lg:h-[100dvh] max-lg:overflow-hidden' : '',
           'transition-[padding-left] duration-200 ease-out',
