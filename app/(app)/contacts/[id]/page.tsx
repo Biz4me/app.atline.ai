@@ -10,7 +10,6 @@ import {
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 import { Card } from '@/components/card'
-import { ContactComposer } from '@/components/contact-composer'
 import { WhenPicker } from '@/components/when-picker'
 import { SelectMenu } from '@/components/select-menu'
 import { PersonalityQuiz, describePersonality } from '@/components/personality-quiz'
@@ -254,7 +253,6 @@ export default function ContactDetailPage({ params, contactId, embedded, onClose
   const [memDraft, setMemDraft] = useState('')
   const [memEditing, setMemEditing] = useState(false)
   const [contactConvs, setContactConvs] = useState<{ id: string; title: string | null; updatedAt: string }[]>([])
-  const [openConvId, setOpenConvId] = useState<string | null>(null)
   const [memOpen, setMemOpen] = useState(true) // « À retenir » plié/déplié (ouvert par défaut)
   const [interactions, setInteractions] = useState<Interaction[]>([])
   const [appointments, setAppointments] = useState<Appt[]>([])
@@ -289,7 +287,6 @@ export default function ContactDetailPage({ params, contactId, embedded, onClose
   const refreshConvs = useCallback(() => {
     fetch(`/api/atlas/conversations?contactId=${id}`).then((r) => (r.ok ? r.json() : [])).then(setContactConvs).catch(() => {})
   }, [id])
-  const clearOpenConv = useCallback(() => setOpenConvId(null), [])
   useEffect(() => { refreshConvs() }, [refreshConvs])
 
   const save = useCallback(async (patch: Record<string, unknown>, msg?: string) => {
@@ -525,7 +522,7 @@ export default function ContactDetailPage({ params, contactId, embedded, onClose
           <Section title="Échanges avec Atlas" collapsible count={contactConvs.length}>
             <div className="flex flex-col divide-y divide-border">
               {contactConvs.map((cv) => (
-                <button key={cv.id} type="button" onClick={() => setOpenConvId(cv.id)} className="flex items-center gap-3 py-2.5 text-left first:pt-0 last:pb-0 active:opacity-70">
+                <button key={cv.id} type="button" onClick={() => router.push(`/chats/${id}`)} className="flex items-center gap-3 py-2.5 text-left first:pt-0 last:pb-0 active:opacity-70">
                   <Sparkles className="size-4 shrink-0 stroke-[1.5] text-primary" />
                   <span className="min-w-0 flex-1 truncate text-lg text-foreground lg:text-sm">{cv.title || 'Échange'}</span>
                   <span className="shrink-0 text-[10px] text-muted-foreground">{new Date(cv.updatedAt).toLocaleDateString('fr-FR')}</span>
@@ -751,8 +748,6 @@ export default function ContactDetailPage({ params, contactId, embedded, onClose
         </div>
       )}
 
-      {/* Composeur Atlas scopé sur ce contact (Phase B) */}
-      {!embedded && <ContactComposer contactId={id} contactName={c.name || pf.firstName} loadConversationId={openConvId} onLoaded={clearOpenConv} onConversationsChanged={refreshConvs} />}
     </div>
   )
 }
