@@ -966,7 +966,7 @@ TECHNIQUE (invisible pour moi, ne l'explique jamais)${NB}: quand tu as balayé l
               <button type="button" aria-label="Retour aux messages" onClick={() => router.push('/chats')} className="flex size-9 shrink-0 items-center justify-center rounded-full text-muted-foreground active:bg-muted">
                 <ChevronLeftIcon className="size-5 stroke-[1.5]" />
               </button>
-              <span className="grid size-10 shrink-0 place-items-center rounded-full bg-primary text-sm font-bold text-white">A</span>
+              <span className="grid size-10 shrink-0 place-items-center overflow-hidden rounded-full bg-primary text-sm font-bold text-white"><img src="/avatars/atlas.png" alt="" className="size-full rounded-full object-cover" /></span>
               <span className="min-w-0 flex-1">
                 <span className="block text-sm font-semibold text-foreground">Atlas</span>
                 <span className={cn('block truncate text-xs', streaming ? 'font-medium text-primary' : 'text-muted-foreground')}>

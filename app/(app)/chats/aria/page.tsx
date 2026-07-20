@@ -52,7 +52,7 @@ export default function AriaThreadPage() {
         <button type="button" aria-label="Retour" onClick={() => router.push('/chats')} className="flex size-9 shrink-0 items-center justify-center rounded-full text-muted-foreground active:bg-muted">
           <ChevronLeft className="size-5 stroke-[1.5]" />
         </button>
-        <span className="grid size-10 shrink-0 place-items-center rounded-full text-sm font-bold text-white" style={{ backgroundColor: ARIA }}>A</span>
+        <span className="grid size-10 shrink-0 place-items-center overflow-hidden rounded-full text-sm font-bold text-white" style={{ backgroundColor: ARIA }}><img src="/avatars/aria.png" alt="" className="size-full rounded-full object-cover" /></span>
         <span className="min-w-0 flex-1">
           <span className="block text-sm font-semibold text-foreground">Aria</span>
           <span className="block text-xs text-muted-foreground">ton sparring-partner · simulateur terrain</span>
