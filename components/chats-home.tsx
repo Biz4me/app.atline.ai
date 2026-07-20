@@ -18,12 +18,15 @@ import { AtlineWordmark } from '@/components/atline-wordmark'
 
 type Agent = { id: string; name: string; role: string; line: string; at: string | null; badge?: number }
 type Thread = {
-  contactId: string; name: string; prenom: string; initials: string; accent: string
+  contactId: string; name: string; prenom: string; initials: string; accent: string; personality: string | null
   kind: string; stage: string | null; recruiting: boolean
   lastContact: string | null; lastChatAt: string | null; draft: string | null; birthdayToday: boolean
 }
 
 const AGENT_COLOR: Record<string, string> = { atlas: '#F97316', aria: '#14B8A6', nova: '#8B5CF6', communaute: '#3f434b' }
+// Avatar d'un contact = sa couleur DISC si connue (aligné sur la fiche), sinon son accent.
+const DISC_HEX: Record<string, string> = { ROUGE: '#EF4444', VERT: '#22C55E', BLEU: '#3B82F6', JAUNE: '#F4B342' }
+const avatarColor = (t: { personality: string | null; accent: string }) => (t.personality && DISC_HEX[t.personality]) || t.accent
 const AGENT_ROUTE: Record<string, string> = { atlas: '/atlas', aria: '/chats/aria', nova: '/chats/nova', communaute: '/communaute' }
 const AGENT_PILL: Record<string, string> = { atlas: 'bg-primary/10 text-primary', aria: 'bg-[#14B8A6]/10 text-[#14B8A6]', nova: 'bg-[#8B5CF6]/10 text-[#8B5CF6]', communaute: 'bg-muted text-muted-foreground' }
 const STAGE_LABEL: Record<string, string> = {
@@ -170,7 +173,7 @@ export function ChatsHome() {
           return (
             <ThreadRow
               key={t.contactId}
-              avatarBg={t.accent}
+              avatarBg={avatarColor(t)}
               avatarText={t.initials}
               title={t.name}
               line={line}
@@ -236,7 +239,7 @@ export function ChatsHome() {
               return (
                 <ThreadRow
                   key={t.contactId}
-                  avatarBg={t.accent}
+                  avatarBg={avatarColor(t)}
                   avatarText={t.initials}
                   title={t.name}
                   line={days !== null ? `dernier contact il y a ${days} j${cold ? ' 🥶' : ''}` : 'jamais contacté — lance la conversation'}
