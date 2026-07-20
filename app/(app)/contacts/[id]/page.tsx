@@ -309,6 +309,7 @@ export default function ContactDetailPage({ params, contactId, embedded, onClose
   // ── Structure charte-profil (nouveau) : formulaire inline des familles perso du contact ──
   const [pf, setPf] = useState({ firstName: '', lastName: '', gender: '', birthDate: '', profession: '', education: '', phone: '', phone2: '', email: '', address: '', address2: '', postal: '', city: '', country: '' })
   const [pfDob, setPfDob] = useState({ d: '', m: '', y: '' })
+  const [dirty, setDirty] = useState(false) // un seul « Enregistrer » (en-tête) ; vrai dès qu'un champ change
   useEffect(() => {
     if (!contact) return
     setPf({
@@ -319,8 +320,9 @@ export default function ContactDetailPage({ params, contactId, embedded, onClose
     })
     const [y, m, d] = (contact.birthDate || '').split('-')
     setPfDob({ y: y ?? '', m: m ?? '', d: d ?? '' })
+    setDirty(false)
   }, [contact])
-  const setPfField = (k: keyof typeof pf, v: string) => setPf((s) => ({ ...s, [k]: v }))
+  const setPfField = (k: keyof typeof pf, v: string) => { setDirty(true); setPf((s) => ({ ...s, [k]: v })) }
   // Qualification (DISC + proximité + signaux partenaire) — 3 blocs visuels
   const [qual, setQual] = useState({ personality: '', market: '', situation: '', interests: '', motivation: '', insatisfaction: '', reseau: '', ouverture: '' })
   useEffect(() => {
@@ -331,10 +333,12 @@ export default function ContactDetailPage({ params, contactId, embedded, onClose
       situation: q.situation ?? '', interests: q.interests ?? '', motivation: q.motivation ?? '',
       insatisfaction: q.insatisfaction ?? '', reseau: q.reseau ?? '', ouverture: q.ouverture ?? '',
     })
+    setDirty(false)
   }, [contact])
-  const setQ = (k: keyof typeof qual, v: string) => setQual((s) => ({ ...s, [k]: v }))
+  const setQ = (k: keyof typeof qual, v: string) => { setDirty(true); setQual((s) => ({ ...s, [k]: v })) }
   const [discOpen, setDiscOpen] = useState(false)
   const setPfDobPart = (patch: Partial<{ d: string; m: string; y: string }>) => {
+    setDirty(true)
     const next = { ...pfDob, ...patch }
     if (next.d && parseInt(next.d, 10) > daysInMonth(next.m, next.y)) next.d = ''
     setPfDob(next)
@@ -374,7 +378,7 @@ export default function ContactDetailPage({ params, contactId, embedded, onClose
           <button type="button" onClick={() => router.push(`/chats/${id}`)} aria-label="Retour à la conversation" className="-ml-1 flex size-9 items-center justify-center rounded-full text-muted-foreground active:bg-muted"><ChevronLeft className="size-5 stroke-[1.5]" /></button>
         )}
         <h1 className="flex-1 text-center text-lg font-semibold text-foreground">{KIND_LABEL[c.kind]}</h1>
-        <div className="size-9" />
+        <button type="button" onClick={saveAll} disabled={!dirty} className={cn('shrink-0 text-lg font-semibold transition-colors', dirty ? 'text-primary active:opacity-70' : 'text-muted-foreground/40')}>Enregistrer</button>
       </div>
 
       {/* ═══ STRUCTURE CHARTE PROFIL (nouveau — à adapter) ═══ */}
@@ -466,9 +470,9 @@ export default function ContactDetailPage({ params, contactId, embedded, onClose
 
         {/* ═══ DÉTAILS — sous-onglets Coordonnées / Profil / Suivi ═══ */}
         {tab === 'details' && (<>
-        <div className="flex gap-2">
+        <div className="flex border-b border-border">
           {([['profil', 'Profil'], ['coord', 'Coordonnées'], ['suivi', 'Suivi']] as const).map(([sid, label]) => (
-            <button key={sid} type="button" onClick={() => setDsub(sid)} className={cn('rounded-full border px-3.5 py-1.5 text-sm transition-colors', dsub === sid ? 'border-border bg-surface font-medium text-foreground' : 'border-transparent text-muted-foreground active:bg-muted')}>{label}</button>
+            <button key={sid} type="button" onClick={() => setDsub(sid)} className={cn('flex-1 py-2.5 text-sm transition-colors', dsub === sid ? 'border-b-2 border-primary font-medium text-primary' : 'text-muted-foreground active:bg-muted')}>{label}</button>
           ))}
         </div>
 
@@ -585,9 +589,7 @@ export default function ContactDetailPage({ params, contactId, embedded, onClose
               </div>
               <input className={fieldCls} value={pf.profession} onChange={(e) => setPfField('profession', e.target.value)} placeholder="Profession" />
               <SelectMenu className={fieldCls} placeholder="Niveau d'études" value={pf.education} onChange={(v) => setPfField('education', v)} options={EDUCATIONS.map((o) => ({ value: o, label: o }))} />
-            </div>
-            <button type="button" onClick={saveAll} className="flex w-full items-center justify-center gap-2 rounded-2xl bg-primary py-3 text-base font-bold text-primary-foreground transition-transform active:scale-[0.98]">Enregistrer</button>
-          </div>
+            </div>          </div>
         )}
 
         {/* — Sous-onglet COORDONNÉES — */}
@@ -602,9 +604,7 @@ export default function ContactDetailPage({ params, contactId, embedded, onClose
               <input className={fieldCls} value={pf.postal} onChange={(e) => setPfField('postal', e.target.value)} placeholder="Code postal" />
               <input className={fieldCls} value={pf.city} onChange={(e) => setPfField('city', e.target.value)} placeholder="Ville" />
               <SelectMenu className={fieldCls} placeholder="Pays" value={pf.country} onChange={(v) => setPfField('country', v)} options={PAYS.map((p) => ({ value: p, label: p }))} />
-            </div>
-            <button type="button" onClick={saveAll} className="flex w-full items-center justify-center gap-2 rounded-2xl bg-primary py-3 text-base font-bold text-primary-foreground transition-transform active:scale-[0.98]">Enregistrer</button>
-          </div>
+            </div>          </div>
         )}
         </>)}
 
@@ -673,9 +673,7 @@ export default function ContactDetailPage({ params, contactId, embedded, onClose
                   </div>
                 </div>
               )
-            })()}
-            <button type="button" onClick={saveAll} className="flex w-full items-center justify-center gap-2 rounded-2xl bg-primary py-3 text-base font-bold text-primary-foreground transition-transform active:scale-[0.98]">Enregistrer</button>
-          </div>
+            })()}          </div>
         )}
       </div>
       {/* Intermédiaire d'action — Message (choix du canal) · Appel (appeler ou s'entraîner) */}
