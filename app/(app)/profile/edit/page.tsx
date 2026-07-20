@@ -115,7 +115,9 @@ function AutoTextarea({ value, onChange, placeholder, className }: { value: stri
   )
 }
 
-export default function ProfileEditPage() {
+// `embedded` : rendu dans l'onglet Profil de « Mon compte » → on masque l'en-tête + l'avatar
+// (déjà dans le header de la fiche compte) et on attache le bouton Enregistrer (plus flottant).
+export default function ProfileEditPage({ embedded }: { embedded?: boolean }) {
   const router = useRouter()
   const [form, setForm] = useState<Form>(EMPTY)
   const [loading, setLoading] = useState(true)
@@ -309,15 +311,16 @@ export default function ProfileEditPage() {
 
   return (
     <div className="mx-auto w-full max-w-2xl">
-      <SubHeader title="Profil" onBack={() => router.back()} />
+      {!embedded && <SubHeader title="Profil" onBack={() => router.back()} />}
 
       {loading ? (
         <div className="flex min-h-[60vh] items-center justify-center">
           <Loader2 className="size-6 animate-spin text-muted-foreground" />
         </div>
       ) : (
-        <div className="space-y-5 px-4 pb-28 pt-4">
-          {/* Avatar centré + nom */}
+        <div className={`space-y-5 px-4 pt-4 ${embedded ? 'pb-6' : 'pb-28'}`}>
+          {/* Avatar centré + nom — masqué en embarqué (déjà dans le header « Mon compte ») */}
+          {!embedded && (
           <div className="flex flex-col items-center gap-2.5">
             <label className="relative cursor-pointer">
               <input
@@ -348,6 +351,7 @@ export default function ProfileEditPage() {
               </button>
             )}
           </div>
+          )}
 
           {/* Complétion du profil — bandeau fin, sans carte */}
           <div className="px-1">
@@ -498,7 +502,7 @@ export default function ProfileEditPage() {
 
       {/* Bouton Enregistrer flottant (même langage que le composeur) */}
       {!loading && (
-        <div className="fixed inset-x-0 z-[48] px-4" style={{ bottom: 'max(20px, env(safe-area-inset-bottom))' }}>
+        <div className={embedded ? 'px-4 pb-2' : 'fixed inset-x-0 z-[48] px-4'} style={embedded ? undefined : { bottom: 'max(20px, env(safe-area-inset-bottom))' }}>
           <button type="button" onClick={save} disabled={saving} className="mx-auto flex w-full max-w-md items-center justify-center gap-2 rounded-full bg-primary py-3.5 text-base font-bold text-primary-foreground shadow-lg transition-transform active:scale-[0.98] disabled:opacity-60">
             {saving ? <Loader2 className="size-5 animate-spin" /> : 'Enregistrer'}
           </button>

@@ -104,8 +104,8 @@ export default function ComptePage() {
       {/* Contenu — chaque onglet rend le composant DÉJÀ existant */}
       <div className="pb-24 pt-3">
         {tab === 'apercu' && <HomeContent mantra="" />}
-        {tab === 'profil' && <ProfileEditPage />}
-        {tab === 'activite' && <ActivitiesPage />}
+        {tab === 'profil' && <ProfileEditPage embedded />}
+        {tab === 'activite' && <ActivitiesPage embedded />}
         {tab === 'abonnement' && <div className="px-4"><Summary /></div>}
         {tab === 'reglages' && <div className="space-y-5 px-4"><AccountBody compact /></div>}
       </div>

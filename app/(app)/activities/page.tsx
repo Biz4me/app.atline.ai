@@ -48,7 +48,9 @@ type Activity = {
 
 const nf = (vals: (string | undefined)[]) => vals.filter((v) => v && String(v).trim()).length
 
-export default function ActivitiesPage() {
+// `embedded` : onglet Activité de « Mon compte » → masque l'en-tête + le sélecteur d'activités
+// (déjà le switcher business du header) et attache le bouton Enregistrer.
+export default function ActivitiesPage({ embedded }: { embedded?: boolean }) {
   const router = useRouter()
   // Retour → on revient à la page précédente ET on rouvre le tiroir (on venait de « Gérer »)
   // Bascule nav messagerie : la feuille revient à la messagerie (plus jamais l'ancien tiroir)
@@ -158,14 +160,14 @@ export default function ActivitiesPage() {
 
   return (
     <div className="mx-auto w-full max-w-2xl">
-      <SubHeader title="Mon activité" onBack={back} action={
+      {!embedded && <SubHeader title="Mon activité" onBack={back} action={
         <button type="button" onClick={() => router.push('/activities/new')} aria-label="Ajouter une activité" className="flex size-9 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-sm active:scale-95 transition-transform">
           <Plus className="size-5 stroke-[2]" />
         </button>
-      } />
+      } />}
 
-      {/* Onglets d'activités — visibles dès 2 activités, max 2 par ligne */}
-      {activities.length >= 2 && (
+      {/* Onglets d'activités — masqués en embarqué (le switcher business du header s'en charge) */}
+      {!embedded && activities.length >= 2 && (
         <div className="grid grid-cols-2 gap-2 px-4 pt-3">
           {activities.map((a) => (
             <button
@@ -189,7 +191,7 @@ export default function ActivitiesPage() {
           <p className="text-base text-muted-foreground">Touche le <span className="font-semibold text-primary">+</span> en haut à droite pour en créer une.</p>
         </div>
       ) : (
-        <div className="space-y-5 px-4 pb-28 pt-4">
+        <div className={`space-y-5 px-4 pt-4 ${embedded ? 'pb-6' : 'pb-28'}`}>
           {/* Complétion de l'activité — bandeau fin, sans carte */}
           <div className="px-1">
             <p className="mb-1.5 text-base font-semibold text-foreground">Activité complétée à <span className="text-primary">{pct}%</span></p>
@@ -313,7 +315,7 @@ export default function ActivitiesPage() {
 
       {/* Bouton Enregistrer flottant — identique au profil */}
       {!loading && act && (
-        <div className="fixed inset-x-0 z-[48] px-4" style={{ bottom: 'max(20px, env(safe-area-inset-bottom))' }}>
+        <div className={embedded ? 'px-4 pb-2' : 'fixed inset-x-0 z-[48] px-4'} style={embedded ? undefined : { bottom: 'max(20px, env(safe-area-inset-bottom))' }}>
           <button type="button" onClick={save} disabled={saving} className="mx-auto flex w-full max-w-md items-center justify-center gap-2 rounded-full bg-primary py-3.5 text-base font-bold text-primary-foreground shadow-lg transition-transform active:scale-[0.98] disabled:opacity-60">
             {saving ? <Loader2 className="size-5 animate-spin" /> : 'Enregistrer'}
           </button>

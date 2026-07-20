@@ -13,7 +13,7 @@ import { cn } from '@/lib/utils'
 type AgentId = 'atlas' | 'aria' | 'nova'
 
 const AGENTS: Record<AgentId, { name: string; role: string; color: string; cta: { label: string; href: string } }> = {
-  atlas: { name: 'Atlas', role: 'Ton coach, chaque jour', color: '#F97316', cta: { label: 'Modifier mon profil', href: '/profile' } },
+  atlas: { name: 'Atlas', role: 'Ton coach, chaque jour', color: '#F97316', cta: { label: 'Ouvrir mon profil', href: '/compte?tab=profil' } },
   aria: { name: 'Aria', role: "Ton simulateur d'appels", color: '#14B8A6', cta: { label: 'Nouvelle simulation', href: '/aria' } },
   nova: { name: 'Nova', role: 'Ta community manager', color: '#8B5CF6', cta: { label: 'Ouvrir le cockpit', href: '/nova' } },
 }
