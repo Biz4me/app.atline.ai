@@ -469,9 +469,9 @@ export default function ContactDetailPage({ params, contactId, embedded, onClose
 
         {/* ═══ DÉTAILS — sous-onglets Coordonnées / Profil / Suivi ═══ */}
         {tab === 'details' && (<>
-        <div className="flex border-b border-border">
+        <div className="flex justify-between border-b border-border">
           {([['profil', 'Profil'], ['coord', 'Coordonnées'], ['contexte', 'Contexte'], ['suivi', 'Suivi']] as const).map(([sid, label]) => (
-            <button key={sid} type="button" onClick={() => setDsub(sid)} className={cn('flex-1 py-2.5 text-sm transition-colors', dsub === sid ? 'border-b-2 border-primary font-medium text-primary' : 'text-muted-foreground active:bg-muted')}>{label}</button>
+            <button key={sid} type="button" onClick={() => setDsub(sid)} className={cn('py-2.5 text-sm transition-colors', dsub === sid ? 'border-b-2 border-primary font-medium text-primary' : 'text-muted-foreground active:bg-muted')}>{label}</button>
           ))}
         </div>
 
