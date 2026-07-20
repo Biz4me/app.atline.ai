@@ -23,7 +23,7 @@ function fmtDate(s: string | null): string | null {
   return d.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })
 }
 
-function Summary() {
+export function Summary() {
   const [sub, setSub] = useState<Sub | null>(null)
   const [loading, setLoading] = useState(true)
 

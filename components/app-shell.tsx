@@ -18,7 +18,7 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   // Pages atteintes via le menu « ⋯ » → plein écran, sans bottom bar (mobile).
   // La fiche contact /contacts/[id] est plein écran (charte profil), mais PAS la liste /contacts.
-  const navHidden = ['/profile/edit', '/settings', '/abonnement', '/mon-abonnement', '/activities', '/notifications', '/nova/campagne'].some(
+  const navHidden = ['/compte', '/profile/edit', '/settings', '/abonnement', '/mon-abonnement', '/activities', '/notifications', '/nova/campagne'].some(
     (p) => pathname === p || pathname.startsWith(p + '/'),
   ) || pathname.startsWith('/contacts/')
 

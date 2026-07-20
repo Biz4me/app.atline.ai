@@ -52,7 +52,7 @@ function Row({ icon: Icon, label, href }: { icon: typeof Settings; label: string
   )
 }
 
-function AccountBody() {
+export function AccountBody() {
   const { theme, setTheme } = useTheme()
   const [me, setMe] = useState<{ photoUrl: string; firstName: string; lastName: string; email: string } | null>(null)
   useEffect(() => {

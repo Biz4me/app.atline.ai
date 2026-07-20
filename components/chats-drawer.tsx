@@ -14,15 +14,12 @@ import { cn } from '@/lib/utils'
 type Biz = { id: string; name: string; initials: string; color: string; isActive: boolean }
 type Me = { firstName?: string; lastName?: string; email?: string; photoUrl?: string | null }
 
+// Profil/Activité/Bilan/Abonnement/Réglages ont migré en ONGLETS de « Mon compte » (via l'avatar).
+// Le tiroir ne garde que les OUTILS (destinations à part entière).
 const ITEMS = [
-  { icon: UserRound, label: 'Mon profil', to: '/profile' },
-  { icon: Briefcase, label: 'Mon activité', to: '/activities' },
   { icon: Users, label: 'Contacts', to: '/contacts' },
   { icon: Calendar, label: 'Agenda', to: '/agenda' },
   { icon: BookOpen, label: 'Formation', to: '/formation' },
-  { icon: BarChart3, label: 'Mon bilan', to: '/home' },
-  { icon: CreditCard, label: 'Abonnement', to: '/mon-abonnement' },
-  { icon: Settings, label: 'Réglages', to: '/settings' },
 ]
 
 export function ChatsDrawer({ open, onClose, onBusinessChanged }: { open: boolean; onClose: () => void; onBusinessChanged?: () => void }) {
@@ -58,16 +55,18 @@ export function ChatsDrawer({ open, onClose, onBusinessChanged }: { open: boolea
     <>
       <button type="button" aria-label="Fermer" onClick={onClose} className="fixed inset-0 z-[62] bg-black/50" />
       <div className="fixed bottom-0 left-0 top-0 z-[63] flex w-[78%] max-w-xs flex-col border-r border-border bg-surface" style={{ paddingTop: 'env(safe-area-inset-top)' }}>
-        {/* Identité + activité active (switcher) */}
+        {/* Identité (tap = ouvrir « Mon compte », ta fiche à onglets) + activité active (switcher) */}
         <div className="border-b border-border px-4 pb-4 pt-6">
-          {me?.photoUrl ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={me.photoUrl} alt="" className="size-14 rounded-full object-cover" />
-          ) : (
-            <span className="grid size-14 place-items-center rounded-full bg-muted text-lg font-bold text-foreground">{initials}</span>
-          )}
-          <p className="mt-2.5 text-sm font-bold text-foreground">{[me?.firstName, me?.lastName].filter(Boolean).join(' ') || 'Mon compte'}</p>
-          {me?.email && <p className="mt-0.5 truncate text-xs text-muted-foreground">{me.email}</p>}
+          <button type="button" onClick={() => go('/compte')} className="flex w-full flex-col items-start text-left active:opacity-70">
+            {me?.photoUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={me.photoUrl} alt="" className="size-14 rounded-full object-cover" />
+            ) : (
+              <span className="grid size-14 place-items-center rounded-full bg-muted text-lg font-bold text-foreground">{initials}</span>
+            )}
+            <p className="mt-2.5 text-sm font-bold text-foreground">{[me?.firstName, me?.lastName].filter(Boolean).join(' ') || 'Mon compte'}</p>
+            {me?.email && <p className="mt-0.5 max-w-full truncate text-xs text-muted-foreground">{me.email}</p>}
+          </button>
 
           {active && (
             <div className="mt-3 overflow-hidden rounded-xl border border-border bg-background">
