@@ -373,10 +373,10 @@ export default function ContactDetailPage({ params, contactId, embedded, onClose
       </div>
 
       {/* Actions — Message / Appel / Email, toujours visibles ; chacune ouvre son intermédiaire */}
-      <div className="flex gap-2 px-4 pb-3 pt-1">
-        <button type="button" onClick={() => setSheet('message')} className="flex flex-1 flex-col items-center gap-1.5 rounded-2xl border border-border bg-surface py-3 active:bg-muted"><MessageSquare className="size-5 stroke-[1.5] text-primary" /><span className="text-xs font-medium text-foreground">Message</span></button>
-        <button type="button" onClick={() => setSheet('appel')} className="flex flex-1 flex-col items-center gap-1.5 rounded-2xl border border-border bg-surface py-3 active:bg-muted"><PhoneCall className="size-5 stroke-[1.5] text-primary" /><span className="text-xs font-medium text-foreground">Appel</span></button>
-        <button type="button" onClick={() => { if (!c.email) { toast.error('Aucun email'); return } setCompose({ channel: 'EMAIL', label: 'Email' }) }} className="flex flex-1 flex-col items-center gap-1.5 rounded-2xl border border-border bg-surface py-3 active:bg-muted"><Mail className="size-5 stroke-[1.5] text-primary" /><span className="text-xs font-medium text-foreground">Email</span></button>
+      <div className="flex gap-1 px-4 pb-3 pt-1">
+        <button type="button" onClick={() => setSheet('message')} className="flex flex-1 flex-col items-center gap-1.5 rounded-xl py-2 active:bg-muted"><span className="grid size-11 place-items-center rounded-full bg-primary/10"><MessageSquare className="size-5 stroke-[1.5] text-primary" /></span><span className="text-xs font-medium text-foreground">Message</span></button>
+        <button type="button" onClick={() => setSheet('appel')} className="flex flex-1 flex-col items-center gap-1.5 rounded-xl py-2 active:bg-muted"><span className="grid size-11 place-items-center rounded-full bg-primary/10"><PhoneCall className="size-5 stroke-[1.5] text-primary" /></span><span className="text-xs font-medium text-foreground">Appel</span></button>
+        <button type="button" onClick={() => { if (!c.email) { toast.error('Aucun email'); return } setCompose({ channel: 'EMAIL', label: 'Email' }) }} className="flex flex-1 flex-col items-center gap-1.5 rounded-xl py-2 active:bg-muted"><span className="grid size-11 place-items-center rounded-full bg-primary/10"><Mail className="size-5 stroke-[1.5] text-primary" /></span><span className="text-xs font-medium text-foreground">Email</span></button>
       </div>
 
       {/* Onglets horizontaux — Aperçu / Qualification / Détails (fini la « page bloc ») ; collés sous l'en-tête */}
@@ -426,12 +426,6 @@ export default function ContactDetailPage({ params, contactId, embedded, onClose
           </div>
         )}
 
-        {/* Planifier — RDV / relance (Message · Appel · Email sont dans l'en-tête, toujours visibles) */}
-        <div className="grid grid-cols-2 gap-2">
-          <button type="button" onClick={() => setSchedule('rdv')} className="flex flex-col items-center gap-1.5 rounded-2xl border border-border bg-surface py-3 active:bg-muted"><CalendarPlus className="size-5 stroke-[1.5] text-primary" /><span className="text-xs font-medium text-foreground">RDV</span></button>
-          <button type="button" onClick={() => setSchedule('relance')} className="flex flex-col items-center gap-1.5 rounded-2xl border border-border bg-surface py-3 active:bg-muted"><Bell className="size-5 stroke-[1.5] text-primary" /><span className="text-xs font-medium text-foreground">Relance</span></button>
-        </div>
-
         {/* Ce qu'Atlas retient — bloc mémoire auto-édité (MemGPT-style), éditable/corrigeable */}
         <div className="rounded-2xl border border-border bg-surface p-4">
           <div className="mb-1 flex items-center justify-between gap-2">
@@ -451,24 +445,6 @@ export default function ContactDetailPage({ params, contactId, embedded, onClose
           )}
         </div>
 
-        {/* Suivi (Source/Tags) retiré : Source → snapshot Atlas · Dernier contact → signal du haut · Tags → coupés */}
-
-        {/* Conversions — liens discrets (secondaire), alignés, sans pastille flottante */}
-        {(isProspect || isClient) && (
-          <div className="flex flex-wrap items-center gap-1">
-            <span className="mr-1 text-xs text-muted-foreground">Convertir en</span>
-            {isProspect && (
-              <button type="button" onClick={() => save({ convert: 'client' }, 'Converti en client')} className="rounded-md px-2 py-0.5 text-sm font-semibold text-primary active:bg-primary/10">client</button>
-            )}
-            {isProspect && <span className="text-xs text-muted-foreground">·</span>}
-            <button type="button" onClick={() => save({ convert: 'partenaire' }, 'Converti en partenaire')} className="rounded-md px-2 py-0.5 text-sm font-semibold text-primary active:bg-primary/10">partenaire</button>
-          </div>
-        )}
-        {/* Signal — dernier contact (déclencheur de relance) ; exposition remontée dans les pastilles */}
-        <p className="text-xs text-muted-foreground">
-          dernier contact : <span className="font-medium text-foreground">{c.lastContact ? new Date(c.lastContact).toLocaleDateString('fr-FR') : 'jamais'}</span>
-        </p>
-
         </>)}
 
         {/* ═══ DÉTAILS — sous-onglets Coordonnées / Profil / Suivi ═══ */}
@@ -485,6 +461,24 @@ export default function ContactDetailPage({ params, contactId, embedded, onClose
           <div className="rounded-2xl border border-border bg-surface p-4">
             <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Partenaire</p>
             <p className="mt-1 text-lg font-medium text-foreground lg:text-sm">Depuis le {new Date(c.signedAt).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
+          </div>
+        )}
+        {/* Dernier contact + planifier + convertir — descendus d'Aperçu pour l'alléger */}
+        <p className="text-xs text-muted-foreground">
+          dernier contact : <span className="font-medium text-foreground">{c.lastContact ? new Date(c.lastContact).toLocaleDateString('fr-FR') : 'jamais'}</span>
+        </p>
+        <div className="grid grid-cols-2 gap-1">
+          <button type="button" onClick={() => setSchedule('rdv')} className="flex flex-col items-center gap-1.5 rounded-xl py-2 active:bg-muted"><span className="grid size-11 place-items-center rounded-full bg-primary/10"><CalendarPlus className="size-5 stroke-[1.5] text-primary" /></span><span className="text-xs font-medium text-foreground">RDV</span></button>
+          <button type="button" onClick={() => setSchedule('relance')} className="flex flex-col items-center gap-1.5 rounded-xl py-2 active:bg-muted"><span className="grid size-11 place-items-center rounded-full bg-primary/10"><Bell className="size-5 stroke-[1.5] text-primary" /></span><span className="text-xs font-medium text-foreground">Relance</span></button>
+        </div>
+        {(isProspect || isClient) && (
+          <div className="flex flex-wrap items-center gap-1">
+            <span className="mr-1 text-xs text-muted-foreground">Convertir en</span>
+            {isProspect && (
+              <button type="button" onClick={() => save({ convert: 'client' }, 'Converti en client')} className="rounded-md px-2 py-0.5 text-sm font-semibold text-primary active:bg-primary/10">client</button>
+            )}
+            {isProspect && <span className="text-xs text-muted-foreground">·</span>}
+            <button type="button" onClick={() => save({ convert: 'partenaire' }, 'Converti en partenaire')} className="rounded-md px-2 py-0.5 text-sm font-semibold text-primary active:bg-primary/10">partenaire</button>
           </div>
         )}
         {/* ÉCHANGES AVEC ATLAS — conversations passées sur ce contact (rouvrir dans le composeur) */}
