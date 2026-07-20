@@ -1,6 +1,6 @@
 'use client'
 
-import { use, useEffect, useState, useCallback } from 'react'
+import { use, useEffect, useState, useCallback, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import {
   Pencil, Mail, Tag,
@@ -299,6 +299,7 @@ export default function ContactDetailPage({ params, contactId, embedded, onClose
     const res = await fetch(`/api/contacts/${id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(patch) })
     if (res.ok) { await load(); if (msg) toast.success(msg) }
     else toast.error('Échec de la mise à jour')
+    return res.ok
   }, [id, load])
 
   const logAction = useCallback(async (type: string, extra?: Record<string, unknown>) => {
@@ -321,7 +322,8 @@ export default function ContactDetailPage({ params, contactId, embedded, onClose
     const [y, m, d] = (contact.birthDate || '').split('-')
     setPfDob({ y: y ?? '', m: m ?? '', d: d ?? '' })
     setDirty(false)
-  }, [contact])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [contact?.id])
   const setPfField = (k: keyof typeof pf, v: string) => { setDirty(true); setPf((s) => ({ ...s, [k]: v })) }
   // Qualification (DISC + proximité + signaux partenaire) — 3 blocs visuels
   const [qual, setQual] = useState({ personality: '', market: '', situation: '', interests: '', motivation: '', insatisfaction: '', reseau: '', ouverture: '' })
@@ -334,7 +336,8 @@ export default function ContactDetailPage({ params, contactId, embedded, onClose
       insatisfaction: q.insatisfaction ?? '', reseau: q.reseau ?? '', ouverture: q.ouverture ?? '',
     })
     setDirty(false)
-  }, [contact])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [contact?.id])
   const setQ = (k: keyof typeof qual, v: string) => { setDirty(true); setQual((s) => ({ ...s, [k]: v })) }
   const setPfDobPart = (patch: Partial<{ d: string; m: string; y: string }>) => {
     setDirty(true)
@@ -344,6 +347,15 @@ export default function ContactDetailPage({ params, contactId, embedded, onClose
     setPf((s) => ({ ...s, birthDate: next.y && next.m && next.d ? `${next.y}-${next.m}-${next.d}` : '' }))
   }
   const pfDobDays = Array.from({ length: daysInMonth(pfDob.m, pfDob.y) }, (_, i) => ({ value: String(i + 1).padStart(2, '0'), label: String(i + 1) }))
+  // Corps de sauvegarde de la fiche — réutilisé par le bouton d'en-tête ET le filet de sécurité.
+  const patchBody = (): Record<string, unknown> => ({ ...pf, personality: qual.personality || null, market: qual.market || null, qualification: { situation: qual.situation, interests: qual.interests, motivation: qual.motivation, insatisfaction: qual.insatisfaction, reseau: qual.reseau, ouverture: qual.ouverture } })
+  // Filet de sécurité : quitter (croix, changement de contact, navigation) avec des modifs non
+  // enregistrées → on les sauve en arrière-plan (keepalive). Plus de perte silencieuse.
+  const leaveRef = useRef({ dirty: false, body: {} as Record<string, unknown> })
+  leaveRef.current = { dirty, body: patchBody() }
+  useEffect(() => () => {
+    if (leaveRef.current.dirty) fetch(`/api/contacts/${id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(leaveRef.current.body), keepalive: true }).catch(() => {})
+  }, [id])
 
   if (loading) return <div className="flex min-h-dvh items-center justify-center text-sm text-muted-foreground">Chargement…</div>
   if (!contact) return <div className="flex min-h-dvh flex-col items-center justify-center gap-3"><p className="text-sm text-muted-foreground">Contact introuvable.</p><button onClick={() => (embedded ? onClose?.() : router.back())} className="text-sm font-bold text-primary">Retour</button></div>
@@ -360,7 +372,7 @@ export default function ContactDetailPage({ params, contactId, embedded, onClose
   const oppCurrent = isPartner ? c.partnerStage : c.prospectStage
   // Pastilles de statut + compteur « Détails »
   // Un seul save (toute la fiche) réutilisé par les onglets éditables — plus de code copié 3×.
-  const saveAll = () => save({ ...pf, personality: qual.personality || null, market: qual.market || null, qualification: { situation: qual.situation, interests: qual.interests, motivation: qual.motivation, insatisfaction: qual.insatisfaction, reseau: qual.reseau, ouverture: qual.ouverture } }, 'Fiche enregistrée')
+  const saveAll = async () => { if (await save(patchBody(), 'Fiche enregistrée')) setDirty(false) }
   // « À venir » = uniquement le futur : RDV pas encore passés, relances dues aujourd'hui ou après (pas de date passée).
   const nowMs = Date.now()
   const startOfToday = new Date(); startOfToday.setHours(0, 0, 0, 0)
@@ -655,7 +667,8 @@ export default function ContactDetailPage({ params, contactId, embedded, onClose
               const potLine = potFilled >= 3 ? "Vise clairement l'opportunité, pas juste le produit." : potFilled === 2 ? "Teste son intérêt pour l'opportunité, sans forcer." : 'Creuse ses besoins avant de qualifier (Détails › Contexte).'
               const prenom = pf.firstName || c.name || 'Ce contact'
               const angle = [perso && (info ? info.archetype : perso.label), marketLabel && `marché ${marketLabel}`].filter(Boolean).join(', ')
-              if (!perso && !marketLabel && potFilled === 0) return (
+              const hasContext = !!(qual.situation?.trim() || qual.interests?.trim())
+              if (!perso && !marketLabel && potFilled === 0 && !hasContext) return (
                 <div className="rounded-2xl border border-dashed border-border p-5 text-center">
                   <p className="text-sm text-muted-foreground">Je connais encore mal {prenom}. Renseigne sa couleur, son marché et ses signaux dans <span className="font-medium text-foreground">Détails › Contexte</span> — je te donne l&apos;angle ici.</p>
                   <button type="button" onClick={() => { setTab('details'); setDsub('contexte') }} className="mt-3 text-sm font-semibold text-primary">Remplir le contexte</button>
@@ -678,6 +691,13 @@ export default function ContactDetailPage({ params, contactId, embedded, onClose
                     </div>
                   ) : (
                     <button type="button" onClick={() => { setTab('details'); setDsub('contexte') }} className="rounded-2xl border border-dashed border-border p-4 text-left text-sm text-muted-foreground">Fais son test couleur dans <span className="font-medium text-foreground">Contexte</span> pour savoir comment lui parler.</button>
+                  )}
+                  {hasContext && (
+                    <div className="rounded-2xl border border-border bg-surface p-4">
+                      <p className="mb-1 text-xs font-bold uppercase tracking-widest text-muted-foreground">Son contexte</p>
+                      {qual.situation?.trim() && <p className="text-lg leading-relaxed text-foreground lg:text-sm">{qual.situation}</p>}
+                      {qual.interests?.trim() && <p className="mt-1 text-sm text-muted-foreground">Centres d&apos;intérêt : {qual.interests}</p>}
+                    </div>
                   )}
                 </>
               )
