@@ -107,7 +107,7 @@ export default function ComptePage() {
         {tab === 'profil' && <ProfileEditPage />}
         {tab === 'activite' && <ActivitiesPage />}
         {tab === 'abonnement' && <div className="px-4"><Summary /></div>}
-        {tab === 'reglages' && <div className="space-y-5 px-4"><AccountBody /></div>}
+        {tab === 'reglages' && <div className="space-y-5 px-4"><AccountBody compact /></div>}
       </div>
     </div>
   )

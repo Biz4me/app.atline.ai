@@ -52,7 +52,9 @@ function Row({ icon: Icon, label, href }: { icon: typeof Settings; label: string
   )
 }
 
-export function AccountBody() {
+// `compact` : rendu dans l'onglet Réglages de « Mon compte » → on masque ce qui est déjà un onglet
+// (profil, abonnement, mes activités) pour ne garder que les VRAIS réglages. /settings garde tout.
+export function AccountBody({ compact = false }: { compact?: boolean }) {
   const { theme, setTheme } = useTheme()
   const [me, setMe] = useState<{ photoUrl: string; firstName: string; lastName: string; email: string } | null>(null)
   useEffect(() => {
@@ -62,27 +64,31 @@ export function AccountBody() {
 
   return (
     <>
-      {/* Profil en tête — 1 tap, plus enterré sous un sommaire */}
-      <Link href="/profile/edit" className="flex items-center gap-3.5 px-1">
-        <span className="size-14 shrink-0 overflow-hidden rounded-full">
-          {me?.photoUrl ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={me.photoUrl} alt="" className="size-full object-cover" />
-          ) : (
-            <span className="grid size-full place-items-center bg-[#3B82F6] text-lg font-semibold text-white">{initials || 'A'}</span>
-          )}
-        </span>
-        <span className="min-w-0 flex-1">
-          <span className="block truncate text-lg font-bold text-foreground">{me ? `${me.firstName} ${me.lastName}`.trim() : '…'}</span>
-          <span className="block truncate text-xs text-muted-foreground">Voir et modifier mon profil</span>
-        </span>
-        <ChevronRight className="size-4 shrink-0 text-muted-foreground" />
-      </Link>
+      {!compact && (
+        <>
+          {/* Profil en tête — 1 tap, plus enterré sous un sommaire */}
+          <Link href="/profile/edit" className="flex items-center gap-3.5 px-1">
+            <span className="size-14 shrink-0 overflow-hidden rounded-full">
+              {me?.photoUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={me.photoUrl} alt="" className="size-full object-cover" />
+              ) : (
+                <span className="grid size-full place-items-center bg-[#3B82F6] text-lg font-semibold text-white">{initials || 'A'}</span>
+              )}
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="block truncate text-lg font-bold text-foreground">{me ? `${me.firstName} ${me.lastName}`.trim() : '…'}</span>
+              <span className="block truncate text-xs text-muted-foreground">Voir et modifier mon profil</span>
+            </span>
+            <ChevronRight className="size-4 shrink-0 text-muted-foreground" />
+          </Link>
 
-      {/* Abonnement — une seule entrée (résumé + gestion) */}
-      <Card className="p-0">
-        <Row icon={CreditCard} label="Mon abonnement" href="/mon-abonnement" />
-      </Card>
+          {/* Abonnement — une seule entrée (résumé + gestion) */}
+          <Card className="p-0">
+            <Row icon={CreditCard} label="Mon abonnement" href="/mon-abonnement" />
+          </Card>
+        </>
+      )}
 
       {/* Thème — relogé ici depuis l'ancien top bar desktop */}
       <Card className="p-0">
@@ -96,14 +102,19 @@ export function AccountBody() {
         </button>
       </Card>
 
-      {GROUPS.map((g) => (
-        <section key={g.title}>
-          <h2 className="mb-2 px-1 text-base font-semibold text-muted-foreground lg:text-xs lg:uppercase lg:tracking-wide">{g.title}</h2>
-          <Card className="divide-y divide-border p-0">
-            {g.items.map((it) => <Row key={it.href} {...it} />)}
-          </Card>
-        </section>
-      ))}
+      {GROUPS.map((g) => {
+        // En compact, on retire « Mes activités MLM » (déjà l'onglet Activité).
+        const items = g.items.filter((it) => !(compact && it.href === '/activities'))
+        if (!items.length) return null
+        return (
+          <section key={g.title}>
+            <h2 className="mb-2 px-1 text-base font-semibold text-muted-foreground lg:text-xs lg:uppercase lg:tracking-wide">{g.title}</h2>
+            <Card className="divide-y divide-border p-0">
+              {items.map((it) => <Row key={it.href} {...it} />)}
+            </Card>
+          </section>
+        )
+      })}
 
       <Card className="p-0">
         <button
