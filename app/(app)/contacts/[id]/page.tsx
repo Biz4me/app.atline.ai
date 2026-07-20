@@ -249,7 +249,7 @@ export default function ContactDetailPage({ params, contactId, embedded, onClose
   const [loading, setLoading] = useState(true)
   const [evalOpen, setEvalOpen] = useState(false)
   const [tab, setTab] = useState<'apercu' | 'qualif' | 'details'>('apercu') // onglets horizontaux
-  const [dsub, setDsub] = useState<'coord' | 'profil' | 'suivi'>('coord')   // sous-onglets de Détails
+  const [dsub, setDsub] = useState<'coord' | 'profil' | 'suivi'>('profil')   // sous-onglets de Détails (Profil en tête)
   const [memDraft, setMemDraft] = useState('')
   const [memEditing, setMemEditing] = useState(false)
   const [contactConvs, setContactConvs] = useState<{ id: string; title: string | null; updatedAt: string }[]>([])
@@ -471,7 +471,7 @@ export default function ContactDetailPage({ params, contactId, embedded, onClose
         {/* ═══ DÉTAILS — sous-onglets Coordonnées / Profil / Suivi ═══ */}
         {tab === 'details' && (<>
         <div className="flex gap-2">
-          {([['coord', 'Coordonnées'], ['profil', 'Profil'], ['suivi', 'Suivi']] as const).map(([sid, label]) => (
+          {([['profil', 'Profil'], ['coord', 'Coordonnées'], ['suivi', 'Suivi']] as const).map(([sid, label]) => (
             <button key={sid} type="button" onClick={() => setDsub(sid)} className={cn('rounded-full border px-3.5 py-1.5 text-sm transition-colors', dsub === sid ? 'border-border bg-surface font-medium text-foreground' : 'border-transparent text-muted-foreground active:bg-muted')}>{label}</button>
           ))}
         </div>
