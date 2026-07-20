@@ -153,7 +153,7 @@ function tally(ans: Color[]): Color[] {
   return (Object.keys(c) as Color[]).filter((k) => c[k] === max)
 }
 
-export function PersonalityQuiz({ onClose, onResult, firstName = '', gender = '', count, subjectName }: { onClose: () => void; onResult: (color: string) => void; firstName?: string; gender?: string; count?: number; subjectName?: string }) {
+export function PersonalityQuiz({ onClose, onResult, firstName = '', gender = '', count, subjectName, inline }: { onClose: () => void; onResult: (color: string) => void; firstName?: string; gender?: string; count?: number; subjectName?: string; inline?: boolean }) {
   const arche = (c: Color) => (gender === 'F' ? PROFILES[c].archetype.f : gender === 'N' ? PROFILES[c].archetype.n : PROFILES[c].archetype.m)
   // Options mélangées une fois (réduit le biais de position) — count limite le nombre de questions (ex. 3 pour un contact)
   const questions = useMemo(
@@ -236,7 +236,12 @@ export function PersonalityQuiz({ onClose, onResult, firstName = '', gender = ''
   const progress = phase === 'quiz' ? (step + 1) / questions.length : 1
 
   return (
-    <div className="fixed inset-0 z-[80] mx-auto flex max-w-[480px] flex-col bg-background animate-slide-in-right lg:max-w-none" style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}>
+    <div
+      className={inline
+        ? 'flex flex-col overflow-hidden rounded-2xl border border-border bg-surface'
+        : 'fixed inset-0 z-[80] mx-auto flex max-w-[480px] flex-col bg-background animate-slide-in-right lg:max-w-none'}
+      style={inline ? undefined : { paddingBottom: 'env(safe-area-inset-bottom)' }}
+    >
       {/* Header + progression */}
       <div className="shrink-0" style={{ paddingTop: 'max(0.5rem, env(safe-area-inset-top))' }}>
         <div className="flex items-center justify-between px-2 py-2">

@@ -1,7 +1,6 @@
 'use client'
 
 import { use, useEffect, useState, useCallback } from 'react'
-import { createPortal } from 'react-dom'
 import { useRouter } from 'next/navigation'
 import {
   Pencil, Mail, Tag,
@@ -636,6 +635,9 @@ export default function ContactDetailPage({ params, contactId, embedded, onClose
             {/* Bloc 1 — Comment l'aborder (DISC + proximité) */}
             <div>
               <p className="mb-1.5 text-sm font-semibold text-foreground">Comment l&apos;aborder</p>
+              {evalOpen ? (
+                <PersonalityQuiz inline subjectName={pf.firstName || 'Ce contact'} gender={pf.gender} count={3} onClose={() => setEvalOpen(false)} onResult={(color) => { setQ('personality', color); setEvalOpen(false) }} />
+              ) : (<>
               {qual.personality && PERSO[qual.personality] ? (
                 <div className="overflow-hidden rounded-xl border border-border bg-background">
                   <div className="flex items-center gap-2.5 px-4 py-3">
@@ -664,6 +666,7 @@ export default function ContactDetailPage({ params, contactId, embedded, onClose
               <div className="mt-2">
                 <SelectMenu className={fieldCls} placeholder="Marché d'origine (proximité)" value={qual.market} onChange={(v) => setQ('market', v)} options={[{ value: 'CHAUD', label: 'Marché chaud' }, { value: 'TIEDE', label: 'Marché tiède' }, { value: 'FROID', label: 'Marché froid' }]} />
               </div>
+              </>)}
             </div>
             {/* Bloc 2 — Le contexte */}
             <div className="border-t border-border pt-3">
@@ -705,12 +708,6 @@ export default function ContactDetailPage({ params, contactId, embedded, onClose
         </div>
         )}
       </div>
-      {/* PORTAIL vers document.body : le quiz est `fixed inset-0` et doit couvrir TOUT l'écran ; or la fiche
-          s'ouvre en feuille avec `transform` (qui piège les `fixed`). Le portail le fait échapper au panneau. */}
-      {evalOpen && typeof document !== 'undefined' && createPortal(
-        <PersonalityQuiz subjectName={pf.firstName || 'Ce contact'} gender={pf.gender} count={3} onClose={() => setEvalOpen(false)} onResult={(color) => { setQ('personality', color); setEvalOpen(false) }} />,
-        document.body,
-      )}
       {schedule && <ScheduleSheet mode={schedule} contactId={id} onClose={() => setSchedule(null)} onDone={load} />}
       {compose && <ComposeSheet contactId={id} channel={compose.channel} label={compose.label} phone={c.phone} email={c.email} autoDraft={compose.auto}
         onClose={() => setCompose(null)}
