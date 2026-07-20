@@ -198,7 +198,7 @@ export function ChatsHome() {
       {fabOpen && (
         <>
           <button type="button" aria-label="Fermer" onClick={() => setFabOpen(false)} className="fixed inset-0 z-[45] bg-black/40" />
-          <div className="fixed bottom-24 right-5 z-[46] w-60 overflow-hidden rounded-2xl border border-border bg-surface shadow-[0_16px_40px_rgba(0,0,0,.45)] lg:right-auto lg:left-16">
+          <div className="fixed bottom-24 right-5 z-[46] w-60 overflow-hidden rounded-2xl border border-border bg-surface shadow-[0_16px_40px_rgba(0,0,0,.45)] md:right-auto md:left-16">
             <button type="button" onClick={() => { setFabOpen(false); setPickerQ(''); setPickerOpen(true) }} className="flex w-full items-center gap-3 border-b border-border px-4 py-3.5 text-sm font-medium text-foreground active:bg-muted">
               <MessageSquarePlus className="size-4.5 shrink-0 stroke-[1.5] text-primary" /> Nouveau message
             </button>
@@ -208,13 +208,13 @@ export function ChatsHome() {
           </div>
         </>
       )}
-      <button type="button" aria-label={fabOpen ? 'Fermer' : 'Créer'} onClick={() => setFabOpen((o) => !o)} className={cn('fixed bottom-6 right-5 z-[46] grid size-14 place-items-center rounded-full shadow-[0_8px_24px_rgba(249,115,22,.35)] transition-transform active:scale-95 lg:right-auto lg:left-[272px]', fabOpen ? 'bg-muted text-foreground' : 'bg-primary text-primary-foreground')}>
+      <button type="button" aria-label={fabOpen ? 'Fermer' : 'Créer'} onClick={() => setFabOpen((o) => !o)} className={cn('fixed bottom-6 right-5 z-[46] grid size-14 place-items-center rounded-full shadow-[0_8px_24px_rgba(249,115,22,.35)] transition-transform active:scale-95 md:right-auto md:left-[272px]', fabOpen ? 'bg-muted text-foreground' : 'bg-primary text-primary-foreground')}>
         {fabOpen ? <X className="size-5 stroke-[1.5]" /> : <Pencil className="size-5 stroke-[1.5]" />}
       </button>
 
       {/* Picker « Nouveau message » : choisir AVEC QUI ouvrir le fil — trié par suivi à faire */}
       {pickerOpen && (
-        <div className="fixed inset-0 z-[60] mx-auto flex w-full max-w-2xl flex-col bg-background lg:mx-0 lg:w-[340px] lg:max-w-none lg:border-r lg:border-border">
+        <div className="fixed inset-0 z-[60] mx-auto flex w-full max-w-2xl flex-col bg-background md:mx-0 md:w-[340px] md:max-w-none md:border-r md:border-border">
           <div className="flex items-center gap-2.5 px-4 py-2.5" style={{ paddingTop: 'max(0.625rem, env(safe-area-inset-top))' }}>
             <button type="button" aria-label="Retour" onClick={() => setPickerOpen(false)} className="flex size-9 shrink-0 items-center justify-center rounded-full text-muted-foreground active:bg-muted">
               <ChevronLeft className="size-5 stroke-[1.5]" />
