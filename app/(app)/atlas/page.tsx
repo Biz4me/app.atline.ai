@@ -966,7 +966,7 @@ TECHNIQUE (invisible pour moi, ne l'explique jamais)${NB}: quand tu as balayé l
   }, [loadingConv, c])
 
   return (
-    <div className="flex h-[calc(100dvh-60px)] overflow-hidden lg:h-dvh">
+    <div className="flex h-[calc(100dvh-60px)] overflow-hidden md:h-dvh">
 
       {/* ── Zone principale : chat ── (masquée en 2 panneaux quand le rail est ouvert, cf. FilShell) */}
       <div className={cn('flex flex-1 flex-col min-h-0 min-w-0', infoOpen && CENTER_HIDDEN_WHEN_OPEN)}>
@@ -977,7 +977,7 @@ TECHNIQUE (invisible pour moi, ne l'explique jamais)${NB}: quand tu as balayé l
             <FilSearchRow s={filSearch} />
           ) : (
             <div className="flex items-center gap-2.5 px-3 py-2" style={{ paddingTop: 'max(0.5rem, env(safe-area-inset-top))' }}>
-              <button type="button" aria-label="Retour aux messages" onClick={() => router.push('/chats')} className="flex size-9 shrink-0 items-center justify-center rounded-full text-muted-foreground active:bg-muted lg:hidden">
+              <button type="button" aria-label="Retour aux messages" onClick={() => router.push('/chats')} className="flex size-9 shrink-0 items-center justify-center rounded-full text-muted-foreground active:bg-muted md:hidden">
                 <ChevronLeftIcon className="size-5 stroke-[1.5]" />
               </button>
               <button type="button" onClick={openInfo} className="flex min-w-0 flex-1 items-center gap-2.5 text-left">

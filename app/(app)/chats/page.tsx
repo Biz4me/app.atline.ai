@@ -9,10 +9,10 @@ import { ChatsHome } from '@/components/chats-home'
 export default function ChatsPage() {
   return (
     <>
-      <div className="lg:hidden">
+      <div className="md:hidden">
         <ChatsHome />
       </div>
-      <div className="hidden h-dvh lg:grid place-items-center">
+      <div className="hidden h-dvh md:grid place-items-center">
         <div className="flex flex-col items-center gap-3 text-center">
           <span className="grid size-14 place-items-center rounded-full bg-surface text-muted-foreground">
             <MessageSquare className="size-6 stroke-[1.5]" />

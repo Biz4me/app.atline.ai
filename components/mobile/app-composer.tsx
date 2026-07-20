@@ -138,17 +138,17 @@ export function AppComposer({
 
   return (
     <div ref={rootRef} className={desktop ? 'shrink-0' : 'contents'}>
-      {/* MOBILE — flottant fixe */}
+      {/* MOBILE — flottant fixe. Bascule à `md` quand `desktop` (fils messagerie : S1 dès md) ; sinon `lg`. */}
       <div
-        className="lg:hidden fixed inset-x-0 z-[48] px-4"
+        className={cn(desktop ? 'md:hidden' : 'lg:hidden', 'fixed inset-x-0 z-[48] px-4')}
         style={{ bottom: 'max(20px, env(safe-area-inset-bottom))' }}
       >
         {bar('mobile')}
         {children}
       </div>
-      {/* DESKTOP — attaché en pied de colonne (option desktop) */}
+      {/* DESKTOP — attaché en pied de colonne (option desktop), dès md pour coller au palier tablette */}
       {desktop && (
-        <div className="hidden lg:block px-4 py-3 lg:px-6">
+        <div className="hidden md:block px-4 py-3 lg:px-6">
           {bar('desktop')}
         </div>
       )}

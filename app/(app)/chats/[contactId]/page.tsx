@@ -238,7 +238,7 @@ export default function ContactThreadPage({ params }: { params: Promise<{ contac
           <FilSearchRow s={filSearch} />
         ) : (
           <div className="flex items-center gap-2.5 px-3 py-2" style={{ paddingTop: 'max(0.5rem, env(safe-area-inset-top))' }}>
-            <button type="button" aria-label="Retour" onClick={() => router.push('/chats')} className="flex size-9 shrink-0 items-center justify-center rounded-full text-muted-foreground active:bg-muted lg:hidden">
+            <button type="button" aria-label="Retour" onClick={() => router.push('/chats')} className="flex size-9 shrink-0 items-center justify-center rounded-full text-muted-foreground active:bg-muted md:hidden">
               <ChevronLeft className="size-5 stroke-[1.5]" />
             </button>
             <button type="button" onClick={openInfo} className="flex min-w-0 flex-1 items-center gap-2.5 text-left">

@@ -165,7 +165,7 @@ export function AgentPanel({ agent, onClose }: { agent: AgentId; onClose: () => 
   }, [agent])
 
   return (
-    <div className="flex w-full flex-col bg-background">
+    <div className="mx-auto flex w-full max-w-md flex-col bg-background">
       {/* Topbar — croix à gauche, nom centré (même format que la fiche contact) */}
       <div className="sticky top-0 z-30 flex items-center gap-2 bg-background/90 px-4 py-3 backdrop-blur" style={{ paddingTop: 'max(0.75rem, env(safe-area-inset-top))' }}>
         <button type="button" onClick={onClose} aria-label="Fermer" className="-ml-1 flex size-9 items-center justify-center rounded-full text-muted-foreground active:bg-muted"><X className="size-5 stroke-[1.5]" /></button>

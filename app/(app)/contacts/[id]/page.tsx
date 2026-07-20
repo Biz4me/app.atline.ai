@@ -382,7 +382,7 @@ export default function ContactDetailPage({ params, contactId, embedded, onClose
   const upRelances = relances.filter((r) => new Date(r.dueAt).getTime() >= startOfToday.getTime())
 
   return (
-    <div className={cn('flex w-full flex-col bg-background', embedded ? '' : 'mx-auto min-h-dvh max-w-2xl')}>
+    <div className={cn('flex w-full flex-col bg-background', embedded ? 'mx-auto max-w-md' : 'mx-auto min-h-dvh max-w-2xl')}>
       {/* Topbar — flèche retour à gauche : la fiche est l'« info du contact », on revient à SA conversation */}
       <div className="sticky top-0 z-30 flex items-center gap-2 bg-background/90 px-4 py-3 backdrop-blur" style={{ paddingTop: 'max(0.75rem, env(safe-area-inset-top))' }}>
         {embedded ? (
