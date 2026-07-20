@@ -250,8 +250,10 @@ function ComposeSheet({ contactId, channel, label, phone, email, autoDraft, onCl
 }
 
 /* ── Page ──────────────────────────────────────────────────────── */
-export default function ContactDetailPage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = use(params)
+// La fiche vit à deux endroits : sa route pleine (`params`) ET embarquée dans le fil du contact
+// (panneau droit façon Telegram — `contactId` + `embedded` + `onClose`, pas de topbar/composeur propres).
+export default function ContactDetailPage({ params, contactId, embedded, onClose }: { params?: Promise<{ id: string }>; contactId?: string; embedded?: boolean; onClose?: () => void }) {
+  const id = contactId ?? use(params!).id
   const router = useRouter()
   const [contact, setContact] = useState<Contact | null>(null)
   const [loading, setLoading] = useState(true)
@@ -347,7 +349,7 @@ export default function ContactDetailPage({ params }: { params: Promise<{ id: st
   const pfNf = (vals: string[]) => vals.filter((v) => v && String(v).trim()).length
 
   if (loading) return <div className="flex min-h-dvh items-center justify-center text-sm text-muted-foreground">Chargement…</div>
-  if (!contact) return <div className="flex min-h-dvh flex-col items-center justify-center gap-3"><p className="text-sm text-muted-foreground">Contact introuvable.</p><button onClick={() => router.back()} className="text-sm font-bold text-primary">Retour</button></div>
+  if (!contact) return <div className="flex min-h-dvh flex-col items-center justify-center gap-3"><p className="text-sm text-muted-foreground">Contact introuvable.</p><button onClick={() => (embedded ? onClose?.() : router.back())} className="text-sm font-bold text-primary">Retour</button></div>
 
   const c = contact
   const perso = c.personality ? PERSO[c.personality] : null
@@ -365,10 +367,14 @@ export default function ContactDetailPage({ params }: { params: Promise<{ id: st
   const detailsFilled = pfNf([pf.firstName, pf.lastName, pf.gender, pf.birthDate, pf.profession, pf.education]) + pfNf([pf.phone, pf.email, pf.address, pf.postal, pf.city, pf.country]) + [qual.personality, qual.market, qual.situation, qual.interests, qual.motivation, qual.insatisfaction, qual.reseau, qual.ouverture].filter((v) => v && String(v).trim()).length
 
   return (
-    <div className="mx-auto flex min-h-dvh w-full max-w-2xl flex-col bg-background">
+    <div className={cn('flex w-full flex-col bg-background', embedded ? '' : 'mx-auto min-h-dvh max-w-2xl')}>
       {/* Topbar — flèche retour à gauche : la fiche est l'« info du contact », on revient à SA conversation */}
       <div className="sticky top-0 z-30 flex items-center gap-2 bg-background/90 px-4 py-3 backdrop-blur" style={{ paddingTop: 'max(0.75rem, env(safe-area-inset-top))' }}>
-        <button type="button" onClick={() => router.push(`/chats/${id}`)} aria-label="Retour à la conversation" className="-ml-1 flex size-9 items-center justify-center rounded-full text-muted-foreground active:bg-muted"><ChevronLeft className="size-5 stroke-[1.5]" /></button>
+        {embedded ? (
+          <button type="button" onClick={onClose} aria-label="Fermer" className="-ml-1 flex size-9 items-center justify-center rounded-full text-muted-foreground active:bg-muted"><X className="size-5 stroke-[1.5]" /></button>
+        ) : (
+          <button type="button" onClick={() => router.push(`/chats/${id}`)} aria-label="Retour à la conversation" className="-ml-1 flex size-9 items-center justify-center rounded-full text-muted-foreground active:bg-muted"><ChevronLeft className="size-5 stroke-[1.5]" /></button>
+        )}
         <h1 className="flex-1 text-center text-lg font-semibold text-foreground">{KIND_LABEL[c.kind]}</h1>
         <div className="size-9" />
       </div>
@@ -697,7 +703,7 @@ export default function ContactDetailPage({ params }: { params: Promise<{ id: st
       )}
 
       {/* Composeur Atlas scopé sur ce contact (Phase B) */}
-      <ContactComposer contactId={id} contactName={c.name || pf.firstName} loadConversationId={openConvId} onLoaded={clearOpenConv} onConversationsChanged={refreshConvs} />
+      {!embedded && <ContactComposer contactId={id} contactName={c.name || pf.firstName} loadConversationId={openConvId} onLoaded={clearOpenConv} onConversationsChanged={refreshConvs} />}
     </div>
   )
 }

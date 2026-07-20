@@ -8,6 +8,7 @@ import { AppComposer } from '@/components/mobile/app-composer'
 import { AtlasDraftCard, ChatChoices } from '@/components/atlas-plan-card'
 import { useFilSearch, FilSearchRow } from '@/components/fil-search'
 import { AtlasActionCard, type AtlasAction } from '@/components/atlas-action-card'
+import ContactFiche from '@/app/(app)/contacts/[id]/page'
 
 // ═══ NAV MESSAGERIE T5 — le fil contact ═══
 // Ici on parle à ATLAS, À PROPOS du contact (jamais au contact : ses vrais messages
@@ -38,6 +39,7 @@ export default function ContactThreadPage({ params }: { params: Promise<{ contac
   const [input, setInput] = useState('')
   const [streaming, setStreaming] = useState(false)
   const [loading, setLoading] = useState(true)
+  const [infoOpen, setInfoOpen] = useState(false) // fiche en panneau droit (desktop, façon Telegram)
   const convRef = useRef<string | null>(null)
   const endRef = useRef<HTMLDivElement>(null)
   const initialScrolled = useRef(false)
@@ -219,8 +221,16 @@ export default function ContactThreadPage({ params }: { params: Promise<{ contac
   // Sous le nom : le statut seul (le détail vit dans la fiche, un tap sur l'en-tête)
   const subtitle = c ? (c.kind === 'PARTENAIRE' ? 'Partenaire' : c.kind === 'CLIENT' ? 'Client' : 'Prospect') : ''
 
+  // Tap sur l'avatar = ouvrir la fiche. Desktop : panneau droit (le fil reste au centre, façon Telegram).
+  // Mobile : feuille plein écran (route dédiée → bouton retour natif conservé).
+  const openInfo = () => {
+    if (typeof window !== 'undefined' && window.matchMedia('(min-width: 1024px)').matches) setInfoOpen(true)
+    else router.push(`/contacts/${contactId}`)
+  }
+
   return (
-    <div className="mx-auto flex h-dvh w-full max-w-2xl flex-col bg-background">
+    <div className="flex h-dvh w-full">
+    <div className="mx-auto flex h-dvh min-w-0 max-w-2xl flex-1 flex-col bg-background">
       {/* En-tête contact — tap = la fiche ; ⋮ = recherche dans la conversation */}
       <div className="shrink-0 border-b border-border bg-background/90 backdrop-blur">
         {filSearch.open ? (
@@ -230,7 +240,7 @@ export default function ContactThreadPage({ params }: { params: Promise<{ contac
             <button type="button" aria-label="Retour" onClick={() => router.push('/chats')} className="flex size-9 shrink-0 items-center justify-center rounded-full text-muted-foreground active:bg-muted">
               <ChevronLeft className="size-5 stroke-[1.5]" />
             </button>
-            <button type="button" onClick={() => router.push(`/contacts/${contactId}`)} className="flex min-w-0 flex-1 items-center gap-2.5 text-left">
+            <button type="button" onClick={openInfo} className="flex min-w-0 flex-1 items-center gap-2.5 text-left">
               <span className="grid size-10 shrink-0 place-items-center rounded-full text-sm font-bold text-white" style={{ backgroundColor: c?.accent ?? '#F97316' }}>
                 {c?.initials ?? c?.name?.slice(0, 2).toUpperCase() ?? '…'}
               </span>
@@ -314,6 +324,13 @@ export default function ContactThreadPage({ params }: { params: Promise<{ contac
         disabled={streaming}
         placeholder={`Parle à Atlas de ${prenom}…`}
       />
+      </div>
+      {/* Panneau fiche (desktop) — le fil reste au centre, la fiche s'ouvre à droite avec une croix pour fermer */}
+      {infoOpen && (
+        <aside className="hidden lg:flex w-[400px] shrink-0 flex-col overflow-y-auto border-l border-border bg-background">
+          <ContactFiche contactId={contactId} embedded onClose={() => setInfoOpen(false)} />
+        </aside>
+      )}
     </div>
   )
 }
