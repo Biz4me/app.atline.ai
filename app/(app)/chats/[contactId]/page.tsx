@@ -16,7 +16,7 @@ import ContactFiche from '@/app/(app)/contacts/[id]/page'
 // /api/atlas/chat (contact-scopé, snapshot inclus), conversations persistées, AtlasDraftCard.
 
 type Contact = {
-  id: string; name: string; firstName: string | null; initials: string | null; accent: string | null
+  id: string; name: string; firstName: string | null; initials: string | null; accent: string | null; personality: string | null
   kind: string; prospectStage: string | null; partnerStage: string | null; market: string | null
   exposures: number; phone: string | null; email: string | null
   lastDraft: string | null; lastDraftAt: string | null; lastContact: string | null
@@ -28,6 +28,8 @@ const STAGE_LABEL: Record<string, string> = {
   DEMARRAGE: 'Démarrage', FORMATION: 'Formation', ACTIF: 'Actif', LEADER: 'Leader',
 }
 const MARKET_LABEL: Record<string, string> = { CHAUD: 'marché chaud', TIEDE: 'marché tiède', FROID: 'marché froid' }
+// Avatar du contact = sa couleur DISC si connue (aligné sidebar + fiche), sinon son accent.
+const DISC_HEX: Record<string, string> = { ROUGE: '#EF4444', VERT: '#22C55E', BLEU: '#3B82F6', JAUNE: '#F4B342' }
 const stripMarkers = (s: string) => s.replace(/\s*\[\[[A-Z]+\]\][\s\S]*$/, '')
 
 export default function ContactThreadPage({ params }: { params: Promise<{ contactId: string }> }) {
@@ -240,11 +242,11 @@ export default function ContactThreadPage({ params }: { params: Promise<{ contac
           <FilSearchRow s={filSearch} />
         ) : (
           <div className="flex items-center gap-2.5 px-3 py-2" style={{ paddingTop: 'max(0.5rem, env(safe-area-inset-top))' }}>
-            <button type="button" aria-label="Retour" onClick={() => router.push('/chats')} className="flex size-9 shrink-0 items-center justify-center rounded-full text-muted-foreground active:bg-muted">
+            <button type="button" aria-label="Retour" onClick={() => router.push('/chats')} className="flex size-9 shrink-0 items-center justify-center rounded-full text-muted-foreground active:bg-muted lg:hidden">
               <ChevronLeft className="size-5 stroke-[1.5]" />
             </button>
             <button type="button" onClick={openInfo} className="flex min-w-0 flex-1 items-center gap-2.5 text-left">
-              <span className="grid size-10 shrink-0 place-items-center rounded-full text-sm font-bold text-white" style={{ backgroundColor: c?.accent ?? '#F97316' }}>
+              <span className="grid size-10 shrink-0 place-items-center rounded-full text-sm font-bold text-white" style={{ backgroundColor: (c?.personality && DISC_HEX[c.personality]) || c?.accent || '#F97316' }}>
                 {c?.initials ?? c?.name?.slice(0, 2).toUpperCase() ?? '…'}
               </span>
               <span className="min-w-0">
