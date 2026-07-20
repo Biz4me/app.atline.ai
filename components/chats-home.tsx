@@ -148,7 +148,7 @@ export function ChatsHome() {
             count={a.id === 'atlas' ? atlasBadge : a.badge ?? 0}
             online={a.id !== 'communaute'}
             big
-            onClick={() => router.push(AGENT_ROUTE[a.id] ?? '/atlas')}
+            onClick={() => router.push(`${AGENT_ROUTE[a.id] ?? '/atlas'}${infoSuffix}`)}
           />
         ))}
       </div>
