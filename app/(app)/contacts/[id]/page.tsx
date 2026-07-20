@@ -258,6 +258,8 @@ export default function ContactDetailPage({ params, contactId, embedded, onClose
   const [contact, setContact] = useState<Contact | null>(null)
   const [loading, setLoading] = useState(true)
   const [evalOpen, setEvalOpen] = useState(false)
+  const [tab, setTab] = useState<'apercu' | 'qualif' | 'details'>('apercu') // onglets horizontaux
+  const [dsub, setDsub] = useState<'coord' | 'profil' | 'suivi'>('coord')   // sous-onglets de Détails
   const [memDraft, setMemDraft] = useState('')
   const [memEditing, setMemEditing] = useState(false)
   const [contactConvs, setContactConvs] = useState<{ id: string; title: string | null; updatedAt: string }[]>([])
@@ -395,7 +397,16 @@ export default function ContactDetailPage({ params, contactId, embedded, onClose
         </div>
       </div>
 
-      <div className="flex flex-col gap-4 px-4 pb-24 pt-2">
+      {/* Onglets horizontaux — Aperçu / Qualification / Détails (fini la « page bloc ») */}
+      <div className="flex border-y border-border">
+        {([['apercu', 'Aperçu'], ['qualif', 'Qualification'], ['details', 'Détails']] as const).map(([tid, label]) => (
+          <button key={tid} type="button" onClick={() => setTab(tid)} className={cn('flex-1 py-3 text-sm transition-colors', tab === tid ? 'border-b-2 border-primary font-medium text-primary' : 'text-muted-foreground active:bg-muted')}>{label}</button>
+        ))}
+      </div>
+
+      <div className="flex flex-col gap-4 px-4 pb-24 pt-3">
+        {/* ═══ APERÇU — le coup d'œil et l'action ═══ */}
+        {tab === 'apercu' && (<>
         {/* Curseur d'étape — le flow d'abord, un seul tunnel (opportunité) : prospect, partenaire, OU client re-sollicité */}
         {showOppCursor && (
           <StageCursor
@@ -428,7 +439,7 @@ export default function ContactDetailPage({ params, contactId, embedded, onClose
               </button>
             )}
             {nextStep.action === 'EDIT' && (
-              <button type="button" onClick={() => { setPfOpen((o) => ({ ...o, details: true })); setTimeout(() => window.scrollTo({ top: document.documentElement.scrollHeight, behavior: 'smooth' }), 60) }} className="mt-3 flex w-full items-center justify-center gap-1.5 rounded-xl bg-primary py-2.5 text-xs font-bold text-primary-foreground active:opacity-90">Compléter la fiche</button>
+              <button type="button" onClick={() => setTab('details')} className="mt-3 flex w-full items-center justify-center gap-1.5 rounded-xl bg-primary py-2.5 text-xs font-bold text-primary-foreground active:opacity-90">Compléter la fiche</button>
             )}
           </div>
         )}
@@ -497,6 +508,18 @@ export default function ContactDetailPage({ params, contactId, embedded, onClose
           dernier contact : <span className="font-medium text-foreground">{c.lastContact ? new Date(c.lastContact).toLocaleDateString('fr-FR') : 'jamais'}</span>
         </p>
 
+        </>)}
+
+        {/* ═══ DÉTAILS — sous-onglets Coordonnées / Profil / Suivi ═══ */}
+        {tab === 'details' && (<>
+        <div className="flex gap-2">
+          {([['coord', 'Coordonnées'], ['profil', 'Profil'], ['suivi', 'Suivi']] as const).map(([sid, label]) => (
+            <button key={sid} type="button" onClick={() => setDsub(sid)} className={cn('rounded-full border px-3.5 py-1.5 text-sm transition-colors', dsub === sid ? 'border-border bg-surface font-medium text-foreground' : 'border-transparent text-muted-foreground active:bg-muted')}>{label}</button>
+          ))}
+        </div>
+
+        {/* — Sous-onglet SUIVI : le journal terrain (échanges, à venir, historique) — */}
+        {dsub === 'suivi' && (<>
         {/* ÉCHANGES AVEC ATLAS — conversations passées sur ce contact (rouvrir dans le composeur) */}
         {contactConvs.length > 0 && (
           <Section title="Échanges avec Atlas">
@@ -567,32 +590,49 @@ export default function ContactDetailPage({ params, contactId, embedded, onClose
           </Card>
         )}
 
-        {/* Détails de la fiche — repliés par défaut (consultation d'abord, on édite à la demande) */}
-        <Collapsible icon={ClipboardList} title="Détails de la fiche" filled={detailsFilled} total={20} open={!!pfOpen.details} onToggle={() => pfToggle('details')}>
-        <div className="flex flex-col gap-2">
-          <Collapsible icon={UserIcon} title="Identité" filled={pfNf([pf.firstName, pf.lastName, pf.gender, pf.birthDate, pf.profession, pf.education])} total={6} open={!!pfOpen.identite} onToggle={() => pfToggle('identite')}>
-            <input className={fieldCls} value={pf.firstName} onChange={(e) => setPfField('firstName', e.target.value)} placeholder="Prénom" />
-            <input className={fieldCls} value={pf.lastName} onChange={(e) => setPfField('lastName', e.target.value)} placeholder="Nom" />
-            <SelectMenu className={fieldCls} placeholder="Genre" value={pf.gender} onChange={(v) => setPfField('gender', v)} options={[{ value: 'M', label: 'Homme' }, { value: 'F', label: 'Femme' }, { value: 'N', label: 'Neutre' }]} />
-            <div className="grid grid-cols-[0.9fr_1.7fr_1.2fr] gap-2">
-              <SelectMenu className={fieldCls} placeholder="Jour" value={pfDob.d} onChange={(v) => setPfDobPart({ d: v })} options={pfDobDays} />
-              <SelectMenu className={fieldCls} placeholder="Mois" value={pfDob.m} onChange={(v) => setPfDobPart({ m: v })} options={DOB_MONTHS} />
-              <SelectMenu className={fieldCls} placeholder="Année" value={pfDob.y} onChange={(v) => setPfDobPart({ y: v })} options={DOB_YEARS} />
+        {/* fin sous-onglet Suivi */}
+        </>)}
+
+        {/* — Sous-onglet PROFIL : identité — */}
+        {dsub === 'profil' && (
+          <div className="flex flex-col gap-3">
+            <div className="flex flex-col gap-2">
+              <input className={fieldCls} value={pf.firstName} onChange={(e) => setPfField('firstName', e.target.value)} placeholder="Prénom" />
+              <input className={fieldCls} value={pf.lastName} onChange={(e) => setPfField('lastName', e.target.value)} placeholder="Nom" />
+              <SelectMenu className={fieldCls} placeholder="Genre" value={pf.gender} onChange={(v) => setPfField('gender', v)} options={[{ value: 'M', label: 'Homme' }, { value: 'F', label: 'Femme' }, { value: 'N', label: 'Neutre' }]} />
+              <div className="grid grid-cols-[0.9fr_1.7fr_1.2fr] gap-2">
+                <SelectMenu className={fieldCls} placeholder="Jour" value={pfDob.d} onChange={(v) => setPfDobPart({ d: v })} options={pfDobDays} />
+                <SelectMenu className={fieldCls} placeholder="Mois" value={pfDob.m} onChange={(v) => setPfDobPart({ m: v })} options={DOB_MONTHS} />
+                <SelectMenu className={fieldCls} placeholder="Année" value={pfDob.y} onChange={(v) => setPfDobPart({ y: v })} options={DOB_YEARS} />
+              </div>
+              <input className={fieldCls} value={pf.profession} onChange={(e) => setPfField('profession', e.target.value)} placeholder="Profession" />
+              <SelectMenu className={fieldCls} placeholder="Niveau d'études" value={pf.education} onChange={(v) => setPfField('education', v)} options={EDUCATIONS.map((o) => ({ value: o, label: o }))} />
             </div>
-            <input className={fieldCls} value={pf.profession} onChange={(e) => setPfField('profession', e.target.value)} placeholder="Profession" />
-            <SelectMenu className={fieldCls} placeholder="Niveau d'études" value={pf.education} onChange={(v) => setPfField('education', v)} options={EDUCATIONS.map((o) => ({ value: o, label: o }))} />
-          </Collapsible>
-          <Collapsible icon={Contact} title="Coordonnées" filled={pfNf([pf.phone, pf.email, pf.address, pf.postal, pf.city, pf.country])} total={6} open={!!pfOpen.coord} onToggle={() => pfToggle('coord')}>
-            <input className={fieldCls} type="tel" inputMode="numeric" value={pf.phone} onChange={(e) => setPfField('phone', formatPhone(e.target.value))} placeholder="Téléphone" />
-            <input className={fieldCls} type="tel" inputMode="numeric" value={pf.phone2} onChange={(e) => setPfField('phone2', formatPhone(e.target.value))} placeholder="Téléphone secondaire" />
-            <input className={fieldCls} type="email" value={pf.email} onChange={(e) => setPfField('email', e.target.value)} placeholder="Email" />
-            <input className={fieldCls} value={pf.address} onChange={(e) => setPfField('address', e.target.value)} placeholder="Adresse" />
-            <input className={fieldCls} value={pf.address2} onChange={(e) => setPfField('address2', e.target.value)} placeholder="Complément d'adresse" />
-            <input className={fieldCls} value={pf.postal} onChange={(e) => setPfField('postal', e.target.value)} placeholder="Code postal" />
-            <input className={fieldCls} value={pf.city} onChange={(e) => setPfField('city', e.target.value)} placeholder="Ville" />
-            <SelectMenu className={fieldCls} placeholder="Pays" value={pf.country} onChange={(v) => setPfField('country', v)} options={PAYS.map((p) => ({ value: p, label: p }))} />
-          </Collapsible>
-          <Collapsible icon={Sparkles} title="Qualification" filled={[qual.personality, qual.market, qual.situation, qual.interests, qual.motivation, qual.insatisfaction, qual.reseau, qual.ouverture].filter((v) => v && String(v).trim()).length} total={8} open={!!pfOpen.qual} onToggle={() => pfToggle('qual')}>
+            <button type="button" onClick={() => save({ ...pf, personality: qual.personality || null, market: qual.market || null, qualification: { situation: qual.situation, interests: qual.interests, motivation: qual.motivation, insatisfaction: qual.insatisfaction, reseau: qual.reseau, ouverture: qual.ouverture } }, 'Fiche enregistrée')} className="flex w-full items-center justify-center gap-2 rounded-2xl bg-primary py-3 text-base font-bold text-primary-foreground transition-transform active:scale-[0.98]">Enregistrer</button>
+          </div>
+        )}
+
+        {/* — Sous-onglet COORDONNÉES — */}
+        {dsub === 'coord' && (
+          <div className="flex flex-col gap-3">
+            <div className="flex flex-col gap-2">
+              <input className={fieldCls} type="tel" inputMode="numeric" value={pf.phone} onChange={(e) => setPfField('phone', formatPhone(e.target.value))} placeholder="Téléphone" />
+              <input className={fieldCls} type="tel" inputMode="numeric" value={pf.phone2} onChange={(e) => setPfField('phone2', formatPhone(e.target.value))} placeholder="Téléphone secondaire" />
+              <input className={fieldCls} type="email" value={pf.email} onChange={(e) => setPfField('email', e.target.value)} placeholder="Email" />
+              <input className={fieldCls} value={pf.address} onChange={(e) => setPfField('address', e.target.value)} placeholder="Adresse" />
+              <input className={fieldCls} value={pf.address2} onChange={(e) => setPfField('address2', e.target.value)} placeholder="Complément d'adresse" />
+              <input className={fieldCls} value={pf.postal} onChange={(e) => setPfField('postal', e.target.value)} placeholder="Code postal" />
+              <input className={fieldCls} value={pf.city} onChange={(e) => setPfField('city', e.target.value)} placeholder="Ville" />
+              <SelectMenu className={fieldCls} placeholder="Pays" value={pf.country} onChange={(v) => setPfField('country', v)} options={PAYS.map((p) => ({ value: p, label: p }))} />
+            </div>
+            <button type="button" onClick={() => save({ ...pf, personality: qual.personality || null, market: qual.market || null, qualification: { situation: qual.situation, interests: qual.interests, motivation: qual.motivation, insatisfaction: qual.insatisfaction, reseau: qual.reseau, ouverture: qual.ouverture } }, 'Fiche enregistrée')} className="flex w-full items-center justify-center gap-2 rounded-2xl bg-primary py-3 text-base font-bold text-primary-foreground transition-transform active:scale-[0.98]">Enregistrer</button>
+          </div>
+        )}
+        </>)}
+
+        {/* ═══ QUALIFICATION — comment l'aborder, le contexte, les signaux ═══ */}
+        {tab === 'qualif' && (
+          <div className="flex flex-col gap-4">
             {/* Bloc 1 — Comment l'aborder (DISC + proximité) */}
             <div>
               <p className="mb-1.5 text-sm font-semibold text-foreground">Comment l&apos;aborder</p>
@@ -652,24 +692,18 @@ export default function ContactDetailPage({ params, contactId, embedded, onClose
                 </div>
               )
             })()}
-          </Collapsible>
-        </div>
-          {/* Enregistrement contextuel : le save vit dans « Détails » (le bas est libre pour le composeur) */}
-          <button
-            type="button"
-            onClick={() => save({ ...pf, personality: qual.personality || null, market: qual.market || null, qualification: { situation: qual.situation, interests: qual.interests, motivation: qual.motivation, insatisfaction: qual.insatisfaction, reseau: qual.reseau, ouverture: qual.ouverture } }, 'Fiche enregistrée')}
-            className="flex w-full items-center justify-center gap-2 rounded-2xl bg-primary py-3 text-base font-bold text-primary-foreground transition-transform active:scale-[0.98]"
-          >
-            Enregistrer les détails
-          </button>
-        </Collapsible>
-        {/* Suppression du contact (relogée depuis l'ancien EditSheet) */}
+            <button type="button" onClick={() => save({ ...pf, personality: qual.personality || null, market: qual.market || null, qualification: { situation: qual.situation, interests: qual.interests, motivation: qual.motivation, insatisfaction: qual.insatisfaction, reseau: qual.reseau, ouverture: qual.ouverture } }, 'Fiche enregistrée')} className="flex w-full items-center justify-center gap-2 rounded-2xl bg-primary py-3 text-base font-bold text-primary-foreground transition-transform active:scale-[0.98]">Enregistrer</button>
+          </div>
+        )}
+        {/* Suppression du contact — dans Détails › Suivi (gérer le contact) */}
+        {tab === 'details' && dsub === 'suivi' && (
         <div className="flex justify-center pt-2">
           <button type="button" onClick={() => { if (window.confirm('Supprimer définitivement ce contact ?')) { fetch(`/api/contacts/${id}`, { method: 'DELETE' }).then((r) => { if (r.ok) { toast.success('Contact supprimé'); router.push('/contacts') } else toast.error('Échec de la suppression') }) } }}
             className="flex items-center gap-1.5 text-base font-medium text-muted-foreground transition-colors active:text-destructive">
             <Trash2 className="size-4" /> Supprimer ce contact
           </button>
         </div>
+        )}
       </div>
       {/* PORTAIL vers document.body : le quiz est `fixed inset-0` et doit couvrir TOUT l'écran ; or la fiche
           s'ouvre en feuille avec `transform` (qui piège les `fixed`). Le portail le fait échapper au panneau. */}
