@@ -41,7 +41,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
       { name: '__Secure-next-auth.session-token', value: token, domain: host, path: '/', httpOnly: true, secure: true },
       { name: 'next-auth.session-token', value: token, domain: host, path: '/', httpOnly: true, secure: false },
     )
-    const click = (sel) => page.waitForSelector(sel, { timeout: 15000 }).then((el) => el.click())
+    const click = async (sel) => { await page.waitForSelector(sel, { timeout: 15000 }); await page.evaluate((s) => document.querySelector(s).click(), sel) }
     const situation = () => page.$eval('[data-testid="ctx-situation"]', (e) => e.value).catch(() => null)
 
     await page.goto(`${BASE}/contacts/${cid}`, { waitUntil: 'networkidle2', timeout: 40000 })
