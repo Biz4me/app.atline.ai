@@ -252,7 +252,7 @@ export default function ContactDetailPage({ params, contactId, embedded, onClose
   const [loading, setLoading] = useState(true)
   const [evalOpen, setEvalOpen] = useState(false)
   const [tab, setTab] = useState<'apercu' | 'qualif' | 'details'>('apercu') // onglets horizontaux
-  const [dsub, setDsub] = useState<'coord' | 'profil' | 'suivi'>('profil')   // sous-onglets de Détails (Profil en tête)
+  const [dsub, setDsub] = useState<'coord' | 'profil' | 'contexte' | 'suivi'>('profil')   // sous-onglets de Détails (Profil en tête)
   const [memDraft, setMemDraft] = useState('')
   const [memEditing, setMemEditing] = useState(false)
   const [contactConvs, setContactConvs] = useState<{ id: string; title: string | null; updatedAt: string }[]>([])
@@ -336,7 +336,6 @@ export default function ContactDetailPage({ params, contactId, embedded, onClose
     setDirty(false)
   }, [contact])
   const setQ = (k: keyof typeof qual, v: string) => { setDirty(true); setQual((s) => ({ ...s, [k]: v })) }
-  const [discOpen, setDiscOpen] = useState(false)
   const setPfDobPart = (patch: Partial<{ d: string; m: string; y: string }>) => {
     setDirty(true)
     const next = { ...pfDob, ...patch }
@@ -471,7 +470,7 @@ export default function ContactDetailPage({ params, contactId, embedded, onClose
         {/* ═══ DÉTAILS — sous-onglets Coordonnées / Profil / Suivi ═══ */}
         {tab === 'details' && (<>
         <div className="flex border-b border-border">
-          {([['profil', 'Profil'], ['coord', 'Coordonnées'], ['suivi', 'Suivi']] as const).map(([sid, label]) => (
+          {([['profil', 'Profil'], ['coord', 'Coordonnées'], ['contexte', 'Contexte'], ['suivi', 'Suivi']] as const).map(([sid, label]) => (
             <button key={sid} type="button" onClick={() => setDsub(sid)} className={cn('flex-1 py-2.5 text-sm transition-colors', dsub === sid ? 'border-b-2 border-primary font-medium text-primary' : 'text-muted-foreground active:bg-muted')}>{label}</button>
           ))}
         </div>
@@ -606,74 +605,84 @@ export default function ContactDetailPage({ params, contactId, embedded, onClose
               <SelectMenu className={fieldCls} placeholder="Pays" value={pf.country} onChange={(v) => setPfField('country', v)} options={PAYS.map((p) => ({ value: p, label: p }))} />
             </div>          </div>
         )}
-        </>)}
-
-        {/* ═══ QUALIFICATION — comment l'aborder, le contexte, les signaux ═══ */}
-        {tab === 'qualif' && (
+        {/* — Sous-onglet CONTEXTE : les faits qu'on récolte (nourrissent la lecture Qualification) — */}
+        {dsub === 'contexte' && (
           <div className="flex flex-col gap-4">
-            {/* Bloc 1 — Comment l'aborder (DISC + proximité) */}
             <div>
-              <p className="mb-1.5 text-sm font-semibold text-foreground">Comment l&apos;aborder</p>
+              <p className="mb-1.5 text-sm font-semibold text-foreground">Sa couleur (DISC)</p>
               {evalOpen ? (
                 <PersonalityQuiz inline subjectName={pf.firstName || 'Ce contact'} gender={pf.gender} count={3} onClose={() => setEvalOpen(false)} onResult={(color) => { setQ('personality', color); setEvalOpen(false) }} />
-              ) : (<>
-              {qual.personality && PERSO[qual.personality] ? (
-                <div className="overflow-hidden rounded-xl border border-border bg-background">
-                  <div className="flex items-center gap-2.5 px-4 py-3">
-                    <button type="button" onClick={() => setDiscOpen((o) => !o)} className="flex min-w-0 flex-1 items-center gap-2.5 text-left">
-                      <span className="size-6 shrink-0 rounded-full" style={{ backgroundColor: PERSO[qual.personality].hex }} />
-                      <span className="flex-1 text-lg font-medium text-foreground lg:text-sm">Personnalité</span>
-                      <ChevronDown className={cn('size-4 shrink-0 text-muted-foreground transition-transform', discOpen && 'rotate-180')} />
-                    </button>
-                    <button type="button" onClick={() => setEvalOpen(true)} className="shrink-0 text-sm font-semibold text-primary">Refaire le test</button>
-                  </div>
-                  {discOpen && (() => {
-                    const info = describePersonality(qual.personality, pf.gender)
-                    return (
-                      <div className="border-t border-border px-4 py-3">
-                        <p className="text-sm font-semibold" style={{ color: PERSO[qual.personality].hex }}>{info ? info.archetype : PERSO[qual.personality].label}</p>
-                        <p className="mt-1 text-lg leading-relaxed text-muted-foreground lg:text-sm">{PERSO[qual.personality].approach}</p>
-                      </div>
-                    )
-                  })()}
+              ) : qual.personality && PERSO[qual.personality] ? (
+                <div className="flex items-center gap-2.5 rounded-xl border border-border bg-background px-4 py-3">
+                  <span className="size-6 shrink-0 rounded-full" style={{ backgroundColor: PERSO[qual.personality].hex }} />
+                  <span className="min-w-0 flex-1 truncate text-lg font-medium text-foreground lg:text-sm">{describePersonality(qual.personality, pf.gender)?.archetype ?? PERSO[qual.personality].label}</span>
+                  <button type="button" onClick={() => setEvalOpen(true)} className="shrink-0 text-sm font-semibold text-primary">Refaire le test</button>
                 </div>
               ) : (
                 <button type="button" onClick={() => setEvalOpen(true)} className="flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-primary/40 bg-primary/5 px-4 py-3 text-sm font-semibold text-primary">
                   <Sparkles className="size-4" /> Évaluer la couleur
                 </button>
               )}
-              <div className="mt-2">
-                <SelectMenu className={fieldCls} placeholder="Marché d'origine (proximité)" value={qual.market} onChange={(v) => setQ('market', v)} options={[{ value: 'CHAUD', label: 'Marché chaud' }, { value: 'TIEDE', label: 'Marché tiède' }, { value: 'FROID', label: 'Marché froid' }]} />
-              </div>
-              </>)}
             </div>
-            {/* Bloc 2 — Le contexte */}
+            <div className="flex flex-col gap-2">
+              <SelectMenu className={fieldCls} placeholder="Marché d'origine (proximité)" value={qual.market} onChange={(v) => setQ('market', v)} options={[{ value: 'CHAUD', label: 'Marché chaud' }, { value: 'TIEDE', label: 'Marché tiède' }, { value: 'FROID', label: 'Marché froid' }]} />
+              <input className={fieldCls} value={qual.situation} onChange={(e) => setQ('situation', e.target.value)} placeholder="Sa situation (métier, famille, dispo)" />
+              <input className={fieldCls} value={qual.interests} onChange={(e) => setQ('interests', e.target.value)} placeholder="Ses centres d'intérêt" />
+            </div>
             <div className="border-t border-border pt-3">
-              <p className="mb-1.5 text-sm font-semibold text-foreground">Le contexte</p>
+              <p className="mb-1.5 text-sm font-semibold text-foreground">Signaux de potentiel</p>
               <div className="flex flex-col gap-2">
-                <input className={fieldCls} value={qual.situation} onChange={(e) => setQ('situation', e.target.value)} placeholder="Sa situation (métier, famille, dispo)" />
-                <input className={fieldCls} value={qual.interests} onChange={(e) => setQ('interests', e.target.value)} placeholder="Ses centres d'intérêt" />
+                <input className={fieldCls} value={qual.motivation} onChange={(e) => setQ('motivation', e.target.value)} placeholder="Sa motivation / besoin (argent, temps, santé…)" />
+                <input className={fieldCls} value={qual.insatisfaction} onChange={(e) => setQ('insatisfaction', e.target.value)} placeholder="Son insatisfaction actuelle" />
+                <input className={fieldCls} value={qual.reseau} onChange={(e) => setQ('reseau', e.target.value)} placeholder="Son réseau / influence" />
+                <input className={fieldCls} value={qual.ouverture} onChange={(e) => setQ('ouverture', e.target.value)} placeholder="Son ouverture à l'opportunité" />
               </div>
             </div>
-            {/* Bloc 3 — Potentiel partenaire */}
+          </div>
+        )}
+        </>)}
+
+        {/* ═══ QUALIFICATION — la LECTURE : comment gagner cette personne. Les faits se saisissent dans Détails › Contexte. ═══ */}
+        {tab === 'qualif' && (
+          <div className="flex flex-col gap-4">
             {(() => {
+              const perso = qual.personality && PERSO[qual.personality] ? PERSO[qual.personality] : null
+              const info = qual.personality ? describePersonality(qual.personality, pf.gender) : null
+              const marketLabel = ({ CHAUD: 'chaud', TIEDE: 'tiède', FROID: 'froid' } as Record<string, string>)[qual.market] ?? null
+              const marketTone = ({ CHAUD: 'La confiance est là, tu peux proposer sans détour.', TIEDE: 'Réchauffe la relation avant de proposer : donne des nouvelles, crée du lien.', FROID: "Ne vends pas vite : installe d'abord du lien et de la crédibilité." } as Record<string, string>)[qual.market] ?? null
               const potFilled = [qual.motivation, qual.insatisfaction, qual.reseau, qual.ouverture].filter((v) => v && v.trim()).length
               const potLabel = potFilled >= 3 ? 'Fort' : potFilled === 2 ? 'Moyen' : 'À creuser'
-              return (
-                <div className="border-t border-border pt-3">
-                  <div className="mb-1.5 flex items-center justify-between">
-                    <p className="text-sm font-semibold text-foreground">Potentiel partenaire</p>
-                    <span className="rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-bold text-primary">{potLabel}</span>
-                  </div>
-                  <div className="flex flex-col gap-2">
-                    <input className={fieldCls} value={qual.motivation} onChange={(e) => setQ('motivation', e.target.value)} placeholder="Sa motivation / besoin (argent, temps, santé…)" />
-                    <input className={fieldCls} value={qual.insatisfaction} onChange={(e) => setQ('insatisfaction', e.target.value)} placeholder="Son insatisfaction actuelle" />
-                    <input className={fieldCls} value={qual.reseau} onChange={(e) => setQ('reseau', e.target.value)} placeholder="Son réseau / influence" />
-                    <input className={fieldCls} value={qual.ouverture} onChange={(e) => setQ('ouverture', e.target.value)} placeholder="Son ouverture à l'opportunité" />
-                  </div>
+              const potLine = potFilled >= 3 ? "Vise clairement l'opportunité, pas juste le produit." : potFilled === 2 ? "Teste son intérêt pour l'opportunité, sans forcer." : 'Creuse ses besoins avant de qualifier (Détails › Contexte).'
+              const prenom = pf.firstName || c.name || 'Ce contact'
+              const angle = [perso && (info ? info.archetype : perso.label), marketLabel && `marché ${marketLabel}`].filter(Boolean).join(', ')
+              if (!perso && !marketLabel && potFilled === 0) return (
+                <div className="rounded-2xl border border-dashed border-border p-5 text-center">
+                  <p className="text-sm text-muted-foreground">Je connais encore mal {prenom}. Renseigne sa couleur, son marché et ses signaux dans <span className="font-medium text-foreground">Détails › Contexte</span> — je te donne l&apos;angle ici.</p>
+                  <button type="button" onClick={() => { setTab('details'); setDsub('contexte') }} className="mt-3 text-sm font-semibold text-primary">Remplir le contexte</button>
                 </div>
               )
-            })()}          </div>
+              return (
+                <>
+                  <div className="rounded-2xl border border-border bg-surface p-4">
+                    <div className="mb-1 flex items-center justify-between gap-2">
+                      <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Ton angle avec {prenom}</p>
+                      <span className="shrink-0 rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-bold text-primary">{potLabel}</span>
+                    </div>
+                    <p className="text-lg leading-relaxed text-foreground lg:text-sm">{angle ? `${angle}. ` : ''}{marketTone ? `${marketTone} ` : ''}{potLine}</p>
+                  </div>
+                  {perso ? (
+                    <div className="rounded-2xl border border-border bg-surface p-4">
+                      <p className="mb-1 text-xs font-bold uppercase tracking-widest text-muted-foreground">Comment l&apos;aborder</p>
+                      <p className="text-sm font-semibold" style={{ color: perso.hex }}>{info ? info.archetype : perso.label}</p>
+                      <p className="mt-1 text-lg leading-relaxed text-muted-foreground lg:text-sm">{perso.approach}</p>
+                    </div>
+                  ) : (
+                    <button type="button" onClick={() => { setTab('details'); setDsub('contexte') }} className="rounded-2xl border border-dashed border-border p-4 text-left text-sm text-muted-foreground">Fais son test couleur dans <span className="font-medium text-foreground">Contexte</span> pour savoir comment lui parler.</button>
+                  )}
+                </>
+              )
+            })()}
+          </div>
         )}
       </div>
       {/* Intermédiaire d'action — Message (choix du canal) · Appel (appeler ou s'entraîner) */}
