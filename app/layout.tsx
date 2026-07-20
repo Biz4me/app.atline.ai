@@ -1,5 +1,4 @@
 import type { Metadata, Viewport } from 'next'
-import { Analytics } from '@vercel/analytics/next'
 import { Toaster } from '@/components/ui/sonner'
 import { ThemeProvider } from '@/components/theme-provider'
 import './globals.css'
@@ -68,7 +67,6 @@ export default function RootLayout({
           </SessionProvider>
           <Toaster position="top-center" />
           <AtlineSplash />
-          {process.env.NODE_ENV === 'production' && <Analytics />}
         </ThemeProvider>
       </body>
     </html>
