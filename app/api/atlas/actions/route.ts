@@ -152,7 +152,10 @@ export async function POST(req: NextRequest) {
     if (kind === 'update_profile') {
       const data: Record<string, unknown> = {}
       const set = (key: string, v?: string) => { if (v && v.trim()) data[key] = v.trim() }
-      set('profession', p.profession); set('education', p.education); set('city', p.ville); set('bio', p.bio)
+      set('firstName', p.prenom); set('lastName', p.nom)
+      set('profession', p.profession); set('education', p.education); set('bio', p.bio)
+      set('phone', p.telephone); set('phone2', p.telephone2); set('email', p.email)
+      set('address', p.adresse); set('city', p.ville); set('postal', p.code_postal); set('country', p.pays)
       if (p.genre) { const g = ({ homme: 'M', femme: 'F', neutre: 'N' } as Record<string, string>)[p.genre]; if (g) data.gender = g }
       if (p.date_naissance) { const d = new Date(`${p.date_naissance}T12:00:00`); if (!isNaN(d.getTime())) data.birthDate = d }
       if (['ROUGE', 'VERT', 'BLEU', 'JAUNE'].includes(p.couleur)) data.personality = p.couleur
@@ -165,6 +168,15 @@ export async function POST(req: NextRequest) {
         const c = (cur?.coaching && typeof cur.coaching === 'object' && !Array.isArray(cur.coaching)) ? { ...(cur.coaching as Record<string, unknown>) } : {}
         for (const [frk, dbk] of coachEntries) c[dbk] = p[frk].trim()
         data.coaching = c
+      }
+
+      // Réseaux sociaux : fusion clé à clé (Atlas peut renseigner un handle donné en conversation).
+      const socialsIn = (body?.params as { socials?: Record<string, string> } | null)?.socials
+      if (socialsIn && typeof socialsIn === 'object' && !Array.isArray(socialsIn)) {
+        const cur = await db.user.findUnique({ where: { id: userId }, select: { socials: true } })
+        const sc = (cur?.socials && typeof cur.socials === 'object' && !Array.isArray(cur.socials)) ? { ...(cur.socials as Record<string, unknown>) } : {}
+        for (const [k, v] of Object.entries(socialsIn)) { if (typeof v === 'string' && v.trim()) sc[k.toLowerCase()] = v.trim() }
+        if (Object.keys(sc).length) data.socials = sc
       }
 
       if (!Object.keys(data).length) return NextResponse.json({ error: 'aucune info à enregistrer' }, { status: 400 })
@@ -184,6 +196,7 @@ export async function POST(req: NextRequest) {
       const data: Record<string, unknown> = {}
       const set = (key: string, v?: string) => { if (v && v.trim()) data[key] = v.trim() }
       set('produit', p.produit); set('audience', p.audience); set('rank', p.rang); set('story', p.story); set('sponsorName', p.parrain)
+      set('goal', p.goal); set('mlmName', p.mlm); set('startDate', p.date_demarrage)
 
       // Objectif : fusion clé à clé (mensuel / m3 / m6 / m12)
       const OBJ: Record<string, string> = { objectif_mensuel: 'mensuel', objectif_3m: 'm3', objectif_6m: 'm6', objectif_12m: 'm12' }
