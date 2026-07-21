@@ -12,10 +12,13 @@ import { cn } from '@/lib/utils'
 
 type AgentId = 'atlas' | 'aria' | 'nova'
 
-const AGENTS: Record<AgentId, { name: string; role: string; color: string; cta: { label: string; href: string } }> = {
+// Panneau = CONTEXTE (identité + ce qu'il sait de toi / tes stats). L'ACTION vit dans le FIL (bouton du bas).
+// Pas de bouton d'action ici pour Aria/Nova (ce serait un doublon du CTA du fil). Atlas garde un lien
+// « mon profil » : ce n'est pas l'action du fil mais ton compte (donc du contexte, pas un doublon).
+const AGENTS: Record<AgentId, { name: string; role: string; color: string; cta?: { label: string; href: string } }> = {
   atlas: { name: 'Atlas', role: 'Ton coach, chaque jour', color: '#F97316', cta: { label: 'Ouvrir mon profil', href: '/compte?tab=profil' } },
-  aria: { name: 'Aria', role: "Ton simulateur d'appels", color: '#14B8A6', cta: { label: 'Nouvelle simulation', href: '/aria' } },
-  nova: { name: 'Nova', role: 'Ta community manager', color: '#8B5CF6', cta: { label: 'Ouvrir le cockpit', href: '/nova' } },
+  aria: { name: 'Aria', role: "Ton simulateur d'appels", color: '#14B8A6' },
+  nova: { name: 'Nova', role: 'Ta community manager', color: '#8B5CF6' },
 }
 
 const DISC: Record<string, { l: string; hex: string }> = {
@@ -182,12 +185,14 @@ export function AgentPanel({ agent, onClose }: { agent: AgentId; onClose: () => 
         <p className="text-xs text-muted-foreground">{a.role}</p>
       </div>
 
-      {/* Action principale — le verbe de l'agent, renvoie vers sa surface complète */}
-      <div className="px-4 pb-3 pt-1">
-        <button type="button" onClick={() => router.push(a.cta.href)} className="flex w-full items-center justify-center gap-2 rounded-2xl py-3 text-sm font-semibold text-white transition-transform active:scale-[0.98]" style={{ backgroundColor: a.color }}>
-          {a.cta.label}<ChevronRight className="size-4 stroke-[2]" />
-        </button>
-      </div>
+      {/* Lien de contexte (Atlas → ton compte) ; Aria/Nova n'en ont pas : l'action est dans le fil */}
+      {a.cta && (
+        <div className="px-4 pb-3 pt-1">
+          <button type="button" onClick={() => router.push(a.cta!.href)} className="flex w-full items-center justify-center gap-2 rounded-2xl py-3 text-sm font-semibold text-white transition-transform active:scale-[0.98]" style={{ backgroundColor: a.color }}>
+            {a.cta.label}<ChevronRight className="size-4 stroke-[2]" />
+          </button>
+        </div>
+      )}
 
       {/* Cartes — synthèse par agent */}
       <div className="flex flex-col gap-3 px-4 pb-10 pt-1">

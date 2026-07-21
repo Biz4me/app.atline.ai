@@ -32,7 +32,7 @@ export function SlashMenu({ open, query, onClose, onPick }: {
               avatarText={c.emoji}
               title={c.label}
               line={`${c.cmd} — ${c.desc}`}
-              endPill={c.feuille ? { label: 'feuille', cls: 'bg-muted text-muted-foreground' } : c.kind === 'prefill' ? { label: 'à compléter', cls: 'bg-primary/10 text-primary' } : undefined}
+              endPill={c.feuille ? { label: 'feuille', cls: 'bg-muted text-muted-foreground' } : c.kind === 'prefill' ? { label: '+ contact', cls: 'bg-primary/10 text-primary' } : undefined}
               onClick={() => onPick(c)}
             />
           ))}

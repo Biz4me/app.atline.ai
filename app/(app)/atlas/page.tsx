@@ -683,7 +683,7 @@ TECHNIQUE (invisible pour moi, ne l'explique jamais)${NB}: quand tu as balayé l
         setTimeout(scrollToBottom, 60)
         return
       }
-      if (item.action === 'FOUND_PROFILE') { setTimeout(() => showProfileForm(), 300); return }
+      if (item.action === 'FOUND_PROFILE') { router.push('/compte?tab=profil'); return }
       const label = item.action === 'FOUND_LIST' ? 'Construire ma liste'
         : item.action === 'FOUND_MINDSET' ? 'Ouvrir le module'
         : item.action === 'FORMATION' ? 'Continuer le module'
@@ -1040,9 +1040,9 @@ TECHNIQUE (invisible pour moi, ne l'explique jamais)${NB}: quand tu as balayé l
                 {[
                   { icon: Zap, label: 'Mon plan du jour', run: () => showPlan() },
                   { icon: Target, label: 'Mon prochain pas', run: () => sendMsg('Quel est mon prochain pas ?') },
-                  { icon: Mic, label: 'Simuler un appel avec Aria', run: () => router.push('/aria') },
-                  { icon: SquarePen, label: 'Créer un post avec Nova', run: () => router.push('/nova') },
-                  { icon: UserRound, label: 'Compléter mon profil', run: () => showProfileForm() },
+                  { icon: Mic, label: 'Simuler un appel avec Aria', run: () => router.push('/chats/aria') },
+                  { icon: SquarePen, label: 'Créer un post avec Nova', run: () => router.push('/chats/nova') },
+                  { icon: UserRound, label: 'Compléter mon profil', run: () => router.push('/compte?tab=profil') },
                   { icon: Compass, label: 'Travailler mon pourquoi', run: () => startSession('why') },
                 ].map(({ icon: Icon, label, run }) => (
                   <button
