@@ -310,9 +310,10 @@ TECHNIQUE (invisible pour moi, ne l'explique jamais)${NB}: quand tu as balayé l
               try { out.push({ from: 'atlas', text: '', actionCard: JSON.parse(m.content.slice(10)) as AtlasAction }) } catch { /* carte illisible, ignorée */ }
               continue
             }
-            out.push({ from: 'atlas', text: cleanChat(stripOpenMarker(stripSaveMarker(m.content))) })
             const om = m.content.match(OPEN_MARK_RE)
-            if (om) { const route = cleanOpenRoute(om[1]); if (route) out.push({ from: 'atlas', text: '', navCard: { route, label: om[2].trim() } }) }
+            const navRoute = om ? cleanOpenRoute(om[1]) : null
+            // Le lien « ouvrir X » vit DANS le message texte (pas une carte à part) → text + navCard.
+            out.push({ from: 'atlas', text: cleanChat(stripOpenMarker(stripSaveMarker(m.content))), ...(navRoute && om ? { navCard: { route: navRoute, label: om[2].trim() } } : {}) })
           }
           setMsgs(out)
           // (le saut tout en bas est déclenché par l'effet ci-dessous, UNE FOIS loadingConv=false et le
@@ -816,9 +817,18 @@ TECHNIQUE (invisible pour moi, ne l'explique jamais)${NB}: quand tu as balayé l
     setTimeout(scrollToBottom, 80)
   }
 
-  // Concierge : ajoute une carte deep-link sous la réponse d'Atlas (accès à l'info en 1 tap).
+  // Concierge : colle le LIEN « ouvrir X » SOUS la phrase d'Atlas, dans la MÊME bulle (plus de carte à part).
   const appendNavCard = (route: string, label: string) => {
-    setMsgs((prev) => [...prev, { from: 'atlas', text: '', navCard: { route, label } }])
+    setMsgs((prev) => {
+      const cp = [...prev]
+      const last = cp[cp.length - 1]
+      if (last && last.from === 'atlas' && !last.draft && !last.choices && !last.actionCard && !last.whyCard && !last.profileForm) {
+        cp[cp.length - 1] = { ...last, navCard: { route, label } }
+      } else {
+        cp.push({ from: 'atlas', text: '', navCard: { route, label } })
+      }
+      return cp
+    })
     setTimeout(scrollToBottom, 80)
   }
 
@@ -1087,7 +1097,12 @@ TECHNIQUE (invisible pour moi, ne l'explique jamais)${NB}: quand tu as balayé l
                 ) : m.whyCard ? (
                   <WhyValidateCard title={m.whyCard.title} text={m.whyCard.text} obj={m.whyCard.obj} superseded={m.whyCard.superseded} done={m.whyCard.done} onValidate={() => validateWhyCard(i, m.whyCard!.kind, m.whyCard!.text, m.whyCard!.obj)} />
                 ) : m.navCard ? (
-                  <AtlasNavCard route={m.navCard.route} label={m.navCard.label} />
+                  <div className="flex w-full flex-col gap-1.5 text-lg leading-[1.65] text-foreground lg:text-base">
+                    {m.text && frText(m.text).split(/\n{2,}/).map((para, j) => (
+                      <p key={j} className="whitespace-pre-line">{para}</p>
+                    ))}
+                    <AtlasNavCard route={m.navCard.route} label={m.navCard.label} />
+                  </div>
                 ) : m.actionCard ? (
                   <AtlasActionCard action={m.actionCard} />
                 ) : m.text === '' ? (
