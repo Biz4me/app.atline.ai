@@ -129,7 +129,7 @@ Définie **une seule fois** dans `@theme` de `globals.css` (les `--text-*`). **T
 | Label | `text-xs` | **13** | champs, dates, tags |
 | Micro | `text-2xs` | **11** | badges, pastilles |
 
-**Police : une seule** (Satoshi, `font-sans`). `font-display` (Clash Display) existe encore mais n'est plus utilisé sur les surfaces courantes.
+**Police : UNE SEULE — Satoshi** (3 graisses : Regular/Medium/Bold, `@font-face` self-hosted dans `globals.css`). Appelée une seule fois : `html { @apply font-sans }` → tout hérite. **Clash Display retirée** (font + token `--font-display` + classe `.font-display` supprimés). Plus de `font-mono`, plus de 2ᵉ famille. Ne JAMAIS réintroduire `font-display` / une 2ᵉ police.
 
 > Ne JAMAIS : introduire une taille hors de ces 6, ni une valeur `text-[..px]`. Pour changer l'échelle → modifier UNIQUEMENT les `--text-*` dans `@theme` (un seul endroit, toute l'app suit). `text-2xs` = token custom (Micro 11px).
 
