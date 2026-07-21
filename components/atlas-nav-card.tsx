@@ -52,7 +52,6 @@ const iconFor = (route: string): LucideIcon =>
 export function AtlasNavCard({ route, label }: { route: string; label: string }) {
   const router = useRouter()
   const [busy, setBusy] = useState(false)
-  const Icon = iconFor(route)
   // Ouvrir un contact « par son nom » (Atlas ne connaît pas toujours l'id → route /contacts?q=<nom>) :
   // on résout le nom → id et on ouvre SON fil /chats/[id] (+ fiche en rail), plus l'ancienne liste filtrée.
   const go = async () => {
@@ -71,21 +70,17 @@ export function AtlasNavCard({ route, label }: { route: string; label: string })
     }
     router.push(route)
   }
+  // Plus une carte : un LIEN inline (couleur primaire + flèche) collé sous la phrase d'Atlas.
+  // Une carte est réservée à un OBJET (brouillon, plan, confirmation) ; « ouvrir X » = juste un lien.
   return (
     <button
       type="button"
       onClick={go}
       disabled={busy}
-      className="flex w-full items-center gap-3 rounded-2xl border border-border bg-surface px-4 py-3 text-left transition-transform active:scale-[0.99] disabled:opacity-70"
+      className="inline-flex items-center gap-1 text-sm font-semibold text-primary transition-opacity active:opacity-60 disabled:opacity-50"
     >
-      <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary">
-        <Icon className="size-5 stroke-[1.5]" />
-      </span>
-      <span className="min-w-0 flex-1">
-        <span className="block truncate text-lg font-semibold text-foreground lg:text-sm">{label}</span>
-        <span className="block text-xs text-muted-foreground">Ouvrir</span>
-      </span>
-      <ArrowUpRight className="size-5 shrink-0 text-muted-foreground" />
+      {label}
+      <ArrowUpRight className="size-4 shrink-0 stroke-[1.75]" />
     </button>
   )
 }
