@@ -158,7 +158,7 @@ export async function POST(req: NextRequest) {
       if (['ROUGE', 'VERT', 'BLEU', 'JAUNE'].includes(p.couleur)) data.personality = p.couleur
 
       // Coaching : fusion clé à clé dans le JSON existant (même règle que la qualification contact)
-      const COACH: Record<string, string> = { pourquoi: 'why', parcours: 'background', passions: 'passions', dispo: 'availability', niveau: 'level' }
+      const COACH: Record<string, string> = { pourquoi: 'why', parcours: 'background', mindset: 'mindset', passions: 'passions', dispo: 'availability', niveau: 'level' }
       const coachEntries = Object.entries(COACH).filter(([frk]) => p[frk] && p[frk].trim())
       if (coachEntries.length) {
         const cur = await db.user.findUnique({ where: { id: userId }, select: { coaching: true } })

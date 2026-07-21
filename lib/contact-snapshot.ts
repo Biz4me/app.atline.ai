@@ -13,7 +13,9 @@ export async function buildContactSnapshot(userId: string, contactId: string): P
       where: { contactId, userId }, orderBy: { createdAt: 'desc' }, take: 3,
       select: { type: true, outcome: true, createdAt: true },
     })
-    const lines: string[] = [`Contact : ${c.name}`]
+    // Nom COMPLET (prénom + nom) pour distinguer les homonymes (deux « Julie »).
+    const fullName = `${c.name}${c.lastName && !c.name.toLowerCase().includes(c.lastName.toLowerCase()) ? ` ${c.lastName}` : ''}`
+    const lines: string[] = [`Contact : ${fullName}`]
     const kindLabel = c.kind === 'CLIENT' ? 'Client' : c.kind === 'PARTENAIRE' ? 'Partenaire' : 'Prospect'
     let statut = kindLabel
     if (c.prospectStage) statut += ` · tunnel : ${c.prospectStage}`

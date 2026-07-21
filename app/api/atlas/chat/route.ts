@@ -90,11 +90,11 @@ async function buildAtlasSnapshot(userId: string): Promise<string> {
       if (user.bio) lines.push(`Bio : ${user.bio.slice(0, 200)}`)
       const co = (user.coaching ?? null) as Record<string, string> | null
       if (co) {
-        const cl = [co.why && `pourquoi : ${co.why}`, co.background && `parcours : ${co.background}`, co.passions && `passions : ${co.passions}`, co.availability && `dispo : ${co.availability}`, co.level && `niveau : ${co.level}`].filter(Boolean).join(' · ')
+        const cl = [co.why && `pourquoi : ${co.why}`, co.background && `parcours : ${co.background}`, co.mindset && `mindset : ${co.mindset}`, co.passions && `passions : ${co.passions}`, co.availability && `dispo : ${co.availability}`, co.level && `niveau : ${co.level}`].filter(Boolean).join(' · ')
         if (cl) lines.push(`Coaching : ${cl}`)
       }
       const so = (user.socials ?? null) as Record<string, string> | null
-      if (so && Object.keys(so).length) lines.push(`Réseaux sociaux : ${Object.keys(so).join(', ')}`)
+      if (so && Object.keys(so).length) lines.push(`Réseaux sociaux (handles, à citer/glisser) : ${Object.entries(so).filter(([, v]) => v).map(([k, v]) => `${k} → ${v}`).join(' · ')}`)
     }
 
     if (biz) {
@@ -103,6 +103,7 @@ async function buildAtlasSnapshot(userId: string): Promise<string> {
       if (biz.startDate) head += ` · démarrage ${biz.startDate}`
       lines.push(head)
       if (biz.produit) lines.push(`Offre phare : ${biz.produit}`)
+      if (biz.goal) lines.push(`Objectif / focus déclaré : ${biz.goal}`)
       if (biz.audience) lines.push(`Audience cible : ${biz.audience}`)
       const o = (biz.objectif ?? null) as { mensuel?: string; m3?: string; m6?: string; m12?: string } | null
       if (o && (o.mensuel || o.m3 || o.m6 || o.m12)) {
