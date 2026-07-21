@@ -77,7 +77,7 @@ export function AtlasNavCard({ route, label }: { route: string; label: string })
       type="button"
       onClick={go}
       disabled={busy}
-      className="inline-flex items-center gap-1 text-sm font-semibold text-primary transition-opacity active:opacity-60 disabled:opacity-50"
+      className="inline-flex items-center gap-1 text-sm font-semibold text-foreground transition-opacity active:opacity-60 disabled:opacity-50"
     >
       {label}
       <ArrowUpRight className="size-4 shrink-0 stroke-[1.75]" />
