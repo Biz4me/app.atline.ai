@@ -116,27 +116,22 @@ Ne JAMAIS introduire une autre largeur (md/lg/xl/4xl/5xl/7xl en racine de page).
 
 ## Design system
 
-### Typographie — échelle stricte 6 niveaux
+### Typographie — ÉCHELLE UNIQUE : 6 tailles, 1 police, ZÉRO exception (refonte 21 juil 2026)
 
-**Mobile :**
+Définie **une seule fois** dans `@theme` de `globals.css` (les `--text-*`). **Toutes** les classes `text-*` de l'app retombent sur ces 6 tailles (mobile ET desktop, plus de bump). **Aucune valeur arbitraire `text-[..px]`, aucune taille hors de ces 6.** La hiérarchie au-delà de la taille se joue au **poids** (bold/semibold) + **couleur**.
 
-| Niveau | Classe Tailwind | px | Usage |
-|--------|----------------|-----|-------|
-| Display | `text-[32px]` | 32 | H1 pages, titres principaux |
-| Heading | `text-2xl` | 24 | KPI, titres forts |
-| Title | `text-lg` | 18 | Titres de cartes, sections |
-| Body | `text-sm` | 14 | Tout le contenu courant |
-| Label/Caption | `text-xs` | 12 | Champs, dates, tags, métadonnées |
-| Micro | `text-[10px]` | 10 | Badges/pastilles uniquement |
+| Rôle | Classe(s) | px | Usage |
+|---|---|---|---|
+| Display | `text-3xl` | **29** | héros (« Bonjour »), gros titres de page |
+| Heading | `text-2xl` (= `text-xl`) | **23** | chiffres KPI, titres forts |
+| Titre / corps large | `text-lg` | **17** | titres de section/carte, bulles de chat |
+| Corps | `text-sm` (= `text-base`) | **15** | contenu courant (= aussi le `body` par défaut) |
+| Label | `text-xs` | **13** | champs, dates, tags |
+| Micro | `text-2xs` | **11** | badges, pastilles |
 
-**Desktop :** identique + Body passe à 15px via media query globals.css (`text-sm` → 15px à ≥1024px)
+**Police : une seule** (Satoshi, `font-sans`). `font-display` (Clash Display) existe encore mais n'est plus utilisé sur les surfaces courantes.
 
-**Tailles hors hiérarchie (exceptions visuelles) :**
-- `text-base` (16px) — avatars lettrés, bouton CTA primaire, valeurs monétaires
-- `text-xl` (20px) — emoji, icônes décoratives
-- `text-[20px]`, `text-[36px]`, `text-[42px]`, `text-[44px]` — visuels, déco, KPI héros
-
-> Ne JAMAIS réintroduire `text-[11px]`, `text-[13px]`, `text-[15px]`, `text-[22px]`, `text-[28px]`
+> Ne JAMAIS : introduire une taille hors de ces 6, ni une valeur `text-[..px]`. Pour changer l'échelle → modifier UNIQUEMENT les `--text-*` dans `@theme` (un seul endroit, toute l'app suit). `text-2xs` = token custom (Micro 11px).
 
 ### Palette de couleurs — règle stricte
 
