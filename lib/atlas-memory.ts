@@ -154,18 +154,22 @@ export async function reconcileFacts(userId: string, contactId: string | null, f
 }
 
 // Appel du service de réflexion (haiku) : profil réécrit + faits extraits.
+// `reference` = données DÉJÀ déclarées (profil/contact structuré) → la réflexion reste
+// cohérente avec elles et ne les redécouvre pas comme des faits. Utilisé par la passe
+// nocturne (deep) ; vide sur le chemin live.
 export async function reflect(
   kind: 'user' | 'contact',
   name: string,
   profile: string,
   exchange: string,
   deep = false,
+  reference = '',
 ): Promise<{ profile: string; facts: ExtractedFact[] }> {
   try {
     const r = await fetch(`${ATLAS_URL}/api/atlas/reflect`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ kind, name, profile, exchange, deep }),
+      body: JSON.stringify({ kind, name, profile, exchange, deep, reference }),
       signal: AbortSignal.timeout(45000),
     })
     if (!r.ok) return { profile: '', facts: [] }
