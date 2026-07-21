@@ -45,31 +45,30 @@ const META: Record<string, { icon: LucideIcon; label: (p: Record<string, string>
   update_profile: {
     icon: CircleUserRound,
     label: () => 'Mettre à jour ton profil',
-    desc: (p) => {
-      const FR: [string, string][] = [
-        ['profession', 'métier'], ['education', 'formation'], ['ville', 'ville'],
-        ['date_naissance', 'naissance'], ['genre', 'genre'], ['couleur', 'couleur'], ['bio', 'bio'],
-        ['pourquoi', 'pourquoi'], ['parcours', 'parcours'], ['passions', 'passions'],
-        ['dispo', 'disponibilité'], ['niveau', 'niveau'],
-      ]
-      const parts = FR.filter(([k]) => p[k]).map(([, l]) => l)
-      return parts.length ? parts.join(' · ') : 'infos du profil'
-    },
+    desc: (p) => fieldValues([
+      ['profession', 'métier'], ['education', 'formation'], ['ville', 'ville'],
+      ['date_naissance', 'naissance'], ['genre', 'genre'], ['couleur', 'couleur'], ['bio', 'bio'],
+      ['pourquoi', 'pourquoi'], ['parcours', 'parcours'], ['mindset', 'mindset'], ['passions', 'passions'],
+      ['dispo', 'disponibilité'], ['niveau', 'niveau'],
+    ], p) || 'infos du profil',
   },
   update_activite: {
     icon: Briefcase,
     label: () => 'Mettre à jour ton activité',
-    desc: (p) => {
-      const FR: [string, string][] = [
-        ['objectif_mensuel', 'objectif mensuel'], ['objectif_3m', 'objectif 3 mois'],
-        ['objectif_6m', 'objectif 6 mois'], ['objectif_12m', 'objectif 12 mois'],
-        ['produit', 'produit phare'], ['audience', 'audience'], ['rang', 'rang'],
-        ['story', 'ta rencontre'], ['parrain', 'parrain'],
-      ]
-      const parts = FR.filter(([k]) => p[k]).map(([, l]) => l)
-      return parts.length ? parts.join(' · ') : "infos de l'activité"
-    },
+    desc: (p) => fieldValues([
+      ['goal', 'objectif principal'],
+      ['objectif_mensuel', 'objectif mensuel'], ['objectif_3m', 'objectif 3 mois'],
+      ['objectif_6m', 'objectif 6 mois'], ['objectif_12m', 'objectif 12 mois'],
+      ['produit', 'produit phare'], ['audience', 'audience'], ['rang', 'rang'],
+      ['story', 'ta rencontre'], ['parrain', 'parrain'],
+    ], p) || "infos de l'activité",
   },
+}
+
+// Résumé « label : valeur » des champs renseignés — une carte proactive (suggestion du matin)
+// doit montrer la VALEUR proposée, pas seulement le nom du champ.
+function fieldValues(fr: [string, string][], p: Record<string, string>): string {
+  return fr.filter(([k]) => p[k]?.trim()).map(([k, l]) => `${l} : ${p[k].trim().slice(0, 40)}`).join(' · ')
 }
 
 function frDate(d?: string): string {

@@ -19,7 +19,7 @@ export async function POST(req: NextRequest) {
   const startOfDay = new Date(now); startOfDay.setHours(0, 0, 0, 0)
   const endOfDay = new Date(now); endOfDay.setHours(23, 59, 59, 999)
 
-  const [relances, rdvs] = await Promise.all([
+  const [relances, rdvs, propRows] = await Promise.all([
     db.relance.groupBy({
       by: ['userId'],
       where: { status: 'PENDING', dueAt: { lte: endOfDay } },
@@ -30,14 +30,30 @@ export async function POST(req: NextRequest) {
       orderBy: { startAt: 'asc' },
       select: { userId: true, title: true, startAt: true, contact: { select: { firstName: true } } },
     }),
+    // Suggestions d'écriture de profil/activité détectées cette nuit (cartes [[ACTION]] pendantes).
+    db.atlasMessage.findMany({
+      where: {
+        createdAt: { gte: startOfDay },
+        content: { startsWith: '[[ACTION]]' },
+        OR: [{ content: { contains: '"kind":"update_profile"' } }, { content: { contains: '"kind":"update_activite"' } }],
+      },
+      select: { conversation: { select: { userId: true } } },
+    }),
   ])
 
-  const byUser = new Map<string, { relances: number; rdv?: { title: string; startAt: Date; prenom?: string } }>()
-  for (const r of relances) byUser.set(r.userId, { relances: r._count._all })
+  const byUser = new Map<string, { relances: number; profils: number; rdv?: { title: string; startAt: Date; prenom?: string } }>()
+  for (const r of relances) byUser.set(r.userId, { relances: r._count._all, profils: 0 })
   for (const a of rdvs) {
-    const cur = byUser.get(a.userId) ?? { relances: 0 }
+    const cur = byUser.get(a.userId) ?? { relances: 0, profils: 0 }
     if (!cur.rdv) cur.rdv = { title: a.title, startAt: a.startAt, prenom: a.contact?.firstName ?? undefined }
     byUser.set(a.userId, cur)
+  }
+  for (const m of propRows) {
+    const uid = m.conversation?.userId
+    if (!uid) continue
+    const cur = byUser.get(uid) ?? { relances: 0, profils: 0 }
+    cur.profils += 1
+    byUser.set(uid, cur)
   }
 
   let sent = 0
@@ -57,6 +73,7 @@ export async function POST(req: NextRequest) {
         const h = new Intl.DateTimeFormat('fr-FR', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Paris' }).format(info.rdv.startAt)
         bits.push(`RDV « ${info.rdv.title} »${info.rdv.prenom ? ` avec ${info.rdv.prenom}` : ''} à ${h}`)
       }
+      if (info.profils > 0) bits.push(`${info.profils} suggestion${info.profils > 1 ? 's' : ''} pour ton profil à valider`)
       if (!bits.length) continue
 
       await db.notification.create({

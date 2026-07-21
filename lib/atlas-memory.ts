@@ -235,3 +235,25 @@ export async function reflectContactMemory(userId: string, contactId: string, qu
     /* mémoire best-effort */
   }
 }
+
+// Suggestions d'écriture de champs STRUCTURÉS (profil/activité) que l'utilisateur a dits
+// explicitement dans la journée et qui diffèrent du profil actuel. RIEN n'est écrit ici :
+// la passe de nuit les persiste en cartes [[ACTION]] à confirmer au réveil (jamais auto).
+export type ProfileProposal = { cible: 'profile' | 'activite'; champ: string; valeur: string }
+
+export async function proposeProfileUpdates(reference: string, exchange: string): Promise<ProfileProposal[]> {
+  if (!exchange.trim()) return []
+  try {
+    const r = await fetch(`${ATLAS_URL}/api/atlas/propose-updates`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ reference, exchange }),
+      signal: AbortSignal.timeout(30000),
+    })
+    if (!r.ok) return []
+    const d = await r.json()
+    return Array.isArray(d.proposals) ? (d.proposals as ProfileProposal[]) : []
+  } catch {
+    return []
+  }
+}

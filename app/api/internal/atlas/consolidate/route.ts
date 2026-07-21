@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
-import { reflect, reconcileFacts } from '@/lib/atlas-memory'
+import { reflect, reconcileFacts, proposeProfileUpdates, type ProfileProposal } from '@/lib/atlas-memory'
 import { buildProfileReference } from '@/lib/atlas-snapshot'
 import { buildContactSnapshot } from '@/lib/contact-snapshot'
 
@@ -13,6 +13,46 @@ export const maxDuration = 300
 // Bornes explicites (jamais de troncature silencieuse — on renvoie le nombre d'ignorés).
 const USER_CAP = 80        // utilisateurs consolidés par nuit
 const CONTACT_CAP = 250    // contacts consolidés par nuit (toutes personnes confondues)
+
+// Lot 4 — les suggestions d'écriture structurée (goal, mindset…) détectées la nuit sont
+// PROPOSÉES au réveil, jamais écrites d'office. Réutilise la carte [[ACTION]] existante :
+// persistée dans le fil principal → ressuscitée en AtlasActionCard → Confirmer = update_*,
+// Ignorer = dismiss. Une carte pendante par type suffit (pas de doublon).
+async function persistProfileProposals(userId: string, proposals: ProfileProposal[]): Promise<number> {
+  const KIND: Record<string, string> = { profile: 'update_profile', activite: 'update_activite' }
+  const byKind = new Map<string, Record<string, string>>()
+  for (const pr of proposals) {
+    const kind = KIND[pr.cible]
+    if (!kind || !pr.champ || !pr.valeur?.trim()) continue
+    const params = byKind.get(kind) ?? {}
+    params[pr.champ] = pr.valeur.trim()
+    byKind.set(kind, params)
+  }
+  if (!byKind.size) return 0
+
+  // Fil principal (hors fiches) — créé si l'utilisateur n'a que des fils contact.
+  let conv = await db.atlasConversation.findFirst({
+    where: { userId, contactId: null },
+    orderBy: { updatedAt: 'desc' },
+    select: { id: true },
+  })
+  if (!conv) conv = await db.atlasConversation.create({ data: { userId, title: 'Suggestions', context: 'parcours' }, select: { id: true } })
+
+  let created = 0
+  for (const [kind, params] of byKind.entries()) {
+    // Pas de doublon : si une carte de ce type est déjà en attente (nuit précédente ou chat), on passe.
+    const exists = await db.atlasMessage.findFirst({
+      where: { conversation: { userId }, content: { startsWith: '[[ACTION]]', contains: `"kind":"${kind}"` } },
+      select: { id: true },
+    })
+    if (exists) continue
+    await db.atlasMessage.create({
+      data: { conversationId: conv.id, role: 'ASSISTANT', content: `[[ACTION]]${JSON.stringify({ kind, params })}`, qdrantChunks: [] },
+    })
+    created++
+  }
+  return created
+}
 
 // Passe NOCTURNE de consolidation mémoire (style AutoDream) — appelée par cron (3h15).
 // 1) Pour chaque utilisateur actif (26 h) : une réflexion PROFONDE sur ses échanges du
@@ -51,6 +91,7 @@ export async function POST(req: NextRequest) {
   const userEntries = [...byUser.entries()]
   const usersSkipped = Math.max(0, userEntries.length - USER_CAP)
   let doneUsers = 0
+  let proposalsCreated = 0
   for (const [userId, convIds] of userEntries.slice(0, USER_CAP)) {
     try {
       const [msgs, simsDuJour] = await Promise.all([
@@ -100,6 +141,11 @@ export async function POST(req: NextRequest) {
         })
       }
       if (facts.length) await reconcileFacts(userId, null, facts)
+      // Lot 4 — suggestions d'écriture structurée (goal, mindset…) → cartes à confirmer au réveil.
+      try {
+        const proposals = await proposeProfileUpdates(reference, exchange)
+        if (proposals.length) proposalsCreated += await persistProfileProposals(userId, proposals)
+      } catch { /* best-effort, ne bloque pas la consolidation */ }
       doneUsers++
     } catch {
       /* un user raté ne bloque pas les autres */
@@ -199,6 +245,7 @@ export async function POST(req: NextRequest) {
     usersSkipped,
     contacts: doneContacts,
     contactsSkipped,
+    proposals: proposalsCreated,
     judged,
   })
 }
