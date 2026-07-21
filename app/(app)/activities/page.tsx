@@ -295,7 +295,7 @@ export default function ActivitiesPage({ embedded }: { embedded?: boolean }) {
                           <div key={d.id} className="flex items-center gap-3 px-3.5 py-2.5">
                             <FileText className="size-4 shrink-0 text-muted-foreground" />
                             <a href={`/api/supports/${d.id}/file`} target="_blank" rel="noopener noreferrer" className="min-w-0 flex-1 truncate text-base text-foreground hover:text-primary">{d.title}</a>
-                            <span className="shrink-0 rounded bg-muted px-1.5 py-0.5 text-[10px] font-semibold uppercase text-muted-foreground">{d.format}</span>
+                            <span className="shrink-0 rounded bg-muted px-1.5 py-0.5 text-2xs font-semibold uppercase text-muted-foreground">{d.format}</span>
                             <button type="button" onClick={() => deleteDoc(d.id)} className="shrink-0 text-muted-foreground hover:text-[#EF4444]"><Trash2 className="size-3.5" /></button>
                           </div>
                         ))}

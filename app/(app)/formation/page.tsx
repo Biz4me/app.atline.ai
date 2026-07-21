@@ -144,11 +144,11 @@ export default function FormationPage() {
                     <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
                       <div className="h-full rounded-full bg-primary transition-all" style={{ width: `${pct}%` }} />
                     </div>
-                    <p className="mt-1 text-right text-[10px] text-muted-foreground">{pct}%</p>
+                    <p className="mt-1 text-right text-2xs text-muted-foreground">{pct}%</p>
                   </div>
                 )}
-                {inProgress && <span className="shrink-0 rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-semibold text-primary">En cours</span>}
-                {done && <span className="shrink-0 rounded-full bg-success/10 px-2 py-0.5 text-[10px] font-semibold text-success">Terminé</span>}
+                {inProgress && <span className="shrink-0 rounded-full bg-primary/10 px-2 py-0.5 text-2xs font-semibold text-primary">En cours</span>}
+                {done && <span className="shrink-0 rounded-full bg-success/10 px-2 py-0.5 text-2xs font-semibold text-success">Terminé</span>}
                 {locked ? <Lock className="size-4 shrink-0 text-muted-foreground" /> : <ChevronRight className="size-4 shrink-0 text-muted-foreground" />}
               </Card>
             )

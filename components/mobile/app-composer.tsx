@@ -51,7 +51,7 @@ export function AppComposer({
   }, [value])
   useEffect(() => { if (autoFocus) rootRef.current?.querySelector('textarea')?.focus() }, [autoFocus])
 
-  const textCls = bigText ? 'text-[19px] lg:text-base' : 'text-lg lg:text-sm'
+  const textCls = bigText ? 'text-lg lg:text-base' : 'text-lg lg:text-sm'
 
   // Bouton « revenir en bas » — au-dessus de la barre, même distance mobile/desktop.
   const scrollBtn = showScrollBtn && onScrollBottom ? (

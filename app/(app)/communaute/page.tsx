@@ -221,7 +221,7 @@ export default function CommunautePage() {
                     {thread.authorInitials}
                   </span>
                   <span className="text-base font-semibold text-foreground">{thread.author}</span>
-                  <span className={cn('rounded-full px-2 py-0.5 text-[10px] font-bold', thread.companyColor)}>
+                  <span className={cn('rounded-full px-2 py-0.5 text-2xs font-bold', thread.companyColor)}>
                     {thread.company}
                   </span>
                   <span className="ml-auto text-xs text-muted-foreground">{thread.time}</span>

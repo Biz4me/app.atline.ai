@@ -131,7 +131,7 @@ export function MobileDrawer() {
           >
             <Bell className="size-5 stroke-[1.5]" />
             {unread > 0 && (
-              <span className="absolute right-0.5 top-0.5 flex size-4 items-center justify-center rounded-full bg-destructive text-[10px] font-bold text-white ring-2 ring-background">{unread > 9 ? '9+' : unread}</span>
+              <span className="absolute right-0.5 top-0.5 flex size-4 items-center justify-center rounded-full bg-destructive text-2xs font-bold text-white ring-2 ring-background">{unread > 9 ? '9+' : unread}</span>
             )}
           </button>
         </div>

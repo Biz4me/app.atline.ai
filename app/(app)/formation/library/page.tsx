@@ -51,7 +51,7 @@ function BookCard({ book }: { book: Book }) {
           <p className="text-xs text-muted-foreground">{book.author}</p>
           <div className="mt-1.5 flex flex-wrap gap-1">
             {book.tags.slice(0, 3).map((t) => (
-              <span key={t} className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-semibold text-muted-foreground">{t}</span>
+              <span key={t} className="rounded-full bg-muted px-2 py-0.5 text-2xs font-semibold text-muted-foreground">{t}</span>
             ))}
           </div>
         </div>

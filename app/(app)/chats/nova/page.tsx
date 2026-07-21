@@ -76,7 +76,7 @@ export default function NovaThreadPage() {
             >
               <div className="flex items-center justify-between border-b border-border px-4 py-2.5">
                 <p className="text-sm font-semibold text-foreground">{PLATFORM_LABEL[p.platform] ?? p.platform}{p.format ? ` · ${p.format}` : ''}</p>
-                <p className="shrink-0 pl-2 text-[10px] text-muted-foreground">
+                <p className="shrink-0 pl-2 text-2xs text-muted-foreground">
                   <span className="rounded-full px-2 py-0.5 font-medium" style={{ backgroundColor: 'rgba(139,92,246,.12)', color: NOVA }}>{STATUS_LABEL[p.status] ?? p.status.toLowerCase()}</span>
                   {' '}{new Date(p.createdAt).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}
                 </p>

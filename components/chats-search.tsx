@@ -38,7 +38,7 @@ const segOk = (t: SearchThread, tab: Tab) =>
 
 function Label({ children, action, onAction }: { children: React.ReactNode; action?: string; onAction?: () => void }) {
   return (
-    <p className="flex items-center justify-between px-4 pb-1 pt-3 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+    <p className="flex items-center justify-between px-4 pb-1 pt-3 text-2xs font-bold uppercase tracking-widest text-muted-foreground">
       {children}
       {action && <button type="button" onClick={onAction} className="font-medium normal-case tracking-normal">{action}</button>}
     </p>

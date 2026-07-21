@@ -188,7 +188,7 @@ function CampaignCard({
             <span className="flex items-center gap-2">
               <span className="truncate text-lg lg:text-sm font-bold text-foreground">{campaign.name}</span>
               <span
-                className="flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold"
+                className="flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-2xs font-semibold"
                 style={{ background: `${s.color}1a`, color: s.color }}
               >
                 <span className="size-1.5 rounded-full" style={{ background: s.color }} />
@@ -265,7 +265,7 @@ function CampaignCard({
                       preload="metadata"
                       className="aspect-[9/16] h-44 rounded-xl bg-black object-cover"
                     />
-                    <span className="text-center text-[10px] font-semibold text-muted-foreground">{roleLabel(v.format)}</span>
+                    <span className="text-center text-2xs font-semibold text-muted-foreground">{roleLabel(v.format)}</span>
                   </div>
                 ))}
               </div>
@@ -283,7 +283,7 @@ function Kpi({ value, label }: { value: number; label: string }) {
       <span className="text-lg font-bold" style={{ color: NOVA }}>
         {value}
       </span>
-      <span className="text-center text-[10px] font-semibold text-muted-foreground">{label}</span>
+      <span className="text-center text-2xs font-semibold text-muted-foreground">{label}</span>
     </div>
   )
 }

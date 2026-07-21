@@ -20,16 +20,16 @@ export function ThreadRow({ avatarBg, avatarText, avatarSrc, title, titlePill, l
       <span className="min-w-0 flex-1">
         <span className={cn('flex items-center gap-1.5 font-semibold text-foreground', big ? 'text-lg' : 'text-sm')}>
           {title}
-          {titlePill && <span className={cn('rounded-full px-2 py-0.5 text-[10px] font-semibold', titlePill.cls)}>{titlePill.label}</span>}
+          {titlePill && <span className={cn('rounded-full px-2 py-0.5 text-2xs font-semibold', titlePill.cls)}>{titlePill.label}</span>}
         </span>
         <span className={cn('block truncate text-muted-foreground', big ? 'text-lg' : 'text-xs')}>{line}</span>
       </span>
       <span className="flex shrink-0 flex-col items-end gap-1">
-        {time !== undefined && <span className="text-[10px] text-muted-foreground">{time}</span>}
+        {time !== undefined && <span className="text-2xs text-muted-foreground">{time}</span>}
         {count ? (
-          <span className="grid h-[18px] min-w-[18px] place-items-center rounded-full bg-primary px-1.5 text-[10px] font-bold text-primary-foreground">{count}</span>
+          <span className="grid h-[18px] min-w-[18px] place-items-center rounded-full bg-primary px-1.5 text-2xs font-bold text-primary-foreground">{count}</span>
         ) : endPill ? (
-          <span className={cn('rounded-full px-2 py-0.5 text-[10px] font-medium', endPill.cls)}>{endPill.label}</span>
+          <span className={cn('rounded-full px-2 py-0.5 text-2xs font-medium', endPill.cls)}>{endPill.label}</span>
         ) : null}
       </span>
     </button>

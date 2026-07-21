@@ -351,7 +351,7 @@ function QuizPlayer({
             ? <CheckCircle2 className="size-14 text-success stroke-[1.5]" />
             : <XCircle className="size-14 text-destructive stroke-[1.5]" />
           }
-          <p className="text-[36px] font-extrabold leading-none text-foreground">{score}%</p>
+          <p className="text-3xl font-extrabold leading-none text-foreground">{score}%</p>
           <p className="text-sm font-semibold text-muted-foreground">
             {passed ? 'Quiz réussi !' : `Seuil requis : ${passThreshold}%`}
           </p>
@@ -548,7 +548,7 @@ export default function LessonPage() {
         </button>
         <div className="flex flex-col items-center">
           {lesson?.moduleTitle && (
-            <p className="text-[10px] text-muted-foreground leading-none mb-0.5">
+            <p className="text-2xs text-muted-foreground leading-none mb-0.5">
               Module {lesson.modulePosition + 1}
             </p>
           )}
@@ -660,7 +660,7 @@ export default function LessonPage() {
         {lesson && (
           <>
             <div>
-              <h1 className="font-display text-[32px] font-extrabold leading-tight tracking-[-0.025em] text-foreground">
+              <h1 className="font-display text-3xl font-extrabold leading-tight tracking-[-0.025em] text-foreground">
                 {lesson.title}
               </h1>
               <div className="mt-2 flex items-center gap-3 text-xs text-muted-foreground">

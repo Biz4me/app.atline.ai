@@ -100,7 +100,7 @@ export default function ParrainagePage() {
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2">
                 <p className="text-lg lg:text-sm font-semibold text-foreground">Page de capture · démo Atlas</p>
-                <span className="rounded-full bg-primary/15 px-2 py-0.5 text-[10px] font-bold text-primary">Bientôt</span>
+                <span className="rounded-full bg-primary/15 px-2 py-0.5 text-2xs font-bold text-primary">Bientôt</span>
               </div>
               <p className="mt-0.5 text-xs text-muted-foreground">Offre une session Atlas gratuite à tes prospects — ils goûtent l&apos;IA avant de s&apos;inscrire.</p>
             </div>

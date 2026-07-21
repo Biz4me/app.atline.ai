@@ -154,7 +154,7 @@ export function ChatsHome() {
       </div>
 
       {/* Contacts : à traiter d'abord (badges du plan), puis par dernier échange */}
-      <p className="px-4 pb-1 pt-3 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Contacts</p>
+      <p className="px-4 pb-1 pt-3 text-2xs font-bold uppercase tracking-widest text-muted-foreground">Contacts</p>
       <div className="flex flex-1 flex-col pb-24">
         {loading && <p className="px-4 py-6 text-sm text-muted-foreground">Chargement…</p>}
         {!loading && sorted.length === 0 && <p className="px-4 py-6 text-sm text-muted-foreground">Aucun contact pour l'instant.</p>}
@@ -230,7 +230,7 @@ export function ChatsHome() {
               />
             </div>
           </div>
-          <p className="px-4 pb-1 pt-1 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+          <p className="px-4 pb-1 pt-1 text-2xs font-bold uppercase tracking-widest text-muted-foreground">
             {picker.length} contact{picker.length > 1 ? 's' : ''} · triés par suivi
           </p>
           <div className="flex-1 overflow-y-auto pb-8">

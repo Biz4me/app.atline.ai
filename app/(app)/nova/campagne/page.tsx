@@ -583,7 +583,7 @@ export default function CampagnePage() {
           ))}
         </div>
         {/* Phase (Cadrer/Créer/Lancer) + nom de l'étape = le titre ; les flèches naviguent */}
-        <p className="mt-3 text-center text-[10px] font-bold uppercase tracking-[0.14em]" style={{ color: NOVA }}>
+        <p className="mt-3 text-center text-2xs font-bold uppercase tracking-[0.14em]" style={{ color: NOVA }}>
           {PHASE_OF(step)}
         </p>
         <div className="mt-1 flex items-center justify-center gap-3">
@@ -974,7 +974,7 @@ function TrendCard({ trend, selected, onSelect }: { trend: Trend; selected: bool
       style={selected ? { borderColor: NOVA, boxShadow: `0 0 0 1px ${NOVA}` } : undefined}
     >
       <div className="flex items-center gap-2">
-        <span className="rounded-full px-2 py-0.5 text-[10px] font-semibold" style={{ background: `${NOVA}1a`, color: NOVA }}>
+        <span className="rounded-full px-2 py-0.5 text-2xs font-semibold" style={{ background: `${NOVA}1a`, color: NOVA }}>
           {trend.platform}
         </span>
         <span className="ml-auto shrink-0 text-xs font-semibold text-muted-foreground">{formatViews(trend.views)} vues</span>
@@ -1035,7 +1035,7 @@ function ChannelCard({
         <span className="flex items-center gap-2">
           <span className="text-sm font-bold text-foreground">{title}</span>
           {optional && (
-            <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-semibold text-muted-foreground">
+            <span className="rounded-full bg-muted px-2 py-0.5 text-2xs font-semibold text-muted-foreground">
               Optionnel
             </span>
           )}

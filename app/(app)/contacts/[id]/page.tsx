@@ -121,7 +121,7 @@ function StageCursor({ stages, current, onPick }: { stages: { id: string; label:
               <div className="flex w-full items-center">
                 <div className={cn('h-0.5 flex-1', i === 0 ? 'opacity-0' : done || cur ? 'bg-primary' : 'bg-border')} />
                 <button type="button" onClick={() => onPick(s.id)}
-                  className={cn('grid size-6 shrink-0 place-items-center rounded-full text-[10px] font-bold transition-colors',
+                  className={cn('grid size-6 shrink-0 place-items-center rounded-full text-2xs font-bold transition-colors',
                     cur ? 'bg-primary text-primary-foreground ring-4 ring-primary/15' : done ? 'bg-primary text-primary-foreground' : 'border border-border bg-background text-muted-foreground')}>
                   {done ? <Check className="size-3" /> : i + 1}
                 </button>
@@ -235,7 +235,7 @@ function ComposeSheet({ contactId, channel, label, phone, email, autoDraft, onCl
           <textarea value={msg} onChange={(e) => setMsg(e.target.value)} rows={5} autoFocus
             placeholder="Écris ton message, ou laisse Atlas le rédiger…"
             className="w-full resize-none rounded-xl border border-border bg-background px-4 py-3 text-lg leading-relaxed text-foreground lg:text-sm outline-none placeholder:text-muted-foreground" />
-          <p className="text-[10px] leading-relaxed text-muted-foreground">Atlas adapte le message à l'étape du funnel et à la couleur du contact. Relis toujours avant d'envoyer.</p>
+          <p className="text-2xs leading-relaxed text-muted-foreground">Atlas adapte le message à l'étape du funnel et à la couleur du contact. Relis toujours avant d'envoyer.</p>
         </div>
       </div>
     </div>
@@ -538,7 +538,7 @@ export default function ContactDetailPage({ params, contactId, embedded, onClose
                 <button key={cv.id} type="button" onClick={() => router.push(`/chats/${id}`)} className="flex items-center gap-3 py-2.5 text-left first:pt-0 last:pb-0 active:opacity-70">
                   <Sparkles className="size-4 shrink-0 stroke-[1.5] text-primary" />
                   <span className="min-w-0 flex-1 truncate text-lg text-foreground lg:text-sm">{cv.title || 'Échange'}</span>
-                  <span className="shrink-0 text-[10px] text-muted-foreground">{new Date(cv.updatedAt).toLocaleDateString('fr-FR')}</span>
+                  <span className="shrink-0 text-2xs text-muted-foreground">{new Date(cv.updatedAt).toLocaleDateString('fr-FR')}</span>
                 </button>
               ))}
             </div>
@@ -557,9 +557,9 @@ export default function ContactDetailPage({ params, contactId, embedded, onClose
                     <div className="min-w-0 flex-1">
                       <p className="text-lg font-medium text-foreground lg:text-sm">{m.label}{it.direction === 'IN' ? ' reçu' : ''}{it.outcome ? ` · ${it.outcome.toLowerCase()}` : ''}</p>
                       {it.body && <p className="truncate text-xs text-muted-foreground">{it.body}</p>}
-                      <p className="mt-0.5 text-[10px] text-muted-foreground">{new Date(it.createdAt).toLocaleString('fr-FR', { dateStyle: 'medium', timeStyle: 'short' })}</p>
+                      <p className="mt-0.5 text-2xs text-muted-foreground">{new Date(it.createdAt).toLocaleString('fr-FR', { dateStyle: 'medium', timeStyle: 'short' })}</p>
                     </div>
-                    {it.isExposure && <span className="shrink-0 text-[10px] font-bold text-primary">+1 expo</span>}
+                    {it.isExposure && <span className="shrink-0 text-2xs font-bold text-primary">+1 expo</span>}
                   </li>
                 )
               })}

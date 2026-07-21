@@ -160,7 +160,7 @@ export default function DiscQuizPage({
 
           {/* Titre */}
           <div className="text-center">
-            <h1 className={cn('font-display text-[32px] font-extrabold leading-tight', profile.textClass)}>
+            <h1 className={cn('font-display text-3xl font-extrabold leading-tight', profile.textClass)}>
               {firstName} est {profile.name}
             </h1>
             <p className="mt-2 text-sm text-muted-foreground">{profile.desc}</p>

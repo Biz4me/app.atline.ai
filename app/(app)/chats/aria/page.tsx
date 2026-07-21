@@ -85,7 +85,7 @@ export default function AriaThreadPage() {
               <div key={s.id} className="overflow-hidden rounded-2xl border border-border bg-surface">
                 <div className="flex items-center justify-between border-b border-border px-4 py-2.5">
                   <p className="min-w-0 truncate text-sm font-semibold capitalize text-foreground">{scenarioName(s.characterId)}</p>
-                  <p className="shrink-0 pl-2 text-[10px] text-muted-foreground">
+                  <p className="shrink-0 pl-2 text-2xs text-muted-foreground">
                     {PHASE_LABEL[s.phase] ?? s.phase} · {DIFF_LABEL[s.difficulty] ?? s.difficulty} · {new Date(s.startedAt).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}
                   </p>
                 </div>
@@ -116,7 +116,7 @@ export default function AriaThreadPage() {
         {/* La progression — ce que le fil raconte en chiffres */}
         {progress.length > 0 && (
           <div className="mt-3 rounded-2xl border border-border bg-surface px-4 py-3">
-            <p className="mb-1.5 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-muted-foreground"><TrendingUp className="size-3.5" style={{ color: ARIA }} /> Ta progression</p>
+            <p className="mb-1.5 flex items-center gap-1.5 text-2xs font-bold uppercase tracking-widest text-muted-foreground"><TrendingUp className="size-3.5" style={{ color: ARIA }} /> Ta progression</p>
             {progress.map(([sc, scores]) => (
               <p key={sc} className="text-sm capitalize text-foreground">
                 {scenarioName(sc)} : <b style={{ color: ARIA }}>{scores[0]} → {scores[scores.length - 1]}</b>

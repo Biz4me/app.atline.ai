@@ -263,7 +263,7 @@ export default function ContactThreadPage({ params }: { params: Promise<{ contac
       {/* Le bandeau qui lève l'ambiguïté — règle absolue du fil contact */}
       <div className="mx-4 mt-2 shrink-0 rounded-xl border border-primary/30 bg-primary/10 px-3 py-2 text-center">
         <p className="text-xs font-semibold text-primary">🧭 Ici, tu parles à Atlas — à propos de {prenom}</p>
-        <p className="text-[10px] text-muted-foreground">Ses vrais messages partent via WhatsApp, jamais d'ici</p>
+        <p className="text-2xs text-muted-foreground">Ses vrais messages partent via WhatsApp, jamais d'ici</p>
       </div>
 
       {/* Le fil */}
@@ -281,17 +281,17 @@ export default function ContactThreadPage({ params }: { params: Promise<{ contac
                 <AtlasActionCard action={m.actionCard} />
               ) : m.choices ? (
                 <div className="flex w-full flex-col gap-2">
-                  {m.text && <p className="text-[19px] leading-[1.65] text-foreground lg:text-base">{m.text}</p>}
+                  {m.text && <p className="text-lg leading-[1.65] text-foreground lg:text-base">{m.text}</p>}
                   <ChatChoices choices={m.choices} onPick={(v, l) => onChoice(v, l, i)} />
                 </div>
               ) : m.draft && c ? (
                 <AtlasDraftCard contactId={c.id} prenom={prenom} channel={m.draft.channel} phone={c.phone} email={c.email} initial={m.draft.initial} conversationId={m.draft.conversationId} />
               ) : m.from === 'user' ? (
-                <div className="rounded-2xl rounded-br-md bg-primary/15 px-3.5 py-2 text-[19px] leading-[1.45] text-foreground lg:text-base">{m.text}</div>
+                <div className="rounded-2xl rounded-br-md bg-primary/15 px-3.5 py-2 text-lg leading-[1.45] text-foreground lg:text-base">{m.text}</div>
               ) : m.text === '' ? (
                 <div className="flex items-center gap-1 py-1 text-muted-foreground"><Loader2 className="size-4 animate-spin" /></div>
               ) : (
-                <div className="whitespace-pre-line text-[19px] leading-[1.65] text-foreground lg:text-base">{m.text}</div>
+                <div className="whitespace-pre-line text-lg leading-[1.65] text-foreground lg:text-base">{m.text}</div>
               )}
             </div>
           ))}

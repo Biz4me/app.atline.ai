@@ -225,7 +225,7 @@ function SetupScreen({
                         <p className="text-base font-semibold text-foreground lg:text-sm">{c.firstName} {c.lastName}</p>
                         <p className="text-xs text-muted-foreground">{c.city}</p>
                       </div>
-                      <span className={cn('shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold', stagePillColors[c.stage])}>
+                      <span className={cn('shrink-0 rounded-full px-2 py-0.5 text-2xs font-bold', stagePillColors[c.stage])}>
                         {stageLabel[c.stage]}
                       </span>
                     </button>
@@ -352,7 +352,7 @@ function AriaCoachBar() {
       )}
       <div className="fixed inset-x-0 z-[48] px-4" style={{ bottom: 'max(20px, env(safe-area-inset-bottom))' }}>
         <div className="mx-auto flex max-w-md items-end gap-2 rounded-[26px] border border-border bg-surface/95 px-3 py-1.5 shadow-[0_6px_24px_rgba(0,0,0,.12)] backdrop-blur-md lg:max-w-3xl">
-          <span className="my-1 grid size-7 shrink-0 place-items-center self-center rounded-full text-[10px] font-bold text-white" style={{ background: '#14B8A6' }}>A</span>
+          <span className="my-1 grid size-7 shrink-0 place-items-center self-center rounded-full text-2xs font-bold text-white" style={{ background: '#14B8A6' }}>A</span>
           <textarea rows={1} value={value} onChange={(e) => setValue(e.target.value)}
             onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); submit() } }}
             placeholder="Demande un script ou une méthode à Aria…"

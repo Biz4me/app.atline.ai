@@ -149,7 +149,7 @@ export default function ComptesPage() {
           })}
         </div>
 
-        <p className="mt-4 text-[10px] text-muted-foreground">
+        <p className="mt-4 text-2xs text-muted-foreground">
           La connexion directe (pour publier et capter depuis Atline) arrive avec la validation des accès Meta / TikTok.
         </p>
       </div>

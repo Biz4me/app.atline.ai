@@ -77,7 +77,7 @@ export default function ModulePage() {
         {/* Titre + description */}
         {mod ? (
           <div>
-            <h1 className="font-display text-[32px] font-extrabold leading-tight tracking-[-0.025em] text-foreground">
+            <h1 className="font-display text-3xl font-extrabold leading-tight tracking-[-0.025em] text-foreground">
               {stripPrefix(mod.title)}
             </h1>
             {mod.description && (

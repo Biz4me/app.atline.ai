@@ -505,11 +505,11 @@ function ContactsContent() {
                     <div className="flex shrink-0 flex-col items-end gap-1">
                       <StagePill stage={c.stage} />
                       {c.isClient && !c.isPartner && c.prospectStage && (
-                        <span className="inline-flex items-center rounded-full bg-primary/10 px-2.5 py-0.5 text-[10px] font-medium text-primary">
+                        <span className="inline-flex items-center rounded-full bg-primary/10 px-2.5 py-0.5 text-2xs font-medium text-primary">
                           En recrutement
                         </span>
                       )}
-                      <span className="text-[10px] text-muted-foreground">
+                      <span className="text-2xs text-muted-foreground">
                         {c.lastInteraction}
                       </span>
                     </div>
@@ -782,7 +782,7 @@ function ContactsContent() {
                         <span className="inline-flex flex-wrap items-center gap-1">
                           <StagePill stage={c.stage} />
                           {c.isClient && !c.isPartner && c.prospectStage && (
-                            <span className="inline-flex items-center rounded-full bg-primary/10 px-2.5 py-0.5 text-[10px] font-medium text-primary">
+                            <span className="inline-flex items-center rounded-full bg-primary/10 px-2.5 py-0.5 text-2xs font-medium text-primary">
                               En recrutement
                             </span>
                           )}
@@ -980,7 +980,7 @@ function ContactsContent() {
                       className={cn('flex w-full items-center gap-3 rounded-xl border px-3 py-2.5 text-left', c.selected ? 'border-primary/40 bg-primary/5' : 'border-border bg-background')}>
                       <span className={cn('flex size-5 shrink-0 items-center justify-center rounded-md border', c.selected ? 'border-primary bg-primary text-primary-foreground' : 'border-border')}>{c.selected && <Check className="size-3.5" />}</span>
                       <div className="min-w-0 flex-1">
-                        <p className="truncate text-sm font-medium text-foreground">{`${c.firstName} ${c.lastName}`.trim() || 'Sans nom'}{c.duplicate && <span className="ml-2 rounded bg-[#F4B342]/20 px-1.5 py-0.5 text-[10px] font-bold text-[#F4B342]">doublon</span>}</p>
+                        <p className="truncate text-sm font-medium text-foreground">{`${c.firstName} ${c.lastName}`.trim() || 'Sans nom'}{c.duplicate && <span className="ml-2 rounded bg-[#F4B342]/20 px-1.5 py-0.5 text-2xs font-bold text-[#F4B342]">doublon</span>}</p>
                         <p className="truncate text-xs text-muted-foreground">{[c.phone, c.email].filter(Boolean).join(' · ') || '—'}</p>
                       </div>
                     </button>

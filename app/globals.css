@@ -42,6 +42,19 @@
   --font-sans: 'Satoshi', ui-sans-serif, system-ui, sans-serif;
   --font-display: 'Clash Display', 'Satoshi', sans-serif;
 
+  /* ── ÉCHELLE TYPO UNIQUE (design system) : 6 tailles, ZÉRO exception, 1 police ──
+     29 Display · 23 Heading · 17 Titre/corps large · 15 Corps · 13 Label · 11 Micro.
+     Toutes les classes text-* de l'app retombent ici. Ne JAMAIS introduire une taille hors de ces 6
+     (ni de valeur arbitraire text-[..px]). La hiérarchie au-delà de la taille se joue au POIDS + COULEUR. */
+  --text-2xs: 11px;   --text-2xs--line-height: 1.45;  /* Micro — badges, pastilles */
+  --text-xs: 13px;    --text-xs--line-height: 1.45;   /* Label — champs, dates, tags */
+  --text-sm: 15px;    --text-sm--line-height: 1.5;    /* Corps — contenu courant */
+  --text-base: 15px;  --text-base--line-height: 1.5;  /* Corps (alias) */
+  --text-lg: 17px;    --text-lg--line-height: 1.45;   /* Titre / corps large — sections, bulles */
+  --text-xl: 23px;    --text-xl--line-height: 1.3;    /* Heading (alias) */
+  --text-2xl: 23px;   --text-2xl--line-height: 1.3;   /* Heading — KPI, titres forts */
+  --text-3xl: 29px;   --text-3xl--line-height: 1.2;   /* Display — héros, gros titres */
+
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-surface: var(--surface);
@@ -174,7 +187,7 @@
     @apply border-border outline-none;
   }
   body {
-    @apply bg-background text-foreground antialiased;
+    @apply bg-background text-foreground text-sm antialiased;
     font-feature-settings: 'ss01';
   }
   html {
@@ -241,12 +254,6 @@
   }
 }
 
-
-@media (min-width: 1024px) {
-  .text-sm {
-    font-size: 15px;
-  }
-}
 
 @keyframes slide-in-right {
   from { transform: translateX(100%); }

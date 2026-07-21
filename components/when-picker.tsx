@@ -33,9 +33,9 @@ export function WhenPicker({ value, onChange }: { value: string; onChange: (v: s
             <button key={i} type="button" onClick={() => set(ymd(d), timePart)}
               className={cn('flex min-w-[52px] shrink-0 flex-col items-center gap-0.5 rounded-xl border px-2 py-1.5',
                 sel ? 'border-primary bg-primary text-primary-foreground' : 'border-border bg-surface text-foreground')}>
-              <span className="text-[10px] font-bold uppercase opacity-80">{DOW3[d.getDay()]}</span>
+              <span className="text-2xs font-bold uppercase opacity-80">{DOW3[d.getDay()]}</span>
               <span className="text-base font-bold leading-none">{d.getDate()}</span>
-              <span className="text-[10px] opacity-80">{MONTHS[d.getMonth()]}</span>
+              <span className="text-2xs opacity-80">{MONTHS[d.getMonth()]}</span>
             </button>
           )
         })}

@@ -222,7 +222,7 @@ function Thread({ contact, onBack, onOpenFiche }: { contact: ActiveContact; onBa
                   <span className="flex items-center gap-1.5"><Icon className="size-4" />{m.label}{it.outcome ? ` · ${it.outcome.toLowerCase()}` : ''}</span>
                 )}
               </div>
-              <span className="mt-1 text-[10px] text-muted-foreground">{m.label} · {relTime(it.createdAt)}</span>
+              <span className="mt-1 text-2xs text-muted-foreground">{m.label} · {relTime(it.createdAt)}</span>
             </div>
           )
         })}

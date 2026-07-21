@@ -159,7 +159,7 @@ function JourView({ selected, setSelected, today, apptsOn, gevents, onTap, onCre
             const isSel = sameDay(d, selected); const isToday = sameDay(d, today)
             return (
               <button key={i} type="button" onClick={() => setSelected(d)} className="flex flex-col items-center gap-1 py-1">
-                <span className="text-[10px] font-bold text-muted-foreground">{DOW1[i]}</span>
+                <span className="text-2xs font-bold text-muted-foreground">{DOW1[i]}</span>
                 <span className={cn('flex size-8 items-center justify-center rounded-full text-lg lg:text-sm font-bold',
                   isSel ? 'bg-primary text-primary-foreground' : isToday ? 'border-2 border-primary text-primary' : 'text-foreground')}>{d.getDate()}</span>
               </button>
@@ -195,7 +195,7 @@ function JourView({ selected, setSelected, today, apptsOn, gevents, onTap, onCre
             <div key={it.g!.id} className="flex w-full items-center gap-3.5 rounded-2xl border border-dashed border-border bg-muted/30 p-4">
               <span className="font-display text-lg font-bold tabular-nums text-muted-foreground shrink-0">{it.g!.allDay ? '—' : fmtTime(it.g!.start)}</span>
               <div className="flex min-w-0 flex-1 flex-col gap-1">
-                <span className="self-start rounded-full bg-muted px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-muted-foreground">Google</span>
+                <span className="self-start rounded-full bg-muted px-2 py-0.5 text-2xs font-bold uppercase tracking-wide text-muted-foreground">Google</span>
                 <span className="truncate text-lg lg:text-sm font-medium text-muted-foreground">{it.g!.title}</span>
               </div>
             </div>
@@ -223,7 +223,7 @@ function SemaineView({ selected, setSelected, today, appts, gevents, onTap }: {
         <div className="w-9 shrink-0" />
         {days.map((d, i) => (
           <button key={i} type="button" onClick={() => setSelected(d)} className="flex flex-1 flex-col items-center gap-0.5">
-            <span className="text-[10px] font-bold text-muted-foreground">{DOW1[i]}</span>
+            <span className="text-2xs font-bold text-muted-foreground">{DOW1[i]}</span>
             <span className={cn('flex size-6 items-center justify-center rounded-full text-lg lg:text-sm font-bold',
               sameDay(d, selected) ? 'bg-primary text-primary-foreground' : sameDay(d, today) ? 'border-2 border-primary text-primary' : 'text-foreground')}>{d.getDate()}</span>
           </button>
@@ -232,15 +232,15 @@ function SemaineView({ selected, setSelected, today, appts, gevents, onTap }: {
       <div className="overflow-hidden rounded-xl border border-border">
         {HOURS.map((h) => (
           <div key={h} className="flex border-t border-border first:border-t-0">
-            <div className="flex w-9 shrink-0 items-start justify-end pr-1.5 pt-1"><span className="text-[10px] text-muted-foreground tabular-nums">{h}h</span></div>
+            <div className="flex w-9 shrink-0 items-start justify-end pr-1.5 pt-1"><span className="text-2xs text-muted-foreground tabular-nums">{h}h</span></div>
             {days.map((d, di) => {
               const a = appts.find((x) => { const t = new Date(x.startAt); return sameDay(t, d) && t.getHours() === h })
               const g = !a && gevents.find((x) => { const t = new Date(x.start); return !x.allDay && sameDay(t, d) && t.getHours() === h })
               return (
                 <button key={di} type="button" onClick={() => a && onTap(a)}
                   className={cn('flex flex-1 items-start border-l border-border p-0.5 min-h-[38px]', a ? 'active:opacity-80' : 'active:bg-muted/50')}>
-                  {a ? <span className="w-full rounded bg-primary/10 px-1 py-0.5 text-[10px] font-bold leading-tight text-primary">{(a.contactName || a.title).split(' ')[0]}</span>
-                    : g ? <span className="w-full truncate rounded bg-muted px-1 py-0.5 text-[10px] font-medium leading-tight text-muted-foreground">{g.title.split(' ')[0]}</span>
+                  {a ? <span className="w-full rounded bg-primary/10 px-1 py-0.5 text-2xs font-bold leading-tight text-primary">{(a.contactName || a.title).split(' ')[0]}</span>
+                    : g ? <span className="w-full truncate rounded bg-muted px-1 py-0.5 text-2xs font-medium leading-tight text-muted-foreground">{g.title.split(' ')[0]}</span>
                     : null}
                 </button>
               )
@@ -269,7 +269,7 @@ function MoisView({ selected, setSelected, today, daysWithAppt }: {
         <p className="text-lg font-bold capitalize text-foreground">{MONTHS[selected.getMonth()]} {selected.getFullYear()}</p>
         <button type="button" onClick={() => setSelected(new Date(selected.getFullYear(), selected.getMonth() + 1, 1))} className="flex size-8 items-center justify-center rounded-lg text-muted-foreground active:bg-muted"><ChevronRight className="size-4" /></button>
       </div>
-      <div className="flex">{DOW1.map((d, i) => <div key={i} className="flex flex-1 justify-center"><span className="text-[10px] font-bold text-muted-foreground">{d}</span></div>)}</div>
+      <div className="flex">{DOW1.map((d, i) => <div key={i} className="flex flex-1 justify-center"><span className="text-2xs font-bold text-muted-foreground">{d}</span></div>)}</div>
       <div className="flex flex-wrap">
         {cells.map((d, i) => (
           <button key={i} type="button" onClick={() => d && setSelected(d)} className="flex flex-col items-center gap-0.5 py-1.5 active:bg-muted/50 rounded-lg" style={{ width: `${100 / 7}%` }}>

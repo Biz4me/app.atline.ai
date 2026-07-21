@@ -1002,7 +1002,7 @@ TECHNIQUE (invisible pour moi, ne l'explique jamais)${NB}: quand tu as balayé l
         ) : msgs.length === 0 ? (
           <div className="flex flex-1 flex-col px-4 pb-20 lg:pb-0">
             <div className="flex flex-1 flex-col items-center justify-center gap-2.5 px-2 text-center">
-              <p className="font-display text-[32px] font-bold leading-[1.2] tracking-[-0.025em] text-foreground">{firstName ? `Bonjour ${firstName}` : 'Bonjour'}</p>
+              <p className="font-display text-3xl font-bold leading-[1.2] tracking-[-0.025em] text-foreground">{firstName ? `Bonjour ${firstName}` : 'Bonjour'}</p>
               <p className="min-h-[50px] max-w-[320px] text-lg leading-[1.4] text-muted-foreground">{typedMantra}</p>
             </div>
             {/* Plan du jour en CARTES : 1 tap = le flux guidé existant (le fil porte ta journée) */}
@@ -1069,15 +1069,15 @@ TECHNIQUE (invisible pour moi, ne l'explique jamais)${NB}: quand tu as balayé l
               <div key={i} data-midx={i} className={cn('flex flex-col gap-2', m.from === 'user' ? 'items-end' : 'items-start', filSearch.highlight(i))}>
                 {m.day ? (
                   <div className="w-full py-1 text-center">
-                    <span className="rounded-full bg-surface px-3 py-1 text-[10px] font-medium text-muted-foreground">{m.day}</span>
+                    <span className="rounded-full bg-surface px-3 py-1 text-2xs font-medium text-muted-foreground">{m.day}</span>
                   </div>
                 ) : m.from === 'user' ? (
-                  <div className="max-w-[82%] whitespace-pre-line rounded-2xl rounded-br-md bg-primary px-3.5 py-2.5 text-[19px] leading-[1.4] text-primary-foreground lg:text-base">
+                  <div className="max-w-[82%] whitespace-pre-line rounded-2xl rounded-br-md bg-primary px-3.5 py-2.5 text-lg leading-[1.4] text-primary-foreground lg:text-base">
                     {frText(m.text)}
                   </div>
                 ) : m.choices && m.item ? (
                   <div className="flex w-full flex-col gap-2">
-                    {m.text && <p className="text-[19px] leading-[1.65] text-foreground lg:text-base">{m.text}</p>}
+                    {m.text && <p className="text-lg leading-[1.65] text-foreground lg:text-base">{m.text}</p>}
                     <ChatChoices choices={m.choices} onPick={(value, label) => handleChoice(m.item!, value, label, i)} />
                   </div>
                 ) : m.draft ? (
@@ -1095,7 +1095,7 @@ TECHNIQUE (invisible pour moi, ne l'explique jamais)${NB}: quand tu as balayé l
                     <div className="flex items-center gap-2 text-sm text-muted-foreground"><Sparkles className="size-3.5 animate-pulse text-primary" />{toolHint}</div>
                   ) : <TypingDots />
                 ) : (
-                  <div className="flex w-full flex-col gap-2.5 text-[19px] leading-[1.65] text-foreground lg:text-base">
+                  <div className="flex w-full flex-col gap-2.5 text-lg leading-[1.65] text-foreground lg:text-base">
                     {frText(m.text).split(/\n{2,}/).map((para, j) => (
                       <p key={j} className="whitespace-pre-line">{para}</p>
                     ))}
@@ -1171,7 +1171,7 @@ TECHNIQUE (invisible pour moi, ne l'explique jamais)${NB}: quand tu as balayé l
                   className="flex items-center gap-3 rounded-2xl border border-border bg-surface px-4 py-3.5 text-left active:bg-muted disabled:opacity-60">
                   <FileText className="size-5 shrink-0 text-primary" />
                   <div className="min-w-0 flex-1">
-                    <p className="text-sm font-bold text-foreground">Ranger dans mes documents{!contactish && <span className="ml-1.5 text-[10px] font-bold uppercase tracking-wide text-primary">suggéré</span>}</p>
+                    <p className="text-sm font-bold text-foreground">Ranger dans mes documents{!contactish && <span className="ml-1.5 text-2xs font-bold uppercase tracking-wide text-primary">suggéré</span>}</p>
                     <p className="text-xs text-muted-foreground">Atlas le classe (Présenter / Former / Vendre)</p>
                   </div>
                   {uploadingDoc && <Loader2 className="size-4 shrink-0 animate-spin text-muted-foreground" />}
@@ -1180,7 +1180,7 @@ TECHNIQUE (invisible pour moi, ne l'explique jamais)${NB}: quand tu as balayé l
                   className="flex items-center gap-3 rounded-2xl border border-border bg-surface px-4 py-3.5 text-left active:bg-muted disabled:opacity-60">
                   <Users className="size-5 shrink-0 text-primary" />
                   <div className="min-w-0 flex-1">
-                    <p className="text-sm font-bold text-foreground">Importer comme contacts{contactish && <span className="ml-1.5 text-[10px] font-bold uppercase tracking-wide text-primary">suggéré</span>}</p>
+                    <p className="text-sm font-bold text-foreground">Importer comme contacts{contactish && <span className="ml-1.5 text-2xs font-bold uppercase tracking-wide text-primary">suggéré</span>}</p>
                     <p className="text-xs text-muted-foreground">Atlas extrait la liste et dédoublonne</p>
                   </div>
                 </button>
