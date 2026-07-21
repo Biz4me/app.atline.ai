@@ -82,7 +82,7 @@ export function AppComposer({
           onClick={onSlash}
           title="Commandes"
           aria-label="Commandes"
-          className="flex size-9 shrink-0 items-center justify-center rounded-full bg-primary/10 font-mono text-base font-bold text-primary transition-colors active:bg-primary/20"
+          className="flex size-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-base font-bold text-primary transition-colors active:bg-primary/20"
         >
           /
         </button>

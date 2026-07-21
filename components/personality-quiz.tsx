@@ -261,7 +261,7 @@ export function PersonalityQuiz({ onClose, onResult, firstName = '', gender = ''
       {phase === 'result' && result ? (
         <div className="flex flex-1 flex-col items-center px-6 pt-10 text-center">
           <div className="size-24 shrink-0 rounded-full" style={{ backgroundColor: PROFILES[result].color }} />
-          <h1 className="mt-5 font-display text-2xl font-extrabold leading-tight" style={{ color: PROFILES[result].color }}>
+          <h1 className="mt-5 text-2xl font-extrabold leading-tight" style={{ color: PROFILES[result].color }}>
             {subjectName ? `${subjectName} est ` : 'Tu es '}{arche(result)}
           </h1>
           <p className="mt-1 text-base font-semibold text-muted-foreground">Couleur {PROFILES[result].name}</p>
@@ -285,7 +285,7 @@ export function PersonalityQuiz({ onClose, onResult, firstName = '', gender = ''
           {phase === 'tie' ? (
             <>
               <p className="text-xs font-semibold uppercase tracking-widest text-primary">Départage</p>
-              <h2 className="mt-2 font-display text-2xl font-semibold leading-tight text-foreground">
+              <h2 className="mt-2 text-2xl font-semibold leading-tight text-foreground">
                 {subjectName
                   ? `${subjectName} est plutôt entre ${tieOptions.map((c) => PROFILES[c].name).join(' et ')}. Lequel lui ressemble le plus ?`
                   : `Tu es entre ${tieOptions.map((c) => PROFILES[c].name).join(' et ')}. Lequel te ressemble le plus ?`}
@@ -310,7 +310,7 @@ export function PersonalityQuiz({ onClose, onResult, firstName = '', gender = ''
           ) : (
             <>
               <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">Question {step + 1} / {questions.length}</p>
-              <h2 className="mt-2 font-display text-2xl font-semibold leading-tight text-foreground">{questions[step].prompt}</h2>
+              <h2 className="mt-2 text-2xl font-semibold leading-tight text-foreground">{questions[step].prompt}</h2>
               <div className="mt-6 flex flex-col gap-3">
                 {questions[step].options.map((opt) => (
                   <button

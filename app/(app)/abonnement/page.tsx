@@ -104,12 +104,12 @@ function AbonnementContent() {
                       <span className={cn('flex size-7 items-center justify-center rounded-lg text-xs font-bold text-white', plan.color)}>
                         {plan.id === 'leader' ? '★' : plan.id === 'pro' ? 'P' : 'S'}
                       </span>
-                      <p className="font-display text-lg font-semibold text-foreground">{plan.label}</p>
+                      <p className="text-lg font-semibold text-foreground">{plan.label}</p>
                     </div>
                     <p className="mt-0.5 text-lg lg:text-sm text-muted-foreground">{plan.desc}</p>
                   </div>
                   <div className="text-right">
-                    <p className="font-display text-2xl font-bold text-foreground">
+                    <p className="text-2xl font-bold text-foreground">
                       {plan.price === 0 ? 'Gratuit' : `${plan.price}€`}
                     </p>
                     {plan.price > 0 && <p className="text-xs text-muted-foreground">/mois</p>}

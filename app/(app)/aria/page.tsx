@@ -546,7 +546,7 @@ function SimulatorScreen({
         </div>
 
         <div>
-          <h2 className="font-display text-2xl font-bold text-white">
+          <h2 className="text-2xl font-bold text-white">
             {contact.firstName} {contact.lastName}
           </h2>
           <div className="mt-1.5 flex items-center justify-center gap-2">

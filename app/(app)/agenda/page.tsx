@@ -181,7 +181,7 @@ function JourView({ selected, setSelected, today, apptsOn, gevents, onTap, onCre
           {items.map((it) => it.rdv ? (
             <button key={it.rdv.id} type="button" onClick={() => onTap(it.rdv!)}
               className={cn('flex w-full items-center gap-3.5 rounded-2xl border border-border bg-surface p-4 text-left shadow-card active:bg-muted', it.rdv.done && 'opacity-60')}>
-              <span className="font-display text-lg font-bold tabular-nums text-foreground shrink-0">{fmtTime(it.rdv.startAt)}</span>
+              <span className="text-lg font-bold tabular-nums text-foreground shrink-0">{fmtTime(it.rdv.startAt)}</span>
               <div className="flex flex-1 flex-col gap-1.5 min-w-0">
                 <span className="self-start rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-bold text-primary">{TYPE_LABEL[it.rdv.type] ?? 'RDV'}</span>
                 <div className="flex items-center gap-1.5 min-w-0">
@@ -193,7 +193,7 @@ function JourView({ selected, setSelected, today, apptsOn, gevents, onTap, onCre
             </button>
           ) : (
             <div key={it.g!.id} className="flex w-full items-center gap-3.5 rounded-2xl border border-dashed border-border bg-muted/30 p-4">
-              <span className="font-display text-lg font-bold tabular-nums text-muted-foreground shrink-0">{it.g!.allDay ? '—' : fmtTime(it.g!.start)}</span>
+              <span className="text-lg font-bold tabular-nums text-muted-foreground shrink-0">{it.g!.allDay ? '—' : fmtTime(it.g!.start)}</span>
               <div className="flex min-w-0 flex-1 flex-col gap-1">
                 <span className="self-start rounded-full bg-muted px-2 py-0.5 text-2xs font-bold uppercase tracking-wide text-muted-foreground">Google</span>
                 <span className="truncate text-lg lg:text-sm font-medium text-muted-foreground">{it.g!.title}</span>

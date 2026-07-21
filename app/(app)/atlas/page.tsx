@@ -1002,7 +1002,7 @@ TECHNIQUE (invisible pour moi, ne l'explique jamais)${NB}: quand tu as balayé l
         ) : msgs.length === 0 ? (
           <div className="flex flex-1 flex-col px-4 pb-20 lg:pb-0">
             <div className="flex flex-1 flex-col items-center justify-center gap-2.5 px-2 text-center">
-              <p className="font-display text-3xl font-bold leading-[1.2] tracking-[-0.025em] text-foreground">{firstName ? `Bonjour ${firstName}` : 'Bonjour'}</p>
+              <p className="text-3xl font-bold leading-[1.2] tracking-[-0.025em] text-foreground">{firstName ? `Bonjour ${firstName}` : 'Bonjour'}</p>
               <p className="min-h-[50px] max-w-[320px] text-lg leading-[1.4] text-muted-foreground">{typedMantra}</p>
             </div>
             {/* Plan du jour en CARTES : 1 tap = le flux guidé existant (le fil porte ta journée) */}

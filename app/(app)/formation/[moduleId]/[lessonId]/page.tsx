@@ -660,7 +660,7 @@ export default function LessonPage() {
         {lesson && (
           <>
             <div>
-              <h1 className="font-display text-3xl font-extrabold leading-tight tracking-[-0.025em] text-foreground">
+              <h1 className="text-3xl font-extrabold leading-tight tracking-[-0.025em] text-foreground">
                 {lesson.title}
               </h1>
               <div className="mt-2 flex items-center gap-3 text-xs text-muted-foreground">

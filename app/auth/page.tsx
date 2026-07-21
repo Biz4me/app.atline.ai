@@ -105,14 +105,14 @@ export default function AuthPage() {
           height={56}
           className="rounded-[16px] shadow-md"
         />
-        <span className="font-display text-2xl font-extrabold tracking-tight text-foreground">
+        <span className="text-2xl font-extrabold tracking-tight text-foreground">
           atline
         </span>
       </div>
 
       {/* Card */}
       <div className="w-full max-w-[360px] rounded-3xl border border-border bg-surface p-6 shadow-card">
-        <h1 className="mb-6 font-display text-2xl font-bold text-foreground">
+        <h1 className="mb-6 text-2xl font-bold text-foreground">
           {isLogin ? 'Content de te revoir' : 'Rejoins Atline'}
         </h1>
 

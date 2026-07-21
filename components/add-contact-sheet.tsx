@@ -70,7 +70,7 @@ export function AddContactSheet({
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent side="bottom" className="mx-auto max-w-[480px] rounded-t-3xl">
         <SheetHeader className="text-left">
-          <SheetTitle className="font-display text-lg">Nouveau contact</SheetTitle>
+          <SheetTitle className="text-lg">Nouveau contact</SheetTitle>
           <SheetDescription>Ajoute-le à ton CRM en quelques secondes.</SheetDescription>
         </SheetHeader>
         <div className="flex flex-col gap-4 px-4 pb-8">

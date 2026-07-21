@@ -8,14 +8,7 @@
    Orange = unique action accent · Gold = money only · light surfaces
    ============================================================================ */
 
-/* Self-hosted brand fonts */
-@font-face {
-  font-family: 'Clash Display';
-  src: url('/fonts/ClashDisplay-Semibold.woff2') format('woff2');
-  font-weight: 400 700;
-  font-style: normal;
-  font-display: swap;
-}
+/* Self-hosted brand font — UNE SEULE police (Satoshi), 3 graisses */
 @font-face {
   font-family: 'Satoshi';
   src: url('/fonts/Satoshi-Regular.woff2') format('woff2');
@@ -40,7 +33,6 @@
 
 @theme inline {
   --font-sans: 'Satoshi', ui-sans-serif, system-ui, sans-serif;
-  --font-display: 'Clash Display', 'Satoshi', sans-serif;
 
   /* ── ÉCHELLE TYPO UNIQUE (design system) : 6 tailles, ZÉRO exception, 1 police ──
      29 Display · 23 Heading · 17 Titre/corps large · 15 Corps · 13 Label · 11 Micro.
@@ -197,10 +189,6 @@
 }
 
 @layer components {
-  .font-display {
-    font-family: var(--font-display);
-    letter-spacing: -0.02em;
-  }
   /* Eyebrow / section label */
   .eyebrow {
     @apply text-xs font-bold uppercase tracking-[0.12em] text-muted-foreground;

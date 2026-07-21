@@ -114,7 +114,7 @@ export default function ParrainagePage() {
               { value: euro(data.commissionsPending), label: 'En attente' },
             ].map((s) => (
               <div key={s.label} className="flex flex-col items-center gap-1 rounded-2xl border border-border bg-surface px-2 py-3.5 text-center shadow-card">
-                <span className="font-display text-xl font-bold tabular-nums text-foreground">{s.value}</span>
+                <span className="text-xl font-bold tabular-nums text-foreground">{s.value}</span>
                 <span className="text-xs text-muted-foreground">{s.label}</span>
               </div>
             ))}

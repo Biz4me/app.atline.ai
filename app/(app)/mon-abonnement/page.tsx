@@ -66,12 +66,12 @@ export function Summary() {
             <div className="flex items-center gap-2.5">
               <span className={cn('flex size-9 items-center justify-center rounded-xl text-lg lg:text-sm font-bold text-white', p.color)}>{p.initial}</span>
               <div>
-                <p className="font-display text-lg font-semibold text-foreground">{p.label}</p>
+                <p className="text-lg font-semibold text-foreground">{p.label}</p>
                 <p className="text-xs text-muted-foreground">{p.desc}</p>
               </div>
             </div>
             <div className="text-right">
-              <p className="font-display text-2xl font-bold text-foreground">{p.price === 0 ? 'Gratuit' : `${p.price}€`}</p>
+              <p className="text-2xl font-bold text-foreground">{p.price === 0 ? 'Gratuit' : `${p.price}€`}</p>
               {p.price > 0 && <p className="text-xs text-muted-foreground">{cycleYear ? '/an' : '/mois'}</p>}
             </div>
           </div>

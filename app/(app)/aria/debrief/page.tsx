@@ -100,7 +100,7 @@ function DebriefContent() {
           <>
             {/* Score réel */}
             <div className="flex flex-col items-center gap-3 rounded-2xl border border-border bg-surface p-6">
-              <p className="font-display text-3xl font-extrabold text-[#14B8A6]">{data.score ?? '—'}</p>
+              <p className="text-3xl font-extrabold text-[#14B8A6]">{data.score ?? '—'}</p>
               <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
                 <div className="h-2 rounded-full bg-[#14B8A6] transition-all" style={{ width: `${data.score ?? 0}%` }} />
               </div>
@@ -112,7 +112,7 @@ function DebriefContent() {
               <div className="rounded-2xl border border-border bg-surface p-4">
                 <div className="mb-3 flex items-center gap-2.5">
                   <span className="flex size-8 shrink-0 items-center justify-center rounded-xl bg-[#14B8A6]/10">
-                    <span className="font-display text-sm font-bold text-[#14B8A6]">A</span>
+                    <span className="text-sm font-bold text-[#14B8A6]">A</span>
                   </span>
                   <p className="text-sm font-bold text-foreground">Le bilan d&apos;Atlas</p>
                 </div>

@@ -525,7 +525,7 @@ export default function ProfileEditPage({ embedded }: { embedded?: boolean }) {
               <span className="grid size-12 place-items-center rounded-full bg-destructive/10">
                 <Trash2 className="size-6 text-destructive" />
               </span>
-              <h2 className="mt-3 font-display text-lg font-semibold text-foreground">Supprimer ton compte ?</h2>
+              <h2 className="mt-3 text-lg font-semibold text-foreground">Supprimer ton compte ?</h2>
               <p className="mt-1.5 text-base text-muted-foreground">Cette action est définitive. Toutes tes données (contacts, activités, parrainage…) seront effacées et irrécupérables.</p>
             </div>
             <div className="mt-5 flex flex-col gap-2">

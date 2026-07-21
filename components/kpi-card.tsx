@@ -2,7 +2,7 @@ import type { LucideIcon } from 'lucide-react'
 import { Card } from '@/components/card'
 
 // Carte KPI UNIQUE (design validé du tableau de bord) : icône + label optionnels,
-// chiffre héros en Clash Display, sous-texte. Réutilisée partout (tableau de bord, contacts…)
+// chiffre héros (Satoshi bold, text-2xl), sous-texte. Réutilisée partout (tableau de bord, contacts…)
 // → un seul endroit à changer, alignement garanti entre les pages.
 export function KpiCard({
   icon: Icon, label, value, sub, alert = false,
@@ -19,7 +19,7 @@ export function KpiCard({
         {Icon && <Icon className="size-3.5 stroke-[1.5]" />}
         {label}
       </span>
-      <span className={`font-display text-2xl font-bold tabular-nums ${alert ? 'text-[#EF4444]' : 'text-foreground'}`}>
+      <span className={`text-2xl font-bold tabular-nums ${alert ? 'text-[#EF4444]' : 'text-foreground'}`}>
         {value ?? '—'}
       </span>
       {sub && <span className="text-sm text-muted-foreground lg:text-xs">{sub}</span>}

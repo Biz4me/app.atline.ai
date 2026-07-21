@@ -64,7 +64,7 @@ export default function MessagesPage() {
       {/* ── Liste des fils ── */}
       <div className={cn('flex flex-col bg-background border-r border-border w-full lg:w-72 xl:w-80 shrink-0', active ? 'hidden lg:flex' : 'flex')}>
         <header className="sticky top-0 z-30 hidden lg:flex items-center gap-3 bg-background/90 px-4 py-3 backdrop-blur">
-          <h1 className="flex-1 font-display text-lg font-bold text-foreground">Échanges</h1>
+          <h1 className="flex-1 text-lg font-bold text-foreground">Échanges</h1>
         </header>
 
         {/* Nouveau message — depuis tes contacts */}

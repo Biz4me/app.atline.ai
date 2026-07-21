@@ -119,7 +119,7 @@ function EmptyState({ onCreate }: { onCreate: () => void }) {
         <Sparkles className="size-7" />
       </span>
       <div>
-        <p className="font-display text-lg font-semibold text-foreground">Lance ta première campagne</p>
+        <p className="text-lg font-semibold text-foreground">Lance ta première campagne</p>
         <p className="mx-auto mt-1 max-w-xs text-lg lg:text-sm text-muted-foreground">
           Nova crée le contenu, capte les curieux et les amène à ta réunion.
         </p>

@@ -596,7 +596,7 @@ export default function CampagnePage() {
           >
             <ChevronLeft className="size-5" />
           </button>
-          <h1 className="min-w-[150px] text-center font-display text-lg font-bold text-foreground">{STEPS[step]}</h1>
+          <h1 className="min-w-[150px] text-center text-lg font-bold text-foreground">{STEPS[step]}</h1>
           <button
             type="button"
             onClick={() => setStep((s) => Math.min(STEPS.length - 1, s + 1))}
