@@ -19,7 +19,7 @@ export function SubHeader({ title, onBack, action }: { title: string; onBack?: (
   )
 }
 
-// L'en-tête UNIQUE de toutes les pages desktop (titre centré discret, façon Vercel).
+// L'en-tête UNIQUE de toutes les pages desktop (titre centré discret, façon Linear).
 // Réutilisé par PageShell ET par les pages à layout propre (agents, contacts…) → un seul
 // endroit à changer. `actions` = boutons optionnels ancrés à droite (ex. historique Atlas).
 export function PageHeader({ title, actions, className }: { title: string; actions?: ReactNode; className?: string }) {
@@ -45,7 +45,7 @@ export function AgentShell({ title, children }: { title: string; children: React
   )
 }
 
-// LE gabarit desktop unique (maquette validée 12 juil, en-tête « à la Vercel » — option 1) :
+// LE gabarit desktop unique (maquette validée 12 juil, en-tête « à la Linear » — option 1) :
 // cadre + gouttière constants, en-tête 68px identique partout (titre SEUL, centré, discret),
 // 2 largeurs de contenu.
 // - Cadre : max-w-6xl centré + px-10 → gouttière gauche/droite identique sur toutes les pages.
