@@ -23,12 +23,12 @@ type Thread = {
   lastContact: string | null; lastChatAt: string | null; draft: string | null; birthdayToday: boolean
 }
 
-const AGENT_COLOR: Record<string, string> = { atlas: '#F97316', aria: '#14B8A6', nova: '#8B5CF6', communaute: '#3f434b' }
+const AGENT_COLOR: Record<string, string> = { atlas: '#F97316', aria: '#14B8A6', nova: '#8B5CF6', orion: '#F97316', communaute: '#3f434b' }
 // Avatar d'un contact = sa couleur DISC si connue (aligné sur la fiche), sinon son accent.
 const DISC_HEX: Record<string, string> = { ROUGE: '#EF4444', VERT: '#22C55E', BLEU: '#3B82F6', JAUNE: '#F4B342' }
 const avatarColor = (t: { personality: string | null; accent: string }) => (t.personality && DISC_HEX[t.personality]) || t.accent
-const AGENT_ROUTE: Record<string, string> = { atlas: '/atlas', aria: '/chats/aria', nova: '/chats/nova', communaute: '/communaute' }
-const AGENT_PILL: Record<string, string> = { atlas: 'bg-primary/10 text-primary', aria: 'bg-[#14B8A6]/10 text-[#14B8A6]', nova: 'bg-[#8B5CF6]/10 text-[#8B5CF6]', communaute: 'bg-muted text-muted-foreground' }
+const AGENT_ROUTE: Record<string, string> = { atlas: '/atlas', aria: '/chats/aria', nova: '/chats/nova', orion: '/chats/orion', communaute: '/communaute' }
+const AGENT_PILL: Record<string, string> = { atlas: 'bg-primary/10 text-primary', aria: 'bg-[#14B8A6]/10 text-[#14B8A6]', nova: 'bg-[#8B5CF6]/10 text-[#8B5CF6]', orion: 'bg-primary/10 text-primary', communaute: 'bg-muted text-muted-foreground' }
 const STAGE_LABEL: Record<string, string> = {
   NOUVEAU: 'Nouveau', INVITATION: 'Invitation', PRESENTATION: 'Présentation', SUIVI: 'Suivi', CLOSING: 'Closing',
   DEMARRAGE: 'Démarrage', FORMATION: 'Formation', ACTIF: 'Actif', LEADER: 'Leader',
