@@ -128,8 +128,25 @@ export async function POST(req: NextRequest) {
   // Existe-t-il une fiche société PUBLIÉE pour cette société ? Le service s'en sert pour
   // l'ancrage : sans fiche validée, Atlas ne doit pas inventer et demande un PDF/lien.
   const brandSlug = mlmActif.toLowerCase().normalize('NFD').replace(/\p{Diacritic}/gu, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
-  const hasFiche = mlmActif.toLowerCase() !== 'atline'
-    && !!(await db.mlmCompany.findFirst({ where: { brandSlug, status: 'PUBLISHED' }, select: { id: true } }))
+  const company = mlmActif.toLowerCase() !== 'atline'
+    ? await db.mlmCompany.findFirst({ where: { brandSlug, status: 'PUBLISHED' }, select: { id: true } })
+    : null
+  const hasFiche = !!company
+
+  // Catalogue produit STRUCTURÉ (prix exacts) → injecté dans la requête pour qu'Atlas lise
+  // le prix de façon déterministe, sans dépendre du RAG.
+  let productsCatalog = ''
+  if (company) {
+    const prods = await db.mlmProduct.findMany({
+      where: { companyId: company.id, status: 'PUBLISHED' },
+      orderBy: { position: 'asc' },
+      select: { name: true, price: true, currency: true, format: true },
+      take: 250,
+    })
+    productsCatalog = prods
+      .map((p) => `- ${p.name}${p.price != null ? ` — ${Number(p.price).toFixed(2)} ${p.currency}` : ''}${p.format ? ` (${p.format})` : ''}`)
+      .join('\n')
+  }
 
   // Appel FastAPI
   let resp: Response
@@ -142,6 +159,7 @@ export async function POST(req: NextRequest) {
         user_id: userId,
         mlm_actif: mlmActif,
         has_fiche: hasFiche,
+        products_catalog: productsCatalog,
         conversation_history,
         history_summary,
         user_model,
