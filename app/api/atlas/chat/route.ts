@@ -31,6 +31,19 @@ const HISTORY_WINDOW = 24
 // On régénère le résumé quand ce retard (messages non couverts, hors fenêtre) est atteint.
 const SUMMARY_LAG = 12
 
+// Société active de l'utilisateur → envoyée comme mlm_actif pour scoper le RAG par société
+// (atlas.py filtre atlas_mlm sur `societe` = mlm_actif slugifié). On prend le NOM (mlmName),
+// robuste même si le slug stocké est incohérent. Défaut 'Atline' = pas de filtre (générique).
+async function activeMlmName(userId: string): Promise<string> {
+  const prefs = await db.userPreferences.findUnique({ where: { userId }, select: { activeCompanyId: true } })
+  if (prefs?.activeCompanyId) {
+    const b = await db.userMlmBusiness.findFirst({ where: { id: prefs.activeCompanyId, userId }, select: { mlmName: true } })
+    if (b?.mlmName) return b.mlmName
+  }
+  const first = await db.userMlmBusiness.findFirst({ where: { userId }, orderBy: { position: 'asc' }, select: { mlmName: true } })
+  return first?.mlmName || 'Atline'
+}
+
 export async function POST(req: NextRequest) {
   // user_id réel depuis la session NextAuth — jamais fourni par le client.
   const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET })
@@ -108,6 +121,16 @@ export async function POST(req: NextRequest) {
     contact_snapshot = factLines ? `${snap}\n\nFaits retenus sur ce contact :\n${factLines}` : snap
   }
 
+  // Société active réelle (le client envoie 'Atline' en dur → on le remplace côté serveur
+  // pour activer le filtrage RAG par société). Le nom contourne un éventuel slug incohérent.
+  const mlmActif = await activeMlmName(userId)
+
+  // Existe-t-il une fiche société PUBLIÉE pour cette société ? Le service s'en sert pour
+  // l'ancrage : sans fiche validée, Atlas ne doit pas inventer et demande un PDF/lien.
+  const brandSlug = mlmActif.toLowerCase().normalize('NFD').replace(/\p{Diacritic}/gu, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
+  const hasFiche = mlmActif.toLowerCase() !== 'atline'
+    && !!(await db.mlmCompany.findFirst({ where: { brandSlug, status: 'PUBLISHED' }, select: { id: true } }))
+
   // Appel FastAPI
   let resp: Response
   try {
@@ -117,7 +140,8 @@ export async function POST(req: NextRequest) {
       body: JSON.stringify({
         query,
         user_id: userId,
-        mlm_actif: body.mlm_actif ?? 'Atline',
+        mlm_actif: mlmActif,
+        has_fiche: hasFiche,
         conversation_history,
         history_summary,
         user_model,
