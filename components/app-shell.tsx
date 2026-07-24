@@ -3,9 +3,9 @@
 import { type ReactNode } from 'react'
 import { usePathname } from 'next/navigation'
 import { cn } from '@/lib/utils'
-import { ChatsHome } from '@/components/chats-home'
 import { TopBar } from '@/components/top-bar'
 import { MobileDrawer } from '@/components/mobile/mobile-drawer'
+import { PrimaryNav } from '@/components/primary-nav'
 import { PageVisibilityProvider } from '@/components/page-visibility-context'
 
 export function AppShell({ children }: { children: ReactNode }) {
@@ -14,7 +14,6 @@ export function AppShell({ children }: { children: ReactNode }) {
   const isChats = pathname === '/chats' || pathname.startsWith('/chats/')
   const isChatFil = pathname.startsWith('/chats/') // fil contact : pleine hauteur, composeur fixed
   const isAtlasChat = pathname === '/atlas' || pathname.startsWith('/atlas/')
-  const ownColumn = isChats || isAtlasChat
 
   // Pages atteintes via le menu « ⋯ » → plein écran, sans bottom bar (mobile).
   // La fiche contact /contacts/[id] est plein écran (charte profil), mais PAS la liste /contacts.
@@ -22,24 +21,24 @@ export function AppShell({ children }: { children: ReactNode }) {
     (p) => pathname === p || pathname.startsWith(p + '/'),
   ) || pathname.startsWith('/contacts/')
 
+  // Immersif = fil ou page plein écran → la bottom bar mobile s'efface (le rail desktop, lui, reste).
+  const immersive = navHidden || isChatFil || isAtlasChat
+
   return (
     <PageVisibilityProvider>
-      {/* LA nav unique de l'app = la colonne Conversations (desktop), épinglée à gauche PARTOUT.
-          Remplace l'ancien DesktopNav (supprimé). Sur /chats et /atlas, le ChatsShell la fournit
-          déjà → on ne la double pas ici. Mobile : masquée (le chrome mobile gère). */}
-      {!ownColumn && (
-        <aside className="hidden lg:block fixed left-0 top-0 z-40 h-dvh w-[340px] overflow-y-auto border-r border-border bg-background">
-          <ChatsHome />
-        </aside>
-      )}
+      {/* LA nav unique de l'app = PrimaryNav : rail fin (desktop, 76px, tout à gauche) ≡ bottom bar (mobile).
+          Un seul composant, partout. Sur /chats et /atlas, ChatsShell fournit EN PLUS sa colonne 340
+          (le futur contenu « Espaces »), à droite du rail. */}
+      <PrimaryNav immersive={immersive} />
 
       <div
         className={cn(
-          'app-shell md:pb-0 md:max-w-none md:mx-0',
+          'app-shell md:max-w-none md:mx-0',
           // Atlas/fil mobile : hauteur figée = zéro scroll du document (composeur fixed)
           isAtlasChat || isChatFil ? 'max-lg:h-[100dvh] max-lg:overflow-hidden' : '',
-          'transition-[padding-left] duration-200 ease-out',
-          ownColumn ? 'lg:pl-0' : 'lg:pl-[340px]',
+          'transition-[padding-left] duration-200 ease-out lg:pl-[76px]',
+          // Mobile : de la place pour la bottom bar (sauf en immersif, où elle est masquée)
+          !immersive && 'max-lg:pb-[calc(62px+env(safe-area-inset-bottom))]',
         )}
       >
         {/* Chrome mobile global : barre du haut (hamburger → tiroir) */}

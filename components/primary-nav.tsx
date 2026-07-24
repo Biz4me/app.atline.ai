@@ -24,7 +24,9 @@ const NAV: NavItem[] = [
 // « Mon compte » regroupe tout le méta (profil, activité, abonnement, réglages).
 const ACCOUNT_MATCH = ['/compte', '/profile', '/settings', '/abonnement', '/mon-abonnement', '/activities']
 
-export function PrimaryNav() {
+// `immersive` : dans un fil ou une page plein écran, la bottom bar mobile s'efface
+// (le composeur + le retour règnent). Le rail desktop, lui, reste toujours visible.
+export function PrimaryNav({ immersive = false }: { immersive?: boolean }) {
   const pathname = usePathname()
   const hits = (m: string[]) => m.some((p) => pathname === p || pathname.startsWith(p + '/'))
   const accountActive = hits(ACCOUNT_MATCH)
@@ -64,15 +66,18 @@ export function PrimaryNav() {
         </Link>
       </aside>
 
-      {/* MOBILE — bottom bar (mêmes destinations). Le compte est sous l'avatar, pas ici. */}
-      <nav
-        className="lg:hidden fixed inset-x-0 bottom-0 z-[47] flex border-t border-border bg-surface/95 backdrop-blur-md"
-        style={{ height: 'calc(62px + env(safe-area-inset-bottom))', paddingBottom: 'env(safe-area-inset-bottom)' }}
-      >
-        {NAV.map((it) => (
-          <BarItem key={it.key} item={it} active={hits(it.match)} />
-        ))}
-      </nav>
+      {/* MOBILE — bottom bar (mêmes destinations). Le compte est sous l'avatar, pas ici.
+          Masquée sur un fil / page immersive. */}
+      {!immersive && (
+        <nav
+          className="lg:hidden fixed inset-x-0 bottom-0 z-[47] flex border-t border-border bg-surface/95 backdrop-blur-md"
+          style={{ height: 'calc(62px + env(safe-area-inset-bottom))', paddingBottom: 'env(safe-area-inset-bottom)' }}
+        >
+          {NAV.map((it) => (
+            <BarItem key={it.key} item={it} active={hits(it.match)} />
+          ))}
+        </nav>
+      )}
     </>
   )
 }
