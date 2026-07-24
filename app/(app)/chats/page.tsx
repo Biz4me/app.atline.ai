@@ -1,16 +1,16 @@
 'use client'
 
 import { MessageSquare } from 'lucide-react'
-import { ChatsHome } from '@/components/chats-home'
+import { EspacesNav } from '@/components/espaces-nav'
 
-// ═══ NAV MESSAGERIE — /chats ═══
-// Mobile : la liste plein écran. Desktop (T10b) : la liste vit dans la COLONNE du
-// layout (façon Telegram Web) — ici, la zone de droite invite à choisir un fil.
+// ═══ ESPACES — /chats (refonte nav) ═══
+// Mobile : l'accordéon plein écran. Desktop : l'accordéon vit dans la COLONNE du
+// layout ; ici, la zone de droite invite à choisir une conversation.
 export default function ChatsPage() {
   return (
     <>
       <div className="md:hidden">
-        <ChatsHome />
+        <EspacesNav />
       </div>
       <div className="hidden h-dvh md:grid place-items-center">
         <div className="flex flex-col items-center gap-3 text-center">
