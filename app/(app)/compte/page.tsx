@@ -56,11 +56,11 @@ export default function ComptePage() {
 
   return (
     <div className="mx-auto w-full max-w-2xl">
-      {/* Topbar — croix pour fermer, titre centré (même format que la fiche contact) */}
+      {/* En-tête — titre à gauche (gabarit). Le X ne sert qu'en mobile (retour) : en desktop, /compte
+          est une destination du rail, donc pas de « fermer ». */}
       <div className="sticky top-0 z-30 flex items-center gap-2 bg-background/90 px-4 py-3 backdrop-blur" style={{ paddingTop: 'max(0.75rem, env(safe-area-inset-top))' }}>
-        <button type="button" onClick={() => router.push('/chats')} aria-label="Fermer" className="-ml-1 flex size-9 items-center justify-center rounded-full text-muted-foreground active:bg-muted"><X className="size-5 stroke-[1.5]" /></button>
-        <h1 className="flex-1 text-center text-lg font-semibold text-foreground">Mon compte</h1>
-        <span className="size-9 shrink-0" aria-hidden />
+        <button type="button" onClick={() => router.back()} aria-label="Retour" className="lg:hidden -ml-1 flex size-9 shrink-0 items-center justify-center rounded-full text-muted-foreground active:bg-muted"><X className="size-5 stroke-[1.5]" /></button>
+        <h1 className="flex-1 text-lg font-bold text-foreground">Mon compte</h1>
       </div>
 
       {/* Identité + activité active (switcher) — l'en-tête de TA fiche */}

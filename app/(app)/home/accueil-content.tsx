@@ -36,7 +36,7 @@ export function AccueilContent() {
   }
 
   return (
-    <div className="mx-auto flex w-full max-w-2xl flex-col px-4 pb-6 pt-6 lg:pt-10">
+    <div className="mx-auto flex w-full max-w-3xl flex-col px-4 pb-6 pt-6 lg:pt-10">
       {/* Bonjour + mantra */}
       <p className="text-3xl font-bold leading-[1.2] tracking-[-0.025em] text-foreground">{firstName ? `Bonjour ${firstName}` : 'Bonjour'}</p>
       <p className="mt-1 text-lg leading-[1.4] text-muted-foreground">« {mantra} »</p>

@@ -37,36 +37,33 @@ export function TopBar() {
   const iconCls = (active: boolean) =>
     `flex size-10 items-center justify-center rounded-full transition-colors active:bg-muted ${active ? 'text-primary' : 'text-muted-foreground'}`
 
+  const agent = isAgentPath(pathname) ? AGENTS.find((a) => pathname === a.href || pathname.startsWith(a.href + '/')) : null
+
   return (
     <header
-      className="lg:hidden sticky top-0 z-30 flex items-center gap-2 bg-background/90 px-2 py-3 backdrop-blur"
+      className="lg:hidden sticky top-0 z-30 flex items-center gap-2 bg-background/90 px-3 py-3 backdrop-blur"
       style={{ paddingTop: 'max(0.75rem, env(safe-area-inset-top))' }}
     >
-      <div className="flex flex-1 items-center gap-1">
-        {/* Retour vers Espaces — seulement hors des onglets racines (un hub n'a pas de « retour ») */}
-        {!hubRoot && (
-          <button type="button" aria-label="Retour aux messages" onClick={() => router.push('/chats')} className={iconCls(false)}>
-            <ChevronLeft className="size-6 stroke-[1.5]" />
-          </button>
-        )}
-      </div>
-
-      {isAgentPath(pathname) ? (
-        // Plus de switcher : le titre porte l'agent, teinté à sa couleur (le repérage, c'est la couleur)
-        (() => {
-          const agent = AGENTS.find((a) => pathname === a.href || pathname.startsWith(a.href + '/'))
-          return (
-            <span className="flex items-center gap-2 text-lg font-semibold" style={{ color: agent?.color }}>
-              <span className="size-2 rounded-full" style={{ background: agent?.color }} />
-              {agent?.label}
-            </span>
-          )
-        })()
-      ) : (
-        <span className="max-w-[62%] truncate text-center text-lg font-semibold text-foreground">{titleForPath(pathname)}</span>
+      {/* Retour — seulement hors des onglets racines (un hub n'a pas de « retour ») */}
+      {!hubRoot && (
+        <button type="button" aria-label="Retour aux messages" onClick={() => router.push('/chats')} className={`-ml-1 shrink-0 ${iconCls(false)}`}>
+          <ChevronLeft className="size-6 stroke-[1.5]" />
+        </button>
       )}
 
-      <div className="flex flex-1 items-center justify-end gap-1">
+      {/* Titre À GAUCHE (gabarit unique). Masqué sur /home : le « Bonjour » EST l'en-tête. */}
+      {pathname === '/home' ? (
+        <span className="flex-1" />
+      ) : agent ? (
+        <span className="flex min-w-0 flex-1 items-center gap-2 text-lg font-bold" style={{ color: agent.color }}>
+          <span className="size-2 shrink-0 rounded-full" style={{ background: agent.color }} />
+          <span className="truncate">{agent.label}</span>
+        </span>
+      ) : (
+        <span className="min-w-0 flex-1 truncate text-lg font-bold text-foreground">{titleForPath(pathname)}</span>
+      )}
+
+      <div className="flex shrink-0 items-center gap-1">
         {/* Atlas = fil unique : ni « nouveau chat » ni historique. Le « + » reste pour Nova (nouvelle campagne). */}
         {isAgentPath(pathname) && !isAtlas && (
           <button type="button" aria-label="Nouvelle conversation" onClick={() => window.dispatchEvent(new Event('agent:new'))} className={iconCls(false)}>
