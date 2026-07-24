@@ -4,7 +4,6 @@ import { type ReactNode } from 'react'
 import { usePathname } from 'next/navigation'
 import { cn } from '@/lib/utils'
 import { TopBar } from '@/components/top-bar'
-import { MobileDrawer } from '@/components/mobile/mobile-drawer'
 import { PrimaryNav } from '@/components/primary-nav'
 import { PageVisibilityProvider } from '@/components/page-visibility-context'
 
@@ -52,7 +51,6 @@ export function AppShell({ children }: { children: ReactNode }) {
           children
         )}
       </div>
-      <MobileDrawer />
     </PageVisibilityProvider>
   )
 }

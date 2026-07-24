@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
-import { Plus, ChevronLeft } from 'lucide-react'
+import { Plus, ChevronLeft, Bell } from 'lucide-react'
 import { titleForPath, isAgentPath, AGENTS } from '@/components/mobile/nav-config'
 
 export function TopBar() {
@@ -45,9 +45,8 @@ export function TopBar() {
       <div className="flex flex-1 items-center gap-1">
         {/* Retour vers Espaces — seulement hors des onglets racines (un hub n'a pas de « retour ») */}
         {!hubRoot && (
-          <button type="button" aria-label="Retour aux messages" onClick={() => router.push('/chats')} className={`relative ${iconCls(false)}`}>
+          <button type="button" aria-label="Retour aux messages" onClick={() => router.push('/chats')} className={iconCls(false)}>
             <ChevronLeft className="size-6 stroke-[1.5]" />
-            {unread > 0 && <span className="absolute right-1.5 top-1.5 size-2.5 rounded-full bg-destructive ring-2 ring-background" />}
           </button>
         )}
       </div>
@@ -74,6 +73,18 @@ export function TopBar() {
             <Plus className="size-5 stroke-[1.5]" />
           </button>
         )}
+        {/* Notifications — la cloche (badge = non-lus) */}
+        <button
+          type="button"
+          onClick={() => router.push('/notifications')}
+          aria-label="Notifications"
+          className={`relative ${iconCls(pathname === '/notifications')}`}
+        >
+          <Bell className="size-5 stroke-[1.5]" />
+          {unread > 0 && (
+            <span className="absolute right-1 top-1 flex size-4 items-center justify-center rounded-full bg-destructive text-2xs font-bold text-white ring-2 ring-background">{unread > 9 ? '9+' : unread}</span>
+          )}
+        </button>
         {/* Mon compte — avatar (photo ou initiales) → hub /compte (profil, activité, abonnement, réglages, switcher MLM) */}
         <button
           type="button"
