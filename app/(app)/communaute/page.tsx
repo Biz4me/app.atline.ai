@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { useBusiness } from '@/components/business-provider'
 import { AppHeader } from '@/components/app-header'
 import { PageShell } from '@/components/page-shell'
 import { Card } from '@/components/card'
@@ -8,7 +9,7 @@ import { MessageSquare, Heart, Pin, Plus, TrendingUp } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
 
-type Space = 'general' | 'herbalife'
+type Space = 'general' | 'societe'
 type Category = 'Tous' | 'Prospection' | 'Contenu' | 'Mindset' | 'Wins'
 
 const threads = [
@@ -21,8 +22,8 @@ const threads = [
     author: 'Marie Lefèvre',
     authorInitials: 'ML',
     authorColor: 'bg-blue-500',
-    company: 'Herbalife',
-    companyColor: 'bg-green-100 text-green-700',
+    company: 'Atline',
+    companyColor: 'bg-orange-100 text-primary',
     comments: 23,
     likes: 45,
     pinned: true,
@@ -37,8 +38,8 @@ const threads = [
     author: 'Thomas Bonnet',
     authorInitials: 'TB',
     authorColor: 'bg-emerald-500',
-    company: 'Forever',
-    companyColor: 'bg-emerald-100 text-emerald-700',
+    company: 'Atline',
+    companyColor: 'bg-orange-100 text-primary',
     comments: 12,
     likes: 67,
     pinned: false,
@@ -53,8 +54,8 @@ const threads = [
     author: 'Léa Martin',
     authorInitials: 'LM',
     authorColor: 'bg-violet-500',
-    company: 'doTERRA',
-    companyColor: 'bg-violet-100 text-violet-700',
+    company: 'Atline',
+    companyColor: 'bg-orange-100 text-primary',
     comments: 8,
     likes: 31,
     pinned: false,
@@ -94,15 +95,15 @@ const threads = [
   },
   {
     id: 't6',
-    space: 'herbalife' as Space,
+    space: 'societe' as Space,
     category: 'Prospection',
     categoryColor: 'bg-blue-100 text-blue-700',
-    title: 'Script invitation pour les profils Formule 1',
+    title: "Le script d'invitation qui ouvre la porte",
     author: 'Paul Renaud',
     authorInitials: 'PR',
     authorColor: 'bg-blue-600',
-    company: 'Herbalife',
-    companyColor: 'bg-green-100 text-green-700',
+    company: 'Atline',
+    companyColor: 'bg-orange-100 text-primary',
     comments: 15,
     likes: 28,
     pinned: false,
@@ -110,15 +111,15 @@ const threads = [
   },
   {
     id: 't7',
-    space: 'herbalife' as Space,
+    space: 'societe' as Space,
     category: 'Wins',
     categoryColor: 'bg-success/15 text-success',
-    title: 'Qualifiée Supervisor en 45 jours !',
+    title: 'Passée au rang supérieur en 45 jours !',
     author: 'Claire Morel',
     authorInitials: 'CM',
     authorColor: 'bg-green-600',
-    company: 'Herbalife',
-    companyColor: 'bg-green-100 text-green-700',
+    company: 'Atline',
+    companyColor: 'bg-orange-100 text-primary',
     comments: 41,
     likes: 103,
     pinned: true,
@@ -126,14 +127,15 @@ const threads = [
   },
 ]
 
-const spaces: { id: Space; label: string }[] = [
-  { id: 'general', label: 'Général' },
-  { id: 'herbalife', label: 'Herbalife' },
-]
-
 const categories: Category[] = ['Tous', 'Prospection', 'Contenu', 'Mindset', 'Wins']
 
 export default function CommunautePage() {
+  const { current } = useBusiness()
+  // L'onglet société = l'activité ACTIVE de l'utilisateur (plus de « Herbalife » en dur).
+  const spaces: { id: Space; label: string }[] = [
+    { id: 'general', label: 'Général' },
+    { id: 'societe', label: current?.name || 'Ma société' },
+  ]
   const [space, setSpace] = useState<Space>('general')
   const [category, setCategory] = useState<Category>('Tous')
   const [liked, setLiked] = useState<Set<string>>(new Set())
@@ -222,8 +224,8 @@ export default function CommunautePage() {
                     {thread.authorInitials}
                   </span>
                   <span className="text-base font-semibold text-foreground">{thread.author}</span>
-                  <span className={cn('rounded-full px-2 py-0.5 text-2xs font-bold', thread.companyColor)}>
-                    {thread.company}
+                  <span className={cn('rounded-full px-2 py-0.5 text-2xs font-bold', thread.space === 'societe' ? 'bg-primary/10 text-primary' : thread.companyColor)}>
+                    {thread.space === 'societe' ? (current?.name || thread.company) : thread.company}
                   </span>
                   <span className="ml-auto text-xs text-muted-foreground">{thread.time}</span>
                 </div>
