@@ -17,6 +17,7 @@ import { ChatChoices, AtlasDraftCard, type PlanItem } from '@/components/atlas-p
 import { ProfileFormCard } from '@/components/atlas-profile-form'
 import { WhyValidateCard } from '@/components/atlas-why-card'
 import { AtlasNavCard, OPEN_MARK, OPEN_MARK_RE, cleanOpenRoute, stripOpenMarker } from '@/components/atlas-nav-card'
+import { AtlasProductCard, PRODUCT_MARK, PRODUCT_MARK_RE, stripProductMarker } from '@/components/atlas-product-card'
 import { AgentPanel } from '@/components/agent-panel'
 import { RAIL_CLS, CENTER_HIDDEN_WHEN_OPEN } from '@/components/fil-shell'
 import { SlashMenu } from '@/components/slash-menu'
@@ -26,7 +27,7 @@ import { PageHeader } from '@/components/page-shell'
 import { AtlasActionCard, type AtlasAction } from '@/components/atlas-action-card'
 
 type Choice = { label: string; value: string }
-type Msg = { from: 'user' | 'atlas'; text: string; day?: string; chips?: string[]; choices?: Choice[]; item?: PlanItem; draft?: { contactId: string; prenom: string; channel: string; phone: string | null; email: string | null; instruction?: string; conversationId?: string }; profileForm?: { me: Record<string, unknown> }; whyCard?: { text: string; kind: SessionKind; title: string; obj?: Objectifs; superseded?: boolean; done?: boolean }; navCard?: { route: string; label: string }; actionCard?: AtlasAction }
+type Msg = { from: 'user' | 'atlas'; text: string; day?: string; chips?: string[]; choices?: Choice[]; item?: PlanItem; draft?: { contactId: string; prenom: string; channel: string; phone: string | null; email: string | null; instruction?: string; conversationId?: string }; profileForm?: { me: Record<string, unknown> }; whyCard?: { text: string; kind: SessionKind; title: string; obj?: Objectifs; superseded?: boolean; done?: boolean }; navCard?: { route: string; label: string }; productSlug?: string; actionCard?: AtlasAction }
 
 type SessionKind = 'why' | 'rencontre' | 'mindset' | 'objectifs' | 'audience' | 'parcours' | 'produit' | 'diagnostic'
 type Objectifs = { mensuel: string; m3: string; m6: string; m12: string }
@@ -312,8 +313,9 @@ TECHNIQUE (invisible pour moi, ne l'explique jamais)${NB}: quand tu as balayé l
             }
             const om = m.content.match(OPEN_MARK_RE)
             const navRoute = om ? cleanOpenRoute(om[1]) : null
-            // Le lien « ouvrir X » vit DANS le message texte (pas une carte à part) → text + navCard.
-            out.push({ from: 'atlas', text: cleanChat(stripOpenMarker(stripSaveMarker(m.content))), ...(navRoute && om ? { navCard: { route: navRoute, label: om[2].trim() } } : {}) })
+            const pmv = m.content.match(PRODUCT_MARK_RE)
+            // Le lien « ouvrir X » et la carte produit vivent DANS le message texte → text + navCard/productSlug.
+            out.push({ from: 'atlas', text: cleanChat(stripProductMarker(stripOpenMarker(stripSaveMarker(m.content)))), ...(navRoute && om ? { navCard: { route: navRoute, label: om[2].trim() } } : {}), ...(pmv ? { productSlug: pmv[1] } : {}) })
           }
           setMsgs(out)
           // (le saut tout en bas est déclenché par l'effet ci-dessous, UNE FOIS loadingConv=false et le
@@ -510,9 +512,10 @@ TECHNIQUE (invisible pour moi, ne l'explique jamais)${NB}: quand tu as balayé l
         for (let n = Math.min(MARK.length - 1, full.length); n > 0; n--) if (full.endsWith(MARK.slice(0, n))) return full.slice(0, full.length - n)
         return full
       }
-      const oi = full.indexOf(OPEN_MARK)
-      if (oi >= 0) return full.slice(0, oi).replace(/\s+$/, '')
-      for (let n = Math.min(OPEN_MARK.length - 1, full.length); n > 0; n--) if (full.endsWith(OPEN_MARK.slice(0, n))) return full.slice(0, full.length - n)
+      let cut = -1
+      for (const mk of [OPEN_MARK, PRODUCT_MARK]) { const i = full.indexOf(mk); if (i >= 0 && (cut < 0 || i < cut)) cut = i }
+      if (cut >= 0) return full.slice(0, cut).replace(/\s+$/, '')
+      for (const mk of [OPEN_MARK, PRODUCT_MARK]) for (let n = Math.min(mk.length - 1, full.length); n > 0; n--) if (full.endsWith(mk.slice(0, n))) return full.slice(0, full.length - n)
       return full
     }
     const tick = () => {
@@ -586,6 +589,9 @@ TECHNIQUE (invisible pour moi, ne l'explique jamais)${NB}: quand tu as balayé l
           const route = cleanOpenRoute(om[1])
           if (route) { setLastAtlas(stripOpenMarker(full).trim()); appendNavCard(route, om[2].trim()) }
         }
+        // Carte produit : Atlas a émis [[PRODUCT:slug]] → image + prix depuis la base.
+        const pmv = full.match(PRODUCT_MARK_RE)
+        if (pmv) { setLastAtlas(stripProductMarker(stripOpenMarker(full)).trim()); appendProductCard(pmv[1]) }
       }
       // Actions proposées par Atlas (relance, RDV, note) → cartes de confirmation dans le fil.
       if (pendingActions.length) {
@@ -826,6 +832,21 @@ TECHNIQUE (invisible pour moi, ne l'explique jamais)${NB}: quand tu as balayé l
         cp[cp.length - 1] = { ...last, navCard: { route, label } }
       } else {
         cp.push({ from: 'atlas', text: '', navCard: { route, label } })
+      }
+      return cp
+    })
+    setTimeout(scrollToBottom, 80)
+  }
+
+  // Carte produit : colle l'image + le prix (depuis la base) SOUS la phrase d'Atlas.
+  const appendProductCard = (slug: string) => {
+    setMsgs((prev) => {
+      const cp = [...prev]
+      const last = cp[cp.length - 1]
+      if (last && last.from === 'atlas' && !last.draft && !last.choices && !last.actionCard && !last.whyCard && !last.profileForm) {
+        cp[cp.length - 1] = { ...last, productSlug: slug }
+      } else {
+        cp.push({ from: 'atlas', text: '', productSlug: slug })
       }
       return cp
     })
@@ -1102,6 +1123,13 @@ TECHNIQUE (invisible pour moi, ne l'explique jamais)${NB}: quand tu as balayé l
                       <p key={j} className="whitespace-pre-line">{para}</p>
                     ))}
                     <AtlasNavCard route={m.navCard.route} label={m.navCard.label} />
+                  </div>
+                ) : m.productSlug ? (
+                  <div className="flex w-full flex-col gap-1.5 text-lg leading-[1.65] text-foreground lg:text-base">
+                    {m.text && frText(m.text).split(/\n{2,}/).map((para, j) => (
+                      <p key={j} className="whitespace-pre-line">{para}</p>
+                    ))}
+                    <AtlasProductCard slug={m.productSlug} />
                   </div>
                 ) : m.actionCard ? (
                   <AtlasActionCard action={m.actionCard} />

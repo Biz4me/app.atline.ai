@@ -140,11 +140,11 @@ export async function POST(req: NextRequest) {
     const prods = await db.mlmProduct.findMany({
       where: { companyId: company.id, status: 'PUBLISHED' },
       orderBy: { position: 'asc' },
-      select: { name: true, price: true, currency: true, format: true },
+      select: { name: true, slug: true, price: true, currency: true, format: true },
       take: 250,
     })
     productsCatalog = prods
-      .map((p) => `- ${p.name}${p.price != null ? ` — ${Number(p.price).toFixed(2)} ${p.currency}` : ''}${p.format ? ` (${p.format})` : ''}`)
+      .map((p) => `- ${p.name}${p.price != null ? ` — ${Number(p.price).toFixed(2)} ${p.currency}` : ''}${p.format ? ` (${p.format})` : ''} · slug=${p.slug}`)
       .join('\n')
   }
 
