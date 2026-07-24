@@ -26,6 +26,14 @@ export function TopBar() {
       .catch(() => {})
   }, [pathname])
 
+  // Mon compte sur mobile = l'avatar en haut à droite (le pied du rail le fait sur desktop).
+  const [avatar, setAvatar] = useState<{ photoUrl: string; initials: string }>({ photoUrl: '', initials: '' })
+  useEffect(() => {
+    fetch('/api/me').then((r) => (r.ok ? r.json() : null)).then((u) => {
+      if (u) setAvatar({ photoUrl: u.photoUrl || '', initials: `${(u.firstName || '')[0] ?? ''}${(u.lastName || '')[0] ?? ''}`.toUpperCase() })
+    }).catch(() => {})
+  }, [])
+
   const iconCls = (active: boolean) =>
     `flex size-10 items-center justify-center rounded-full transition-colors active:bg-muted ${active ? 'text-primary' : 'text-muted-foreground'}`
 
@@ -66,6 +74,20 @@ export function TopBar() {
             <Plus className="size-5 stroke-[1.5]" />
           </button>
         )}
+        {/* Mon compte — avatar (photo ou initiales) → hub /compte (profil, activité, abonnement, réglages, switcher MLM) */}
+        <button
+          type="button"
+          onClick={() => router.push('/compte')}
+          aria-label="Mon compte"
+          className="relative size-9 shrink-0 overflow-hidden rounded-full ring-1 ring-border active:opacity-80 transition-opacity"
+        >
+          {avatar.photoUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={avatar.photoUrl} alt="" className="size-full object-cover" />
+          ) : (
+            <span className="grid size-full place-items-center bg-[#3B82F6] text-xs font-semibold text-white">{avatar.initials || 'A'}</span>
+          )}
+        </button>
       </div>
     </header>
   )
