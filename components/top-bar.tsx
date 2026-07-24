@@ -12,6 +12,11 @@ export function TopBar() {
   // avec le même interlocuteur). Le « + » reste pour les autres agents (Nova : nouvelle campagne).
   const isAtlas = pathname === '/atlas' || pathname.startsWith('/atlas/')
 
+  // Destinations racines de la nav (refonte) : ce sont des onglets de la bottom bar, pas des fils —
+  // donc PAS de flèche « retour vers /chats » (vestige de l'ancienne messagerie).
+  const HUB_ROOTS = ['/home', '/communaute', '/agenda', '/formation']
+  const hubRoot = HUB_ROOTS.includes(pathname)
+
   // Pastille du hamburger = VRAIES notifications non lues (rafraîchie à chaque navigation,
   // donc s'éteint dès qu'on revient de la page notifications)
   const [unread, setUnread] = useState(0)
@@ -30,11 +35,13 @@ export function TopBar() {
       style={{ paddingTop: 'max(0.75rem, env(safe-area-inset-top))' }}
     >
       <div className="flex flex-1 items-center gap-1">
-        {/* Bascule nav messagerie : toute page revient à la LISTE (fil ← liste, geste Telegram) */}
-        <button type="button" aria-label="Retour aux messages" onClick={() => router.push('/chats')} className={`relative ${iconCls(false)}`}>
-          <ChevronLeft className="size-6 stroke-[1.5]" />
-          {unread > 0 && <span className="absolute right-1.5 top-1.5 size-2.5 rounded-full bg-destructive ring-2 ring-background" />}
-        </button>
+        {/* Retour vers Espaces — seulement hors des onglets racines (un hub n'a pas de « retour ») */}
+        {!hubRoot && (
+          <button type="button" aria-label="Retour aux messages" onClick={() => router.push('/chats')} className={`relative ${iconCls(false)}`}>
+            <ChevronLeft className="size-6 stroke-[1.5]" />
+            {unread > 0 && <span className="absolute right-1.5 top-1.5 size-2.5 rounded-full bg-destructive ring-2 ring-background" />}
+          </button>
+        )}
       </div>
 
       {isAgentPath(pathname) ? (
