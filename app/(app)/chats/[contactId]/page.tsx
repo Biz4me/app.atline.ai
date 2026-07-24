@@ -267,7 +267,7 @@ export default function ContactThreadPage({ params }: { params: Promise<{ contac
       </div>
 
       {/* Le fil */}
-      <div className="flex-1 overflow-y-auto px-4 pb-[130px] pt-3 lg:pb-4">
+      <div className="flex-1 overflow-y-auto px-4 pb-[144px] pt-3 lg:pb-4">
         {loading && <p className="py-6 text-center text-sm text-muted-foreground">Chargement…</p>}
         {!loading && msgs.length === 0 && (
           <p className="py-6 text-center text-sm text-muted-foreground">

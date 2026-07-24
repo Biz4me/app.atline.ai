@@ -260,7 +260,7 @@ export function NovaChat({
           onClick={goToBottom}
           aria-label="Revenir en bas"
           className="lg:hidden fixed left-1/2 z-[47] flex size-9 -translate-x-1/2 items-center justify-center rounded-full border border-border bg-background text-muted-foreground shadow-md active:bg-muted transition-colors"
-          style={{ bottom: 'calc(max(14px, env(safe-area-inset-bottom)) + 62px)' }}
+          style={{ bottom: 'calc(max(14px, env(safe-area-inset-bottom)) + 108px)' }}
         >
           <ChevronDown className="size-4" />
         </button>

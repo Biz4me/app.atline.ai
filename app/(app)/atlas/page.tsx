@@ -1031,7 +1031,7 @@ TECHNIQUE (invisible pour moi, ne l'explique jamais)${NB}: quand tu as balayé l
         {loadingConv ? (
           <div className="flex-1" />
         ) : msgs.length === 0 ? (
-          <div className="flex flex-1 flex-col px-4 pb-20 lg:pb-0">
+          <div className="flex flex-1 flex-col px-4 pb-36 lg:pb-0">
             <div className="flex flex-1 flex-col items-center justify-center gap-2.5 px-2 text-center">
               <p className="text-3xl font-bold leading-[1.2] tracking-[-0.025em] text-foreground">{firstName ? `Bonjour ${firstName}` : 'Bonjour'}</p>
               <p className="min-h-[50px] max-w-[320px] text-lg leading-[1.4] text-muted-foreground">{typedMantra}</p>
@@ -1093,7 +1093,7 @@ TECHNIQUE (invisible pour moi, ne l'explique jamais)${NB}: quand tu as balayé l
           <div
             ref={scrollRef}
             onScroll={handleScroll}
-            className="flex-1 overflow-y-auto no-scrollbar px-6 pt-4 pb-24 lg:pb-4"
+            className="flex-1 overflow-y-auto no-scrollbar px-6 pt-4 pb-36 lg:pb-4"
           >
             <div className="mx-auto flex max-w-md flex-col gap-4 lg:max-w-2xl">
             {msgs.map((m, i) => (

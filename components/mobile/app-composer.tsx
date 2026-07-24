@@ -42,11 +42,11 @@ export function AppComposer({
     onText: (full) => onChange(full),
   })
 
-  // Auto-grow des zones de saisie (mobile + desktop) jusqu'à 120px puis scroll
+  // Auto-grow des zones de saisie (mobile + desktop) jusqu'à 160px puis scroll
   useEffect(() => {
     rootRef.current?.querySelectorAll('textarea').forEach((el) => {
       el.style.height = 'auto'
-      el.style.height = Math.min(el.scrollHeight, 120) + 'px'
+      el.style.height = Math.min(el.scrollHeight, 160) + 'px'
     })
   }, [value])
   useEffect(() => { if (autoFocus) rootRef.current?.querySelector('textarea')?.focus() }, [autoFocus])
@@ -63,86 +63,94 @@ export function AppComposer({
       aria-label="Revenir en bas"
       className={cn(
         'absolute -top-12 z-10 flex items-center justify-center rounded-full border border-border bg-background text-muted-foreground shadow-md transition-colors hover:bg-muted hover:text-foreground active:bg-muted',
-        variant === 'mobile' ? 'right-1.5 size-11' : 'left-1/2 size-9 -translate-x-1/2',
+        variant === 'mobile' ? 'right-3 size-11' : 'left-1/2 size-9 -translate-x-1/2',
       )}
     >
       <ChevronDown className={variant === 'mobile' ? 'size-6' : 'size-4'} />
     </button>
   ) : null
 
-  // La barre — internals partagés ; seul l'habillage du conteneur diffère mobile/desktop.
+  // La barre — DEUX ÉTAGES : le texte pleine largeur au-dessus, la rangée d'actions en dessous.
+  // (modèle ChatGPT/Claude : le texte n'est plus coincé entre les boutons). Internals partagés
+  // mobile/desktop ; seul l'habillage du conteneur diffère.
   const bar = (variant: 'mobile' | 'desktop') => (
     <div
       className={cn(
-        'relative mx-auto flex items-end gap-1.5 border border-border',
+        'relative mx-auto flex flex-col gap-1 border border-border',
         variant === 'mobile'
-          ? 'max-w-md rounded-[26px] bg-surface/95 px-1.5 py-1.5 shadow-[0_6px_24px_rgba(0,0,0,.12)] backdrop-blur-md'
-          : 'max-w-2xl rounded-2xl bg-surface px-2 py-2',
+          ? 'max-w-md rounded-[26px] bg-surface/95 px-3 py-2 shadow-[0_6px_24px_rgba(0,0,0,.12)] backdrop-blur-md'
+          : 'max-w-2xl rounded-3xl bg-surface px-3.5 py-2.5',
       )}
     >
       {scrollBtn(variant)}
-      {onSlash && (
-        <button
-          type="button"
-          onClick={onSlash}
-          title="Menu"
-          aria-label="Menu"
-          className="flex size-10 shrink-0 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted active:bg-muted"
-        >
-          <Menu className="size-7 stroke-2" />
-        </button>
-      )}
-      {onAttach && (
-        <button
-          type="button"
-          onClick={onAttach}
-          title="Joindre un fichier"
-          className="flex size-9 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted active:bg-muted"
-        >
-          <Paperclip className="size-5 stroke-[1.5]" />
-        </button>
-      )}
+      {/* Étage 1 — le texte, pleine largeur */}
       <textarea
         rows={1}
         value={value}
         onChange={(e) => onChange(e.target.value)}
         onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); onSubmit() } }}
         placeholder={placeholder ?? `Écris à ${agentLabel}…`}
-        className={cn('flex-1 resize-none overflow-y-auto no-scrollbar bg-transparent leading-[1.4] text-foreground outline-none placeholder:text-muted-foreground', textCls)}
-        style={{ maxHeight: 120, paddingTop: 7, paddingBottom: 7 }}
+        className={cn('w-full resize-none overflow-y-auto no-scrollbar bg-transparent leading-[1.4] text-foreground outline-none placeholder:text-muted-foreground', textCls)}
+        style={{ maxHeight: 160, paddingTop: 6, paddingBottom: 4 }}
       />
-      {micOk && (
-        <button
-          type="button"
-          onPointerDown={(e) => { e.preventDefault(); e.currentTarget.setPointerCapture(e.pointerId); start() }}
-          onPointerUp={(e) => { e.currentTarget.releasePointerCapture(e.pointerId); stop() }}
-          onPointerCancel={stop}
-          onContextMenu={(e) => e.preventDefault()}
-          disabled={busy}
-          aria-label="Maintenir pour dicter"
-          title="Maintenir pour dicter"
-          className={cn(
-            'flex size-11 shrink-0 select-none touch-none items-center justify-center rounded-full transition-all',
-            recording ? 'scale-110 bg-primary text-white' : busy ? 'text-primary' : 'text-muted-foreground hover:bg-muted active:bg-muted',
-          )}
-        >
-          {busy ? <Loader2 className="size-6 animate-spin" /> : <Mic className={cn('size-6 stroke-[1.5]', recording && 'animate-pulse')} />}
-        </button>
-      )}
-      <button
-        type="button"
-        onClick={onSubmit}
-        disabled={disabled || !value.trim()}
-        className={cn(
-          'flex size-11 shrink-0 items-center justify-center rounded-full transition-all disabled:opacity-40',
-          recording
-            ? 'bg-transparent text-muted-foreground'
-            : 'bg-primary text-primary-foreground shadow-sm hover:opacity-90 active:opacity-90',
+      {/* Étage 2 — les actions */}
+      <div className="flex items-center gap-1.5">
+        {onSlash && (
+          <button
+            type="button"
+            onClick={onSlash}
+            title="Menu"
+            aria-label="Menu"
+            className="flex size-10 shrink-0 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted active:bg-muted"
+          >
+            <Menu className="size-7 stroke-2" />
+          </button>
         )}
-        style={!recording && accent ? { background: accent } : undefined}
-      >
-        <SendHorizontal className="size-6 stroke-[1.5]" />
-      </button>
+        {onAttach && (
+          <button
+            type="button"
+            onClick={onAttach}
+            title="Joindre un fichier"
+            className="flex size-9 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted active:bg-muted"
+          >
+            <Paperclip className="size-5 stroke-[1.5]" />
+          </button>
+        )}
+        <div className="ml-auto flex items-center gap-1.5">
+          {micOk && (
+            <button
+              type="button"
+              onPointerDown={(e) => { e.preventDefault(); e.currentTarget.setPointerCapture(e.pointerId); start() }}
+              onPointerUp={(e) => { e.currentTarget.releasePointerCapture(e.pointerId); stop() }}
+              onPointerCancel={stop}
+              onContextMenu={(e) => e.preventDefault()}
+              disabled={busy}
+              aria-label="Maintenir pour dicter"
+              title="Maintenir pour dicter"
+              className={cn(
+                'flex size-11 shrink-0 select-none touch-none items-center justify-center rounded-full transition-all',
+                recording ? 'scale-110 bg-primary text-white' : busy ? 'text-primary' : 'text-muted-foreground hover:bg-muted active:bg-muted',
+              )}
+            >
+              {busy ? <Loader2 className="size-6 animate-spin" /> : <Mic className={cn('size-6 stroke-[1.5]', recording && 'animate-pulse')} />}
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={onSubmit}
+            disabled={disabled || !value.trim()}
+            className={cn(
+              'flex size-11 shrink-0 items-center justify-center rounded-full transition-all disabled:opacity-40',
+              recording
+                ? 'bg-transparent text-muted-foreground'
+                : 'bg-primary text-primary-foreground shadow-sm hover:opacity-90 active:opacity-90',
+            )}
+            style={!recording && accent ? { background: accent } : undefined}
+          >
+            <SendHorizontal className="size-6 stroke-[1.5]" />
+          </button>
+        </div>
+      </div>
     </div>
   )
 
