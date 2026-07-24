@@ -410,7 +410,11 @@ model UserMlmBusiness {
   atlasConversations AtlasConversation[]
   importBatches      ContactImportBatch[]
 
+  companyId String?
+  company   MlmCompany? @relation(fields: [companyId], references: [id])
+
   @@unique([userId, mlmSlug])
+  @@index([companyId])
 }
 
 model MlmCatalog {
@@ -2025,4 +2029,38 @@ model Relance {
   sentAt    DateTime?
 
   @@index([status, dueAt])
+}
+
+// ── Société MLM : fiche partagée, faite 1× par (marque, pays), dont héritent les
+// distributeurs. Champs requêtés en colonnes ; les 8 rubriques vivent dans `fiche`
+// (JSON, évolue sans migration). `sources` = provenance + confiance par champ (étage 3).
+// Défauts France ; l'international = une autre ligne même brandSlug, autre country.
+enum MlmCompanyStatus {
+  DRAFT
+  REVIEW
+  PUBLISHED
+  ARCHIVED
+}
+
+model MlmCompany {
+  id          String   @id @default(cuid())
+  brandSlug   String
+  slug        String   @unique
+  name        String
+  country     String   @default("FR")
+  locale      String   @default("fr-FR")
+  currency    String   @default("EUR")
+  category    String?
+  officialUrl String?
+  status      MlmCompanyStatus @default(DRAFT)
+  fiche       Json     @default("{}")
+  sources     Json?
+  publishedAt DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  businesses UserMlmBusiness[]
+
+  @@unique([brandSlug, country])
+  @@index([brandSlug])
 }
