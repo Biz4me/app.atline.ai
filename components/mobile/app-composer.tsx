@@ -71,8 +71,8 @@ export function AppComposer({
       className={cn(
         'relative mx-auto flex items-end gap-2 border border-border',
         variant === 'mobile'
-          ? 'max-w-md rounded-[26px] bg-surface/95 px-3 py-1.5 shadow-[0_6px_24px_rgba(0,0,0,.12)] backdrop-blur-md'
-          : 'max-w-2xl rounded-2xl bg-surface px-4 py-2',
+          ? 'max-w-md rounded-[26px] bg-surface/95 px-2 py-1.5 shadow-[0_6px_24px_rgba(0,0,0,.12)] backdrop-blur-md'
+          : 'max-w-2xl rounded-2xl bg-surface px-2.5 py-2',
       )}
     >
       {scrollBtn}
@@ -84,7 +84,7 @@ export function AppComposer({
           aria-label="Menu"
           className="flex size-9 shrink-0 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted active:bg-muted"
         >
-          <Menu className="size-5 stroke-[1.5]" />
+          <Menu className="size-6 stroke-2" />
         </button>
       )}
       {onAttach && (
@@ -128,10 +128,10 @@ export function AppComposer({
         type="button"
         onClick={onSubmit}
         disabled={disabled || !value.trim()}
-        className="flex size-9 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-sm transition-opacity hover:opacity-90 active:opacity-90 disabled:opacity-40"
+        className="flex size-10 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-sm transition-opacity hover:opacity-90 active:opacity-90 disabled:opacity-40"
         style={accent ? { background: accent } : undefined}
       >
-        <SendHorizontal className="size-[17px] stroke-[1.5]" />
+        <SendHorizontal className="size-5 stroke-[1.5]" />
       </button>
     </div>
   )
