@@ -36,8 +36,11 @@ export default function FormationPage() {
 
   const modules = course?.modules ?? []
   const doneCount = modules.filter(m => m.progress?.[0]?.status === 'DONE').length
-  const totalPct = modules.length
-    ? Math.round(modules.reduce((acc, m) => acc + (m.progress?.[0]?.pct ?? 0), 0) / modules.length)
+  // % du parcours = moyenne PONDÉRÉE par le nombre de leçons (= même formule que /api/home/stats,
+  // leçons faites / leçons totales) → plus de désaccord « 8% ici / 10% sur l'Accueil ».
+  const totalLessons = modules.reduce((acc, m) => acc + (m._count?.lessons ?? 0), 0)
+  const totalPct = totalLessons
+    ? Math.round(modules.reduce((acc, m) => acc + (m.progress?.[0]?.pct ?? 0) * (m._count?.lessons ?? 0), 0) / totalLessons)
     : 0
 
   return (

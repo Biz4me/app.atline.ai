@@ -1153,7 +1153,6 @@ TECHNIQUE (invisible pour moi, ne l'explique jamais)${NB}: quand tu as balayé l
           onChange={(v) => { setInput(v); setSlashOpen(v.startsWith('/')) }}
           onSubmit={submitInput}
           onAttach={() => fileInputRef.current?.click()}
-          onSlash={() => setSlashOpen(true)}
           agentLabel="Atlas"
           disabled={streaming}
           showScrollBtn={showScrollBtn}
