@@ -2060,7 +2060,35 @@ model MlmCompany {
   updatedAt   DateTime @updatedAt
 
   businesses UserMlmBusiness[]
+  products   MlmProduct[]
 
   @@unique([brandSlug, country])
   @@index([brandSlug])
+}
+
+// Catalogue produit STRUCTURÉ par société (≠ la fiche narrative). Atlas y lit le prix
+// de façon déterministe (pas via le RAG), et Nova s'en sert pour la publication.
+// Alimenté depuis la boutique (products.json / scrape) + recherche.
+model MlmProduct {
+  id          String     @id @default(cuid())
+  companyId   String
+  company     MlmCompany @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  name        String
+  slug        String
+  category    String?
+  description String?
+  usage       String?    // mode d'emploi
+  price       Decimal?   @db.Decimal(10, 2)
+  currency    String     @default("EUR")
+  format      String?    // contenance / conditionnement
+  imageUrl    String?
+  sourceUrl   String?
+  extra       Json?      // champs libres selon le MLM
+  status      MlmCompanyStatus @default(PUBLISHED)
+  position    Int        @default(0)
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  @@unique([companyId, slug])
+  @@index([companyId])
 }
