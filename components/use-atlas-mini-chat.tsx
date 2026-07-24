@@ -2,13 +2,14 @@
 
 import { useRef, useState } from 'react'
 import { AtlasNavCard, OPEN_MARK_RE, cleanOpenRoute } from '@/components/atlas-nav-card'
+import { AtlasProductCard, PRODUCT_MARK_RE } from '@/components/atlas-product-card'
 import { AtlasActionCard, type AtlasAction } from '@/components/atlas-action-card'
 
 // Mini-chat Atlas contextuel — LA logique partagée du « composeur qui ne navigue plus » :
 // panneau mobile (ShellComposer) ET rail droit desktop (AtlasSidebar) consomment ce hook.
 // Même API que la page Atlas (/api/atlas/chat), même conversation reprise via ?c=.
 
-export type PanelMsg = { from: 'user' | 'atlas'; text: string; navCard?: { route: string; label: string }; actionCard?: AtlasAction }
+export type PanelMsg = { from: 'user' | 'atlas'; text: string; navCard?: { route: string; label: string }; productSlug?: string; actionCard?: AtlasAction }
 
 // Pendant le stream, ne jamais révéler un marqueur [[OPEN]] (même partiel en fin de flux).
 const visible = (t: string) => t.replace(/\s*\[\[[\s\S]*$/, '')
@@ -66,10 +67,13 @@ export function useAtlasMiniChat(endpoint = '/api/atlas/chat') {
       // Concierge : [[OPEN]] route | libellé → carte deep-link, marqueur jamais affiché.
       const om = full.match(OPEN_MARK_RE)
       const route = om ? cleanOpenRoute(om[1]) : null
+      // Carte produit : [[PRODUCT:slug]] → image + prix depuis la base.
+      const pmv = full.match(PRODUCT_MARK_RE)
       setLast(visible(full).trim())
       setMsgs((prev) => [
         ...prev,
         ...(route ? [{ from: 'atlas' as const, text: '', navCard: { route, label: om![2].trim() } }] : []),
+        ...(pmv ? [{ from: 'atlas' as const, text: '', productSlug: pmv[1] }] : []),
         ...actions.map((a) => ({ from: 'atlas' as const, text: '', actionCard: a })),
       ])
       onUpdate?.()
@@ -90,6 +94,8 @@ export function MiniMsgs({ msgs }: { msgs: PanelMsg[] }) {
       {msgs.map((m, i) =>
         m.navCard ? (
           <AtlasNavCard key={i} route={m.navCard.route} label={m.navCard.label} />
+        ) : m.productSlug ? (
+          <AtlasProductCard key={i} slug={m.productSlug} />
         ) : m.actionCard ? (
           <AtlasActionCard key={i} action={m.actionCard} />
         ) : m.from === 'user' ? (
