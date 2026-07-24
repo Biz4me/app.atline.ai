@@ -146,6 +146,29 @@ export async function POST(req: NextRequest) {
     productsCatalog = prods
       .map((p) => `- ${p.name}${p.price != null ? ` — ${Number(p.price).toFixed(2)} ${p.currency}` : ''}${p.format ? ` (${p.format})` : ''} · slug=${p.slug}`)
       .join('\n')
+    if (productsCatalog) productsCatalog = `# TA SOCIÉTÉ — ${mlmActif}\n${productsCatalog}`
+  }
+
+  // Catalogue d'un CONCURRENT nommé : si la conversation mentionne une autre société publiée,
+  // on injecte SON catalogue (avec slugs) pour qu'Atlas montre ses vraies fiches produit.
+  const scanText = `${query} ${Array.isArray(conversation_history) ? conversation_history.map((m: { content?: string }) => m.content ?? '').join(' ') : ''}`.toLowerCase()
+  const others = await db.mlmCompany.findMany({
+    where: { status: 'PUBLISHED', ...(company ? { id: { not: company.id } } : {}) },
+    select: { id: true, name: true, brandSlug: true },
+  })
+  for (const c of others) {
+    if (!scanText.includes(c.name.toLowerCase()) && !scanText.includes(c.brandSlug)) continue
+    const prods = await db.mlmProduct.findMany({
+      where: { companyId: c.id, status: 'PUBLISHED' },
+      orderBy: { position: 'asc' },
+      select: { name: true, slug: true, price: true, currency: true, format: true },
+      take: 250,
+    })
+    if (!prods.length) continue
+    const lines = prods
+      .map((p) => `- ${p.name}${p.price != null ? ` — ${Number(p.price).toFixed(2)} ${p.currency}` : ''}${p.format ? ` (${p.format})` : ''} · slug=${p.slug}`)
+      .join('\n')
+    productsCatalog += `${productsCatalog ? '\n\n' : ''}# CONCURRENT — ${c.name} (PAS la société de l'utilisateur)\n${lines}`
   }
 
   // Appel FastAPI

@@ -14,6 +14,7 @@ export const stripProductMarker = (content: string): string =>
 
 type Product = {
   name: string
+  company: string | null
   category: string | null
   description: string | null
   usage: string | null
@@ -59,6 +60,7 @@ export function AtlasProductCard({ slug }: { slug: string }) {
           )}
         </div>
         <div className="min-w-0 flex-1">
+          {p.company && <div className="text-2xs font-semibold uppercase tracking-wide text-muted-foreground">{p.company}</div>}
           <div className="text-sm font-semibold text-foreground">{p.name}</div>
           {(p.format || p.category) && (
             <div className="text-xs text-muted-foreground">{[p.category, p.format].filter(Boolean).join(' · ')}</div>
