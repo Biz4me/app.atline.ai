@@ -1,6 +1,7 @@
-import { HomeContent } from './home-content'
+import { AccueilContent } from './accueil-content'
 
-// Le mantra vit désormais sur l'accueil Atlas (le chat) — retiré du tableau de bord.
+// Accueil (refonte nav) = briefing : mantra + plan du jour + carte Formation + composeur-lanceur.
+// L'ancien tableau de bord KPI (home-content.tsx) est conservé pour redevenir « Mon bilan » plus tard.
 export default function HomePage() {
-  return <HomeContent mantra="" />
+  return <AccueilContent />
 }
