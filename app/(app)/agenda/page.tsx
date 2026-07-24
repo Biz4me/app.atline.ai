@@ -78,8 +78,8 @@ export function AgendaView({ embedded = false, onClose }: { embedded?: boolean; 
       {/* Header — route uniquement (en panneau, la topbar reste visible au-dessus) */}
       {!embedded && (
         <header className="sticky top-0 z-30 flex items-center gap-3 bg-background/90 px-4 py-3 backdrop-blur lg:mx-auto lg:h-[68px] lg:w-full lg:max-w-6xl lg:py-0 lg:px-10" style={{ paddingTop: 'max(0.75rem, env(safe-area-inset-top))' }}>
-          {/* Gabarit desktop : titre centré discret (mobile : géré par la top-bar) */}
-          <h1 className="hidden text-base font-semibold text-foreground lg:block lg:absolute lg:left-1/2 lg:-translate-x-1/2">Agenda</h1>
+          {/* Gabarit unique : titre À GAUCHE (mobile : géré par la top-bar) */}
+          <h1 className="hidden text-2xl font-bold text-foreground lg:block">Agenda</h1>
           <button type="button" onClick={() => setCreateOpen(true)} className="ml-auto flex size-9 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-sm active:opacity-80"><Plus className="size-5 stroke-2" /></button>
         </header>
       )}
