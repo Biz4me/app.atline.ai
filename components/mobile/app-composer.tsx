@@ -1,7 +1,7 @@
 'use client'
 
 import { useRef, useEffect } from 'react'
-import { Paperclip, Mic, SendHorizontal, Loader2, ChevronDown } from 'lucide-react'
+import { Paperclip, Mic, SendHorizontal, Loader2, ChevronDown, Menu } from 'lucide-react'
 import { usePushToTalk } from '@/components/mobile/use-dictation'
 import { cn } from '@/lib/utils'
 
@@ -80,11 +80,11 @@ export function AppComposer({
         <button
           type="button"
           onClick={onSlash}
-          title="Commandes"
-          aria-label="Commandes"
-          className="flex size-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-base font-bold text-primary transition-colors active:bg-primary/20"
+          title="Menu"
+          aria-label="Menu"
+          className="flex size-9 shrink-0 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted active:bg-muted"
         >
-          /
+          <Menu className="size-5 stroke-[1.5]" />
         </button>
       )}
       {onAttach && (
