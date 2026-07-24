@@ -53,15 +53,20 @@ export function AppComposer({
 
   const textCls = bigText ? 'text-lg lg:text-base' : 'text-lg lg:text-sm'
 
-  // Bouton « revenir en bas » — au-dessus de la barre, même distance mobile/desktop.
-  const scrollBtn = showScrollBtn && onScrollBottom ? (
+  // Bouton « revenir en bas » — au-dessus de la barre.
+  // Desktop : centré (inchangé). Mobile : même taille + même décalage droit que le bouton Envoyer
+  // → aligné dans la même colonne, à droite, en plus gros.
+  const scrollBtn = (variant: 'mobile' | 'desktop') => showScrollBtn && onScrollBottom ? (
     <button
       type="button"
       onClick={onScrollBottom}
       aria-label="Revenir en bas"
-      className="absolute -top-12 left-1/2 z-10 flex size-9 -translate-x-1/2 items-center justify-center rounded-full border border-border bg-background text-muted-foreground shadow-md transition-colors hover:bg-muted hover:text-foreground active:bg-muted"
+      className={cn(
+        'absolute -top-12 z-10 flex items-center justify-center rounded-full border border-border bg-background text-muted-foreground shadow-md transition-colors hover:bg-muted hover:text-foreground active:bg-muted',
+        variant === 'mobile' ? 'right-1.5 size-11' : 'left-1/2 size-9 -translate-x-1/2',
+      )}
     >
-      <ChevronDown className="size-4" />
+      <ChevronDown className={variant === 'mobile' ? 'size-6' : 'size-4'} />
     </button>
   ) : null
 
@@ -69,22 +74,22 @@ export function AppComposer({
   const bar = (variant: 'mobile' | 'desktop') => (
     <div
       className={cn(
-        'relative mx-auto flex items-end gap-2 border border-border',
+        'relative mx-auto flex items-end gap-1.5 border border-border',
         variant === 'mobile'
-          ? 'max-w-md rounded-[26px] bg-surface/95 px-2 py-1.5 shadow-[0_6px_24px_rgba(0,0,0,.12)] backdrop-blur-md'
-          : 'max-w-2xl rounded-2xl bg-surface px-2.5 py-2',
+          ? 'max-w-md rounded-[26px] bg-surface/95 px-1.5 py-1.5 shadow-[0_6px_24px_rgba(0,0,0,.12)] backdrop-blur-md'
+          : 'max-w-2xl rounded-2xl bg-surface px-2 py-2',
       )}
     >
-      {scrollBtn}
+      {scrollBtn(variant)}
       {onSlash && (
         <button
           type="button"
           onClick={onSlash}
           title="Menu"
           aria-label="Menu"
-          className="flex size-9 shrink-0 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted active:bg-muted"
+          className="flex size-10 shrink-0 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted active:bg-muted"
         >
-          <Menu className="size-6 stroke-2" />
+          <Menu className="size-7 stroke-2" />
         </button>
       )}
       {onAttach && (
@@ -128,10 +133,10 @@ export function AppComposer({
         type="button"
         onClick={onSubmit}
         disabled={disabled || !value.trim()}
-        className="flex size-10 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-sm transition-opacity hover:opacity-90 active:opacity-90 disabled:opacity-40"
+        className="flex size-11 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-sm transition-opacity hover:opacity-90 active:opacity-90 disabled:opacity-40"
         style={accent ? { background: accent } : undefined}
       >
-        <SendHorizontal className="size-5 stroke-[1.5]" />
+        <SendHorizontal className="size-6 stroke-[1.5]" />
       </button>
     </div>
   )
