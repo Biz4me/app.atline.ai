@@ -122,19 +122,24 @@ export function AppComposer({
           aria-label="Maintenir pour dicter"
           title="Maintenir pour dicter"
           className={cn(
-            'flex size-9 shrink-0 select-none touch-none items-center justify-center rounded-full transition-all',
+            'flex size-11 shrink-0 select-none touch-none items-center justify-center rounded-full transition-all',
             recording ? 'scale-110 bg-primary text-white' : busy ? 'text-primary' : 'text-muted-foreground hover:bg-muted active:bg-muted',
           )}
         >
-          {busy ? <Loader2 className="size-5 animate-spin" /> : <Mic className={cn('size-5 stroke-[1.5]', recording && 'animate-pulse')} />}
+          {busy ? <Loader2 className="size-6 animate-spin" /> : <Mic className={cn('size-6 stroke-[1.5]', recording && 'animate-pulse')} />}
         </button>
       )}
       <button
         type="button"
         onClick={onSubmit}
         disabled={disabled || !value.trim()}
-        className="flex size-11 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-sm transition-opacity hover:opacity-90 active:opacity-90 disabled:opacity-40"
-        style={accent ? { background: accent } : undefined}
+        className={cn(
+          'flex size-11 shrink-0 items-center justify-center rounded-full transition-all disabled:opacity-40',
+          recording
+            ? 'bg-transparent text-muted-foreground'
+            : 'bg-primary text-primary-foreground shadow-sm hover:opacity-90 active:opacity-90',
+        )}
+        style={!recording && accent ? { background: accent } : undefined}
       >
         <SendHorizontal className="size-6 stroke-[1.5]" />
       </button>
