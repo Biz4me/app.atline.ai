@@ -120,13 +120,6 @@ export async function GET() {
       at: lastIdea?.createdAt ?? null,
     },
     {
-      id: 'orion',
-      name: 'Orion',
-      role: 'prospection',
-      line: 'Trouve tes prochains prospects',
-      at: null,
-    },
-    {
       id: 'communaute',
       name: 'Communauté',
       role: 'groupe',
