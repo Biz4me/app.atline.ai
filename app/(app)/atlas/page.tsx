@@ -1032,41 +1032,18 @@ TECHNIQUE (invisible pour moi, ne l'explique jamais)${NB}: quand tu as balayé l
           <div className="flex-1" />
         ) : msgs.length === 0 ? (
           <div className="flex flex-1 flex-col px-4 pb-36 lg:pb-0">
-            <div className="flex flex-1 flex-col items-center justify-center gap-2.5 px-2 text-center">
-              <p className="text-3xl font-bold leading-[1.2] tracking-[-0.025em] text-foreground">{firstName ? `Bonjour ${firstName}` : 'Bonjour'}</p>
-              <p className="min-h-[50px] max-w-[320px] text-lg leading-[1.4] text-muted-foreground">{typedMantra}</p>
+            {/* Écran vide = simple ACCUEIL DE CONVERSATION. Le « Bonjour » + le plan du jour vivent
+                sur l'Accueil (/home), pas ici — sinon doublon. */}
+            <div className="flex flex-1 flex-col items-center justify-center gap-2 px-2 text-center">
+              <span className="grid size-14 shrink-0 place-items-center overflow-hidden rounded-full bg-primary/10">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src="/avatars/atlas.png" alt="" className="size-full object-cover" />
+              </span>
+              <p className="text-lg font-semibold text-foreground">Sur quoi on avance ?</p>
+              <p className="max-w-[300px] text-sm leading-[1.5] text-muted-foreground">Ton plan, une relance, un message à écrire… demande-moi.</p>
             </div>
-            {/* Plan du jour en CARTES : 1 tap = le flux guidé existant (le fil porte ta journée) */}
-            {!input.trim() && plan.length > 0 && (
-              <div className="mx-auto mb-3 flex w-full max-w-md flex-col gap-2">
-                <p className="px-1 text-xs font-extrabold uppercase tracking-widest text-primary">Ton plan du jour</p>
-                {planObj && (
-                  <p className="px-1 text-xs text-muted-foreground">
-                    Objectif du mois : <span className="font-semibold tabular-nums text-foreground">{planObj.signed}/{planObj.mensuel}</span> partenaire{planObj.mensuel > 1 ? 's' : ''} signé{planObj.signed > 1 ? 's' : ''}{planObj.signed >= planObj.mensuel ? ' 🎯' : ''}
-                  </p>
-                )}
-                {plan.map((it) => (
-                  <button
-                    key={`${it.action}-${it.contactId}`}
-                    type="button"
-                    onClick={() => {
-                      setMsgs((prev) => [...prev, { from: 'user', text: it.headline }])
-                      setTimeout(() => startActionFlow(it), 250)
-                    }}
-                    className="flex w-full items-center gap-3 rounded-2xl border border-border bg-surface px-3.5 py-3 text-left transition-transform active:scale-[0.99]"
-                  >
-                    <span className="w-1 self-stretch rounded-full" style={{ background: it.contactId ? it.accent : '#F97316' }} />
-                    <span className="min-w-0 flex-1">
-                      <span className="block truncate text-sm font-semibold text-foreground">{it.headline}</span>
-                      <span className="block truncate text-xs text-muted-foreground">{it.reason}</span>
-                    </span>
-                    <span className="shrink-0 text-xs font-bold text-primary">Go</span>
-                  </button>
-                ))}
-              </div>
-            )}
-            {/* Suggestions : seulement quand il n'y a PAS de cartes (sinon écran chargé, elles font doublon) */}
-            {!input.trim() && plan.length === 0 && (
+            {/* Raccourcis conversationnels (pas de cartes de plan ici : c'est le rôle de l'Accueil) */}
+            {!input.trim() && (
               <div className="mx-auto flex w-full max-w-md flex-col gap-0.5">
                 {[
                   { icon: Zap, label: 'Mon plan du jour', run: () => showPlan() },
