@@ -92,22 +92,20 @@ export default function AuthPage() {
   }
 
   return (
-    <div
-      className="flex min-h-dvh flex-col items-center justify-center px-5 py-10"
-      style={{ paddingTop: 'max(2.5rem, env(safe-area-inset-top))' }}
-    >
-      {/* Logo */}
-      <div className="mb-8 flex flex-col items-center gap-3">
-        <Image
-          src="/brand/atline-icon.png"
-          alt="Atline"
-          width={56}
-          height={56}
-          className="rounded-[16px] shadow-md"
-        />
-        <span className="text-2xl font-extrabold tracking-tight text-foreground">
-          atline
-        </span>
+    <div className="flex min-h-dvh">
+      {/* Colonne formulaire (mobile : plein écran · desktop : moitié gauche) */}
+      <div
+        className="flex flex-1 flex-col items-center justify-center px-5 py-10"
+        style={{ paddingTop: 'max(2.5rem, env(safe-area-inset-top))' }}
+      >
+      {/* Slogan (mobile) — remplace l'ancien logo ; sur desktop il vit dans le panneau famille */}
+      <div className="mb-8 text-center lg:hidden">
+        <p className="text-balance text-2xl font-bold text-foreground">
+          Ton équipe est déjà au travail.
+        </p>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Atline propose, tu confirmes.
+        </p>
       </div>
 
       {/* Card */}
@@ -274,6 +272,32 @@ export default function AuthPage() {
           {isLogin ? "S'inscrire" : 'Se connecter'}
         </button>
       </p>
+      </div>
+
+      {/* Panneau famille (desktop) : fond de marque sombre + glow orange, slogan, les 6 agents */}
+      <div className="relative hidden w-1/2 overflow-hidden bg-[#18191A] lg:sticky lg:top-0 lg:flex lg:h-dvh lg:flex-col lg:justify-between lg:self-start">
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-0"
+          style={{ background: 'radial-gradient(120% 80% at 70% 0%, rgba(249,115,22,0.25), transparent 60%)' }}
+        />
+        <div className="relative z-10 px-12 pt-16">
+          <h2 className="text-balance text-3xl font-bold text-white">
+            Ton équipe est déjà au travail.
+          </h2>
+          <p className="mt-3 text-lg text-white/70">
+            Atline propose, tu confirmes.
+          </p>
+        </div>
+        <Image
+          src="/brand/famille-agents.webp"
+          alt="Les six agents Atline"
+          width={1600}
+          height={868}
+          priority
+          className="relative z-10 mt-8 w-full"
+        />
+      </div>
     </div>
   )
 }
