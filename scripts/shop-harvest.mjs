@@ -44,24 +44,14 @@ async function get(url, { asJson = false, timeout = 12000 } = {}) {
   }
 }
 
-// Origines candidates pour la boutique : site officiel + liens shop/store/boutique + sous-domaines.
-function shopCandidates(homeUrl, html) {
-  const out = new Set([new URL(homeUrl).origin])
-  if (html) {
-    for (const m of html.matchAll(/href="([^"#]+)"/g)) {
-      try {
-        const u = new URL(m[1], homeUrl)
-        if (!/^https?:$/.test(u.protocol)) continue
-        if (/(^|\.)(shop|store|boutique)\./i.test(u.hostname) || /\/(shop|store|boutique|products)(\/|$)/i.test(u.pathname)) {
-          out.add(u.origin)
-        }
-      } catch {}
-    }
+// Origines candidates : l'URL boutique DÉCOUVERTE (shop-discover, sources.bfh.shopUrl)
+// d'abord, puis le site officiel en repli.
+function shopCandidates(shopUrl, officialUrl) {
+  const out = new Set()
+  for (const u of [shopUrl, officialUrl]) {
+    try { if (u) out.add(new URL(u).origin) } catch {}
   }
-  const host = new URL(homeUrl).hostname.replace(/^www\./, '')
-  out.add(`https://shop.${host}`)
-  out.add(`https://store.${host}`)
-  return [...out].slice(0, 6)
+  return [...out]
 }
 
 async function harvestShopify(origin) {
@@ -122,9 +112,8 @@ async function harvestWoo(origin) {
   return items.length ? { platform: 'woocommerce', currency, items } : null
 }
 
-async function findCatalog(officialUrl) {
-  const home = await get(officialUrl)
-  const candidates = shopCandidates(officialUrl, home)
+async function findCatalog(shopUrl, officialUrl) {
+  const candidates = shopCandidates(shopUrl, officialUrl)
   for (const origin of candidates) {
     const shopify = await harvestShopify(origin)
     if (shopify) return { origin, ...shopify }
@@ -133,30 +122,29 @@ async function findCatalog(officialUrl) {
     const woo = await harvestWoo(origin)
     if (woo) return { origin, ...woo }
   }
-  // Rien de structuré : garder le meilleur candidat boutique (≠ site officiel) pour plus tard.
-  const other = candidates.find((o) => o !== new URL(officialUrl).origin && !/^https:\/\/(shop|store)\./.test(o))
-  return other ? { candidateOnly: other } : null
+  return null
 }
 
 async function main() {
   if (DRY) {
     if (!DRY_URL) throw new Error('--dry <url>')
-    const r = await findCatalog(DRY_URL)
+    const r = await findCatalog(DRY_URL, null)
     console.log(JSON.stringify({ ...r, items: r?.items?.slice(0, 5), total: r?.items?.length }, null, 2))
     return
   }
 
   const { PrismaClient } = await import('@prisma/client')
   const prisma = new PrismaClient()
-  const companies = await prisma.mlmCompany.findMany({
+  const all = await prisma.mlmCompany.findMany({
     where: {
-      officialUrl: { not: null },
       status: { not: 'ARCHIVED' },
       products: { none: {} },
       ...(ONLY.length ? { brandSlug: { in: ONLY } } : {}),
     },
     select: { id: true, brandSlug: true, country: true, officialUrl: true, status: true, sources: true },
   })
+  // Lot 1 : uniquement les sociétés dont shop-discover a trouvé l'URL boutique.
+  const companies = all.filter((c) => c.sources?.bfh?.shopUrl)
   console.log(`sociétés à moissonner : ${companies.length}`)
 
   const stats = { harvested: 0, published: 0, candidates: 0, empty: 0, products: 0 }
@@ -164,7 +152,7 @@ async function main() {
   async function worker() {
     while (i < companies.length) {
       const c = companies[i++]
-      const r = await findCatalog(c.officialUrl).catch(() => null)
+      const r = await findCatalog(c.sources.bfh.shopUrl, c.officialUrl).catch(() => null)
       const src = c.sources && typeof c.sources === 'object' ? c.sources : {}
       const bfh = src.bfh && typeof src.bfh === 'object' ? src.bfh : {}
 
@@ -187,13 +175,12 @@ async function main() {
         stats.products += rows.length
         if (publish) stats.published++
         console.log(`✓ ${c.brandSlug} : ${r.platform} ×${rows.length} (${currency})${publish ? ' → PUBLIÉE' : ''}`)
-      } else if (r?.candidateOnly) {
+      } else {
+        // Boutique connue mais pas lisible en structuré → file Firecrawl (lot 2).
         await prisma.mlmCompany.update({
           where: { id: c.id },
-          data: { sources: { ...src, bfh: { ...bfh, shopCandidate: r.candidateOnly } } },
+          data: { sources: { ...src, bfh: { ...bfh, shopStructured: false } } },
         })
-        stats.candidates++
-      } else {
         stats.empty++
       }
       if (i % 50 === 0) console.log(`… ${i}/${companies.length}`)
@@ -201,7 +188,7 @@ async function main() {
   }
   await Promise.all(Array.from({ length: CONCURRENCY }, worker))
 
-  console.log(`\nRésultat : ${stats.harvested} catalogues (${stats.products} produits) · ${stats.published} publiées · ${stats.candidates} boutiques à scraper plus tard · ${stats.empty} sans boutique détectée`)
+  console.log(`\nRésultat : ${stats.harvested} catalogues (${stats.products} produits) · ${stats.published} publiées · ${stats.empty} boutiques non structurées (file Firecrawl)`)
   await prisma.$disconnect()
 }
 
