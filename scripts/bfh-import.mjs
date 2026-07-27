@@ -160,7 +160,8 @@ async function main() {
         })
         stats.merged++
       } else {
-        const dead = !!data.statusNote
+        // Seules les vraies annotations de fin comptent — « (inGroup) », « (Formerly X) »… sont des alias, pas des morts.
+        const dead = !!data.statusNote && /out of|acquired|closed|shut/i.test(data.statusNote)
         await prisma.mlmCompany.create({
           data: {
             brandSlug: slug,
