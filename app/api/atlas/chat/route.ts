@@ -32,16 +32,16 @@ const HISTORY_WINDOW = 24
 const SUMMARY_LAG = 12
 
 // Société active de l'utilisateur → envoyée comme mlm_actif pour scoper le RAG par société
-// (atlas.py filtre atlas_mlm sur `societe` = mlm_actif slugifié). On prend le NOM (mlmName),
-// robuste même si le slug stocké est incohérent. Défaut 'Atline' = pas de filtre (générique).
-async function activeMlmName(userId: string): Promise<string> {
+// (atlas.py filtre atlas_mlm sur `societe` = mlm_actif slugifié). Si le business est
+// RATTACHÉ à une fiche (companyId, T1 pivot), la résolution est directe ; sinon repli
+// sur le nom saisi. Défaut 'Atline' = pas de filtre (générique).
+async function activeBusiness(userId: string): Promise<{ mlmName: string; companyId: string | null } | null> {
   const prefs = await db.userPreferences.findUnique({ where: { userId }, select: { activeCompanyId: true } })
   if (prefs?.activeCompanyId) {
-    const b = await db.userMlmBusiness.findFirst({ where: { id: prefs.activeCompanyId, userId }, select: { mlmName: true } })
-    if (b?.mlmName) return b.mlmName
+    const b = await db.userMlmBusiness.findFirst({ where: { id: prefs.activeCompanyId, userId }, select: { mlmName: true, companyId: true } })
+    if (b?.mlmName) return b
   }
-  const first = await db.userMlmBusiness.findFirst({ where: { userId }, orderBy: { position: 'asc' }, select: { mlmName: true } })
-  return first?.mlmName || 'Atline'
+  return db.userMlmBusiness.findFirst({ where: { userId }, orderBy: { position: 'asc' }, select: { mlmName: true, companyId: true } })
 }
 
 export async function POST(req: NextRequest) {
@@ -122,15 +122,23 @@ export async function POST(req: NextRequest) {
   }
 
   // Société active réelle (le client envoie 'Atline' en dur → on le remplace côté serveur
-  // pour activer le filtrage RAG par société). Le nom contourne un éventuel slug incohérent.
-  const mlmActif = await activeMlmName(userId)
+  // pour activer le filtrage RAG par société).
+  const activeBiz = await activeBusiness(userId)
 
-  // Existe-t-il une fiche société PUBLIÉE pour cette société ? Le service s'en sert pour
-  // l'ancrage : sans fiche validée, Atlas ne doit pas inventer et demande un PDF/lien.
-  const brandSlug = mlmActif.toLowerCase().normalize('NFD').replace(/\p{Diacritic}/gu, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
-  const company = mlmActif.toLowerCase() !== 'atline'
-    ? await db.mlmCompany.findFirst({ where: { brandSlug, status: 'PUBLISHED' }, select: { id: true } })
-    : null
+  // Fiche société PUBLIÉE : rattachement direct (companyId) en priorité, sinon par le nom
+  // slugifié (sociétés non rattachées). Sans fiche validée, Atlas ne doit pas inventer.
+  let company: { id: string; name: string } | null = null
+  if (activeBiz?.companyId) {
+    company = await db.mlmCompany.findFirst({
+      where: { id: activeBiz.companyId, status: 'PUBLISHED' },
+      select: { id: true, name: true },
+    })
+  }
+  const mlmActif = company?.name ?? activeBiz?.mlmName ?? 'Atline'
+  if (!company && mlmActif.toLowerCase() !== 'atline') {
+    const brandSlug = mlmActif.toLowerCase().normalize('NFD').replace(/\p{Diacritic}/gu, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
+    company = await db.mlmCompany.findFirst({ where: { brandSlug, status: 'PUBLISHED' }, select: { id: true, name: true } })
+  }
   const hasFiche = !!company
 
   // Catalogue produit STRUCTURÉ (prix exacts) → injecté dans la requête pour qu'Atlas lise

@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { db } from '@/lib/db'
+import { resolveCompanyId } from '@/lib/company-link'
 
 export async function GET() {
   const session = await getServerSession(authOptions)
@@ -43,17 +44,21 @@ export async function POST(req: Request) {
   const structure = (body?.structure && typeof body.structure === 'object' && !Array.isArray(body.structure)) ? (body.structure as object) : undefined
 
   const mlmSlug = slugify(name) || 'activite'
+  // Rattachement fiche société (T1 pivot) : si une MlmCompany correspond au nom, on lie.
+  const companyId = await resolveCompanyId(name)
 
   let biz = await db.userMlmBusiness.findFirst({ where: { userId, mlmSlug } })
   if (!biz) {
     const count = await db.userMlmBusiness.count({ where: { userId } })
     biz = await db.userMlmBusiness.create({
       data: {
-        userId, mlmName: name, mlmSlug, role: 'Distributeur', goal: '',
+        userId, mlmName: name, mlmSlug, role: 'Distributeur', goal: '', companyId,
         color: pick(), initials: name.slice(0, 2).toUpperCase(), active: true, category, position: count,
         rank, sponsorName, startDate, ...(structure ? { structure } : {}),
       },
     })
+  } else if (!biz.companyId && companyId) {
+    biz = await db.userMlmBusiness.update({ where: { id: biz.id }, data: { companyId } })
   }
 
   await db.userPreferences.upsert({

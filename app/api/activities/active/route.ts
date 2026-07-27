@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { db } from '@/lib/db'
+import { brandSlugify, resolveCompanyId } from '@/lib/company-link'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -74,7 +75,19 @@ export async function PATCH(req: Request) {
 
   // Identité
   const data: Record<string, unknown> = {}
-  if (typeof body.mlmName === 'string' && body.mlmName.trim()) data.mlmName = body.mlmName.trim()
+  if (typeof body.mlmName === 'string' && body.mlmName.trim()) {
+    const newName = body.mlmName.trim()
+    data.mlmName = newName
+    // Renommage : re-rattache la fiche société et réaligne le slug (c'était la source
+    // des slugs incohérents — le nom changeait sans le slug ni le lien).
+    data.companyId = await resolveCompanyId(newName)
+    const newSlug = brandSlugify(newName) || 'activite'
+    const clash = await db.userMlmBusiness.findFirst({
+      where: { userId, mlmSlug: newSlug, NOT: { id: biz.id } },
+      select: { id: true },
+    })
+    if (!clash) data.mlmSlug = newSlug
+  }
   if (typeof body.rank === 'string') data.rank = body.rank.trim() || null
   if (typeof body.category === 'string') data.category = body.category.trim() || 'coaching'
   if (typeof body.goal === 'string') data.goal = body.goal.trim() || null
