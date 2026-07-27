@@ -66,14 +66,25 @@ ${bloc}`
   try { return JSON.parse(m[0]) } catch { return [] }
 }
 
+const filtreProduits = (links) =>
+  links
+    .map((l) => (typeof l === 'string' ? l : l?.url))
+    .filter(Boolean)
+    .filter((u) => /\/(products?|produits?|item|shop\/[^/]+|p)\/[^/]+/i.test(u) && !/\/(account|login|category|collections?|tag|page)\//i.test(u))
+
 async function harvestCompany(c, state) {
   const shopUrl = c.sources.bfh.shopUrl
   const map = await fjson('https://api.firecrawl.dev/v1/map', { url: shopUrl, limit: 400 })
   state.spent += 1
-  const links = (map?.links || map?.data?.links || [])
-    .map((l) => (typeof l === 'string' ? l : l?.url))
-    .filter(Boolean)
-    .filter((u) => /\/(products?|produits?|item|shop\/[^/]+|p)\/[^/]+/i.test(u) && !/\/(cart|account|login|category|collections?|tag|page)\//i.test(u))
+  let links = filtreProduits(map?.links || map?.data?.links || [])
+  if (links.length < MIN_TO_PUBLISH) {
+    // Boutique SPA (catalogue en JS) : la carte de la RACINE avec recherche « product »
+    // ressort les URLs produit des sitemaps (vérifié sur USANA).
+    const root = new URL(c.officialUrl || shopUrl).origin
+    const map2 = await fjson('https://api.firecrawl.dev/v1/map', { url: root, search: 'product', limit: 300 })
+    state.spent += 1
+    links = filtreProduits(map2?.links || map2?.data?.links || [])
+  }
   const pagesUrls = [...new Set(links)].slice(0, PAGES_MAX)
   if (pagesUrls.length < MIN_TO_PUBLISH) return { skip: `carte sans liens produits (${pagesUrls.length})` }
 
@@ -119,7 +130,7 @@ async function main() {
   const prisma = new PrismaClient()
   const all = await prisma.mlmCompany.findMany({
     where: { status: { not: 'ARCHIVED' }, products: { none: {} }, ...(ONLY ? { brandSlug: ONLY } : {}) },
-    select: { id: true, brandSlug: true, country: true, status: true, sources: true, _count: { select: { businesses: true } } },
+    select: { id: true, brandSlug: true, country: true, status: true, officialUrl: true, sources: true, _count: { select: { businesses: true } } },
   })
   const rang = (c) => { const m = parseInt(c.sources?.bfh?.momentumRank ?? '', 10); return isNaN(m) ? 9999 : m }
   const todo = all
