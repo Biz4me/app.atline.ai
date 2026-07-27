@@ -13,7 +13,8 @@ export async function POST(req: NextRequest) {
   }
   const body = await req.json().catch(() => null)
   const ref = typeof body?.ref === 'string' ? body.ref : ''
-  const resolved = await resolveProspectRef(ref)
+  const productSlug = typeof body?.productSlug === 'string' && body.productSlug.trim() ? body.productSlug.trim() : undefined
+  const resolved = await resolveProspectRef(ref, productSlug)
   if (!resolved) return NextResponse.json({ error: 'inconnu' }, { status: 404 })
   return NextResponse.json(resolved)
 }

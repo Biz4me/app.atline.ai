@@ -1,9 +1,10 @@
 import { db } from '@/lib/db'
 
 // Résout un code de parrainage (= User.username, le même que /r/{code}) vers le
-// distributeur, son activité active, sa société et son lien d'inscription.
+// distributeur, son activité active, sa société, ses liens (parrainage, boutique)
+// et, si demandé, le produit d'entrée (axe produit : publication → conversation).
 // Utilisé par les endpoints internes du pivot prospection (bot Telegram).
-export async function resolveProspectRef(ref: string) {
+export async function resolveProspectRef(ref: string, productSlug?: string) {
   const username = ref.toLowerCase().trim()
   if (!username) return null
 
@@ -25,10 +26,32 @@ export async function resolveProspectRef(ref: string) {
   const company = biz.companyId
     ? await db.mlmCompany.findFirst({ where: { id: biz.companyId }, select: { name: true } })
     : null
-  const lien = await db.toolboxLink.findFirst({
-    where: { mlmBusinessId: biz.id, linkType: 'PARRAINAGE' },
-    select: { url: true },
-  })
+  const [lien, boutique] = await Promise.all([
+    db.toolboxLink.findFirst({
+      where: { mlmBusinessId: biz.id, linkType: 'PARRAINAGE' },
+      select: { url: true },
+    }),
+    db.toolboxLink.findFirst({
+      where: { mlmBusinessId: biz.id, linkType: 'BOUTIQUE' },
+      select: { url: true },
+    }),
+  ])
+
+  // Produit d'entrée (axe produit spécifique : la publication portait sur CE produit)
+  let produit: {
+    name: string; slug: string; price: number | null; currency: string | null
+    format: string | null; usage: string | null; description: string | null; sourceUrl: string | null
+  } | null = null
+  if (productSlug && biz.companyId) {
+    const p = await db.mlmProduct.findFirst({
+      where: { companyId: biz.companyId, slug: productSlug, status: 'PUBLISHED' },
+      select: {
+        name: true, slug: true, price: true, currency: true,
+        format: true, usage: true, description: true, sourceUrl: true,
+      },
+    })
+    if (p) produit = { ...p, price: p.price != null ? Number(p.price) : null }
+  }
 
   return {
     userId: user.id,
@@ -36,5 +59,7 @@ export async function resolveProspectRef(ref: string) {
     societe: company?.name ?? biz.mlmName,
     businessId: biz.id,
     parrainage: lien?.url ?? '',
+    boutique: boutique?.url ?? '',
+    produit,
   }
 }

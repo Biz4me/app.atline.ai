@@ -15,9 +15,10 @@ export async function POST(req: NextRequest) {
   }
   const body = await req.json().catch(() => null)
   const ref = typeof body?.ref === 'string' ? body.ref : ''
-  const reason = body?.reason === 'inscription' ? 'inscription' : 'rdv'
+  const reason = ['inscription', 'achat'].includes(body?.reason) ? (body.reason as 'inscription' | 'achat') : 'rdv'
   const prospectName = (typeof body?.prospectName === 'string' && body.prospectName.trim()) || 'Prospect Telegram'
   const telegram = typeof body?.telegram === 'string' ? body.telegram.trim() : ''
+  const contexte = typeof body?.contexte === 'string' ? body.contexte.trim() : ''
   const transcript = Array.isArray(body?.transcript) ? body.transcript : []
 
   const resolved = await resolveProspectRef(ref)
@@ -28,9 +29,11 @@ export async function POST(req: NextRequest) {
     .filter((m: { role?: string; content?: string }) => m?.content && (m.role === 'user' || m.role === 'assistant'))
     .slice(-10)
     .map((m: { role: string; content: string }) => `${m.role === 'user' ? 'Prospect' : 'Assistant'} : ${m.content}`)
+  const REASON_NOTE = { rdv: 'A demandé un rendez-vous.', inscription: "Prêt à s'inscrire.", achat: 'Veut commander.' }
   const note = [
     `Arrivé via Telegram${telegram ? ` (@${telegram})` : ''} — conversation avec l'assistant.`,
-    reason === 'rdv' ? 'A demandé un rendez-vous.' : "Prêt à s'inscrire.",
+    REASON_NOTE[reason],
+    contexte ? `Contexte : ${contexte}.` : '',
     lines.length ? `\nExtrait :\n${lines.join('\n')}` : '',
   ].join(' ').slice(0, 2000)
 
@@ -56,7 +59,9 @@ export async function POST(req: NextRequest) {
       text:
         reason === 'rdv'
           ? `🔥 ${prospectName} (Telegram) veut un rendez-vous — l'extrait de conversation est dans sa fiche.`
-          : `✨ ${prospectName} (Telegram) est prêt à s'inscrire — regarde sa fiche.`,
+          : reason === 'achat'
+            ? `🛒 ${prospectName} (Telegram) veut commander${contexte ? ` (${contexte})` : ''} — regarde sa fiche.`
+            : `✨ ${prospectName} (Telegram) est prêt à s'inscrire — regarde sa fiche.`,
       go: `/contacts/${contact.id}`,
     },
   })
