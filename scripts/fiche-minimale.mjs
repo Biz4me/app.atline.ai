@@ -117,9 +117,9 @@ Rends UNIQUEMENT ce JSON :
 Règles absolues : factuel uniquement, N'INVENTE RIEN (ni prix, ni chiffres, ni dates incertaines) — champ vide ou omis si l'info manque ; aucune promesse de revenu, aucune allégation santé ; si c'est une société de SERVICES, "categorie" = le type de service et "phares" = les offres principales.`
   const raw = await llm('google/gemini-3.5-flash', prompt, 1600)
   const m = raw.match(/\{[\s\S]*\}/)
-  if (!m) return null
+  if (!m) { if (DRY) console.log('RAW SANS JSON:', raw.slice(0, 400)); return null }
   let j
-  try { j = JSON.parse(m[0]) } catch { return null }
+  try { j = JSON.parse(m[0]) } catch (e) { if (DRY) console.log('JSON KO:', e.message, '·', m[0].slice(0, 300)); return null }
   const s = (v) => clean(typeof v === 'string' ? v.trim() : '')
   const arr = (v) => (Array.isArray(v) ? v.map((x) => clean(String(x).trim())).filter(Boolean).slice(0, 10) : [])
   return {
