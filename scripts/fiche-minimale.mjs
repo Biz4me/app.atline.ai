@@ -50,7 +50,7 @@ async function llm(model, prompt, max_tokens) {
   const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
     method: 'POST',
     headers: { Authorization: `Bearer ${KEY}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ model, messages: [{ role: 'user', content: prompt }], temperature: 0.2, max_tokens }),
+    body: JSON.stringify({ model, messages: [{ role: 'user', content: prompt }], temperature: 0.2, max_tokens, reasoning: { enabled: false } }),
   })
   if (!res.ok) throw new Error(`openrouter ${res.status}`)
   const data = await res.json()
@@ -115,7 +115,7 @@ Rends UNIQUEMENT ce JSON :
 {"pitch":"la société en une phrase","categorie":"nutrition, cosmétique, bijoux, services financiers, immobilier, télécom…","fondation":"Année · pays · fondateur (si connus)","histoire":"3-4 phrases factuelles","positionnement":"ce qui la distingue, 1-2 phrases","categories":["catégories de produits/services"],"phares":["jusqu'à 8 lignes : Nom — bénéfice — prix si CONNU — format si connu"]}
 
 Règles absolues : factuel uniquement, N'INVENTE RIEN (ni prix, ni chiffres, ni dates incertaines) — champ vide ou omis si l'info manque ; aucune promesse de revenu, aucune allégation santé ; si c'est une société de SERVICES, "categorie" = le type de service et "phares" = les offres principales.`
-  const raw = await llm('google/gemini-3.5-flash', prompt, 1600)
+  const raw = await llm('google/gemini-3.5-flash', prompt, 4000)
   const m = raw.match(/\{[\s\S]*\}/)
   if (!m) { if (DRY) console.log('RAW SANS JSON:', raw.slice(0, 400)); return null }
   let j
