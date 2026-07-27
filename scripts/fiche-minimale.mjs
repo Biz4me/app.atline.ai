@@ -50,7 +50,7 @@ async function llm(model, prompt, max_tokens) {
   const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
     method: 'POST',
     headers: { Authorization: `Bearer ${KEY}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ model, messages: [{ role: 'user', content: prompt }], temperature: 0.2, max_tokens, reasoning: { enabled: false } }),
+    body: JSON.stringify({ model, messages: [{ role: 'user', content: prompt }], temperature: 0.2, max_tokens }),
   })
   if (!res.ok) throw new Error(`openrouter ${res.status}`)
   const data = await res.json()
