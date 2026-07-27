@@ -19,6 +19,7 @@ export async function POST(req: NextRequest) {
   const prospectName = (typeof body?.prospectName === 'string' && body.prospectName.trim()) || 'Prospect Telegram'
   const telegram = typeof body?.telegram === 'string' ? body.telegram.trim() : ''
   const contexte = typeof body?.contexte === 'string' ? body.contexte.trim() : ''
+  const resume = typeof body?.resume === 'string' ? body.resume.trim() : ''
   const transcript = Array.isArray(body?.transcript) ? body.transcript : []
 
   const resolved = await resolveProspectRef(ref)
@@ -30,11 +31,12 @@ export async function POST(req: NextRequest) {
     .slice(-10)
     .map((m: { role: string; content: string }) => `${m.role === 'user' ? 'Prospect' : 'Assistant'} : ${m.content}`)
   const REASON_NOTE = { rdv: 'A demandé un rendez-vous.', inscription: "Prêt à s'inscrire.", achat: 'Veut commander.' }
+  // Résumé LLM de reprise en main si fourni ; sinon repli sur l'extrait brut.
   const note = [
     `Arrivé via Telegram${telegram ? ` (@${telegram})` : ''} — conversation avec l'assistant.`,
     REASON_NOTE[reason],
     contexte ? `Contexte : ${contexte}.` : '',
-    lines.length ? `\nExtrait :\n${lines.join('\n')}` : '',
+    resume ? `\nRésumé :\n${resume}` : lines.length ? `\nExtrait :\n${lines.join('\n')}` : '',
   ].join(' ').slice(0, 2000)
 
   const contact = await db.contact.create({
