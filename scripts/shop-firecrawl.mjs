@@ -88,22 +88,22 @@ async function harvestCompany(c, state) {
   const pagesUrls = [...new Set(links)].slice(0, PAGES_MAX)
   if (pagesUrls.length < MIN_TO_PUBLISH) return { skip: `carte sans liens produits (${pagesUrls.length})` }
 
-  const pages = []
-  let pi = 0
-  await Promise.all(Array.from({ length: 3 }, async () => {
-    while (pi < pagesUrls.length) {
-      const url = pagesUrls[pi++]
-      const r = await fjson('https://api.firecrawl.dev/v1/scrape', { url, formats: ['markdown'], onlyMainContent: true }, 60000)
-      state.spent += 1
-      const md = r?.data?.markdown
-      if (md) pages.push({ url, md: clean(md) })
-    }
-  }))
-  if (pages.length < MIN_TO_PUBLISH) return { skip: `scrape vide (${pages.length}/${pagesUrls.length})` }
-
+  const scrapeBatch = async (urls) => {
+    const pages = []
+    let pi = 0
+    await Promise.all(Array.from({ length: 3 }, async () => {
+      while (pi < urls.length) {
+        const url = urls[pi++]
+        const r = await fjson('https://api.firecrawl.dev/v1/scrape', { url, formats: ['markdown'], onlyMainContent: true }, 60000)
+        state.spent += 1
+        const md = r?.data?.markdown
+        if (md) pages.push({ url, md: clean(md) })
+      }
+    }))
+    return pages
+  }
   const items = []
-  for (let g = 0; g < pages.length; g += 8) {
-    const group = pages.slice(g, g + 8)
+  const extraire = async (group) => {
     const out = await llmExtract(group).catch(() => [])
     for (const o of out) {
       const p = group[o?.page]
@@ -120,6 +120,15 @@ async function harvestCompany(c, state) {
       })
     }
   }
+
+  // SONDE : 8 premières pages. Si rien d'extractible (boutique derrière login, pages
+  // vides), on abandonne SANS scraper le reste — c'est ce qui brûlait ~50 crédits pour 0.
+  const probe = await scrapeBatch(pagesUrls.slice(0, 8))
+  if (!probe.length) return { skip: `scrape vide (0/${Math.min(8, pagesUrls.length)})` }
+  await extraire(probe)
+  if (!items.length) return { skip: 'extraction vide (login/catalogue inaccessible ?)' }
+  const reste = await scrapeBatch(pagesUrls.slice(8))
+  for (let g = 0; g < reste.length; g += 8) await extraire(reste.slice(g, g + 8))
   const seen = new Set()
   const rows = items.filter((p) => p.slug && !seen.has(p.slug) && seen.add(p.slug)).map((p, idx) => ({ companyId: c.id, ...p, position: idx }))
   return { rows }
