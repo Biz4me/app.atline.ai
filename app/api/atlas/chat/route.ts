@@ -127,17 +127,20 @@ export async function POST(req: NextRequest) {
 
   // Fiche société PUBLIÉE : rattachement direct (companyId) en priorité, sinon par le nom
   // slugifié (sociétés non rattachées). Sans fiche validée, Atlas ne doit pas inventer.
-  let company: { id: string; name: string } | null = null
+  type CompanyLite = { id: string; name: string; fiche: unknown }
+  const pitchOf = (c: CompanyLite | null) =>
+    ((c?.fiche as { recit?: { pitch?: string } } | null)?.recit?.pitch ?? '').slice(0, 250)
+  let company: CompanyLite | null = null
   if (activeBiz?.companyId) {
     company = await db.mlmCompany.findFirst({
       where: { id: activeBiz.companyId, status: 'PUBLISHED' },
-      select: { id: true, name: true },
+      select: { id: true, name: true, fiche: true },
     })
   }
   const mlmActif = company?.name ?? activeBiz?.mlmName ?? 'Atline'
   if (!company && mlmActif.toLowerCase() !== 'atline') {
     const brandSlug = mlmActif.toLowerCase().normalize('NFD').replace(/\p{Diacritic}/gu, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
-    company = await db.mlmCompany.findFirst({ where: { brandSlug, status: 'PUBLISHED' }, select: { id: true, name: true } })
+    company = await db.mlmCompany.findFirst({ where: { brandSlug, status: 'PUBLISHED' }, select: { id: true, name: true, fiche: true } })
   }
   const hasFiche = !!company
 
@@ -154,7 +157,12 @@ export async function POST(req: NextRequest) {
     productsCatalog = prods
       .map((p) => `- ${p.name}${p.price != null ? ` — ${Number(p.price).toFixed(2)} ${p.currency}` : ''}${p.format ? ` (${p.format})` : ''} · slug=${p.slug}`)
       .join('\n')
-    if (productsCatalog) productsCatalog = `# TA SOCIÉTÉ — ${mlmActif}\n${productsCatalog}`
+    // Le pitch de la fiche PRIME sur le catalogue pour décrire le MÉTIER de la société
+    // (leçon MWR Life : une boutique de merchandising peut cacher un club de voyage).
+    const ownPitch = pitchOf(company)
+    if (productsCatalog) {
+      productsCatalog = `# TA SOCIÉTÉ — ${mlmActif}${ownPitch ? `\n${ownPitch}` : ''}\n${productsCatalog}`
+    }
   }
 
   // Catalogue d'un CONCURRENT nommé : si la conversation mentionne une autre société publiée,
@@ -162,7 +170,7 @@ export async function POST(req: NextRequest) {
   const scanText = `${query} ${Array.isArray(conversation_history) ? conversation_history.map((m: { content?: string }) => m.content ?? '').join(' ') : ''}`.toLowerCase()
   const others = await db.mlmCompany.findMany({
     where: { status: 'PUBLISHED', ...(company ? { id: { not: company.id } } : {}) },
-    select: { id: true, name: true, brandSlug: true },
+    select: { id: true, name: true, brandSlug: true, fiche: true },
   })
   for (const c of others) {
     if (!scanText.includes(c.name.toLowerCase()) && !scanText.includes(c.brandSlug)) continue
@@ -172,11 +180,12 @@ export async function POST(req: NextRequest) {
       select: { name: true, slug: true, price: true, currency: true, format: true },
       take: 250,
     })
-    if (!prods.length) continue
+    const pitch = pitchOf(c)
+    if (!prods.length && !pitch) continue
     const lines = prods
       .map((p) => `- ${p.name}${p.price != null ? ` — ${Number(p.price).toFixed(2)} ${p.currency}` : ''}${p.format ? ` (${p.format})` : ''} · slug=${p.slug}`)
       .join('\n')
-    productsCatalog += `${productsCatalog ? '\n\n' : ''}# CONCURRENT — ${c.name} (PAS la société de l'utilisateur)\n${lines}`
+    productsCatalog += `${productsCatalog ? '\n\n' : ''}# CONCURRENT — ${c.name} (PAS la société de l'utilisateur)${pitch ? `\n${pitch}` : ''}${lines ? `\n${lines}` : ''}`
   }
 
   // Appel FastAPI
