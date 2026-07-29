@@ -122,7 +122,7 @@ export async function buildAtlasSnapshot(userId: string): Promise<string> {
 
     const now = new Date()
     const endOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59)
-    const [user, contactsCount, relancesDue, nextRelances, lessonsTotal, lessonsDone, nextRdvs, sims, links, supports] = await Promise.all([
+    const [user, contactsCount, relancesDue, nextRelances, lessonsTotal, dernieresLecons, leconEnCours, lessonsDone, nextRdvs, sims, links, supports] = await Promise.all([
       db.user.findUnique({
         where: { id: userId },
         select: { firstName: true, gender: true, birthDate: true, city: true, profession: true, education: true, bio: true, personality: true, coaching: true, socials: true },
@@ -136,6 +136,20 @@ export async function buildAtlasSnapshot(userId: string): Promise<string> {
         select: { dueAt: true, channel: true, contactId: true },
       }),
       db.lmsLesson.count(),
+      // Où il en est VRAIMENT : Atlas puisait dans les 497 fragments de la
+      // formation sans savoir quelles leçons l'utilisateur avait vues. Il
+      // pouvait donc lui servir une technique du module 7 avant qu'il y arrive,
+      // ou lui réexpliquer ce qu'il a validé la semaine dernière.
+      db.userLessonProgress.findMany({
+        where: { userId, done: true },
+        orderBy: { completedAt: 'desc' },
+        take: 3,
+        select: { lesson: { select: { title: true, module: { select: { title: true, position: true } } } } },
+      }),
+      db.userLessonProgress.findFirst({
+        where: { userId, current: true },
+        select: { lesson: { select: { title: true, module: { select: { title: true, position: true } } } } },
+      }),
       db.userLessonProgress.count({ where: { userId, done: true } }),
       db.appointment.findMany({
         where: { userId, done: false, startAt: { gte: now } },
@@ -184,7 +198,18 @@ export async function buildAtlasSnapshot(userId: string): Promise<string> {
       const fmt = new Intl.DateTimeFormat('fr-FR', { weekday: 'short', day: 'numeric', month: 'short' })
       lines.push(`Prochaines relances : ${nextRelances.map((r) => `${names.get(r.contactId) ?? '?'} (${r.channel}) ${fmt.format(r.dueAt)}`).join(' · ')}`)
     }
-    if (lessonsTotal > 0) lines.push(`Formation : ${Math.round((lessonsDone / lessonsTotal) * 100)}% des leçons (${lessonsDone}/${lessonsTotal})`)
+    if (lessonsTotal > 0) {
+      const bits = [`Formation : ${Math.round((lessonsDone / lessonsTotal) * 100)}% des leçons (${lessonsDone}/${lessonsTotal})`]
+      const enCours = leconEnCours?.lesson
+      if (enCours) bits.push(`en cours : « ${enCours.title} » (module ${enCours.module.position} — ${enCours.module.title})`)
+      if (dernieresLecons.length) {
+        bits.push(`déjà vu : ${dernieresLecons.map((p) => `« ${p.lesson.title} »`).join(', ')}`)
+      }
+      lines.push(bits.join(' · '))
+      // La consigne qui rend l'information utile : sans elle, Atlas connaît la
+      // progression mais continue de conseiller au hasard du RAG.
+      lines.push("Appuie-toi sur ce qu'il a DÉJÀ vu en formation, et n'anticipe pas sur les modules qu'il n'a pas atteints.")
+    }
     if (nextRdvs.length) {
       const fmt = new Intl.DateTimeFormat('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' })
       lines.push(`Prochains rendez-vous : ${nextRdvs.map((r) => {

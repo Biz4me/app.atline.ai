@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { calculerToutesLesLecons, leconsPour } from '@/lib/agents/mutualisation'
+import { calculerTousLesConstats, constatsPour } from '@/lib/agents/mutualisation'
 import type { AgentName } from '@prisma/client'
 
 export const runtime = 'nodejs'
@@ -11,12 +11,12 @@ function autorise(req: NextRequest) {
   return !!process.env.INTERNAL_API_SECRET && secret === process.env.INTERNAL_API_SECRET
 }
 
-// POST — recalcule les leçons de toutes les sociétés éligibles (cron nocturne).
-// Les leçons qui ne tiennent plus sont supprimées : rien ne survit à sa preuve.
+// POST — recalcule les constats de toutes les sociétés éligibles (cron nocturne).
+// Les constats qui ne tiennent plus sont supprimés : rien ne survit à sa preuve.
 export async function POST(req: NextRequest) {
   if (!autorise(req)) return NextResponse.json({ error: 'forbidden' }, { status: 403 })
   try {
-    return NextResponse.json(await calculerToutesLesLecons())
+    return NextResponse.json(await calculerTousLesConstats())
   } catch (e) {
     console.error('[lecons]', e)
     return NextResponse.json({ error: 'calcul impossible' }, { status: 500 })
@@ -30,5 +30,5 @@ export async function GET(req: NextRequest) {
   const userId = url.searchParams.get('userId')
   if (!userId) return NextResponse.json({ error: 'userId requis' }, { status: 400 })
   const agent = url.searchParams.get('agent') as AgentName | null
-  return NextResponse.json({ texte: await leconsPour(userId, agent ?? undefined) })
+  return NextResponse.json({ texte: await constatsPour(userId, agent ?? undefined) })
 }

@@ -2066,7 +2066,7 @@ model MlmCompany {
 
   @@unique([brandSlug, country])
   @@index([brandSlug])
-  lecons      MlmLecon[]
+  constats    MlmConstat[]
 
 }
 
@@ -2175,6 +2175,11 @@ model AgentAction {
 // ═══════════════════════════════════════════════════════════════════════════
 // LA MUTUALISATION (29 juillet 2026) — le fossé concurrentiel
 //
+// ⚠️ NE PAS CONFONDRE avec `LmsLesson` (82 leçons de FORMATION, du contenu
+// rédigé à l'avance, déjà indexé dans Qdrant `atlas-formation`). Ici ce sont
+// des CONSTATS : ce que les résultats mesurés révèlent, jamais du contenu.
+// La formation enseigne le métier ; les constats disent ce qui marche.
+//
 // Un distributeur seul n'aura jamais assez de données pour qu'une IA apprenne
 // de lui : quelques dizaines d'actions par mois. Deux cents distributeurs de
 // la MÊME société, oui. Les leçons remontent donc au niveau de la société,
@@ -2191,7 +2196,7 @@ model AgentAction {
 //      pas seulement au moment du calcul.
 // ═══════════════════════════════════════════════════════════════════════════
 
-model MlmLecon {
+model MlmConstat {
   id        String     @id @default(cuid())
   companyId String
   company   MlmCompany @relation(fields: [companyId], references: [id], onDelete: Cascade)

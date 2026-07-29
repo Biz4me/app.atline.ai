@@ -1,6 +1,11 @@
 /**
  * LA MUTUALISATION — ce que 200 distributeurs savent et qu'aucun ne sait seul.
  *
+ * ⚠️ À ne pas confondre avec les 82 LEÇONS DE FORMATION (`LmsLesson`, indexées
+ * dans Qdrant `atlas-formation`), qui sont du contenu rédigé à l'avance.
+ * Ici ce sont des CONSTATS tirés de résultats mesurés : la formation enseigne
+ * le métier, les constats disent ce qui marche.
+ *
  * Un distributeur produit quelques dizaines d'actions par mois : trop peu pour
  * qu'une IA apprenne quoi que ce soit de lui. Mais les distributeurs d'une même
  * société vendent les mêmes produits, affrontent les mêmes objections et parlent
@@ -16,7 +21,7 @@
  * qui quittent le périmètre d'un distributeur sont : un libellé de catégorie
  * (« le soir », « telegram »), et des comptages.
  *
- * Et rien ne se publie sous les seuils : une leçon exige au moins
+ * Et rien ne se publie sous les seuils : un constat exige au moins
  * MIN_DISTRIBUTEURS personnes distinctes et MIN_ACTIONS actions. En dessous, un
  * chiffre pourrait désigner quelqu'un — donc on se tait, même si le signal
  * paraît fort. C'est un refus délibéré d'information.
@@ -25,7 +30,7 @@
 import { db } from '@/lib/db'
 import type { AgentName } from '@prisma/client'
 
-const MIN_DISTRIBUTEURS = 5   // en dessous, une leçon peut désigner quelqu'un
+const MIN_DISTRIBUTEURS = 5   // en dessous, un constat peut désigner quelqu'un
 const MIN_ACTIONS = 30        // en dessous, c'est du bruit
 const ECART_MINIMAL = 0.15    // 15 points : sous cet écart, on ne conclut pas
 const FENETRE_JOURS = 90
@@ -62,10 +67,10 @@ function enoncer(sujet: string, valeur: string, g: Groupe, tauxRef: number, agen
 }
 
 /**
- * Recalcule les leçons d'une société. Idempotent : on peut le relancer,
- * les leçons sont mises à jour ou effacées si elles ne tiennent plus.
+ * Recalcule les constats d'une société. Idempotent : on peut le relancer,
+ * les constats sont mis à jour ou effacés s'ils ne tiennent plus.
  */
-export async function calculerLecons(companyId: string) {
+export async function calculerConstats(companyId: string) {
   const depuis = new Date(Date.now() - FENETRE_JOURS * 24 * 3600_000)
 
   // Qui appartient à cette société — c'est le seul lien qu'on suit.
@@ -75,7 +80,7 @@ export async function calculerLecons(companyId: string) {
   })
   const userIds = [...new Set(membres.map((m) => m.userId))]
   if (userIds.length < MIN_DISTRIBUTEURS) {
-    return { companyId, publiees: 0, raison: `moins de ${MIN_DISTRIBUTEURS} distributeurs` }
+    return { companyId, publies: 0, raison: `moins de ${MIN_DISTRIBUTEURS} distributeurs` }
   }
 
   const actions = await db.agentAction.findMany({
@@ -83,7 +88,7 @@ export async function calculerLecons(companyId: string) {
     select: { userId: true, agent: true, outcome: true, canal: true, contexte: true, createdAt: true },
   })
   if (actions.length < MIN_ACTIONS) {
-    return { companyId, publiees: 0, raison: `moins de ${MIN_ACTIONS} actions mesurées` }
+    return { companyId, publies: 0, raison: `moins de ${MIN_ACTIONS} actions mesurées` }
   }
 
   const retenues: {
@@ -132,20 +137,20 @@ export async function calculerLecons(companyId: string) {
     }
   }
 
-  // On remplace : une leçon qui ne tient plus doit DISPARAÎTRE, pas survivre
-  // parce qu'elle a été vraie une fois.
+  // On remplace : un constat qui ne tient plus doit DISPARAÎTRE, pas survivre
+  // parce qu'il a été vrai une fois.
   await db.$transaction([
-    db.mlmLecon.deleteMany({ where: { companyId } }),
+    db.mlmConstat.deleteMany({ where: { companyId } }),
     ...(retenues.length
-      ? [db.mlmLecon.createMany({ data: retenues.map((r) => ({ companyId, ...r })) })]
+      ? [db.mlmConstat.createMany({ data: retenues.map((r) => ({ companyId, ...r })) })]
       : []),
   ])
 
-  return { companyId, publiees: retenues.length, distributeurs: userIds.length, actionsExaminees: actions.length }
+  return { companyId, publies: retenues.length, distributeurs: userIds.length, actionsExaminees: actions.length }
 }
 
 /** Toutes les sociétés qui ont assez de monde pour que ça vaille le calcul. */
-export async function calculerToutesLesLecons() {
+export async function calculerTousLesConstats() {
   const groupes = await db.userMlmBusiness.groupBy({
     by: ['companyId'],
     where: { companyId: { not: null } },
@@ -154,35 +159,35 @@ export async function calculerToutesLesLecons() {
   const eligibles = groupes.filter((g) => g._count.userId >= MIN_DISTRIBUTEURS && g.companyId)
 
   const resultats = []
-  for (const g of eligibles) resultats.push(await calculerLecons(g.companyId!))
+  for (const g of eligibles) resultats.push(await calculerConstats(g.companyId!))
   return {
     societesExaminees: groupes.length,
     societesEligibles: eligibles.length,
-    leconsPubliees: resultats.reduce((s, r) => s + r.publiees, 0),
-    detail: resultats.filter((r) => r.publiees > 0),
+    constatsPublies: resultats.reduce((s, r) => s + r.publies, 0),
+    detail: resultats.filter((r) => r.publies > 0),
   }
 }
 
 /**
  * Ce qu'un agent lit avant d'agir : ce que les autres de la même société
- * ont appris. Trois leçons au plus — au-delà, ça devient du bruit dans un prompt.
+ * ont appris. Trois constats au plus — au-delà, ça devient du bruit dans un prompt.
  */
-export async function leconsPour(userId: string, agent?: AgentName): Promise<string> {
+export async function constatsPour(userId: string, agent?: AgentName): Promise<string> {
   const biz = await db.userMlmBusiness.findFirst({
     where: { userId, companyId: { not: null } },
     select: { companyId: true, company: { select: { name: true } } },
   })
   if (!biz?.companyId) return ''
 
-  const lecons = await db.mlmLecon.findMany({
+  const constats = await db.mlmConstat.findMany({
     where: { companyId: biz.companyId, ...(agent ? { agent } : {}) },
     orderBy: [{ distributeurs: 'desc' }, { actions: 'desc' }],
     take: 3,
     select: { enonce: true },
   })
-  if (!lecons.length) return ''
+  if (!constats.length) return ''
 
   return `Ce que l'expérience collective montre chez ${biz.company?.name ?? 'ta société'} ` +
     `(comptages anonymes, aucun contenu personnel) :\n` +
-    lecons.map((l) => `- ${l.enonce}`).join('\n')
+    constats.map((l) => `- ${l.enonce}`).join('\n')
 }
