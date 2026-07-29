@@ -32,7 +32,7 @@ type Done = (d: Record<string, unknown>) => void
 
 const AG: Record<string, { n: string; c: string; ic: string }> = {
   atlas: { n: 'Atlas', c: '#F97316', ic: 'sparkles' },
-  aria: { n: 'Aria', c: '#14B8A6', ic: 'mic' },
+  aria: { n: 'Entraînement', c: '#F97316', ic: 'mic' },
   nova: { n: 'Nova', c: '#8B5CF6', ic: 'pencil' },
 }
 const COL: Record<string, { n: string; t: string; tf: string; tn: string; h: string; l: string }> = {
@@ -522,7 +522,7 @@ function runEngine(R: Refs, name: string, onDone: Done) {
   }
   function ariaPage(then: () => void) {
     chatSetup('Deviens imparable', 'aria'); setProgPct(62)
-    chatAtlas(`Moi c'est Aria, ta coach terrain.`, () => {
+    chatAtlas(`Et quand tu veux répéter avant un vrai appel, je te fais la conversation.`, () => {
       chatList([
         `Je simule ${firstName} et ses objections`,
         `On rejoue jusqu'au réflexe`,
@@ -581,7 +581,7 @@ function runEngine(R: Refs, name: string, onDone: Done) {
     chatSetup(`C'est parti, ${name}.`, 'atlas'); setProgPct(100)
     chatAtlas(`Ta première action est prête, il ne reste qu'à l'envoyer :`, () => {
       actionChip('send', AGC.atlas, `Ton message à ${firstName}, prêt à envoyer`)
-      actionChip('mic', AGC.aria, `Aria t'entraîne quand tu veux répéter`)
+      actionChip('mic', AGC.aria, `M'entraîner à l'oral quand je veux`)
       actionChip('squarePen', AGC.nova, `Nova te crée tes posts dès que tu es prêt`)
       chatAtlas(`Mon rôle désormais : que chaque jour te rapproche du but, et que tu ne doutes jamais du prochain pas. Avançons.`, () => {
         chatCta('Ouvrir Atline', finish)

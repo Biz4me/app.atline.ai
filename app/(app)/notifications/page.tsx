@@ -26,7 +26,7 @@ type DbNotif = { id: string; icon: string; color: string; text: string; go: stri
 
 const ICON_META: Record<string, { title: string; icon: LucideIcon; color: string }> = {
   atlas: { title: 'Atlas', icon: Sparkles, color: 'bg-primary/10 text-primary' },
-  aria: { title: 'Aria', icon: Mic, color: 'bg-teal-500/10 text-teal-600' },
+  aria: { title: 'Entraînement', icon: Mic, color: 'bg-orange-500/10 text-orange-600' },
   nova: { title: 'Nova', icon: TrendingUp, color: 'bg-violet-500/10 text-violet-600' },
 }
 

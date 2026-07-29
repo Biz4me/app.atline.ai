@@ -61,7 +61,7 @@ export default function AriaThreadPage() {
         <button type="button" onClick={openInfo} className="flex min-w-0 flex-1 items-center gap-2.5 text-left">
           <span className="grid size-10 shrink-0 place-items-center overflow-hidden rounded-full text-sm font-bold text-white" style={{ backgroundColor: ARIA }}><img src="/avatars/aria.png" alt="" className="size-full rounded-full object-cover" /></span>
           <span className="min-w-0 flex-1">
-            <span className="block text-sm font-semibold text-foreground">Aria</span>
+            <span className="block text-sm font-semibold text-foreground">Mon entraînement</span>
             <span className="block text-xs text-muted-foreground">ton sparring-partner · simulateur terrain</span>
           </span>
         </button>
@@ -136,7 +136,7 @@ export default function AriaThreadPage() {
           className="flex w-full items-center justify-center gap-2 rounded-2xl py-3.5 text-base font-semibold text-white transition-transform active:scale-[0.98]"
           style={{ backgroundColor: ARIA }}
         >
-          <Mic className="size-5 stroke-[1.5]" /> S'entraîner avec Aria
+          <Mic className="size-5 stroke-[1.5]" /> M'entraîner à l'oral
         </button>
       </div>
     </FilShell>

@@ -153,7 +153,7 @@ function SetupScreen({
     : contacts
 
   return (
-    <AgentShell title="Aria">
+    <AgentShell title="Entraînement">
         <div className="flex flex-col gap-6 px-4 pt-5 pb-28 lg:px-0">
           <div className="rounded-2xl border border-border bg-surface p-5">
           {/* Reprendre là où tu en étais — score réel + rejouer en 1 tap (jamais de jargon technique) */}
@@ -339,7 +339,7 @@ function AriaCoachBar() {
           <div className="fixed inset-0 z-[45] bg-black/40" onClick={() => setOpen(false)} />
           <div className="fixed inset-x-0 bottom-0 z-[46] mx-auto flex max-h-[72dvh] max-w-[640px] flex-col rounded-t-3xl border border-b-0 border-border bg-background pb-[86px]">
             <div className="flex items-center justify-between px-4 pb-1 pt-3">
-              <span className="flex items-center gap-2 text-sm font-semibold text-[#14B8A6]"><Mic className="size-4" />Aria — coach d&apos;appel</span>
+              <span className="flex items-center gap-2 text-sm font-semibold text-primary"><Mic className="size-4" />Atlas — coach d&apos;appel</span>
               <button type="button" onClick={() => setOpen(false)} aria-label="Fermer" className="grid size-8 place-items-center rounded-full text-muted-foreground active:bg-muted"><X className="size-4" /></button>
             </div>
             <div ref={scrollRef} className="flex-1 space-y-3 overflow-y-auto px-4 py-3">
@@ -355,7 +355,7 @@ function AriaCoachBar() {
           <span className="my-1 grid size-7 shrink-0 place-items-center self-center rounded-full text-2xs font-bold text-white" style={{ background: '#14B8A6' }}>A</span>
           <textarea rows={1} value={value} onChange={(e) => setValue(e.target.value)}
             onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); submit() } }}
-            placeholder="Demande un script ou une méthode à Aria…"
+            placeholder="Demande un script ou une méthode…"
             className="flex-1 resize-none bg-transparent py-1.5 text-lg leading-[1.4] text-foreground outline-none placeholder:text-muted-foreground lg:text-sm" style={{ maxHeight: 120 }} />
           <button type="button" onClick={submit} disabled={!value.trim() || streaming}
             className="mb-0.5 flex size-9 shrink-0 items-center justify-center rounded-full text-white disabled:opacity-40" style={{ background: '#14B8A6' }}>

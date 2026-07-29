@@ -21,7 +21,7 @@ const plans = [
       'Réseau N1 uniquement',
       'Formation de base',
     ],
-    locked: ['Aria simulation', 'Atlas IA coaching', 'Réseau N2+', 'Bot WhatsApp'],
+    locked: ['Entraînement aux appels', 'Atlas IA coaching', 'Réseau N2+', 'Bot WhatsApp'],
   },
   {
     id: 'pro',
@@ -35,7 +35,7 @@ const plans = [
       'Nova illimité + scheduling',
       'Réseau N1 + N2',
       'Formation complète',
-      'Aria simulation',
+      'Entraînement aux appels',
       'Atlas IA coaching',
       'Boîte à outils complète',
     ],
