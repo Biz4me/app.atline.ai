@@ -2,6 +2,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { db } from '@/lib/db'
 import { provisionnerChatwoot } from '@/lib/chatwoot/provisionner'
+import { verifierEtEnregistrer } from '@/lib/liens/verifier'
 import { NextResponse } from 'next/server'
 
 const ACCENT = ['#F97316', '#8B5CF6', '#3B82F6', '#22C55E', '#EF4444', '#F4B342', '#14B8A6']
@@ -16,6 +17,9 @@ export async function POST(req: Request) {
   const {
     personality, phone, network, objectives, objective, gender, mode, contactColor,
     contactFirstName, contactLastName, market, prospectPhone, prospectEmail, links, experience, message,
+    // Les deux liens qui portent l'argent (29 juillet) : demandés à l'onboarding,
+    // `links` reste accepté pour ne pas casser le client actuel.
+    boutiqueUrl, parrainageUrl,
   } = await req.json()
   // Mode Atline (débutant sans société) : l'affilié est rattaché à un business « Atline »
   const biz = (typeof network === 'string' && network.trim()) ? network.trim() : (mode === 'ATLINE' ? 'Atline' : '')
@@ -71,14 +75,30 @@ export async function POST(req: Request) {
       update: { activeCompanyId: businessId },
     })
 
-    // ── Lien boutique (le 1er ; le schéma ne tient qu'un lien par type) ──
-    if (Array.isArray(links) && links.length && typeof links[0] === 'string' && links[0].trim()) {
-      await db.toolboxLink.upsert({
-        where: { userId_mlmBusinessId_linkType: { userId, mlmBusinessId: businessId, linkType: 'BOUTIQUE' as any } },
-        create: { userId, mlmBusinessId: businessId, linkType: 'BOUTIQUE' as any, url: links[0].trim() },
-        update: { url: links[0].trim() },
+    // ── LES DEUX LIENS QUI PORTENT L'ARGENT ────────────────────────────
+    // Décision du 29 juillet : on ne se fie plus à notre base de sociétés pour
+    // ces deux-là. Le distributeur les connaît — il s'en sert tous les jours —
+    // et une erreur lui coûte directement : un parrainage erroné, et son
+    // filleul s'inscrit sous quelqu'un d'autre, définitivement.
+    //
+    // Ils sont DEMANDÉS avec insistance, jamais bloquants : certaines sociétés
+    // n'ont pas de boutique en ligne, et une inscription bloquée est un client
+    // perdu. La vérification part en arrière-plan.
+    const idActivite = businessId   // figé ici : TypeScript sait qu'il n'est plus nul
+    const poserLien = async (type: 'BOUTIQUE' | 'PARRAINAGE', valeur: unknown) => {
+      if (!idActivite || typeof valeur !== 'string' || !valeur.trim()) return
+      const lien = await db.toolboxLink.upsert({
+        where: { userId_mlmBusinessId_linkType: { userId, mlmBusinessId: idActivite, linkType: type as any } },
+        create: { userId, mlmBusinessId: idActivite, linkType: type as any, url: valeur.trim() },
+        update: { url: valeur.trim(), verifieAt: null, statutVerif: null, detailVerif: null },
+        select: { id: true },
       })
+      // On ne fait pas attendre l'inscription pour joindre un site tiers.
+      void verifierEtEnregistrer(lien.id).catch(() => {})
     }
+
+    await poserLien('BOUTIQUE', Array.isArray(links) ? links[0] : boutiqueUrl)
+    await poserLien('PARRAINAGE', parrainageUrl)
 
     // ── Premier contact ──
     if (typeof contactFirstName === 'string' && contactFirstName.trim()) {

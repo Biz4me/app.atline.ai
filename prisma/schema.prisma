@@ -1611,6 +1611,14 @@ model ToolboxLink {
   mlmBusiness   UserMlmBusiness @relation(fields: [mlmBusinessId], references: [id])
   linkType      ToolLinkType
   url           String?
+
+  // Un lien de parrainage périmé est PIRE qu'absent : il donne l'illusion de
+  // marcher pendant que les filleuls partent chez quelqu'un d'autre. On garde
+  // donc la trace de la dernière vérification, et son verdict.
+  verifieAt     DateTime?
+  statutVerif   String?         // OK | INJOIGNABLE | REDIRIGE | SANS_IDENTIFIANT | INVALIDE
+  detailVerif   String?         // ce qu'on a constaté, en clair
+
   updatedAt     DateTime        @updatedAt
 
   @@unique([userId, mlmBusinessId, linkType])
