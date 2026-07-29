@@ -2075,6 +2075,18 @@ model MlmCompany {
   currency    String   @default("EUR")
   category    String?
   officialUrl String?
+  // ── PRÉSENCE FRANCE (29 juillet 2026) ────────────────────────────────
+  // Le champ qui manquait : notre base était riche en sociétés américaines
+  // et vide là où un distributeur français cherche. Sourcé de la FVD
+  // (fédération, donc vérifié), d'Epixel et de Réussir VDI.
+  franceOperee  Boolean  @default(false)
+  siret         String?  // identité légale française — vérifiable, contrairement à une URL
+  fvdMembre     Boolean  @default(false)
+  fvdDepuis     Int?     // année d'adhésion à la Fédération de la Vente Directe
+  anneeCreation Int?
+  // ⚠️ Chiffre d'affaires MONDIAL du groupe, en millions — surtout pas français.
+  caMondialM    Float?
+
   status      MlmCompanyStatus @default(DRAFT)
   fiche       Json     @default("{}")
   sources     Json?
