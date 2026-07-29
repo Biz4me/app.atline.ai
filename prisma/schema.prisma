@@ -151,6 +151,7 @@ model User {
   aiUsageLogs    AiUsageLog[]
   telegramLink   TelegramLink?
   aiUsageMonthly AiUsageMonthly[]
+  agentActions   AgentAction[]
 }
 
 model UserPreferences {
@@ -484,6 +485,7 @@ model Contact {
   appointments       Appointment[]
   conversation       Conversation?
   interactions       Interaction[]
+  agentActions       AgentAction[]
 }
 
 // Journal des actions CRM (appel/sms/email/…) — fondation des actions, nourrit exposures + lastContact + historique
@@ -2091,4 +2093,79 @@ model MlmProduct {
 
   @@unique([companyId, slug])
   @@index([companyId])
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// LA BOUCLE DE RÉSULTAT (29 juillet 2026)
+//
+// Constat : le champ `Interaction.outcome` existait depuis le début et n'était
+// jamais rempli. Sans résultat mesuré, un agent ne peut que se souvenir de ce
+// qui s'est dit — jamais apprendre de ce qui a marché.
+//
+// Principe : Atlas est le cerveau, les autres agents sont les ouvriers.
+// Chaque action d'ouvrier est journalisée ici, puis MESURÉE automatiquement
+// quelques heures ou quelques jours plus tard, en relisant ce qui existe déjà
+// (Interaction entrante, PostAnalytics.clicks, Appointment.outcome…).
+// Le cerveau lit ces scores la nuit et décide — il ne résume plus.
+//
+// Aucune IA dans la mesure : ce sont des dates, des jointures et des seuils.
+// ═══════════════════════════════════════════════════════════════════════════
+
+enum AgentName {
+  ATLAS // piloter
+  NOVA  // attirer
+  ORION // convertir
+  IRIS  // fideliser
+  ECHO  // dupliquer
+}
+
+enum AgentActionType {
+  MESSAGE     // un message envoyé à un contact
+  RELANCE     // une relance programmée puis partie
+  PUBLICATION // un post publié sur un réseau
+  INVITATION  // une demande de mise en relation (LinkedIn)
+  APPEL       // un appel passé
+  RDV         // un rendez-vous posé
+  ETAPE       // une étape de parcours proposée à un filleul
+  LECON       // une leçon ou un entraînement proposé
+}
+
+enum AgentOutcome {
+  EN_ATTENTE // trop tôt pour juger
+  REPONDU    // le contact a répondu
+  CLIQUE     // le lien a été ouvert
+  ACHETE     // une commande a suivi
+  RDV_PRIS   // un rendez-vous a été posé
+  AVANCE     // le filleul a franchi son étape
+  IGNORE     // le délai est passé sans signal
+  NEGATIF    // refus explicite, désabonnement, blocage
+}
+
+model AgentAction {
+  id        String          @id @default(cuid())
+  userId    String
+  user      User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  agent     AgentName
+  type      AgentActionType
+
+  contactId String?         // à qui, quand c'est adressé à quelqu'un
+  contact   Contact?        @relation(fields: [contactId], references: [id], onDelete: SetNull)
+  canal     String?         // telegram | whatsapp | linkedin | email | instagram | tel
+  sourceId  String?         // id de l'objet d'origine (Relance, ContentPost, Appointment…)
+  contenu   String?         @db.Text // ce qui est parti, tronqué — sert à comprendre POURQUOI ça marche
+  contexte  Json?           // angle, heure d'envoi, longueur, modèle, produit cité…
+
+  // ── le résultat, écrit plus tard par le mesureur ────────────────────────
+  outcome      AgentOutcome @default(EN_ATTENTE)
+  outcomeAt    DateTime?    // quand le signal est apparu
+  delaiMinutes Int?         // combien de temps s'est écoulé — un signal en soi
+  valeur       Float?       // clics, montant… quand c'est chiffrable
+  mesureAt     DateTime?    // quand on a tranché
+  echeance     DateTime     // au-delà, l'absence de signal vaut IGNORE
+
+  createdAt DateTime        @default(now())
+
+  @@index([userId, agent, createdAt])
+  @@index([outcome, echeance])   // le mesureur ne balaie que ce qui est mûr
+  @@index([contactId])
 }

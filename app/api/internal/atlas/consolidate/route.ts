@@ -3,6 +3,7 @@ import { db } from '@/lib/db'
 import { reflect, reconcileFacts, proposeProfileUpdates, type ProfileProposal } from '@/lib/atlas-memory'
 import { buildProfileReference } from '@/lib/atlas-snapshot'
 import { buildContactSnapshot } from '@/lib/contact-snapshot'
+import { scoresUtilisateur, scoresEnTexte } from '@/lib/agents/scores'
 
 const ATLAS_URL = process.env.ATLAS_URL || 'http://127.0.0.1:8100'
 
@@ -120,6 +121,15 @@ export async function POST(req: NextRequest) {
         })
         exchange += `${exchange ? '\n\n' : ''}ENTRAÎNEMENTS DU JOUR :\n${lines.join('\n')}`
       }
+      // Ce qui a MARCHÉ, pas seulement ce qui s'est dit. Sans ces chiffres, la nuit
+      // ne peut que résumer des conversations ; avec eux, elle peut comparer et décider.
+      // Les ouvriers produisent les actions, le cerveau lit leurs scores.
+      try {
+        const scores = await scoresUtilisateur(userId, 7)
+        if (scores.some((s) => s.actions > 0)) {
+          exchange += `${exchange ? '\n\n' : ''}${scoresEnTexte(scores, 7)}`
+        }
+      } catch { /* best-effort : pas de scores ne doit pas empêcher la consolidation */ }
       const [prefs, user, reference] = await Promise.all([
         db.userPreferences.findUnique({ where: { userId }, select: { atlasProfile: true } }),
         db.user.findUnique({ where: { id: userId }, select: { firstName: true } }),
