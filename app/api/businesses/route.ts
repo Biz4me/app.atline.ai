@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { db } from '@/lib/db'
+import { provisionnerChatwoot } from '@/lib/chatwoot/provisionner'
 import { resolveCompanyId } from '@/lib/company-link'
 
 export async function GET() {
@@ -57,6 +58,9 @@ export async function POST(req: Request) {
         rank, sponsorName, startDate, ...(structure ? { structure } : {}),
       },
     })
+
+    // Meme regle qu'a l'inscription : en arriere-plan, jamais bloquant.
+    void provisionnerChatwoot(biz.id).catch(() => {})
   } else if (!biz.companyId && companyId) {
     biz = await db.userMlmBusiness.update({ where: { id: biz.id }, data: { companyId } })
   }

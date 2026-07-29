@@ -1,6 +1,7 @@
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { db } from '@/lib/db'
+import { provisionnerChatwoot } from '@/lib/chatwoot/provisionner'
 import { NextResponse } from 'next/server'
 
 const ACCENT = ['#F97316', '#8B5CF6', '#3B82F6', '#22C55E', '#EF4444', '#F4B342', '#14B8A6']
@@ -57,6 +58,12 @@ export async function POST(req: Request) {
         },
       }))
     businessId = business.id
+
+    // Son espace de conversation, cree en arriere-plan : on n'attend pas
+    // Chatwoot pour laisser entrer le distributeur. Si ca echoue, il entre
+    // quand meme et on repassera — une messagerie absente est un desagrement,
+    // une inscription bloquee est un client perdu.
+    void provisionnerChatwoot(businessId).catch(() => {})
 
     await db.userPreferences.upsert({
       where: { userId },
