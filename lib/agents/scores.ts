@@ -138,6 +138,20 @@ export async function scoresUtilisateur(userId: string, jours = 7): Promise<Scor
   })
 }
 
+/**
+ * LE constat du jour : le signal le mieux étayé, tous agents confondus.
+ * Sert au message du matin, qui reste déterministe — pas de LLM, pas
+ * d'hallucination possible : c'est une phrase construite à partir de comptages.
+ * Renvoie null tant qu'aucun écart n'est assez net pour mériter d'être dit.
+ */
+export function constatDuJour(scores: ScoreAgent[]): { agent: AgentName; quoi: string; constat: string } | null {
+  const tous = scores.flatMap((s) => s.signaux.map((sig) => ({ agent: s.agent, ...sig, poids: s.actions })))
+  if (!tous.length) return null
+  // à écart comparable, on préfère le signal tiré du plus grand nombre d'actions
+  tous.sort((a, b) => b.poids - a.poids)
+  return tous[0]
+}
+
 /** La même chose, mise en phrases nues, prête à entrer dans un prompt. */
 export function scoresEnTexte(scores: ScoreAgent[], jours = 7): string {
   const METIER: Record<string, string> = {

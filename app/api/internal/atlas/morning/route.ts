@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
+import { scoresUtilisateur, constatDuJour } from '@/lib/agents/scores'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -76,12 +77,21 @@ export async function POST(req: NextRequest) {
       if (info.profils > 0) bits.push(`${info.profils} suggestion${info.profils > 1 ? 's' : ''} pour ton profil à valider`)
       if (!bits.length) continue
 
+      // Ce qui a MARCHÉ ces sept derniers jours — la phrase est construite à partir
+      // de comptages, jamais générée : le message du matin reste déterministe.
+      // Elle ne sort que si l'écart est net et l'échantillon suffisant (cf. comparer()).
+      let lecon = ''
+      try {
+        const c = constatDuJour(await scoresUtilisateur(userId, 7))
+        if (c) lecon = ` J'ai remarqué une chose : ${c.constat}.`
+      } catch { /* pas de leçon ne doit pas priver l'utilisateur de son plan */ }
+
       await db.notification.create({
         data: {
           userId,
           icon: 'atlas',
           color: '#F97316',
-          text: `Bonjour ${user?.firstName ?? ''} — aujourd'hui : ${bits.join(', ')}. On s'y met ?`.replace('  ', ' '),
+          text: `Bonjour ${user?.firstName ?? ''} — aujourd'hui : ${bits.join(', ')}.${lecon} On s'y met ?`.replace('  ', ' '),
           go: '/atlas',
         },
       })

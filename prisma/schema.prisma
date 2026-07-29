@@ -2066,6 +2066,8 @@ model MlmCompany {
 
   @@unique([brandSlug, country])
   @@index([brandSlug])
+  lecons      MlmLecon[]
+
 }
 
 // Catalogue produit STRUCTURÉ par société (≠ la fiche narrative). Atlas y lit le prix
@@ -2168,4 +2170,49 @@ model AgentAction {
   @@index([userId, agent, createdAt])
   @@index([outcome, echeance])   // le mesureur ne balaie que ce qui est mûr
   @@index([contactId])
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// LA MUTUALISATION (29 juillet 2026) — le fossé concurrentiel
+//
+// Un distributeur seul n'aura jamais assez de données pour qu'une IA apprenne
+// de lui : quelques dizaines d'actions par mois. Deux cents distributeurs de
+// la MÊME société, oui. Les leçons remontent donc au niveau de la société,
+// et chaque nouveau démarre avec ce que les autres ont appris avant lui.
+//
+// TROIS GARDE-FOUS, inscrits dans le modèle et pas seulement dans le code :
+//
+//   1. Aucun contenu personnel ne remonte. Une leçon ne contient que des
+//      comptages et un libellé de catégorie — jamais un message, jamais un nom.
+//   2. Seuil d'anonymat : une leçon n'existe que si elle repose sur au moins
+//      MIN_DISTRIBUTEURS personnes distinctes ET MIN_ACTIONS actions. En
+//      dessous, on pourrait remonter à quelqu'un — donc on ne publie pas.
+//   3. `distributeurs` est stocké pour que le seuil soit VÉRIFIABLE après coup,
+//      pas seulement au moment du calcul.
+// ═══════════════════════════════════════════════════════════════════════════
+
+model MlmLecon {
+  id        String     @id @default(cuid())
+  companyId String
+  company   MlmCompany @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  agent  AgentName
+  sujet  String // "moment" | "canal" | "angle" — ce qu'on compare
+  valeur String // la modalité gagnante : "le soir", "telegram", "question-ouverte"
+
+  // ── les comptages qui la fondent ─────────────────────────────────────────
+  actions       Int   // combien d'actions sur cette modalité
+  reussites     Int
+  taux          Float // reussites / actions
+  tauxReference Float // le taux des AUTRES modalités, pour mesurer l'écart
+  distributeurs Int   // combien de personnes distinctes — le seuil d'anonymat
+
+  // La phrase telle qu'un agent peut la lire. Construite par comptage, jamais générée.
+  enonce String @db.Text
+
+  calculeAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([companyId, agent, sujet, valeur])
+  @@index([companyId, agent])
 }
