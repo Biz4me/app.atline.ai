@@ -152,6 +152,7 @@ model User {
   telegramLink   TelegramLink?
   aiUsageMonthly AiUsageMonthly[]
   agentActions   AgentAction[]
+  chatwootEvenements ChatwootEvenement[]
 }
 
 model UserPreferences {
@@ -410,6 +411,11 @@ model UserMlmBusiness {
   atlasReports       AtlasReport[]
   atlasConversations AtlasConversation[]
   importBatches      ContactImportBatch[]
+
+  // Le compte Chatwoot de ce distributeur (un distributeur = un compte).
+  // C'est par lui que le webhook retrouve à qui appartient une conversation.
+  chatwootAccountId Int?    @unique
+  chatwootInboxId   Int?
 
   companyId String?
   company   MlmCompany? @relation(fields: [companyId], references: [id])
@@ -2220,4 +2226,37 @@ model MlmConstat {
 
   @@unique([companyId, agent, sujet, valeur])
   @@index([companyId, agent])
+}
+
+
+// ═══════════════════════════════════════════════════════════════════════════
+// CE QUE CHATWOOT NOUS DIT (29 juillet 2026)
+//
+// Le webhook accuse réception vite et enregistre ici. Un traitement séparé
+// reprend ces lignes pour faire travailler Orion. Deux raisons de découpler :
+// Chatwoot réessaie si on tarde (et le prospect reçoit deux réponses), et une
+// panne d'IA ne doit pas faire perdre le message.
+// ═══════════════════════════════════════════════════════════════════════════
+model ChatwootEvenement {
+  id             String   @id @default(cuid())
+  userId         String
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  accountId      Int      // compte Chatwoot
+  conversationId Int
+  messageId      Int?
+  contactId      String?  // le Contact Atline, quand on a su le retrouver
+  canal          String?  // telegram | whatsapp | email | api…
+  expediteur     String?
+  contenu        String?  @db.Text
+  charge         Json?    // la charge utile brute — précieuse tant que le format bouge
+
+  traiteAt       DateTime?  // quand Orion s'en est occupé
+  erreur         String?
+
+  createdAt      DateTime @default(now())
+
+  @@index([userId, createdAt])
+  @@index([traiteAt])            // le traitement ne balaie que ce qui reste
+  @@index([conversationId])
 }
