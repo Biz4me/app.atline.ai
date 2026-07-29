@@ -3,6 +3,7 @@ import { authOptions } from '@/lib/auth'
 import { db } from '@/lib/db'
 import { provisionnerChatwoot } from '@/lib/chatwoot/provisionner'
 import { verifierEtEnregistrer } from '@/lib/liens/verifier'
+import { moissonnerBoutique } from '@/lib/boutique/moissonner'
 import { NextResponse } from 'next/server'
 
 const ACCENT = ['#F97316', '#8B5CF6', '#3B82F6', '#22C55E', '#EF4444', '#F4B342', '#14B8A6']
@@ -95,6 +96,25 @@ export async function POST(req: Request) {
       })
       // On ne fait pas attendre l'inscription pour joindre un site tiers.
       void verifierEtEnregistrer(lien.id).catch(() => {})
+
+      // Et dès qu'on a sa boutique, on va y lire SON catalogue : ses produits,
+      // son pays, sa devise. Pour lui c'est un service — « je paramètre ta
+      // boutique » ; pour Atline c'est la seule source de produits fiable, et
+      // elle profite à tous les distributeurs de la même société.
+      if (type === 'BOUTIQUE') {
+        void moissonnerBoutique(idActivite)
+          .then(async (m) => {
+            if (!m.ok || !(m.ajoutes || m.majs)) return
+            await db.notification.create({
+              data: {
+                userId, icon: 'atlas', color: '#14B8A6',
+                text: `Ta boutique est paramétrée : ${(m.ajoutes ?? 0) + (m.majs ?? 0)} produits avec leurs prix en ${m.devise}. Je peux en parler à tes prospects.`,
+                go: '/toolbox',
+              },
+            }).catch(() => {})
+          })
+          .catch(() => {})
+      }
     }
 
     await poserLien('BOUTIQUE', Array.isArray(links) ? links[0] : boutiqueUrl)
