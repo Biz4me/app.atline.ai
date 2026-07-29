@@ -24,6 +24,7 @@
  */
 
 import { db } from '@/lib/db'
+import { scriptsPour, AVERTISSEMENT_SCRIPTS } from '@/lib/chatwoot/scripts'
 
 const URL_CHATWOOT = process.env.CHATWOOT_URL || 'http://127.0.0.1:3070'
 const JETON_PLATEFORME = process.env.CHATWOOT_PLATFORM_TOKEN || ''
@@ -104,11 +105,25 @@ export async function provisionnerChatwoot(mlmBusinessId: string): Promise<Resul
       await appeler(`/platform/api/v1/accounts/${accountId}/account_users`, JETON_PLATEFORME, {
         user_id: u.id, role: 'administrator',
       })
+      // On GARDE le jeton : l'API application de Chatwoot n'accepte pas le
+      // jeton plateforme, et sans jeton on ne peut pas répondre.
+      if (jetonUtilisateur) {
+        await db.userMlmBusiness.update({
+          where: { id: activite.id },
+          data: { chatwootUserToken: jetonUtilisateur },
+        })
+      }
     } else {
       // L'utilisateur existe déjà (reprise après échec) : on récupère son jeton.
       const rl = await appeler('/platform/api/v1/users', JETON_PLATEFORME, undefined, 'GET')
       const liste = (rl.corps as { id: number; email: string; access_token?: string }[]) ?? []
       jetonUtilisateur = liste.find((x) => x.email === emailService)?.access_token ?? ''
+      if (jetonUtilisateur) {
+        await db.userMlmBusiness.update({
+          where: { id: activite.id },
+          data: { chatwootUserToken: jetonUtilisateur },
+        })
+      }
     }
     if (!jetonUtilisateur) return { ok: false, accountId, raison: 'jeton utilisateur introuvable' }
 
@@ -129,6 +144,44 @@ export async function provisionnerChatwoot(mlmBusinessId: string): Promise<Resul
       url: `${URL_PUBLIQUE}/api/internal/chatwoot/webhook`,
       subscriptions: ['message_created'],
     })
+
+    // ── 5. ses scripts de départ, ancrés dans SA société ────────────────
+    // Pas les mêmes cinq phrases pour tout le monde : le produit d'entrée et
+    // son vrai prix sont dedans. Un distributeur Forever Living et un
+    // distributeur Zinzino ne partent plus du même texte.
+    try {
+      const scripts = await scriptsPour(activite.id)
+      for (const sc of scripts) {
+        await appeler(`/api/v1/accounts/${accountId}/canned_responses`, jetonUtilisateur, sc)
+      }
+      // Le rappel qui empêche l'uniformisation : ils sont à réécrire.
+      await appeler(`/api/v1/accounts/${accountId}/canned_responses`, jetonUtilisateur, {
+        short_code: 'a-relire',
+        content: AVERTISSEMENT_SCRIPTS,
+      })
+    } catch { /* les scripts ne bloquent pas le provisionnement */ }
+
+    // ── 6. le vocabulaire du métier ─────────────────────────────────────
+    // Les étiquettes rendent les conversations filtrables et alimenteront
+    // les scores d'Orion. Identiques pour tous : ce sont des catégories,
+    // pas des mots qu'un prospect lira.
+    const ETIQUETTES: [string, string, string][] = [
+      ['chaud', '#EF4444', 'Prêt pour un rendez-vous'],
+      ['tiede', '#F4B342', 'Intéressé mais pas décidé'],
+      ['froid', '#3B82F6', 'À réveiller plus tard'],
+      ['objection-prix', '#8B5CF6', 'Bloqué sur le prix'],
+      ['objection-temps', '#8B5CF6', 'Bloqué sur le temps'],
+      ['rdv-pris', '#22C55E', 'Un rendez-vous est posé'],
+      ['client', '#14B8A6', 'A acheté'],
+      ['ne-pas-recontacter', '#6B7280', 'A demandé l’arrêt'],
+    ]
+    try {
+      for (const [titre, couleur, description] of ETIQUETTES) {
+        await appeler(`/api/v1/accounts/${accountId}/labels`, jetonUtilisateur, {
+          title: titre, color: couleur, description, show_on_sidebar: true,
+        })
+      }
+    } catch { /* idem */ }
 
     return { ok: true, accountId, inboxId }
   } catch (e) {

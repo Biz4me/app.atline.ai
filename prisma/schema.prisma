@@ -416,6 +416,13 @@ model UserMlmBusiness {
   // C'est par lui que le webhook retrouve à qui appartient une conversation.
   chatwootAccountId Int?    @unique
   chatwootInboxId   Int?
+  // Le jeton du compte de service, indispensable pour REPONDRE : l'API
+  // application de Chatwoot n'accepte pas le jeton plateforme.
+  chatwootUserToken String?
+  // Par defaut FAUX : Orion propose, le distributeur valide. C'est la doctrine
+  // depuis le debut, et c'est ce qui protege sa reputation le jour ou l'IA se
+  // trompe de ton. Il l'active lui-meme quand il a confiance.
+  chatwootAutoRepondre Boolean @default(false)
 
   companyId String?
   company   MlmCompany? @relation(fields: [companyId], references: [id])

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
+import { traiterEvenement } from '@/lib/chatwoot/repondre'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -108,7 +109,7 @@ export async function POST(req: NextRequest) {
   // Règle 2 — on accuse réception tout de suite. Le travail d'Orion viendra
   // d'un traitement séparé, qui lit ce qu'on vient d'enregistrer.
   try {
-    await db.chatwootEvenement.create({
+    const trace = await db.chatwootEvenement.create({
       data: {
         userId: proprietaire.userId,
         accountId: comptePlateforme,
@@ -120,7 +121,11 @@ export async function POST(req: NextRequest) {
         contenu: (charge.content ?? '').slice(0, 4000),
         charge: charge as never,
       },
+      select: { id: true },
     })
+    // Orion travaille tout de suite, mais SANS faire attendre Chatwoot :
+    // on a déjà la trace, le cron rattrapera si ça échoue.
+    void traiterEvenement(trace.id).catch(() => {})
   } catch (e) {
     console.error('[chatwoot] enregistrement impossible', e)
     // On répond quand même 200 : sinon Chatwoot réessaie et le prospect
