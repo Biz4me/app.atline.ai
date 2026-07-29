@@ -28,13 +28,43 @@ import { db } from '@/lib/db'
 
 export type Script = { short_code: string; content: string }
 
-/** Le produit d'entrée : le moins cher, celui par lequel on commence. */
+/**
+ * Le produit d'entrée — et ce n'est PAS simplement le moins cher.
+ *
+ * Premier essai naïf : « le prix le plus bas ». Résultat chez Forever Living :
+ * « Forever Plastic Bag à 0,11 USD ». Un sac plastique. Un distributeur qui
+ * propose ça à un prospect perd toute crédibilité en une phrase.
+ *
+ * Un vrai produit d'entrée coûte assez pour être un vrai produit, et assez
+ * peu pour qu'on l'essaie sans réfléchir. On écarte donc les accessoires par
+ * leur nom, et on cherche le moins cher AU-DESSUS d'un plancher.
+ */
+const SEUIL_PLANCHER = 12    // en dessous : accessoire, échantillon, goodie
+const SEUIL_PLAFOND = 90     // au-dessus : ce n'est plus une entrée de gamme
+
+const ACCESSOIRES = [
+  'bag', 'sac', 'brochure', 'catalogue', 'catalog', 'flyer', 'sticker', 'autocollant',
+  'echantillon', 'échantillon', 'sample', 'carte', 'card', 'stylo', 'pen', 'tote',
+  'porte-cle', 'porte-clé', 'keychain', 'badge', 'affiche', 'poster', 'etiquette',
+  'étiquette', 'boite cadeau', 'gift box', 'emballage', 'shaker', 'gourde vide',
+]
+
 async function produitDEntree(companyId: string) {
-  return db.mlmProduct.findFirst({
-    where: { companyId, status: 'PUBLISHED', price: { not: null } },
+  const candidats = await db.mlmProduct.findMany({
+    where: {
+      companyId, status: 'PUBLISHED',
+      price: { gte: SEUIL_PLANCHER, lte: SEUIL_PLAFOND },
+    },
     orderBy: { price: 'asc' },
+    take: 25,
     select: { name: true, price: true, currency: true },
   })
+  // Le premier qui n'est pas un accessoire déguisé.
+  const vrai = candidats.find((p) => {
+    const n = p.name.toLowerCase()
+    return !ACCESSOIRES.some((mot) => n.includes(mot))
+  })
+  return vrai ?? null
 }
 
 function prixLisible(p: { price: unknown; currency: string } | null): string {
