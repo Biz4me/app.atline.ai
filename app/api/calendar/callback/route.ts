@@ -5,6 +5,7 @@ import { authOptions } from '@/lib/auth'
 import { db } from '@/lib/db'
 import { echangerCode, adresseDuCompte, estCapacite, type Capacite } from '@/lib/google/oauth'
 import { enregistrerConnexion, journaliser } from '@/lib/google/connexion'
+import { surveiller } from '@/lib/gmail/surveiller'
 
 const BASE = process.env.NEXTAUTH_URL || 'https://app.atline.ai'
 
@@ -77,8 +78,23 @@ export async function GET(req: Request) {
     })
     const differente = compte?.email?.toLowerCase() !== adresse.toLowerCase()
 
+    // Accorder la permission de lecture ne suffit pas : sans surveillance
+    // active, aucune réponse de prospect ne nous parviendra jamais. On la
+    // démarre ici, au seul moment où l'on est sûr que le droit vient d'être
+    // donné, et on dit franchement si elle a échoué.
+    let surveillance: string | undefined
+    if (capacite === 'email') {
+      const s = await surveiller(session.user.id)
+      surveillance = s.ok ? 'ok' : 'ko'
+      if (!s.ok) console.error('[gmail] surveillance non démarrée :', s.raison)
+    }
+
     const res = NextResponse.redirect(
-      retour(capacite, { [cle]: 'ok', ...(differente ? { autreAdresse: '1' } : {}) }),
+      retour(capacite, {
+        [cle]: 'ok',
+        ...(differente ? { autreAdresse: '1' } : {}),
+        ...(surveillance ? { surveillance } : {}),
+      }),
     )
     res.cookies.delete('cal_oauth_state')
     return res

@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { db } from '@/lib/db'
 import { connexionDe, revoquer } from '@/lib/google/connexion'
+import { cesserDeSurveiller } from '@/lib/gmail/surveiller'
 import { CAPACITES, capacitesCouvertes, type Capacite } from '@/lib/google/oauth'
 
 export const dynamic = 'force-dynamic'
@@ -53,6 +54,12 @@ export async function GET() {
       pourquoi: CAPACITES[c].pourquoi,
       active: couvertes.includes(c),
     })),
+    // La surveillance des réponses. Sans elle, le distributeur écrit dans le
+    // vide sans le savoir : c'est l'information la plus importante de la carte
+    // du canal, avant même les permissions.
+    surveillance: conn?.watchExpiration
+      ? { active: conn.watchExpiration > new Date(), expireLe: conn.watchExpiration.toISOString() }
+      : { active: false, expireLe: null },
     // Une seule connexion Google : la révoquer coupe TOUT, pas seulement le
     // canal depuis lequel on clique. L'écran doit le dire avant de le faire.
     revocationCoupeTout: couvertes.length > 1,
@@ -68,6 +75,10 @@ export async function GET() {
 export async function DELETE() {
   const session = await getServerSession(authOptions)
   if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  // On coupe la surveillance AVANT de révoquer : après, le jeton nécessaire
+  // pour la couler proprement n'existe plus, et Google continuerait d'émettre
+  // des notifications dans le vide pendant des jours.
+  await cesserDeSurveiller(session.user.id)
   const confirmeParGoogle = await revoquer(session.user.id)
   return NextResponse.json({ ok: true, confirmeParGoogle })
 }

@@ -710,6 +710,17 @@ model GoogleConnection {
   expiresAt    DateTime
   scope        String?
   revokedAt    DateTime?
+
+  // ── surveillance des réponses (Gmail push) ─────────────────────────────
+  // Quand la surveillance expire. Google la coupe au bout de 7 jours ; un
+  // renouvellement oublié, et le distributeur cesse de recevoir les réponses
+  // de ses prospects sans que rien ne le signale.
+  watchExpiration DateTime?
+  // Notre curseur de lecture. On n'avance ce point qu'APRÈS un traitement
+  // réussi : une notification perdue se rattrape donc toute seule au coup
+  // suivant, puisque l'historique est cumulatif depuis ce curseur.
+  historyId       String?
+
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
 }
@@ -770,6 +781,10 @@ model EmailFil {
   // Message-ID du dernier message du prospect : sans lui, notre réponse
   // ouvre un nouveau fil dans SA boîte au lieu de se rattacher au bon.
   dernierMessageId String?
+  // Le texte de sa dernière réponse. On ne conserve QUE les conversations que
+  // le distributeur pilote depuis Atline — jamais le reste de sa boîte.
+  dernierRecu      String?
+  dernierRecuAt    DateTime?
   echanges         Int         @default(0)
   issue            EmailIssue?
   humainRepris     Boolean     @default(false)
