@@ -2,8 +2,8 @@ import { NextResponse } from 'next/server'
 import { cookies } from 'next/headers'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-import { db } from '@/lib/db'
 import { exchangeCode } from '@/lib/google-calendar'
+import { enregistrerConnexion, journaliser } from '@/lib/google/connexion'
 
 const BASE = process.env.NEXTAUTH_URL || 'https://app.atline.ai'
 
@@ -25,17 +25,34 @@ export async function GET(req: Request) {
 
   try {
     const tok = await exchangeCode(code)
+
+    // L'adresse vient de Google, JAMAIS de User.email : c'est elle que les
+    // prospects verront, et le distributeur a pu choisir un autre compte que
+    // celui de son inscription. Si on ne l'obtient pas, on le trace plutôt que
+    // de laisser une connexion anonyme s'installer en silence.
     let email: string | null = null
     try {
-      const ui = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', { headers: { Authorization: `Bearer ${tok.access_token}` } })
+      const ui = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
+        headers: { Authorization: `Bearer ${tok.access_token}` },
+      })
       if (ui.ok) email = (await ui.json())?.email ?? null
-    } catch { /* email optionnel */ }
+    } catch { /* traité juste en dessous */ }
 
-    const expiresAt = new Date(Date.now() + tok.expires_in * 1000)
-    await db.calendarConnection.upsert({
-      where: { userId: session.user.id },
-      create: { userId: session.user.id, email, accessToken: tok.access_token, refreshToken: tok.refresh_token ?? null, expiresAt, scope: tok.scope ?? null },
-      update: { email, accessToken: tok.access_token, ...(tok.refresh_token ? { refreshToken: tok.refresh_token } : {}), expiresAt, scope: tok.scope ?? null },
+    if (!email) {
+      await journaliser({
+        userId: session.user.id,
+        action: 'ERREUR',
+        detail: 'adresse du compte Google non obtenue à la connexion',
+      })
+    }
+
+    await enregistrerConnexion({
+      userId: session.user.id,
+      email,
+      accessToken: tok.access_token,
+      refreshToken: tok.refresh_token ?? null,
+      expiresIn: tok.expires_in,
+      scope: tok.scope ?? null,
     })
 
     const res = NextResponse.redirect(`${BASE}/agenda?cal=ok`)

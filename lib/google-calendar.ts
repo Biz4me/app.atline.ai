@@ -1,4 +1,7 @@
-import { db } from '@/lib/db'
+// Ce fichier ne gère plus que l'agenda : la connexion Google elle-même
+// (jetons chiffrés, adresse d'envoi, journal, révocation) vit dans
+// lib/google/connexion.ts, partagée avec Gmail.
+import { jetonFrais } from '@/lib/google/connexion'
 
 const TOKEN_URL = 'https://oauth2.googleapis.com/token'
 const CALENDAR_SCOPE = 'https://www.googleapis.com/auth/calendar.readonly'
@@ -41,38 +44,9 @@ export async function exchangeCode(code: string) {
   return res.json() as Promise<{ access_token: string; refresh_token?: string; expires_in: number; scope?: string }>
 }
 
-async function refreshAccess(refreshToken: string) {
-  const res = await fetch(TOKEN_URL, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: new URLSearchParams({
-      refresh_token: refreshToken,
-      client_id: process.env.GOOGLE_CLIENT_ID ?? '',
-      client_secret: process.env.GOOGLE_CLIENT_SECRET ?? '',
-      grant_type: 'refresh_token',
-    }),
-  })
-  if (!res.ok) throw new Error('refresh failed')
-  return res.json() as Promise<{ access_token: string; expires_in: number }>
-}
-
-// Access token frais (refresh auto si expiré), ou null si non connecté / refresh impossible
-export async function getAccessToken(userId: string): Promise<string | null> {
-  const conn = await db.calendarConnection.findUnique({ where: { userId } })
-  if (!conn) return null
-  if (conn.expiresAt.getTime() > Date.now() + 60_000) return conn.accessToken
-  if (!conn.refreshToken) return null
-  try {
-    const r = await refreshAccess(conn.refreshToken)
-    await db.calendarConnection.update({
-      where: { userId },
-      data: { accessToken: r.access_token, expiresAt: new Date(Date.now() + r.expires_in * 1000) },
-    })
-    return r.access_token
-  } catch {
-    return null
-  }
-}
+// Access token frais (refresh auto si expiré), ou null si non connecté / refresh impossible.
+// Déléguée : le renouvellement et le déchiffrement sont communs à tous les usages Google.
+export const getAccessToken = jetonFrais
 
 export type GEvent = { id: string; title: string; start: string; end: string; allDay: boolean }
 

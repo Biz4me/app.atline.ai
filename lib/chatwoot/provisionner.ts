@@ -25,6 +25,9 @@
 
 import { db } from '@/lib/db'
 import { scriptsPour, AVERTISSEMENT_SCRIPTS } from '@/lib/chatwoot/scripts'
+// Le jeton de service donne accès à toute la messagerie du distributeur :
+// il ne dort pas en clair en base.
+import { chiffrer } from '@/lib/crypto'
 
 const URL_CHATWOOT = process.env.CHATWOOT_URL || 'http://127.0.0.1:3070'
 const JETON_PLATEFORME = process.env.CHATWOOT_PLATFORM_TOKEN || ''
@@ -110,7 +113,7 @@ export async function provisionnerChatwoot(mlmBusinessId: string): Promise<Resul
       if (jetonUtilisateur) {
         await db.userMlmBusiness.update({
           where: { id: activite.id },
-          data: { chatwootUserToken: jetonUtilisateur },
+          data: { chatwootUserToken: chiffrer(jetonUtilisateur) },
         })
       }
     } else {
@@ -121,7 +124,7 @@ export async function provisionnerChatwoot(mlmBusinessId: string): Promise<Resul
       if (jetonUtilisateur) {
         await db.userMlmBusiness.update({
           where: { id: activite.id },
-          data: { chatwootUserToken: jetonUtilisateur },
+          data: { chatwootUserToken: chiffrer(jetonUtilisateur) },
         })
       }
     }

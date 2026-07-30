@@ -26,6 +26,7 @@
 
 import { db } from '@/lib/db'
 import { journaliser } from '@/lib/agents/journal'
+import { dechiffrer } from '@/lib/crypto'
 
 const URL_CHATWOOT = process.env.CHATWOOT_URL || 'http://127.0.0.1:3070'
 const URL_SERVICE = process.env.ATLAS_URL || 'http://127.0.0.1:8100'
@@ -82,10 +83,15 @@ export async function traiterEvenement(evenementId: string): Promise<{ ok: boole
       return { ok: false, action: 'jeton absent' }
     }
 
+    // Déchiffré une seule fois, gardé en mémoire le temps du traitement.
+    // (dechiffrer rend tel quel un jeton d'avant le chiffrement : rien ne casse
+    // au déploiement.)
+    const jeton = dechiffrer(activite.chatwootUserToken)
+
     // ── on relit le fil, pas seulement le dernier message ────────────────
     const brut = await chatwoot(
       `/api/v1/accounts/${ev.accountId}/conversations/${ev.conversationId}/messages`,
-      activite.chatwootUserToken,
+      jeton,
     )
     const messages: MessageChatwoot[] = Array.isArray(brut) ? brut : (brut?.payload ?? [])
     if (!messages.length) return { ok: false, action: 'fil vide' }
@@ -129,7 +135,7 @@ export async function traiterEvenement(evenementId: string): Promise<{ ok: boole
     if (activite.chatwootAutoRepondre) {
       await chatwoot(
         `/api/v1/accounts/${ev.accountId}/conversations/${ev.conversationId}/messages`,
-        activite.chatwootUserToken,
+        jeton,
         { content: propre, message_type: 'outgoing' },
         'POST',
       )
@@ -146,7 +152,7 @@ export async function traiterEvenement(evenementId: string): Promise<{ ok: boole
     // une notification au distributeur. Rien ne part sans lui.
     await chatwoot(
       `/api/v1/accounts/${ev.accountId}/conversations/${ev.conversationId}/messages`,
-      activite.chatwootUserToken,
+      jeton,
       { content: `Proposition d'Orion :\n\n${propre}`, message_type: 'outgoing', private: true },
       'POST',
     )

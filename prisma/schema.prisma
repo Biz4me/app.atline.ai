@@ -687,18 +687,65 @@ model CalComConnection {
   updatedAt    DateTime  @updatedAt
 }
 
-// Connexion calendrier Google (flux OAuth dédié, séparé du login) — Phase 2 agenda
-model CalendarConnection {
-  id           String   @id @default(cuid())
-  userId       String   @unique
-  provider     String   @default("google")
+// LA connexion Google du distributeur — UNE SEULE, quels que soient les usages.
+// (ex-CalendarConnection, généralisée le 30 juillet 2026.)
+//
+// Un distributeur n'a pas « un compte agenda » puis « un compte Gmail » : il a
+// UN compte Google, auquel il accorde des permissions qui s'accumulent
+// (authUrl pose déjà include_granted_scopes). Deux lignes vers le même compte,
+// ce serait deux jetons de rafraîchissement concurrents et surtout deux
+// adresses possibles pour un seul expéditeur : la confusion qu'on veut éviter.
+//
+// `email` n'est donc pas un champ décoratif : c'est L'ADRESSE D'ENVOI, celle
+// que le prospect verra. Elle vient de ce que Google a confirmé, JAMAIS de
+// User.email — s'inscrire avec son adresse perso et écrire depuis son adresse
+// pro est un cas parfaitement légitime.
+model GoogleConnection {
+  id           String    @id @default(cuid())
+  userId       String    @unique
+  provider     String    @default("google")
   email        String?
-  accessToken  String
-  refreshToken String?
+  accessToken  String // chiffré (lib/crypto.ts)
+  refreshToken String? // chiffré (lib/crypto.ts)
   expiresAt    DateTime
   scope        String?
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  revokedAt    DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+}
+
+// Ce qu'on a fait avec l'accès qu'on nous a confié.
+//
+// C'est la pièce que réclame l'audit CASA : pas une déclaration d'intention,
+// une trace. Chaque envoi, chaque lecture, chaque renouvellement de
+// surveillance, horodaté et rattaché à l'adresse qui l'a subi.
+//
+// Ça sert deux fois : à prouver qu'on ne fait que ce qu'on déclare, et à
+// répondre au distributeur qui demande « qu'est-ce qui est parti en mon nom ? »
+// — question à laquelle on doit pouvoir répondre à la ligne près.
+//
+// On n'y met JAMAIS le contenu d'un message : un journal d'accès qui recopie
+// ce qu'il surveille devient lui-même la fuite qu'il documente.
+model GoogleAcces {
+  id        String            @id @default(cuid())
+  userId    String
+  action    GoogleAccesAction
+  adresse   String? // l'adresse d'envoi concernée
+  ressource String? // identifiant technique (messageId, historyId…), jamais de contenu
+  detail    String?
+  createdAt DateTime          @default(now())
+
+  @@index([userId, createdAt])
+  @@index([action, createdAt])
+}
+
+enum GoogleAccesAction {
+  CONNEXION
+  REVOCATION
+  ENVOI
+  LECTURE
+  SURVEILLANCE
+  ERREUR
 }
 
 enum AppointmentType {
