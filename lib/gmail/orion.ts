@@ -26,6 +26,7 @@
 
 import { db } from '@/lib/db'
 import { historiqueDuFil } from '@/lib/gmail/lire'
+import { prochainsCreneaux, lienDeReservation } from '@/lib/availability'
 
 const URL_SERVICE = process.env.ATLAS_URL || 'http://127.0.0.1:8100'
 
@@ -158,18 +159,51 @@ async function demander(args: {
   }
 }
 
-/** La réponse à ce que le prospect vient d'écrire. */
+/**
+ * La réponse à ce que le prospect vient d'écrire.
+ *
+ * Les vraies disponibilités du distributeur sont injectées à CHAQUE réponse,
+ * pas seulement au moment où un rendez-vous se dessine : c'est ce qui permet à
+ * Orion de proposer une heure au bon moment, sans qu'on ait à deviner d'avance
+ * quand la conversation va basculer.
+ *
+ * Et surtout, ce sont des heures VÉRIFIÉES. Sans agenda connecté, la liste est
+ * vide et rien n'est proposé : donner rendez-vous à un prospect pendant que le
+ * distributeur est déjà pris coûte plus cher que de ne rien proposer du tout.
+ */
 export async function redigerReponse(filId: string): Promise<Redaction | null> {
   const fil = await db.emailFil.findUnique({ where: { id: filId } })
   if (!fil?.dernierRecu) return null
 
-  const historique = fil.gmailThreadId ? await historiqueDuFil(fil.userId, fil.gmailThreadId) : []
-  return demander({
+  const [historique, creneaux, lien] = await Promise.all([
+    fil.gmailThreadId ? historiqueDuFil(fil.userId, fil.gmailThreadId) : Promise.resolve([]),
+    prochainsCreneaux(fil.userId, 3),
+    lienDeReservation(fil.userId),
+  ])
+
+  const dispos =
+    creneaux.length && lien
+      ? `\n\n[Contexte pour toi, pas à recopier tel quel : créneaux RÉELLEMENT libres — ` +
+        `${creneaux.map((c) => c.libelle).join(' ; ')}. Lien de réservation : ${lien}. ` +
+        `Ne propose que ces horaires-là, jamais d'autres, et seulement si la conversation s'y prête.]`
+      : ''
+
+  const redaction = await demander({
     userId: fil.userId,
-    query: fil.dernierRecu,
+    query: `${fil.dernierRecu}${dispos}`,
     // Le dernier message est passé en `query`, il n'a pas à figurer deux fois.
     historique: historique.slice(0, -1),
   })
+
+  // Un rendez-vous demandé : on ajoute le lien de réservation quoi qu'il
+  // arrive. Si la formulation d'Orion est approximative sur les horaires, le
+  // prospect garde un moyen fiable de se caler lui-même, sur des créneaux
+  // recalculés au moment où il clique.
+  if (redaction && redaction.issue === 'RDV' && lien && !redaction.texte.includes(lien)) {
+    redaction.texte = `${redaction.texte}\n\nTu peux aussi choisir directement ton créneau ici : ${lien}`
+  }
+
+  return redaction
 }
 
 /**

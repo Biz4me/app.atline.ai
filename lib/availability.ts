@@ -55,3 +55,67 @@ export async function slotsForDay(userId: string, dayISO: string): Promise<strin
     })
     .map((s) => s.toISOString())
 }
+
+/**
+ * LES PROCHAINS CRÉNEAUX RÉELLEMENT LIBRES — pour qu'Orion propose une heure
+ * vraie, jamais une heure inventée.
+ *
+ * ⚠️ Renvoie une liste VIDE si la permission agenda n'a pas été accordée. Ce
+ * n'est pas une dégradation silencieuse, c'est le comportement voulu : sans
+ * accès au Google Agenda du distributeur, on ignore ses vraies occupations et
+ * on proposerait un rendez-vous alors qu'il est déjà pris. Un rendez-vous à
+ * fixer à la main vaut mieux qu'un rendez-vous en double.
+ *
+ * On espace les propositions d'au moins deux heures et on ne donne jamais deux
+ * créneaux le même jour : trois horaires collés le même après-midi se lisent
+ * comme un agenda vide, ce qui n'aide personne.
+ */
+const SCOPE_AGENDA = 'https://www.googleapis.com/auth/calendar.readonly'
+
+export async function prochainsCreneaux(
+  userId: string,
+  combien = 3,
+  joursExplores = 10,
+): Promise<{ debut: string; libelle: string }[]> {
+  const conn = await db.googleConnection.findUnique({
+    where: { userId },
+    select: { scope: true, revokedAt: true },
+  })
+  if (!conn || conn.revokedAt || !(conn.scope ?? '').split(' ').includes(SCOPE_AGENDA)) return []
+
+  const format = new Intl.DateTimeFormat('fr-FR', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+    hour: '2-digit',
+    minute: '2-digit',
+    timeZone: 'Europe/Paris',
+  })
+
+  const retenus: { debut: string; libelle: string }[] = []
+  const joursUtilises = new Set<string>()
+
+  for (let i = 0; i < joursExplores && retenus.length < combien; i++) {
+    const jour = new Date()
+    jour.setDate(jour.getDate() + i)
+    const libres = await slotsForDay(userId, jour.toISOString())
+    if (!libres.length) continue
+
+    // Un seul créneau par jour, et plutôt en milieu de plage : proposer
+    // systématiquement 9 h donne l'impression d'un agenda désert.
+    const choisi = libres[Math.min(2, libres.length - 1)]
+    const cle = choisi.slice(0, 10)
+    if (joursUtilises.has(cle)) continue
+    joursUtilises.add(cle)
+
+    retenus.push({ debut: choisi, libelle: format.format(new Date(choisi)) })
+  }
+
+  return retenus
+}
+
+/** Le lien de réservation du distributeur, ou null s'il n'a pas de nom d'utilisateur. */
+export async function lienDeReservation(userId: string): Promise<string | null> {
+  const u = await db.user.findUnique({ where: { id: userId }, select: { username: true } })
+  return u?.username ? `https://app.atline.ai/rdv/${u.username}` : null
+}
