@@ -37,14 +37,13 @@
 import { db } from '@/lib/db'
 import { connexionDe, jetonFrais, journaliser } from '@/lib/google/connexion'
 import { arreterSequence } from '@/lib/gmail/sequence'
-import { sansCitation } from '@/lib/gmail/message'
+import { sansCitation, texteDe, natureDuMessage, type Partie } from '@/lib/gmail/message'
 
 const API = 'https://gmail.googleapis.com/gmail/v1/users/me'
 const MAX_FILS_PAR_PASSAGE = 20
 const TAILLE_MAX_TEXTE = 4000
 
 type Entete = { name?: string; value?: string }
-type Partie = { mimeType?: string; body?: { data?: string; size?: number }; parts?: Partie[] }
 type MessageGmail = {
   id: string
   threadId: string
@@ -56,40 +55,6 @@ type MessageGmail = {
 function entete(msg: MessageGmail, nom: string): string {
   const h = msg.payload?.headers?.find((x) => x.name?.toLowerCase() === nom.toLowerCase())
   return h?.value ?? ''
-}
-
-function decoder(data?: string): string {
-  if (!data) return ''
-  try {
-    return Buffer.from(data.replace(/-/g, '+').replace(/_/g, '/'), 'base64').toString('utf8')
-  } catch {
-    return ''
-  }
-}
-
-/** Le texte du message. On préfère le texte brut ; à défaut on dégrossit le HTML. */
-function texteDe(partie?: Partie): string {
-  if (!partie) return ''
-  if (partie.mimeType === 'text/plain') return decoder(partie.body?.data)
-  if (partie.parts?.length) {
-    for (const p of partie.parts) {
-      const t = texteDe(p)
-      if (t) return t
-    }
-  }
-  if (partie.mimeType === 'text/html') {
-    return decoder(partie.body?.data)
-      .replace(/<br\s*\/?>/gi, '\n')
-      .replace(/<\/p>/gi, '\n')
-      .replace(/<[^>]+>/g, '')
-      .replace(/&nbsp;/g, ' ')
-      .replace(/&amp;/g, '&')
-      .replace(/&lt;/g, '<')
-      .replace(/&gt;/g, '>')
-      .replace(/&quot;/g, '"')
-      .replace(/&#39;/g, "'")
-  }
-  return decoder(partie.body?.data)
 }
 
 async function appeler(jeton: string, chemin: string) {
@@ -149,6 +114,7 @@ export type Traitement = {
   filsTouches: number
   reponses: number
   reprisesHumaines: number
+  injoignables: number
   raison?: string
 }
 
@@ -158,7 +124,7 @@ export type Traitement = {
  * n'a pas encore de curseur.
  */
 export async function traiterChangements(userId: string, historyIdRecu?: string): Promise<Traitement> {
-  const vide = { ok: false, filsTouches: 0, reponses: 0, reprisesHumaines: 0 }
+  const vide = { ok: false, filsTouches: 0, reponses: 0, reprisesHumaines: 0, injoignables: 0 }
 
   const conn = await connexionDe(userId)
   if (!conn?.email) return { ...vide, raison: 'aucun compte connecté' }
@@ -173,7 +139,7 @@ export async function traiterChangements(userId: string, historyIdRecu?: string)
     if (historyIdRecu) {
       await db.googleConnection.update({ where: { userId }, data: { historyId: historyIdRecu } })
     }
-    return { ok: true, filsTouches: 0, reponses: 0, reprisesHumaines: 0, raison: 'curseur initialisé' }
+    return { ok: true, filsTouches: 0, reponses: 0, reprisesHumaines: 0, injoignables: 0, raison: 'curseur initialisé' }
   }
 
   // ── 1. ce qui a changé, SANS contenu ──────────────────────────────────────
@@ -218,7 +184,7 @@ export async function traiterChangements(userId: string, historyIdRecu?: string)
     if (corps.historyId) {
       await db.googleConnection.update({ where: { userId }, data: { historyId: corps.historyId } })
     }
-    return { ok: true, filsTouches: 0, reponses: 0, reprisesHumaines: 0 }
+    return { ok: true, filsTouches: 0, reponses: 0, reprisesHumaines: 0, injoignables: 0 }
   }
 
   // ── 2. LA LIMITE : on ne garde que NOS fils ───────────────────────────────
@@ -233,12 +199,13 @@ export async function traiterChangements(userId: string, historyIdRecu?: string)
     if (corps.historyId) {
       await db.googleConnection.update({ where: { userId }, data: { historyId: corps.historyId } })
     }
-    return { ok: true, filsTouches: 0, reponses: 0, reprisesHumaines: 0 }
+    return { ok: true, filsTouches: 0, reponses: 0, reprisesHumaines: 0, injoignables: 0 }
   }
 
   // ── 3. lecture des fils qui nous appartiennent ────────────────────────────
   let reponses = 0
   let reprisesHumaines = 0
+  let injoignables = 0
 
   for (const fil of nôtres) {
     const t = await appeler(jeton, `/threads/${fil.gmailThreadId}?format=full`)
@@ -249,7 +216,43 @@ export async function traiterChangements(userId: string, historyIdRecu?: string)
 
     const moi = conn.email.toLowerCase()
     const deMoi = messages.filter((m) => entete(m, 'From').toLowerCase().includes(moi))
-    const duProspect = messages.filter((m) => !entete(m, 'From').toLowerCase().includes(moi))
+    const pasDeMoi = messages.filter((m) => !entete(m, 'From').toLowerCase().includes(moi))
+
+    // Tout ce qui n'est pas parti de son adresse n'est pas pour autant le
+    // prospect. Un échec de remise et un répondeur d'absence arrivent dans le
+    // même fil et se feraient passer pour une réponse.
+    const classes = pasDeMoi.map((m) => ({
+      msg: m,
+      nature: natureDuMessage({
+        from: entete(m, 'From'),
+        sujet: entete(m, 'Subject'),
+        contentType: entete(m, 'Content-Type'),
+        autoSubmitted: entete(m, 'Auto-Submitted'),
+        precedence: entete(m, 'Precedence'),
+        failedRecipients: entete(m, 'X-Failed-Recipients'),
+        texte: texteDe(m.payload),
+      }),
+    }))
+
+    // L'adresse est morte : on ferme et on prévient. Ce n'est pas un refus,
+    // personne n'a rien décidé — mais insister quatre fois sur une adresse
+    // inexistante abîmerait la réputation d'expéditeur pour rien.
+    const rebond = classes.find((c) => c.nature === 'rebond-definitif')
+    if (rebond && !fil.issue) {
+      const { poserIssue } = await import('@/lib/gmail/orion')
+      await poserIssue(fil.id, 'INJOIGNABLE')
+      await journaliser({
+        userId,
+        action: 'LECTURE',
+        adresse: conn.email,
+        ressource: fil.gmailThreadId,
+        detail: 'échec de remise définitif : adresse injoignable',
+      })
+      injoignables++
+      continue
+    }
+
+    const duProspect = classes.filter((c) => c.nature === 'humain').map((c) => c.msg)
 
     // Le distributeur a-t-il écrit lui-même ? Un message parti de son adresse
     // que notre journal ne connaît pas ne peut venir que de lui.
@@ -302,5 +305,5 @@ export async function traiterChangements(userId: string, historyIdRecu?: string)
     await db.googleConnection.update({ where: { userId }, data: { historyId: corps.historyId } })
   }
 
-  return { ok: true, filsTouches: nôtres.length, reponses, reprisesHumaines }
+  return { ok: true, filsTouches: nôtres.length, reponses, reprisesHumaines, injoignables }
 }

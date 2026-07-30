@@ -82,6 +82,118 @@ export function sansCitation(texte: string): string {
   return (coupe === -1 ? t : t.slice(0, coupe)).trim()
 }
 
+/**
+ * QUI A ÉCRIT, VRAIMENT ? — la question qu'on oubliait de poser.
+ *
+ * Un échec de remise arrive DANS le fil d'origine : Gmail le rattache au
+ * message qu'il n'a pas pu livrer. Il passe donc notre bornage sans problème,
+ * et comme il ne vient pas de l'adresse du distributeur, il était jusqu'ici
+ * classé comme une réponse du prospect. Conséquences en chaîne : la séquence
+ * de relance s'arrêtait au motif que « le prospect a répondu », le texte du
+ * rapport d'erreur devenait sa dernière réponse, et Orion rédigeait un message
+ * chaleureux à destination de `mailer-daemon`.
+ *
+ * Même mécanique pour un message d'absence : Orion répondait à un répondeur.
+ *
+ * ── LA DISTINCTION QUI COMPTE ──────────────────────────────────────────────
+ *
+ * Un échec 5.x.x est DÉFINITIF (RFC 3463) : l'adresse n'existe pas, insister
+ * n'y changera rien et chaque tentative abîme la réputation de l'expéditeur.
+ * Un 4.x.x est TEMPORAIRE : boîte pleine, serveur indisponible. Gmail réessaie
+ * tout seul, on ne touche à rien.
+ */
+export type Nature = 'humain' | 'rebond-definitif' | 'rebond-temporaire' | 'automatique'
+
+export function natureDuMessage(m: {
+  from: string
+  sujet: string
+  contentType?: string
+  autoSubmitted?: string
+  precedence?: string
+  failedRecipients?: string
+  texte: string
+}): Nature {
+  const from = (m.from || '').toLowerCase()
+  const sujet = (m.sujet || '').toLowerCase()
+
+  // Un rapport de remise se reconnaît d'abord à son type MIME normalisé, et à
+  // défaut à son expéditeur : tous les serveurs ne respectent pas la norme.
+  // ⚠️ On exige la PARTIE LOCALE exacte, pas une sous-chaîne. Chercher
+  // « postmaster » n'importe où dans l'expéditeur classerait
+  // contact@postmastersarl.fr comme un échec de remise : on fermerait la
+  // conversation d'un vrai prospect en le déclarant injoignable.
+  const estRapport =
+    /multipart\/report/i.test(m.contentType ?? '') ||
+    /delivery-status/i.test(m.contentType ?? '') ||
+    /(^|<|\s)(mailer-daemon|postmaster|mail-daemon)@/i.test(from) ||
+    /mail delivery (subsystem|system)/i.test(from) ||
+    Boolean(m.failedRecipients)
+
+  if (estRapport) {
+    // Le code de statut prime sur tout le reste : c'est lui qui dit si
+    // l'adresse est morte ou seulement indisponible.
+    const statut = m.texte.match(/\bStatus:\s*([45])\.\d+\.\d+/i)?.[1]
+    if (statut === '4') return 'rebond-temporaire'
+    if (statut === '5') return 'rebond-definitif'
+    // Sans code lisible, on se rabat sur le vocabulaire des rapports.
+    if (/\b(delayed|differ|temporair|will retry|réessaiera)\b/i.test(m.texte)) return 'rebond-temporaire'
+    return 'rebond-definitif'
+  }
+
+  // Répondeurs d'absence : la norme RFC 3834 d'abord, les usages ensuite.
+  const auto = (m.autoSubmitted ?? '').toLowerCase()
+  if (auto && auto !== 'no') return 'automatique'
+  if (/\b(bulk|auto_reply|auto-reply|junk)\b/i.test(m.precedence ?? '')) return 'automatique'
+  if (/^(re\s*:\s*)?(absence|congés|out of office|automatic reply|réponse automatique|autoreply)/i.test(sujet)) {
+    return 'automatique'
+  }
+  if (/^(noreply|no-reply|ne-pas-repondre|donotreply)@/i.test(from)) return 'automatique'
+
+  return 'humain'
+}
+
+
+/** Une partie MIME telle que l'API Gmail la renvoie. */
+export type Partie = { mimeType?: string; body?: { data?: string; size?: number }; parts?: Partie[] }
+
+function decoder(data?: string): string {
+  if (!data) return ''
+  try {
+    return Buffer.from(data.replace(/-/g, '+').replace(/_/g, '/'), 'base64').toString('utf8')
+  } catch {
+    return ''
+  }
+}
+
+/**
+ * Le texte d'un message reçu. On préfère le texte brut ; à défaut on dégrossit
+ * le HTML, parce qu'un prospect qui répond depuis son téléphone envoie souvent
+ * du HTML sans le savoir.
+ */
+export function texteDe(partie?: Partie): string {
+  if (!partie) return ''
+  if (partie.mimeType === 'text/plain') return decoder(partie.body?.data)
+  if (partie.parts?.length) {
+    for (const p of partie.parts) {
+      const t = texteDe(p)
+      if (t) return t
+    }
+  }
+  if (partie.mimeType === 'text/html') {
+    return decoder(partie.body?.data)
+      .replace(/<br\s*\/?>/gi, '\n')
+      .replace(/<\/p>/gi, '\n')
+      .replace(/<[^>]+>/g, '')
+      .replace(/&nbsp;/g, ' ')
+      .replace(/&amp;/g, '&')
+      .replace(/&lt;/g, '<')
+      .replace(/&gt;/g, '>')
+      .replace(/&quot;/g, '"')
+      .replace(/&#39;/g, "'")
+  }
+  return decoder(partie.body?.data)
+}
+
 /** Base64 « URL-safe » : ce que l'API Gmail attend dans `raw`. */
 export function base64url(s: string): string {
   return Buffer.from(s, 'utf8')

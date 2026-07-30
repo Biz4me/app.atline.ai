@@ -33,7 +33,7 @@ const URL_SERVICE = process.env.ATLAS_URL || 'http://127.0.0.1:8100'
 /** `[[REFUS]]` complète la liste de Chatwoot : un non est une issue. */
 const MARQUEURS = /\[\[(RDV|INSCRIPTION|ACHAT|REFUS|HANDOFF)\]\]/g
 
-export type Issue = 'RDV' | 'INSCRIPTION' | 'ACHAT' | 'REFUS' | 'HANDOFF'
+export type Issue = 'RDV' | 'INSCRIPTION' | 'ACHAT' | 'REFUS' | 'HANDOFF' | 'INJOIGNABLE'
 
 export type Redaction = {
   texte: string
@@ -265,6 +265,9 @@ const ANNONCE: Record<Issue, { texte: (qui: string) => string; couleur: string }
   ACHAT: { texte: (q) => `${q} veut acheter. Envoie-lui ton lien boutique.`, couleur: '#22C55E' },
   REFUS: { texte: (q) => `${q} a dit non. Orion s'arrête là.`, couleur: '#EF4444' },
   HANDOFF: { texte: (q) => `${q} attend une réponse humaine. Orion passe la main.`, couleur: '#F4B342' },
+  // Personne n'a rien décidé : l'adresse n'existe pas. On le dit comme tel,
+  // et on invite à la corriger plutôt qu'à conclure au désintérêt.
+  INJOIGNABLE: { texte: (q) => `L'adresse de ${q} n'existe pas. Corrige-la, sinon rien ne partira.`, couleur: '#EF4444' },
 }
 
 /**

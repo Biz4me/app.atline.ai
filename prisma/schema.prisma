@@ -803,6 +803,10 @@ enum EmailIssue {
   ACHAT
   REFUS
   HANDOFF
+  // L'adresse n'existe pas (échec de remise définitif, 5.x.x). Ce n'est pas un
+  // refus : personne n'a rien décidé. Mais la conversation s'arrête là, et
+  // insister abîmerait la réputation d'expéditeur du distributeur.
+  INJOIGNABLE
 }
 
 enum AppointmentType {
