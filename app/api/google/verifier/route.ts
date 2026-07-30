@@ -1,0 +1,127 @@
+import { NextResponse } from 'next/server'
+import { getServerSession } from 'next-auth'
+import { authOptions } from '@/lib/auth'
+import { db } from '@/lib/db'
+import { connexionDe, jetonFrais, journaliser } from '@/lib/google/connexion'
+import { envoyerMail } from '@/lib/gmail/envoyer'
+
+export const dynamic = 'force-dynamic'
+
+/**
+ * « EST-CE QUE MON CANAL E-MAIL FONCTIONNE ? »
+ *
+ * Une connexion enregistrée en base ne prouve rien : le jeton peut être
+ * illisible, la permission avoir été retirée côté Google, l'API pas activée.
+ * Le distributeur a le droit d'obtenir une réponse franche avant de confier
+ * sa prospection à un canal.
+ *
+ *   GET  — contrôle en lecture seule : on demande son profil à Gmail. Si
+ *          Google répond, le jeton se déchiffre, la permission tient et
+ *          l'API est active. Rien n'est envoyé.
+ *
+ *   POST — la preuve complète : un vrai e-mail, à sa propre adresse. C'est le
+ *          seul moyen de vérifier ce qu'aucun test unitaire ne peut voir,
+ *          c'est-à-dire ce qui arrive réellement dans une boîte de réception.
+ *          Le texte contient volontairement des accents et des apostrophes.
+ */
+
+const PROFIL = 'https://gmail.googleapis.com/gmail/v1/users/me/profile'
+
+export async function GET() {
+  const session = await getServerSession(authOptions)
+  if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const userId = session.user.id
+
+  const conn = await connexionDe(userId)
+  if (!conn?.email) {
+    return NextResponse.json({ ok: false, raison: 'aucun compte Google connecté' })
+  }
+
+  const jeton = await jetonFrais(userId)
+  if (!jeton) {
+    return NextResponse.json({ ok: false, adresseEnvoi: conn.email, raison: 'jeton indisponible ou non renouvelable' })
+  }
+
+  try {
+    const r = await fetch(PROFIL, {
+      headers: { Authorization: `Bearer ${jeton}` },
+      signal: AbortSignal.timeout(15_000),
+    })
+    if (!r.ok) {
+      const detail = (await r.text().catch(() => '')).slice(0, 200)
+      await journaliser({ userId, action: 'ERREUR', adresse: conn.email, detail: `profil refusé (${r.status})` })
+      return NextResponse.json({ ok: false, adresseEnvoi: conn.email, raison: `Google refuse (${r.status})`, detail })
+    }
+    const p = (await r.json()) as { emailAddress?: string; messagesTotal?: number; historyId?: string }
+
+    await journaliser({ userId, action: 'LECTURE', adresse: conn.email, detail: 'contrôle du canal (profil)' })
+
+    return NextResponse.json({
+      ok: true,
+      // Ce que GOOGLE dit être l'adresse, à comparer à ce qu'on a enregistré.
+      // Un écart ici signalerait une connexion mal rattachée.
+      adresseSelonGoogle: p.emailAddress ?? null,
+      adresseEnregistree: conn.email,
+      coherent: (p.emailAddress ?? '').toLowerCase() === conn.email.toLowerCase(),
+      // Servira de point de départ à la surveillance des réponses (phase 4).
+      historyId: p.historyId ?? null,
+    })
+  } catch (e) {
+    return NextResponse.json({
+      ok: false,
+      adresseEnvoi: conn.email,
+      raison: `Google injoignable : ${e instanceof Error ? e.message : 'inconnu'}`,
+    })
+  }
+}
+
+const SUJET = 'Atline — test de ta connexion e-mail'
+
+const CORPS = `Bonjour,
+
+Si tu lis ce message, ta boîte Gmail est bien reliée à Atline et Orion peut écrire en ton nom.
+
+Ce message vérifie trois choses d'un coup :
+  • l'envoi passe par l'API Gmail, depuis ton adresse
+  • les accents et les apostrophes arrivent intacts : « Ça t'intéresse ? »
+  • tes prospects verront ton nom et ton adresse, pas ceux d'un logiciel
+
+Tu n'as rien à répondre.
+
+— Atline`
+
+export async function POST() {
+  const session = await getServerSession(authOptions)
+  if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const userId = session.user.id
+
+  const conn = await connexionDe(userId)
+  if (!conn?.email) {
+    return NextResponse.json({ ok: false, raison: 'aucun compte Google connecté' }, { status: 400 })
+  }
+
+  // On passe par le VRAI chemin d'envoi, freins compris. Un test qui
+  // contourne les garde-fous ne teste que la moitié du système.
+  const envoi = await envoyerMail({
+    userId,
+    destinataire: conn.email,
+    sujet: SUJET,
+    corps: CORPS,
+  })
+
+  if (!envoi.ok) {
+    return NextResponse.json({ ok: false, motif: envoi.motif, raison: envoi.message }, { status: 400 })
+  }
+
+  // Un test n'est pas une conversation : on retire le fil pour ne pas laisser
+  // un faux prospect dans les listes. Le journal d'accès, lui, garde la trace
+  // de l'envoi — c'est la version qui doit rester vraie.
+  await db.emailFil.delete({ where: { id: envoi.filId } }).catch(() => {})
+
+  return NextResponse.json({
+    ok: true,
+    adresseEnvoi: envoi.adresseEnvoi,
+    messageId: envoi.messageId,
+    message: `Envoyé à ${envoi.adresseEnvoi}. Regarde ta boîte, et surtout vérifie que « Ça t'intéresse ? » s'affiche correctement.`,
+  })
+}
