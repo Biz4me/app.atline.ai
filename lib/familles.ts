@@ -116,7 +116,7 @@ export const FAMILLES: Famille[] = [
       { icone: MessagesSquare, nom: 'Mes conversations', sous: 'le fil complet', href: '/chats' },
       { icone: Contact, nom: 'Mes contacts', sous: 'ton carnet', href: '/contacts' },
       { icone: Zap, nom: 'Relances du jour', sous: 'à valider une par une' },
-      { icone: Mail, nom: 'Séquences e-mail', sous: 'qui en est où' },
+      { icone: Mail, nom: 'Mon canal e-mail', sous: 'relances et séquences', href: '/orion/email' },
       { icone: Shield, nom: 'Banque d’objections', sous: 'les réponses prêtes' },
       { icone: Briefcase, nom: 'LinkedIn', sous: 'le canal des pros' },
     ],
