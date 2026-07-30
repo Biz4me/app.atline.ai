@@ -299,7 +299,9 @@ export async function poserIssue(filId: string, issue: Issue): Promise<void> {
         icon: 'atlas',
         color: a.couleur,
         text: a.texte(qui),
-        go: fil.contactId ? `/chats/${fil.contactId}` : '/chats',
+        // Vers le fil E-MAIL, pas vers le fil Atlas du contact : c'est le
+        // message dont parle la notification qu'il faut montrer.
+        go: fil.contactId ? `/chats/${fil.contactId}/email` : '/orion/email',
       },
     })
     .catch((e) => console.error('[orion/email] notification non créée', e))
