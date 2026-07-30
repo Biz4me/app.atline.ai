@@ -224,12 +224,46 @@ export async function redigerRelance(filId: string, etape: number): Promise<Reda
   })
 }
 
+/** Ce que le distributeur doit lire, pas ce que la base enregistre. */
+const ANNONCE: Record<Issue, { texte: (qui: string) => string; couleur: string }> = {
+  RDV: { texte: (q) => `${q} veut un rendez-vous. À toi de jouer.`, couleur: '#22C55E' },
+  INSCRIPTION: { texte: (q) => `${q} veut s'inscrire. Accompagne-la maintenant.`, couleur: '#22C55E' },
+  ACHAT: { texte: (q) => `${q} veut acheter. Envoie-lui ton lien boutique.`, couleur: '#22C55E' },
+  REFUS: { texte: (q) => `${q} a dit non. Orion s'arrête là.`, couleur: '#EF4444' },
+  HANDOFF: { texte: (q) => `${q} attend une réponse humaine. Orion passe la main.`, couleur: '#F4B342' },
+}
+
 /**
- * Pose l'issue sur le fil et arrête tout ce qui restait programmé.
- * Séparé de la rédaction : c'est une décision sur la conversation, pas du texte.
+ * Pose l'issue sur le fil, arrête tout ce qui restait programmé, ET PRÉVIENT
+ * LE DISTRIBUTEUR.
+ *
+ * ⚠️ Cette notification n'est pas un confort. Orion écrit au prospect « je
+ * transmets ça tout de suite » : sans elle, le produit fait une promesse qu'il
+ * ne tient pas, une personne attend d'être rappelée, et personne ne le sait.
+ * Constaté en vrai le 30 juillet 2026 sur une conversation qui a abouti à un
+ * rendez-vous que rien ne signalait.
  */
 export async function poserIssue(filId: string, issue: Issue): Promise<void> {
   const { arreterSequence } = await import('@/lib/gmail/sequence')
-  await db.emailFil.update({ where: { id: filId }, data: { issue } })
+
+  const fil = await db.emailFil.update({ where: { id: filId }, data: { issue } })
   await arreterSequence(filId, `issue atteinte (${issue})`)
+
+  const contact = fil.contactId
+    ? await db.contact.findUnique({ where: { id: fil.contactId }, select: { name: true, firstName: true } })
+    : null
+  const qui = contact?.firstName || contact?.name || fil.destinataire
+
+  const a = ANNONCE[issue]
+  await db.notification
+    .create({
+      data: {
+        userId: fil.userId,
+        icon: 'atlas',
+        color: a.couleur,
+        text: a.texte(qui),
+        go: fil.contactId ? `/chats/${fil.contactId}` : '/chats',
+      },
+    })
+    .catch((e) => console.error('[orion/email] notification non créée', e))
 }
