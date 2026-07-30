@@ -2129,18 +2129,36 @@ model AudioAsset {
 }
 
 // Relance programmée (« Atlas n'oublie pas ») — déclenchée par n8n à dueAt
+// Une relance à faire. Sert depuis toujours aux rappels ponctuels (plan du
+// jour, message du matin, actions d'Atlas) ; porte aussi, depuis le 30 juillet
+// 2026, les étapes d'une séquence e-mail. Volontairement UNE seule table : le
+// distributeur ne veut pas deux listes de choses à faire.
 model Relance {
   id        String    @id @default(cuid())
   userId    String
   contactId String
   channel   String    @default("email") // whatsapp | sms | email
   dueAt     DateTime
-  status    String    @default("PENDING") // PENDING | SENT | CANCELLED
+  // PENDING (programmée, puis à valider une fois l'échéance passée)
+  // VALIDATED (le distributeur a dit oui, en file d'envoi — le plafond
+  //            quotidien et l'espacement peuvent la faire patienter)
+  // SENT | CANCELLED
+  status    String    @default("PENDING")
   message   String?
   createdAt DateTime  @default(now())
   sentAt    DateTime?
 
+  // ── séquence e-mail ────────────────────────────────────────────────────
+  // Rang dans la séquence (1 à 4). Nul pour une relance ponctuelle.
+  etape      Int?
+  emailFilId String?
+  // Pourquoi la séquence s'est arrêtée : « le prospect a répondu »,
+  // « rendez-vous pris »… Sert à l'expliquer, pas seulement à l'enregistrer.
+  raisonFin  String?
+
   @@index([status, dueAt])
+  @@index([userId, status, dueAt])
+  @@index([emailFilId])
 }
 
 // ── Société MLM : fiche partagée, faite 1× par (marque, pays), dont héritent les
