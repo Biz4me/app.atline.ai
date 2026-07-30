@@ -77,8 +77,19 @@ export async function programmerProchaine(filId: string): Promise<number | null>
   })
   if (dejaEnAttente > 0) return null
 
+  // On ne compte QUE les relances envoyées depuis la dernière fois que le
+  // prospect a parlé. Le compteur qui a du sens n'est pas « combien de fois
+  // lui a-t-on écrit », c'est « combien de messages sont restés sans réponse
+  // d'affilée ». Quelqu'un qui vient de répondre puis se tait n'est pas dans
+  // la même situation qu'un inconnu silencieux depuis deux semaines : sa
+  // séquence repart donc à l'étape 1, avec un jour d'écart, pas à l'étape 3
+  // avec cinq.
   const dejaFaites = await db.relance.count({
-    where: { emailFilId: filId, status: 'SENT' },
+    where: {
+      emailFilId: filId,
+      status: 'SENT',
+      ...(fil.dernierRecuAt ? { createdAt: { gt: fil.dernierRecuAt } } : {}),
+    },
   })
   if (dejaFaites >= NB_ETAPES) return null
 
