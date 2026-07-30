@@ -37,6 +37,7 @@
 import { db } from '@/lib/db'
 import { connexionDe, jetonFrais, journaliser } from '@/lib/google/connexion'
 import { arreterSequence } from '@/lib/gmail/sequence'
+import { sansCitation } from '@/lib/gmail/message'
 
 const API = 'https://gmail.googleapis.com/gmail/v1/users/me'
 const MAX_FILS_PAR_PASSAGE = 20
@@ -89,23 +90,6 @@ function texteDe(partie?: Partie): string {
       .replace(/&#39;/g, "'")
   }
   return decoder(partie.body?.data)
-}
-
-/**
- * Retire la citation du message précédent. Sans ça, chaque réponse traînerait
- * tout l'historique derrière elle et le cerveau relirait dix fois la même chose.
- */
-function sansCitation(texte: string): string {
-  const lignes = texte.split('\n')
-  const coupe = lignes.findIndex(
-    (l) =>
-      /^\s*>/.test(l) ||
-      /^Le .+ a écrit\s*:/.test(l) ||
-      /^On .+ wrote\s*:/.test(l) ||
-      /^-{2,}\s*Message d'origine/i.test(l) ||
-      /^_{5,}/.test(l),
-  )
-  return (coupe > 0 ? lignes.slice(0, coupe) : lignes).join('\n').trim()
 }
 
 async function appeler(jeton: string, chemin: string) {

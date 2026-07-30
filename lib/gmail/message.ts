@@ -46,6 +46,42 @@ export function construireMessage(m: {
   return `${lignes.join('\r\n')}\r\n\r\n${corps}`
 }
 
+/**
+ * Retire la citation du message précédent.
+ *
+ * Sans ça, chaque réponse traîne tout l'historique derrière elle : le cerveau
+ * relit dix fois la même chose, et finit par répondre à nos propres phrases
+ * comme si le prospect les avait écrites.
+ *
+ * ⚠️ Le piège, constaté sur une vraie réponse le 30 juillet 2026 : Gmail
+ * replie ses lignes à 76 caractères, donc « Le jeu. 30 juil. 2026 à 15:25,
+ * Patrice Haure <…> a écrit : » arrive coupé en deux. Une détection ligne à
+ * ligne rate le motif. Les marqueurs ci-dessous tolèrent donc un repli.
+ */
+export function sansCitation(texte: string): string {
+  // Les fins de ligne Windows d'abord : sinon chaque ligne finit par un \r
+  // invisible qui fait échouer les motifs les plus simples.
+  const t = texte.replace(/\r\n/g, '\n').replace(/\r/g, '')
+
+  const marqueurs = [
+    /^>/m, // citation classique
+    /^Le\s[\s\S]{0,200}?a\s*écrit\s*:/m, // Gmail français, même replié
+    /^On\s[\s\S]{0,200}?wrote\s*:/m, // Gmail anglais
+    /^-{2,}\s*Message d'origine/im,
+    /^-{2,}\s*Original Message/im,
+    /^De\s*:\s.+\nEnvoyé\s*:/im, // en-têtes recopiés par Outlook
+    /^_{5,}/m,
+  ]
+
+  let coupe = -1
+  for (const m of marqueurs) {
+    const i = t.search(m)
+    if (i > 0 && (coupe === -1 || i < coupe)) coupe = i
+  }
+
+  return (coupe === -1 ? t : t.slice(0, coupe)).trim()
+}
+
 /** Base64 « URL-safe » : ce que l'API Gmail attend dans `raw`. */
 export function base64url(s: string): string {
   return Buffer.from(s, 'utf8')
