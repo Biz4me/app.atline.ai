@@ -748,6 +748,48 @@ enum GoogleAccesAction {
   ERREUR
 }
 
+// UN FIL E-MAIL AVEC UN PROSPECT — et la boîte qui l'a ouvert.
+//
+// `adresseEnvoi` est figée à la création et n'est jamais réécrite. Si le
+// distributeur change de compte Google, ce fil-là garde son expéditeur
+// d'origine ou s'arrête : une conversation commencée depuis une adresse et
+// poursuivie depuis une autre casse le fil chez le prospect, qui se demande
+// qui lui écrit. Mieux vaut un silence qu'une identité qui glisse.
+//
+// `echanges` compte les allers-retours pour la bascule forcée vers l'humain,
+// et `humainRepris` fige tout dès que le distributeur a écrit lui-même :
+// la règle « on n'écrit jamais après un humain », déjà appliquée à Chatwoot.
+model EmailFil {
+  id               String      @id @default(cuid())
+  userId           String
+  contactId        String?
+  adresseEnvoi     String
+  destinataire     String
+  sujet            String
+  gmailThreadId    String?
+  // Message-ID du dernier message du prospect : sans lui, notre réponse
+  // ouvre un nouveau fil dans SA boîte au lieu de se rattacher au bon.
+  dernierMessageId String?
+  echanges         Int         @default(0)
+  issue            EmailIssue?
+  humainRepris     Boolean     @default(false)
+  dernierEnvoiAt   DateTime?
+  createdAt        DateTime    @default(now())
+  updatedAt        DateTime    @updatedAt
+
+  @@index([userId, updatedAt])
+  @@index([gmailThreadId])
+  @@index([userId, destinataire])
+}
+
+enum EmailIssue {
+  RDV
+  INSCRIPTION
+  ACHAT
+  REFUS
+  HANDOFF
+}
+
 enum AppointmentType {
   CALL
   VISIO
