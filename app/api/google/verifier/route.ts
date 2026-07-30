@@ -39,8 +39,13 @@ export async function GET(req: Request) {
   // finit par apprendre à l'utilisateur à désactiver un garde-fou pour un test.
   // Le paramètre est explicite, la route exige une session, et l'e-mail ne part
   // qu'à sa propre adresse : le risque est nul, la friction disparaît.
-  if (new URL(req.url).searchParams.get('envoyer') === 'oui') {
-    return envoyerLeTest(userId)
+  const params = new URL(req.url).searchParams
+  if (params.get('envoyer') === 'oui') {
+    // `a=` envoie à une AUTRE adresse et conserve le fil. C'est la seule façon
+    // d'éprouver la réception : sans fil ouvert, une réponse n'aurait rien à
+    // quoi se rattacher et serait ignorée — correctement, mais sans rien
+    // prouver.
+    return envoyerLeTest(userId, params.get('a') ?? undefined)
   }
 
   const conn = await connexionDe(userId)
@@ -107,34 +112,48 @@ export async function POST() {
   return envoyerLeTest(session.user.id)
 }
 
-async function envoyerLeTest(userId: string) {
+async function envoyerLeTest(userId: string, autreAdresse?: string) {
   const conn = await connexionDe(userId)
   if (!conn?.email) {
     return NextResponse.json({ ok: false, raison: 'aucun compte Google connecté' }, { status: 400 })
   }
 
+  const destinataire = (autreAdresse ?? conn.email).trim()
+  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(destinataire)) {
+    return NextResponse.json({ ok: false, raison: 'adresse destinataire invalide' }, { status: 400 })
+  }
+  const versSoiMeme = destinataire.toLowerCase() === conn.email.toLowerCase()
+
   // On passe par le VRAI chemin d'envoi, freins compris. Un test qui
   // contourne les garde-fous ne teste que la moitié du système.
   const envoi = await envoyerMail({
     userId,
-    destinataire: conn.email,
+    destinataire,
     sujet: SUJET,
-    corps: CORPS,
+    corps: versSoiMeme ? CORPS : `${CORPS}\n\nPS : réponds à ce message, c'est le test de la réception.`,
   })
 
   if (!envoi.ok) {
     return NextResponse.json({ ok: false, motif: envoi.motif, raison: envoi.message }, { status: 400 })
   }
 
-  // Un test n'est pas une conversation : on retire le fil pour ne pas laisser
-  // un faux prospect dans les listes. Le journal d'accès, lui, garde la trace
-  // de l'envoi — c'est la version qui doit rester vraie.
-  await db.emailFil.delete({ where: { id: envoi.filId } }).catch(() => {})
+  // Envoi à soi-même : un test n'est pas une conversation, on retire le fil
+  // pour ne pas laisser un faux prospect dans les listes. Le journal d'accès,
+  // lui, garde la trace de l'envoi — c'est la version qui doit rester vraie.
+  //
+  // Envoi à une autre adresse : on GARDE le fil, c'est justement lui qui rend
+  // la réception éprouvable. La réponse aura un fil auquel se rattacher.
+  if (versSoiMeme) await db.emailFil.delete({ where: { id: envoi.filId } }).catch(() => {})
 
   return NextResponse.json({
     ok: true,
     adresseEnvoi: envoi.adresseEnvoi,
+    destinataire,
     messageId: envoi.messageId,
-    message: `Envoyé à ${envoi.adresseEnvoi}. Regarde ta boîte, et surtout vérifie que « Ça t'intéresse ? » s'affiche correctement.`,
+    threadId: envoi.threadId,
+    filConserve: !versSoiMeme,
+    message: versSoiMeme
+      ? `Envoyé à ${destinataire}. Vérifie surtout que « Ça t'intéresse ? » s'affiche correctement.`
+      : `Envoyé à ${destinataire}, et le fil est conservé. Réponds depuis cette adresse : la réponse doit remonter dans Atline.`,
   })
 }
