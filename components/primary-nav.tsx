@@ -1,38 +1,68 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
-import { Home, LayoutGrid, UsersRound, Calendar, User, Check, type LucideIcon } from 'lucide-react'
+import { usePathname, useRouter } from 'next/navigation'
+import { User, Check } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useBusiness } from '@/components/business-provider'
+import { FAMILLES, TERRITOIRE_COMPTE, familleDe, type Famille } from '@/lib/familles'
 import type { Business } from '@/lib/types'
 
-// ═══ NAV PRIMAIRE — LE composant unique (refonte nav, tranche 1) ═══
-// UNE seule source de destinations → rendue en RAIL vertical fin (desktop, ~76px, tout à gauche)
-// ET en BOTTOM BAR (mobile). Mêmes données, même composant : zéro logique dupliquée.
-// « Mon compte » = pied du rail (desktop) ; sur mobile il vit sous l'avatar (hors de cette barre).
-// Règle : la barre s'efface dans un fil (géré par le shell, pas ici).
+// ═══ NAV PRIMAIRE — LES CINQ FAMILLES ═══
+//
+// UNE source de destinations (lib/familles.ts) rendue en RAIL vertical fin
+// (desktop, 76 px) ET en BOTTOM BAR (mobile). Mêmes données, même composant.
+//
+// ── LA PILE PAR ONGLET ─────────────────────────────────────────────────────
+//
+// C'est ce qui règle la plainte d'origine, « il faut cliquer des tas de fois
+// retour ». On mémorise le dernier écran visité dans chaque famille : quitter
+// Orion au milieu d'une conversation puis y revenir, c'est y revenir vraiment,
+// pas repartir de sa racine.
+//
+// Et l'inverse est vrai aussi : appuyer sur l'onglet DÉJÀ actif ramène à la
+// racine. L'accueil d'une famille est toujours à un doigt.
+//
+// La mémoire vit dans sessionStorage : elle doit survivre à une navigation,
+// pas à une journée. Un onglet retrouvé trois jours plus tard au milieu d'une
+// vieille conversation serait déroutant, pas pratique.
 
-type NavItem = { key: string; label: string; href: string; icon: LucideIcon; match: string[] }
+const CLE_PILES = 'atline.piles'
 
-// Config déclarative — l'ordre ici = l'ordre à l'écran (rail de haut en bas / bar de gauche à droite).
-const NAV: NavItem[] = [
-  { key: 'accueil', label: 'Accueil', href: '/home', icon: Home, match: ['/home', '/atlas'] },
-  { key: 'espaces', label: 'Espaces', href: '/chats', icon: LayoutGrid, match: ['/chats', '/contacts'] },
-  { key: 'communaute', label: 'Communauté', href: '/communaute', icon: UsersRound, match: ['/communaute'] },
-  { key: 'agenda', label: 'Agenda', href: '/agenda', icon: Calendar, match: ['/agenda'] },
-]
+type Piles = Partial<Record<Famille['cle'], string>>
 
-// « Mon compte » regroupe tout le méta (profil, activité, abonnement, réglages).
-const ACCOUNT_MATCH = ['/compte', '/profile', '/settings', '/abonnement', '/mon-abonnement', '/activities']
+function lirePiles(): Piles {
+  try {
+    return JSON.parse(sessionStorage.getItem(CLE_PILES) || '{}') as Piles
+  } catch {
+    return {}
+  }
+}
 
-// `immersive` : dans un fil ou une page plein écran, la bottom bar mobile s'efface
-// (le composeur + le retour règnent). Le rail desktop, lui, reste toujours visible.
 export function PrimaryNav({ immersive = false }: { immersive?: boolean }) {
   const pathname = usePathname()
-  const hits = (m: string[]) => m.some((p) => pathname === p || pathname.startsWith(p + '/'))
-  const accountActive = hits(ACCOUNT_MATCH)
+  const router = useRouter()
+  const [piles, setPiles] = useState<Piles>({})
+
+  const active = familleDe(pathname)
+  const compteActif = TERRITOIRE_COMPTE.some((p) => pathname === p || pathname.startsWith(p + '/'))
+
+  // On enregistre la position courante dans sa famille, à chaque déplacement.
+  useEffect(() => {
+    const f = familleDe(pathname)
+    if (!f) return
+    const maj = { ...lirePiles(), [f.cle]: pathname }
+    sessionStorage.setItem(CLE_PILES, JSON.stringify(maj))
+    setPiles(maj)
+  }, [pathname])
+
+  const aller = (f: Famille) => (e: React.MouseEvent) => {
+    e.preventDefault()
+    // Onglet déjà actif → retour à la racine. Sinon → là où on l'avait laissé.
+    const cible = active?.cle === f.cle ? f.racine : piles[f.cle] || f.racine
+    router.push(cible)
+  }
 
   return (
     <>
@@ -40,38 +70,33 @@ export function PrimaryNav({ immersive = false }: { immersive?: boolean }) {
       <aside className="hidden lg:flex fixed left-0 top-0 z-40 h-dvh w-[76px] flex-col items-center border-r border-border bg-background py-3">
         <RailSwitcher />
         <nav className="flex w-full flex-1 flex-col items-center gap-0.5 pt-1">
-          {NAV.map((it) => (
-            <RailItem key={it.key} item={it} active={hits(it.match)} />
+          {FAMILLES.map((f) => (
+            <Onglet key={f.cle} famille={f} actif={active?.cle === f.cle} onClick={aller(f)} rail />
           ))}
         </nav>
-        <Link
-          href="/compte"
-          aria-label="Mon compte"
-          className="flex w-full flex-col items-center gap-1 pt-1 text-2xs"
-        >
+        <Link href="/compte" aria-label="Mon compte" className="flex w-full flex-col items-center gap-1 pt-1 text-2xs">
           <span
             className={cn(
               'grid size-8 place-items-center rounded-full border transition-colors',
-              accountActive ? 'border-primary text-primary' : 'border-border text-muted-foreground',
+              compteActif ? 'border-primary text-primary' : 'border-border text-muted-foreground',
             )}
           >
             <User className="size-4 stroke-[1.75]" />
           </span>
-          <span className={cn('leading-none', accountActive ? 'font-semibold text-primary' : 'text-muted-foreground')}>
+          <span className={cn('leading-none', compteActif ? 'font-semibold text-primary' : 'text-muted-foreground')}>
             Compte
           </span>
         </Link>
       </aside>
 
-      {/* MOBILE — bottom bar (mêmes destinations). Le compte est sous l'avatar, pas ici.
-          Masquée sur un fil / page immersive. */}
+      {/* MOBILE — bottom bar. Masquée dans un fil / une page immersive. */}
       {!immersive && (
         <nav
           className="lg:hidden fixed inset-x-0 bottom-0 z-[47] flex border-t border-border bg-surface/95 backdrop-blur-md"
           style={{ height: 'calc(62px + env(safe-area-inset-bottom))', paddingBottom: 'env(safe-area-inset-bottom)' }}
         >
-          {NAV.map((it) => (
-            <BarItem key={it.key} item={it} active={hits(it.match)} />
+          {FAMILLES.map((f) => (
+            <Onglet key={f.cle} famille={f} actif={active?.cle === f.cle} onClick={aller(f)} />
           ))}
         </nav>
       )}
@@ -79,45 +104,66 @@ export function PrimaryNav({ immersive = false }: { immersive?: boolean }) {
   )
 }
 
-// Item du rail desktop : pastille arrondie teintée quand actif (charte du composeur), label micro dessous.
-function RailItem({ item, active }: { item: NavItem; active: boolean }) {
-  const Icon = item.icon
-  return (
-    <Link href={item.href} aria-label={item.label} className="flex w-full flex-col items-center gap-1 py-1.5 text-2xs">
-      <span
-        className={cn(
-          'flex h-8 w-12 items-center justify-center rounded-[11px] transition-colors',
-          active ? 'bg-primary/10 text-primary' : 'text-muted-foreground',
-        )}
-      >
-        <Icon className="size-[22px] stroke-[1.75]" />
-      </span>
-      <span className={cn('leading-none', active ? 'font-semibold text-primary' : 'text-muted-foreground')}>
-        {item.label}
-      </span>
-    </Link>
-  )
-}
+/**
+ * Un onglet. Le verbe plutôt que le nom de l'agent : le distributeur cherche
+ * ce qu'il veut FAIRE, pas qui va le faire. Le nom de l'agent l'accueille
+ * ensuite, sur la racine de la famille.
+ */
+function Onglet({
+  famille, actif, onClick, rail = false,
+}: { famille: Famille; actif: boolean; onClick: (e: React.MouseEvent) => void; rail?: boolean }) {
+  const Icone = famille.icone
+  const teinte = actif ? famille.couleur : undefined
 
-// Item de la bottom bar mobile : icône + label, actif en orange.
-function BarItem({ item, active }: { item: NavItem; active: boolean }) {
-  const Icon = item.icon
+  if (rail) {
+    return (
+      <a
+        href={famille.racine}
+        onClick={onClick}
+        aria-label={`${famille.verbe} — ${famille.agent}`}
+        aria-current={actif ? 'page' : undefined}
+        className="flex w-full flex-col items-center gap-1 py-1.5 text-2xs"
+      >
+        <span
+          className="flex h-8 w-12 items-center justify-center rounded-[11px] transition-colors"
+          style={actif ? { background: `${famille.couleur}1A`, color: teinte } : undefined}
+        >
+          <Icone className={cn('size-[22px] stroke-[1.75]', !actif && 'text-muted-foreground')} />
+        </span>
+        <span
+          className={cn('leading-none', actif ? 'font-semibold' : 'text-muted-foreground')}
+          style={actif ? { color: teinte } : undefined}
+        >
+          {famille.verbe}
+        </span>
+      </a>
+    )
+  }
+
   return (
-    <Link
-      href={item.href}
-      aria-label={item.label}
+    <a
+      href={famille.racine}
+      onClick={onClick}
+      aria-label={`${famille.verbe} — ${famille.agent}`}
+      aria-current={actif ? 'page' : undefined}
       className="flex flex-1 flex-col items-center justify-center gap-1 text-2xs"
     >
-      <Icon className={cn('size-[23px] stroke-[1.75]', active ? 'text-primary' : 'text-muted-foreground')} />
-      <span className={cn('leading-none', active ? 'font-semibold text-primary' : 'text-muted-foreground')}>
-        {item.label}
+      <Icone
+        className={cn('size-[23px] stroke-[1.75]', !actif && 'text-muted-foreground')}
+        style={actif ? { color: teinte } : undefined}
+      />
+      <span
+        className={cn('leading-none', actif ? 'font-semibold' : 'text-muted-foreground')}
+        style={actif ? { color: teinte } : undefined}
+      >
+        {famille.verbe}
       </span>
-    </Link>
+    </a>
   )
 }
 
-// Switcher MLM au sommet du rail (desktop) : avatar de l'activité active + popover pour changer.
-// Sur mobile, le switcher vit dans /compte (sous l'avatar), pas ici.
+// Switcher MLM au sommet du rail (desktop) : avatar de l'activité active + popover.
+// Sur mobile, le switcher vit dans /compte, pas ici.
 function RailSwitcher() {
   const { current, all, setCurrent } = useBusiness()
   const [open, setOpen] = useState(false)
