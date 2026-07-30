@@ -27,10 +27,21 @@ export const dynamic = 'force-dynamic'
 
 const PROFIL = 'https://gmail.googleapis.com/gmail/v1/users/me/profile'
 
-export async function GET() {
+export async function GET(req: Request) {
   const session = await getServerSession(authOptions)
   if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   const userId = session.user.id
+
+  // Déclencher un envoi depuis un GET n'est pas orthodoxe, et c'est assumé :
+  // tant que le bouton de la phase 7 n'existe pas, la seule alternative est de
+  // faire taper un fetch dans la console du navigateur. Firefox y bloque le
+  // collage — à juste titre, c'est le vecteur d'arnaque le plus courant — et on
+  // finit par apprendre à l'utilisateur à désactiver un garde-fou pour un test.
+  // Le paramètre est explicite, la route exige une session, et l'e-mail ne part
+  // qu'à sa propre adresse : le risque est nul, la friction disparaît.
+  if (new URL(req.url).searchParams.get('envoyer') === 'oui') {
+    return envoyerLeTest(userId)
+  }
 
   const conn = await connexionDe(userId)
   if (!conn?.email) {
@@ -93,8 +104,10 @@ Tu n'as rien à répondre.
 export async function POST() {
   const session = await getServerSession(authOptions)
   if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  const userId = session.user.id
+  return envoyerLeTest(session.user.id)
+}
 
+async function envoyerLeTest(userId: string) {
   const conn = await connexionDe(userId)
   if (!conn?.email) {
     return NextResponse.json({ ok: false, raison: 'aucun compte Google connecté' }, { status: 400 })
