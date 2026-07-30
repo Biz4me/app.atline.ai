@@ -100,6 +100,50 @@ async function appeler(jeton: string, chemin: string) {
   return { ok: r.ok, statut: r.status, corps: r.ok ? await r.json() : null }
 }
 
+/**
+ * L'historique d'un fil, tel que le cerveau doit le voir.
+ *
+ * On relit le fil chez Gmail plutôt que de reconstituer la conversation à
+ * partir de nos propres traces : c'est la seule version complète et exacte,
+ * elle inclut ce que le distributeur a pu écrire lui-même depuis son
+ * téléphone, et elle évite une table de messages de plus.
+ *
+ * Toujours borné : c'est NOTRE fil, celui qu'Atline a ouvert.
+ */
+export async function historiqueDuFil(
+  userId: string,
+  gmailThreadId: string,
+  maxMessages = 12,
+): Promise<{ role: 'user' | 'assistant'; content: string }[]> {
+  const conn = await connexionDe(userId)
+  const jeton = conn?.email ? await jetonFrais(userId) : null
+  if (!jeton || !conn?.email) return []
+
+  const t = await appeler(jeton, `/threads/${gmailThreadId}?format=full`)
+  if (!t.ok) return []
+
+  const moi = conn.email.toLowerCase()
+  const messages = ((t.corps as { messages?: MessageGmail[] })?.messages ?? []).filter(Boolean)
+
+  await journaliser({
+    userId,
+    action: 'LECTURE',
+    adresse: conn.email,
+    ressource: gmailThreadId,
+    detail: 'relecture du fil pour rédiger',
+  })
+
+  return messages
+    .slice(-maxMessages)
+    .map((m) => ({
+      // « assistant », c'est nous : ce qui est parti de l'adresse du
+      // distributeur, qu'Orion l'ait écrit ou lui-même.
+      role: entete(m, 'From').toLowerCase().includes(moi) ? ('assistant' as const) : ('user' as const),
+      content: sansCitation(texteDe(m.payload)).slice(0, 2000),
+    }))
+    .filter((m) => m.content)
+}
+
 export type Traitement = {
   ok: boolean
   filsTouches: number
