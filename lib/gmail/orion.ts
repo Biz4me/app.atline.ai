@@ -40,17 +40,69 @@ export type Redaction = {
   marqueurs: string[]
 }
 
+/**
+ * Décoder ce que renvoie le service.
+ *
+ * ⚠️ Corrigé le 30 juillet 2026, après qu'un vrai destinataire a reçu un bloc
+ * JSON en guise de message. Le service ne répond PAS en texte : il renvoie
+ * `{"text": "...", "rdv": false, "inscription": false, "achat": false}`, et
+ * les issues sont donc des booléens, pas les marqueurs `[[RDV]]` que
+ * j'attendais — mon extraction ne pouvait jamais se déclencher.
+ *
+ * On lit les deux formes : le JSON d'abord, le texte nu ensuite. Le jour où le
+ * service changera de contrat, on ne renverra plus sa structure interne à un
+ * prospect.
+ */
 function extraire(brut: string): Redaction {
-  const marqueurs = brut.match(MARQUEURS) ?? []
-  const texte = brut.replace(MARQUEURS, '').replace(/\n{3,}/g, '\n\n').trim()
+  let corps = brut
+  const trouvees: Issue[] = []
 
-  // Une conversation n'a qu'une issue. Si le modèle en signale plusieurs, on
-  // retient la plus engageante : un achat prime sur un rendez-vous.
+  try {
+    const j = JSON.parse(brut) as {
+      text?: string
+      rdv?: boolean
+      inscription?: boolean
+      achat?: boolean
+      refus?: boolean
+      handoff?: boolean
+    }
+    if (j && typeof j.text === 'string') {
+      corps = j.text
+      if (j.achat) trouvees.push('ACHAT')
+      if (j.inscription) trouvees.push('INSCRIPTION')
+      if (j.rdv) trouvees.push('RDV')
+      if (j.refus) trouvees.push('REFUS')
+      if (j.handoff) trouvees.push('HANDOFF')
+    }
+  } catch {
+    // Réponse en texte nu : c'est l'autre forme possible, elle reste valide.
+  }
+
+  // Les marqueurs textuels restent lus au cas où : ils ne doivent en aucun cas
+  // partir chez le prospect.
+  const marqueurs = corps.match(MARQUEURS) ?? []
+  for (const m of marqueurs) {
+    const i = m.replace(/[[\]]/g, '') as Issue
+    if (!trouvees.includes(i)) trouvees.push(i)
+  }
+  const texte = corps.replace(MARQUEURS, '').replace(/\n{3,}/g, '\n\n').trim()
+
+  // Une conversation n'a qu'une issue. Si plusieurs sont signalées, on retient
+  // la plus engageante : un achat prime sur un rendez-vous.
   const ordre: Issue[] = ['ACHAT', 'INSCRIPTION', 'RDV', 'REFUS', 'HANDOFF']
-  const trouvees = marqueurs.map((m) => m.replace(/[[\]]/g, '') as Issue)
   const issue = ordre.find((i) => trouvees.includes(i)) ?? null
 
-  return { texte, issue, marqueurs }
+  return { texte, issue, marqueurs: trouvees }
+}
+
+/**
+ * Garde-fou de dernier recours : on n'envoie JAMAIS quelque chose qui
+ * ressemble à une structure de données. Si le contrat du service change encore,
+ * la conversation s'arrête au lieu d'écrire n'importe quoi à un prospect.
+ */
+function ressembleADuJson(texte: string): boolean {
+  const t = texte.trim()
+  return (t.startsWith('{') && t.endsWith('}')) || (t.startsWith('[') && t.endsWith(']'))
 }
 
 async function contexte(userId: string) {
@@ -90,7 +142,16 @@ async function demander(args: {
     const brut = (await r.text()).trim()
     if (!brut) return null
     const red = extraire(brut)
-    return red.texte ? red : null
+    if (!red.texte) return null
+
+    // Si ça ressemble encore à une structure de données, on refuse d'envoyer.
+    // Une conversation qui s'arrête est réparable ; un prospect qui reçoit du
+    // JSON ne l'est pas.
+    if (ressembleADuJson(red.texte)) {
+      console.error('[orion/email] réponse non exploitable, envoi refusé :', red.texte.slice(0, 120))
+      return null
+    }
+    return red
   } catch (e) {
     console.error('[orion/email] service injoignable', e)
     return null
