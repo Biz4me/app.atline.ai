@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { PageShell } from '@/components/page-shell'
+import { Ecran } from '@/components/ecran'
 import type { Famille } from '@/lib/familles'
 
 /**
@@ -23,7 +23,7 @@ export function FamilleAccueil({ famille }: { famille: Famille }) {
   const prets = famille.outils.filter((o) => o.href).length
 
   return (
-    <PageShell title={famille.verbe}>
+    <Ecran titre={famille.verbe}>
       <div className="mx-auto w-full max-w-2xl pb-6">
         {/* L'agent se présente ici, pas dans l'onglet : la barre porte le VERBE,
             parce qu'on cherche ce qu'on veut faire avant de savoir qui le fait. */}
@@ -82,6 +82,6 @@ export function FamilleAccueil({ famille }: { famille: Famille }) {
           })}
         </div>
       </div>
-    </PageShell>
+    </Ecran>
   )
 }

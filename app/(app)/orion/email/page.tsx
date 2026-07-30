@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
 import { Mail, ShieldCheck, ShieldAlert, Send, Check, X, Clock, MoonStar } from 'lucide-react'
-import { PageShell } from '@/components/page-shell'
+import { Ecran } from '@/components/ecran'
 import { cn } from '@/lib/utils'
 
 /**
@@ -97,7 +97,7 @@ export default function Page() {
   }
 
   return (
-    <PageShell title="Mon canal e-mail">
+    <Ecran titre="Mon canal e-mail">
       <div className="mx-auto w-full max-w-2xl space-y-3 pb-8">
         {chargement && <p className="py-8 text-center text-sm text-muted-foreground">Un instant…</p>}
 
@@ -110,7 +110,7 @@ export default function Page() {
           </>
         )}
       </div>
-    </PageShell>
+    </Ecran>
   )
 }
 
