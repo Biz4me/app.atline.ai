@@ -2,10 +2,26 @@ import { NextResponse } from 'next/server'
 import { cookies } from 'next/headers'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-import { exchangeCode } from '@/lib/google-calendar'
+import { db } from '@/lib/db'
+import { echangerCode, adresseDuCompte, estCapacite, type Capacite } from '@/lib/google/oauth'
 import { enregistrerConnexion, journaliser } from '@/lib/google/connexion'
 
 const BASE = process.env.NEXTAUTH_URL || 'https://app.atline.ai'
+
+/**
+ * Retour de Google. Sert l'agenda ET la boîte mail : l'URL garde son nom
+ * historique parce que c'est cette chaîne exacte qui est déclarée dans la
+ * Google Cloud Console.
+ *
+ * Le point sensible de cette route tient en une ligne : l'adresse vient de
+ * `adresseDuCompte()`, c'est-à-dire de ce que Google confirme. Jamais de
+ * `User.email`. Le distributeur a pu délibérément choisir un autre compte, et
+ * c'est cette adresse-là que ses prospects verront.
+ */
+function retour(capacite: Capacite, params: Record<string, string>) {
+  const page = capacite === 'email' ? '/settings' : '/agenda'
+  return `${BASE}${page}?${new URLSearchParams(params).toString()}`
+}
 
 export async function GET(req: Request) {
   const session = await getServerSession(authOptions)
@@ -14,51 +30,59 @@ export async function GET(req: Request) {
   const { searchParams } = new URL(req.url)
   const code = searchParams.get('code')
   const state = searchParams.get('state')
-  const error = searchParams.get('error')
+  const erreur = searchParams.get('error')
 
-  const jar = await cookies()
-  const expected = jar.get('cal_oauth_state')?.value
+  const [alea, capaciteBrute] = (state ?? '').split('.')
+  const capacite: Capacite = estCapacite(capaciteBrute) ? capaciteBrute : 'agenda'
+  const cle = capacite === 'email' ? 'email' : 'cal'
 
-  if (error || !code || !state || !expected || state !== expected) {
-    return NextResponse.redirect(`${BASE}/agenda?cal=err`)
+  const attendu = (await cookies()).get('cal_oauth_state')?.value
+  if (erreur || !code || !alea || !attendu || alea !== attendu) {
+    // Refus de l'utilisateur ou état falsifié : les deux se soldent par un
+    // retour silencieux, sans jamais enregistrer quoi que ce soit.
+    return NextResponse.redirect(retour(capacite, { [cle]: 'err' }))
   }
 
   try {
-    const tok = await exchangeCode(code)
+    const tok = await echangerCode(code)
+    const adresse = await adresseDuCompte(tok.access_token)
 
-    // L'adresse vient de Google, JAMAIS de User.email : c'est elle que les
-    // prospects verront, et le distributeur a pu choisir un autre compte que
-    // celui de son inscription. Si on ne l'obtient pas, on le trace plutôt que
-    // de laisser une connexion anonyme s'installer en silence.
-    let email: string | null = null
-    try {
-      const ui = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
-        headers: { Authorization: `Bearer ${tok.access_token}` },
-      })
-      if (ui.ok) email = (await ui.json())?.email ?? null
-    } catch { /* traité juste en dessous */ }
-
-    if (!email) {
+    if (!adresse) {
+      // Une connexion sans adresse identifiée serait une connexion dont on ne
+      // sait pas ce qu'elle enverra, ni au nom de qui. On refuse.
       await journaliser({
         userId: session.user.id,
         action: 'ERREUR',
-        detail: 'adresse du compte Google non obtenue à la connexion',
+        detail: 'adresse du compte Google non obtenue : connexion refusée',
       })
+      return NextResponse.redirect(retour(capacite, { [cle]: 'sans-adresse' }))
     }
 
     await enregistrerConnexion({
       userId: session.user.id,
-      email,
+      email: adresse,
       accessToken: tok.access_token,
       refreshToken: tok.refresh_token ?? null,
       expiresIn: tok.expires_in,
       scope: tok.scope ?? null,
     })
 
-    const res = NextResponse.redirect(`${BASE}/agenda?cal=ok`)
+    // Le compte Google choisi n'est pas celui de l'inscription ? C'est
+    // légitime (adresse perso pour s'inscrire, adresse pro pour écrire), donc
+    // on ne bloque pas — mais on le signale, parce que c'est cette adresse-là
+    // que les prospects verront et qu'une erreur ici est invisible.
+    const compte = await db.user.findUnique({
+      where: { id: session.user.id },
+      select: { email: true },
+    })
+    const differente = compte?.email?.toLowerCase() !== adresse.toLowerCase()
+
+    const res = NextResponse.redirect(
+      retour(capacite, { [cle]: 'ok', ...(differente ? { autreAdresse: '1' } : {}) }),
+    )
     res.cookies.delete('cal_oauth_state')
     return res
   } catch {
-    return NextResponse.redirect(`${BASE}/agenda?cal=err`)
+    return NextResponse.redirect(retour(capacite, { [cle]: 'err' }))
   }
 }
