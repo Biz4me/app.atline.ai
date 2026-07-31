@@ -1155,6 +1155,13 @@ model SimSession {
   // Pourquoi l'appel s'est terminé : le distributeur a raccroché, le plafond de durée
   // est tombé, ou une erreur. Sans ça, un appel coupé net reste inexplicable.
   raisonFin         String?
+
+  // Ce que Deepgram FACTURE vraiment pour cette session, relevé chez eux après coup.
+  // Mesuré séparément parce que les deux chiffres diffèrent : leur compteur tourne tant
+  // que la connexion est ouverte, le nôtre ne compte que l'audio traité — ~25 % d'écart.
+  // On garde les deux : le nôtre est immédiat, le leur fait foi.
+  sttSecondesFacturees Float?
+  factureAt            DateTime?
 }
 
 model SimMessage {
