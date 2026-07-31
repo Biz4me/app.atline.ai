@@ -27,6 +27,9 @@ export async function POST(req: NextRequest) {
   const duree = typeof body?.duree_secondes === 'number' && Number.isFinite(body.duree_secondes)
     ? body.duree_secondes
     : null
+  const raisonFin = typeof body?.raison_fin === 'string' && body.raison_fin
+    ? body.raison_fin.slice(0, 40)
+    : null
 
   // Un appel raccroché aussitôt n'a pas de transcript mais a bien coûté quelque chose :
   // on accepte donc une remontée qui n'apporte QUE la consommation.
@@ -56,6 +59,7 @@ export async function POST(req: NextRequest) {
       // On n'écrase pas une mesure existante par du vide (cas du retry sans consommation).
       ...(consommation.length ? { consommation } : {}),
       ...(duree !== null ? { dureeSecondes: duree } : {}),
+      ...(raisonFin ? { raisonFin } : {}),
     },
   })
 

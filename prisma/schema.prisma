@@ -1152,6 +1152,9 @@ model SimSession {
   // On garde la mesure BRUTE et jamais le coût : les tarifs changent, pas les compteurs.
   dureeSecondes     Float?
   consommation      Json?
+  // Pourquoi l'appel s'est terminé : le distributeur a raccroché, le plafond de durée
+  // est tombé, ou une erreur. Sans ça, un appel coupé net reste inexplicable.
+  raisonFin         String?
 }
 
 model SimMessage {
