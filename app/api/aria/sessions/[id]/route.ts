@@ -65,7 +65,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
   try {
     const r = await fetch(`${ATLAS_URL}/api/aria/debrief`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'x-atline-user': userId ?? '' },
       body: JSON.stringify({
         transcript,
         simulation_stage: sim.phase.toLowerCase(),

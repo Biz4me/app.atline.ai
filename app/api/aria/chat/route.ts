@@ -55,7 +55,7 @@ export async function POST(req: NextRequest) {
   try {
     resp = await fetch(`${ATLAS_URL}/api/aria/simulate`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'x-atline-user': userId ?? '' },
       body: JSON.stringify({
         scenario: sim.characterId,
         color,

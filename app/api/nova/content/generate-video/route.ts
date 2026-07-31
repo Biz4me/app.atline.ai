@@ -55,7 +55,7 @@ export async function POST(req: Request) {
   try {
     const r = await fetch(`${ATLAS_URL}/api/nova/faceless-video`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'x-atline-user': userId ?? '' },
       body: JSON.stringify({ script }),
       signal: AbortSignal.timeout(230000),
     })

@@ -54,7 +54,7 @@ export async function POST(_req: Request, ctx: { params: Promise<{ id: string }>
   try {
     const tr = await fetch(`${ATLAS_URL}/api/nova/theme`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'x-atline-user': userId ?? '' },
       body: JSON.stringify({ product }),
       signal: AbortSignal.timeout(12000),
     })

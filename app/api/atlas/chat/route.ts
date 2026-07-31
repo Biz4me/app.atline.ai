@@ -193,7 +193,7 @@ export async function POST(req: NextRequest) {
   try {
     resp = await fetch(`${ATLAS_URL}/api/atlas/chat`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'x-atline-user': userId ?? '' },
       body: JSON.stringify({
         query,
         user_id: userId,

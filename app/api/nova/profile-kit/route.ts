@@ -50,7 +50,7 @@ Réponds UNIQUEMENT avec un objet JSON valide, sans texte autour : {"instagram":
   try {
     const resp = await fetch(`${ATLAS_URL}/api/nova/chat`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'x-atline-user': userId ?? '' },
       body: JSON.stringify({ query: prompt, user_id: userId, conversation_history: [], ...over }),
     })
     if (!resp.ok || !resp.body) throw new Error()
