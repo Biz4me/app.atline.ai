@@ -1157,9 +1157,10 @@ model SimSession {
   raisonFin         String?
 
   // Ce que Deepgram FACTURE vraiment pour cette session, relevé chez eux après coup.
-  // Mesuré séparément parce que les deux chiffres diffèrent : leur compteur tourne tant
-  // que la connexion est ouverte, le nôtre ne compte que l'audio traité — ~25 % d'écart.
-  // On garde les deux : le nôtre est immédiat, le leur fait foi.
+  // Deux colonnes plutôt qu'une parce que les chiffres diffèrent : leur compteur tourne
+  // tant que la connexion est ouverte, le nôtre ne compte que l'audio traité. L'écart
+  // mesuré va de +12 % à +25 % — variable, donc non corrigeable par un facteur.
+  // Le nôtre est immédiat et sert à l'affichage à chaud ; le leur fait foi.
   sttSecondesFacturees Float?
   factureAt            DateTime?
 }
