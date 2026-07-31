@@ -1146,6 +1146,12 @@ model SimSession {
   messages          SimMessage[]
   startedAt         DateTime     @default(now())
   completedAt       DateTime?
+
+  // Ce que la simulation a réellement consommé, relevé par l'agent vocal en fin de
+  // session (une ligne par fournisseur/modèle : secondes transcrites, tokens, caractères).
+  // On garde la mesure BRUTE et jamais le coût : les tarifs changent, pas les compteurs.
+  dureeSecondes     Float?
+  consommation      Json?
 }
 
 model SimMessage {
