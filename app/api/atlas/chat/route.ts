@@ -45,17 +45,35 @@ async function activeBusiness(userId: string): Promise<{ mlmName: string; compan
 }
 
 export async function POST(req: NextRequest) {
-  // user_id réel depuis la session NextAuth — jamais fourni par le client.
-  const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET })
-  const userId = token?.id as string | undefined
-  if (!userId) return NextResponse.json({ error: 'non authentifié' }, { status: 401 })
-
-  let body: { query?: string; conversationId?: string; mlm_actif?: string; contactId?: string }
+  let body: {
+    query?: string; conversationId?: string; mlm_actif?: string; contactId?: string
+    userId?: string; mode?: string
+  }
   try {
     body = await req.json()
   } catch {
     return NextResponse.json({ error: 'bad json' }, { status: 400 })
   }
+
+  // DEUX portes vers le même tour de parole, et une seule logique derrière.
+  // 1. La session NextAuth : l'app. Le userId vient du jeton, jamais du client.
+  // 2. Le secret interne : l'agent vocal LiveKit, un processus serveur qui n'a
+  //    pas de session. Il déclare le userId, et c'est le secret qui l'autorise.
+  //    Même modèle de confiance que /api/internal/contact-lookup et
+  //    /api/internal/memory-search, qui lisent déjà les données de n'importe quel
+  //    utilisateur avec ce secret. Sans le secret, rien ne change : on refuse.
+  // C'est ce qui fait que la VOIX et l'ÉCRIT partagent le fil, la mémoire vivante
+  // et la réécriture d'après-réponse. Une seule mémoire, deux bouches.
+  const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET })
+  let userId = token?.id as string | undefined
+  if (!userId) {
+    const attendu = process.env.INTERNAL_API_SECRET
+    if (attendu && req.headers.get('x-internal-secret') === attendu && typeof body.userId === 'string' && body.userId) {
+      userId = body.userId
+    }
+  }
+  if (!userId) return NextResponse.json({ error: 'non authentifié' }, { status: 401 })
+
   const query = (body.query ?? '').trim()
   if (!query) return NextResponse.json({ error: 'query vide' }, { status: 400 })
 
@@ -69,8 +87,13 @@ export async function POST(req: NextRequest) {
     if (!owned) conversationId = undefined
   }
   if (!conversationId) {
+    // Un tour parlé ouvre son PROPRE fil, marqué "voix" : la liste des
+    // conversations distingue ce qu'on a dit de ce qu'on a écrit, et le fil
+    // principal ne se remplit pas de transcriptions. La MÉMOIRE, elle, est
+    // commune — le write-back d'après-réponse ne regarde pas le contexte.
+    const contexte = body.contactId ? 'contact' : body.mode === 'voix' ? 'voix' : 'parcours'
     const conv = await db.atlasConversation.create({
-      data: { userId, title: convTitle(query), context: body.contactId ? 'contact' : 'parcours', ...(body.contactId ? { contactId: body.contactId } : {}) },
+      data: { userId, title: convTitle(query), context: contexte, ...(body.contactId ? { contactId: body.contactId } : {}) },
       select: { id: true },
     })
     conversationId = conv.id
@@ -205,6 +228,10 @@ export async function POST(req: NextRequest) {
         user_model,
         user_snapshot,
         contact_snapshot,
+        // "voix" => le service ajoute la contrainte orale au prompt (phrases
+        // courtes, aucune mise en forme, aucun marqueur superflu). Le filtre de
+        // l'agent est la ceinture ; ceci est la bretelle.
+        mode: body.mode === 'voix' ? 'voix' : '',
       }),
     })
   } catch {
