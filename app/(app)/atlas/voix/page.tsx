@@ -46,48 +46,55 @@ export default function AtlasVoixPage() {
   const [sonBloque, setSonBloque] = useState(false)
 
   const roomRef = useRef<Room | null>(null)
-  const audioCtxRef = useRef<AudioContext | null>(null)
-  // Les deux analyseurs qui font vivre la mire : le micro, et la voix d'Atlas.
-  const analyseEntree = useRef<AnalyserNode | null>(null)
-  const analyseSortie = useRef<AnalyserNode | null>(null)
 
-  const niveau = (a: AnalyserNode | null) => {
-    if (!a) return 0
-    const buf = new Uint8Array(a.frequencyBinCount)
-    a.getByteFrequencyData(buf)
-    let s = 0
-    for (const v of buf) s += v
-    return s / buf.length / 255
+  // ── Ce qui fait respirer la mire ────────────────────────────────────────────
+  //
+  // SURTOUT PAS d'AudioContext ici. Première version : un `createMediaStreamSource`
+  // sur la piste distante alimentait deux analyseurs. Sur ordinateur, parfait.
+  // Sur téléphone, Atlas devenait MUET — faire entrer une piste WebRTC distante
+  // dans un graphe Web Audio capte le flux, et comme l'analyseur n'est relié à
+  // aucune sortie, le son part dans le graphe et n'en ressort jamais. Aria, qui
+  // ne touche à aucun AudioContext, n'a jamais eu le problème : c'est la seule
+  // différence entre les deux écrans, et c'était la bonne piste.
+  //
+  // On se sert donc du niveau que LiveKit calcule DÉJÀ, sans toucher à l'audio.
+  // Contrepartie assumée : ce signal est rafraîchi quelques fois par seconde, pas
+  // soixante. On le lisse donc vers sa cible à chaque image, sinon la mire
+  // sauterait par paliers au lieu de respirer.
+  const lissEntree = useRef(0)
+  const lissSortie = useRef(0)
+
+  const lisser = (ref: typeof lissEntree, cible: number) => {
+    ref.current += (cible - ref.current) * 0.18
+    return ref.current
   }
-  const lireEntree = useCallback(() => (muet ? 0 : niveau(analyseEntree.current)), [muet])
-  const lireSortie = useCallback(() => niveau(analyseSortie.current), [])
 
-  /** Branche une piste audio sur un analyseur, pour que la mire la « voie ». */
-  const brancher = (piste: MediaStreamTrack, cible: typeof analyseEntree) => {
-    let ctx = audioCtxRef.current
-    if (!ctx) {
-      ctx = new AudioContext()
-      audioCtxRef.current = ctx
+  const lireEntree = useCallback(() => {
+    const p = roomRef.current?.localParticipant
+    return lisser(lissEntree, muet || !p ? 0 : p.audioLevel)
+  }, [muet])
+
+  const lireSortie = useCallback(() => {
+    const salle = roomRef.current
+    let niveau = 0
+    if (salle) {
+      for (const p of salle.remoteParticipants.values()) {
+        if (p.audioLevel > niveau) niveau = p.audioLevel
+      }
     }
-    // Sur mobile un AudioContext naît SUSPENDU : sans ce réveil, les analyseurs
-    // ne mesurent rien et la mire tourne dans le vide pendant qu'Atlas parle.
-    if (ctx.state === 'suspended') void ctx.resume().catch(() => {})
-    const source = ctx.createMediaStreamSource(new MediaStream([piste]))
-    const analyse = ctx.createAnalyser()
-    analyse.fftSize = 256
-    source.connect(analyse)
-    // On ne connecte PAS l'analyseur à la sortie : le son d'Atlas est déjà joué
-    // par son élément <audio>. Le rebrancher ici le ferait entendre deux fois.
-    cible.current = analyse
-  }
+    return lisser(lissSortie, niveau)
+  }, [])
 
   const raccrocher = useCallback(async () => {
     await roomRef.current?.disconnect().catch(() => {})
     roomRef.current = null
-    await audioCtxRef.current?.close().catch(() => {})
-    audioCtxRef.current = null
-    analyseEntree.current = null
-    analyseSortie.current = null
+    // Les éléments <audio> posés par `attach()` survivent à la déconnexion :
+    // sans ce ménage, un second appel en empile un de plus à chaque fois.
+    document.querySelectorAll('audio[data-lk-local-player], audio').forEach((a) => {
+      if (a.parentElement === document.body) a.remove()
+    })
+    lissEntree.current = 0
+    lissSortie.current = 0
     setEtat('repos')
     setParle(false)
     setSonBloque(false)
@@ -121,21 +128,19 @@ export default function AtlasVoixPage() {
         el.autoplay = true
         el.muted = false
         el.volume = 1
-        // PAS de setSinkId('communications') ici, contrairement à l'écran d'appel
-        // d'Aria : sur Android ça route le son vers l'ÉCOUTEUR de téléphone,
-        // celui qu'on colle à l'oreille. Sur un ordinateur il n'y en a pas, donc
-        // le son sort des haut-parleurs et tout semble marcher ; sur un téléphone
-        // posé dans la main, on n'entend rien. Atlas n'est pas un appel : on le
-        // regarde, donc il parle par le haut-parleur, comme une vidéo.
+        // Pas de setSinkId('communications') ici, contrairement à l'écran d'appel
+        // d'Aria, qui route vers l'ÉCOUTEUR du téléphone : Atlas n'est pas un
+        // appel, on le regarde, donc il parle par le haut-parleur.
+        // Pour mémoire : ce routage n'était PAS la cause du mutisme sur mobile.
+        // Aria s'en sert et s'entend très bien. La cause était l'AudioContext,
+        // voir le commentaire sur les niveaux plus haut.
         document.body.appendChild(el)
         el.play().catch((e) => {
-          // Ne JAMAIS avaler cette erreur : c'est exactement elle qui rendait
-          // l'écran muet sans rien dire. Le navigateur refuse de jouer un son
-          // qu'aucun geste n'a autorisé ; on le signale et on propose le geste.
+          // Ne JAMAIS avaler cette erreur : un `catch` vide transforme un refus
+          // du navigateur en écran muet sans explication.
           console.warn('Atlas vocal : lecture refusée par le navigateur', e)
           setSonBloque(true)
         })
-        if (piste.mediaStreamTrack) brancher(piste.mediaStreamTrack, analyseSortie)
       })
 
       // Le mécanisme officiel de LiveKit pour le verrou des navigateurs : il
@@ -190,10 +195,6 @@ export default function AtlasVoixPage() {
       })
       setSonBloque(!room.canPlaybackAudio)
       await room.localParticipant.setMicrophoneEnabled(true)
-      const micro = room.localParticipant
-        .getTrackPublications()
-        .find((p) => p.kind === Track.Kind.Audio)?.track?.mediaStreamTrack
-      if (micro) brancher(micro, analyseEntree)
       setMuet(false)
       setEtat('en_ligne')
     } catch (e) {
@@ -293,7 +294,6 @@ export default function AtlasVoixPage() {
             <button
               onClick={async () => {
                 await roomRef.current?.startAudio().catch(() => {})
-                await audioCtxRef.current?.resume().catch(() => {})
                 document.querySelectorAll('audio').forEach((a) => void a.play().catch(() => {}))
                 setSonBloque(!(roomRef.current?.canPlaybackAudio ?? false))
               }}
