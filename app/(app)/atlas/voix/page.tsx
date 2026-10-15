@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Room, RoomEvent, Track, type RemoteTrack } from 'livekit-client'
-import { X, Mic, MicOff } from 'lucide-react'
+import { X, Mic, MicOff, Volume2 } from 'lucide-react'
 import { AtlasMire } from '@/components/atlas-mire'
 
 /**
@@ -41,6 +41,9 @@ export default function AtlasVoixPage() {
   const [moi, setMoi] = useState('')
   const [lui, setLui] = useState('')
   const [parle, setParle] = useState(false)
+  // Le navigateur refuse-t-il de jouer le son ? Sur mobile c'est la règle tant
+  // qu'aucun geste ne l'a autorisé, et ça rendait l'écran muet en silence.
+  const [sonBloque, setSonBloque] = useState(false)
 
   const roomRef = useRef<Room | null>(null)
   const audioCtxRef = useRef<AudioContext | null>(null)
@@ -66,6 +69,9 @@ export default function AtlasVoixPage() {
       ctx = new AudioContext()
       audioCtxRef.current = ctx
     }
+    // Sur mobile un AudioContext naît SUSPENDU : sans ce réveil, les analyseurs
+    // ne mesurent rien et la mire tourne dans le vide pendant qu'Atlas parle.
+    if (ctx.state === 'suspended') void ctx.resume().catch(() => {})
     const source = ctx.createMediaStreamSource(new MediaStream([piste]))
     const analyse = ctx.createAnalyser()
     analyse.fftSize = 256
@@ -84,6 +90,7 @@ export default function AtlasVoixPage() {
     analyseSortie.current = null
     setEtat('repos')
     setParle(false)
+    setSonBloque(false)
   }, [])
 
   useEffect(() => () => { void raccrocher() }, [raccrocher])
@@ -94,6 +101,7 @@ export default function AtlasVoixPage() {
     setCartes([])
     setMoi('')
     setLui('')
+    setSonBloque(false)
     try {
       const res = await fetch('/api/atlas/voix/token', {
         method: 'POST',
@@ -110,12 +118,32 @@ export default function AtlasVoixPage() {
         if (piste.kind !== Track.Kind.Audio) return
         const el = piste.attach()
         el.setAttribute('playsinline', 'true')
-        // Mode « appel » sur Android Chrome : route vers l'oreillette.
-        const avecSink = el as HTMLMediaElement & { setSinkId?: (id: string) => Promise<void> }
-        avecSink.setSinkId?.('communications').catch(() => avecSink.setSinkId?.('').catch(() => {}))
-        el.play().catch(() => {})
+        el.autoplay = true
+        el.muted = false
+        el.volume = 1
+        // PAS de setSinkId('communications') ici, contrairement à l'écran d'appel
+        // d'Aria : sur Android ça route le son vers l'ÉCOUTEUR de téléphone,
+        // celui qu'on colle à l'oreille. Sur un ordinateur il n'y en a pas, donc
+        // le son sort des haut-parleurs et tout semble marcher ; sur un téléphone
+        // posé dans la main, on n'entend rien. Atlas n'est pas un appel : on le
+        // regarde, donc il parle par le haut-parleur, comme une vidéo.
         document.body.appendChild(el)
+        el.play().catch((e) => {
+          // Ne JAMAIS avaler cette erreur : c'est exactement elle qui rendait
+          // l'écran muet sans rien dire. Le navigateur refuse de jouer un son
+          // qu'aucun geste n'a autorisé ; on le signale et on propose le geste.
+          console.warn('Atlas vocal : lecture refusée par le navigateur', e)
+          setSonBloque(true)
+        })
         if (piste.mediaStreamTrack) brancher(piste.mediaStreamTrack, analyseSortie)
+      })
+
+      // Le mécanisme officiel de LiveKit pour le verrou des navigateurs : il
+      // faut un geste. On tient le nôtre (le tap sur la mire), mais s'il expire
+      // ou si le navigateur refuse quand même, cet événement nous le dit au lieu
+      // de nous laisser deviner.
+      room.on(RoomEvent.AudioPlaybackStatusChanged, () => {
+        setSonBloque(!room.canPlaybackAudio)
       })
 
       room.on(RoomEvent.TrackUnsubscribed, (piste) => {
@@ -153,6 +181,14 @@ export default function AtlasVoixPage() {
       })
 
       await room.connect(url, token)
+      // Déverrouiller le son TANT QUE le geste de l'utilisateur est encore
+      // valable. `demarrer` est appelé depuis le tap sur la mire, donc on est
+      // dans la bonne pile d'appels : c'est le seul moment où les navigateurs
+      // mobiles acceptent d'ouvrir la lecture audio.
+      await room.startAudio().catch((e) => {
+        console.warn('Atlas vocal : startAudio refusé', e)
+      })
+      setSonBloque(!room.canPlaybackAudio)
       await room.localParticipant.setMicrophoneEnabled(true)
       const micro = room.localParticipant
         .getTrackPublications()
@@ -251,7 +287,24 @@ export default function AtlasVoixPage() {
 
           <p className="text-2xs font-bold uppercase tracking-[0.4em] text-white/45">{libelleEtat}</p>
 
-          {etat === 'en_ligne' && (
+          {/* Le navigateur bloque le son : on le DIT et on offre le geste.
+              Un écran muet qui n'explique rien, c'est ce qu'on vient de corriger. */}
+          {sonBloque && etat === 'en_ligne' && (
+            <button
+              onClick={async () => {
+                await roomRef.current?.startAudio().catch(() => {})
+                await audioCtxRef.current?.resume().catch(() => {})
+                document.querySelectorAll('audio').forEach((a) => void a.play().catch(() => {}))
+                setSonBloque(!(roomRef.current?.canPlaybackAudio ?? false))
+              }}
+              className="mt-1 flex items-center gap-2 rounded-2xl bg-primary px-4 py-2 text-xs font-bold text-[#1A0E02]"
+            >
+              <Volume2 size={15} />
+              Activer le son
+            </button>
+          )}
+
+          {etat === 'en_ligne' && !sonBloque && (
             <button
               onClick={basculerMicro}
               className="mt-1 flex items-center gap-2 rounded-2xl bg-white/5 px-4 py-2 text-xs text-white/70 hover:text-white"
