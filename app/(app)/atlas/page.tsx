@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { Mic, X, MoreVertical, ChevronLeft as ChevronLeftIcon, FileText, Users, Loader2, Zap, Target, SquarePen, UserRound, Compass, Sparkles } from 'lucide-react'
+import { Mic, X, MoreVertical, ChevronLeft as ChevronLeftIcon, FileText, Users, Loader2, Zap, Target, SquarePen, UserRound, Compass, Sparkles, AudioLines } from 'lucide-react'
 import { cn, cleanChat } from '@/lib/utils'
 import { toast } from 'sonner'
 import { AppComposer } from '@/components/mobile/app-composer'
@@ -1019,6 +1019,11 @@ TECHNIQUE (invisible pour moi, ne l'explique jamais)${NB}: quand tu as balayé l
                     {streaming ? 'écrit…' : 'ton coach · toujours là'}
                   </span>
                 </span>
+              </button>
+              {/* Le passage vers l'écran où l'on PARLE à Atlas. Deux écrans séparés :
+                  celui-ci écrit, l'autre parle. On n'y bascule pas tout seul. */}
+              <button type="button" aria-label="Parler à Atlas" onClick={() => router.push('/atlas/voix')} className="flex size-9 shrink-0 items-center justify-center rounded-full text-primary active:bg-muted">
+                <AudioLines className="size-5 stroke-[1.5]" />
               </button>
               <button type="button" aria-label="Chercher dans la conversation" onClick={() => filSearch.setOpen(true)} className="flex size-9 shrink-0 items-center justify-center rounded-full text-muted-foreground active:bg-muted">
                 <MoreVertical className="size-5 stroke-[1.5]" />
