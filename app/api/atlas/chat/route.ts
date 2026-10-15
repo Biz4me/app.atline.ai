@@ -8,7 +8,7 @@ import { buildUserModel, contactFactLines, reflectUserMemory, reflectContactMemo
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
-// Cerveau Atlas : FastAPI atline-ai-service, même serveur Hetzner (RAG Qdrant + Mem0 + Opus).
+// Cerveau Atlas : FastAPI atline-ai-service, même serveur Hetzner (RAG Qdrant + Sonnet).
 const ATLAS_URL = process.env.ATLAS_URL || 'http://127.0.0.1:8100'
 
 // Titre lisible pour l'historique : les prompts internes (session, plan) ne doivent pas s'afficher bruts.

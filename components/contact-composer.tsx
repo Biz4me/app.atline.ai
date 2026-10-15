@@ -5,7 +5,7 @@ import { Sparkles, SendHorizontal, X, Loader2 } from 'lucide-react'
 
 // Composeur scopé contact (fiche) : on demande des choses sur CE contact, Atlas répond
 // avec tout son contexte (buildContactSnapshot côté proxy via contactId). Fil éphémère —
-// la mémoire vraie vit dans atlasMemory + Mem0, pas dans ce fil.
+// la mémoire vraie vit dans atlasMemory et les faits AtlasFact, pas dans ce fil.
 type Msg = { from: 'user' | 'atlas'; text: string }
 const stripMarkers = (s: string) => s.replace(/\s*\[\[[A-Z]+\]\][\s\S]*$/, '')
 
