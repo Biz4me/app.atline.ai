@@ -89,6 +89,47 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
     data: { score, feedback: JSON.stringify(feedback) },
   })
 
+  // ── La grille : un score PAR compétence, et le niveau de l'utilisateur qui bouge ──
+  // `score` seul ne dit pas SUR QUOI on a progressé. Sans ces deux tables, aucune
+  // phrase du type « ton invitation est à 42 sur 5 simulations, module 5 leçon 3 »
+  // n'est possible — quel que soit le prompt.
+  const grille = (Array.isArray(data.competences) ? data.competences : []) as {
+    id?: unknown; score?: unknown; observation?: unknown
+  }[]
+  for (const c of grille) {
+    const cid = typeof c.id === 'string' ? c.id : ''
+    const note = typeof c.score === 'number' ? Math.max(0, Math.min(100, Math.round(c.score))) : null
+    if (!cid || note === null) continue
+    try {
+      await db.simScore.upsert({
+        where: { sessionId_competenceId: { sessionId: id, competenceId: cid } },
+        create: {
+          sessionId: id, competenceId: cid, score: note,
+          observation: typeof c.observation === 'string' ? c.observation.slice(0, 300) : null,
+        },
+        update: { score: note },
+      })
+      // Moyenne EXPONENTIELLE, pas cumulée : après seize mesures à 42, une
+      // session à 80 ne bougerait presque pas une moyenne simple. Un coach
+      // doit voir la progression, donc le récent pèse davantage.
+      const actuel = await db.userCompetence.findUnique({
+        where: { userId_competenceId: { userId, competenceId: cid } },
+        select: { niveau: true, mesures: true },
+      })
+      const niveau = !actuel || actuel.mesures === 0
+        ? note
+        : Math.round(actuel.niveau * 0.6 + note * 0.4)
+      await db.userCompetence.upsert({
+        where: { userId_competenceId: { userId, competenceId: cid } },
+        create: { userId, competenceId: cid, niveau: note, mesures: 1, derniereAt: new Date() },
+        update: { niveau, mesures: { increment: 1 }, derniereAt: new Date() },
+      })
+    } catch {
+      // Un slug inconnu viole la clé étrangère : on saute cette compétence
+      // sans perdre le débrief. Le garde-fou du service filtre déjà en amont.
+    }
+  }
+
   // ── La boucle apprend (fire-and-forget) : le débrief nourrit la mémoire d'Atlas ──
   // 1) faits de compétence (maitrise / bloque_sur / travaille_sur) → réconciliation
   //    (ré-observation = confiance qui monte ; progression = supersession traçable)

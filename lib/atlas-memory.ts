@@ -18,6 +18,10 @@ export type ExtractedFact = {
   category: string
   importance?: number
   confidence?: number
+  // Slug de compétence (table Competence) quand le fait en désigne une.
+  // `object` garde la formulation libre — la nuance est utile — mais c'est
+  // CE champ qui permet d'apparier et de compter.
+  competence?: string | null
 }
 
 // Bloc « mémoire vivante » injecté dans le chat : profil + faits saillants.
@@ -97,8 +101,20 @@ export async function reconcileFacts(userId: string, contactId: string | null, f
     const object = normalizeObject(f.object || '')
     if (!object || !f.predicate || !f.category) continue
     try {
+      // L'appariement se faisait sur (predicate, category) — or pour Aria la
+      // catégorie vaut TOUJOURS « competence ». Deux blocages sur deux sujets
+      // différents se retrouvaient donc face à face, l'arbitre tranchait
+      // « different », et on créait une ligne de plus. D'où, en production,
+      // « perte de foi » / « manque de motivation » / « manque motivation » /
+      // « manque motivation et foi » : quatre lignes, un seul défaut.
+      // Quand le slug est connu, c'est LUI la clé : deux observations de la
+      // même compétence se trouvent, quelle que soit la formulation.
+      const competenceId = f.competence || null
       const existing = await db.atlasFact.findFirst({
-        where: { userId, contactId, predicate: f.predicate, category: f.category, status: 'active' },
+        where: {
+          userId, contactId, predicate: f.predicate, status: 'active',
+          ...(competenceId ? { competenceId } : { category: f.category }),
+        },
         orderBy: { lastSeenAt: 'desc' },
       })
 
@@ -117,6 +133,7 @@ export async function reconcileFacts(userId: string, contactId: string | null, f
           data: {
             userId, contactId, predicate: f.predicate, object, category: f.category, source,
             importance: f.importance ?? 0.5, confidence: f.confidence ?? 0.75,
+            ...(competenceId ? { competenceId } : {}),
           },
         })
 
