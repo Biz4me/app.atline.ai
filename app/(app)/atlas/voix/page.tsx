@@ -52,6 +52,8 @@ export default function AtlasVoixPage() {
   // deviner une troisième fois. À retirer quand le son sera stable.
   const [sonde, setSonde] = useState('')
   const dernierT = useRef(0)
+  const figeDepuis = useRef(0)
+  const dejaRebranche = useRef(false)
 
   // ── Ce qui fait respirer la mire ────────────────────────────────────────────
   //
@@ -91,6 +93,30 @@ export default function AtlasVoixPage() {
     return lisser(lissSortie, niveau)
   }, [])
 
+  /**
+   * Re-brancher la piste de zéro. Recours quand le flux se fige : un élément
+   * qui « joue » avec un `currentTime` immobile ne rejouera jamais tout seul,
+   * et aucun `play()` de plus n'y changera rien. On refait donc l'attache.
+   */
+  const rebrancher = useCallback(async () => {
+    const salle = roomRef.current
+    if (!salle) return
+    for (const p of salle.remoteParticipants.values()) {
+      for (const pub of p.audioTrackPublications.values()) {
+        const piste = pub.track
+        if (!piste) continue
+        piste.detach().forEach((e) => e.remove())
+        const el = piste.attach()
+        el.setAttribute('playsinline', 'true')
+        document.body.appendChild(el)
+        audioRef.current = el
+        await el.play().catch(() => {})
+        console.warn('Atlas vocal : flux figé, piste re-branchée')
+        return
+      }
+    }
+  }, [])
+
   /** Tenter de faire jouer le son. Idempotent, donc rappelable à volonté. */
   const reveiller = useCallback(async () => {
     await roomRef.current?.startAudio().catch(() => {})
@@ -126,9 +152,14 @@ export default function AtlasVoixPage() {
     })
     lissEntree.current = 0
     lissSortie.current = 0
+    audioRef.current = null
+    dernierT.current = 0
+    figeDepuis.current = 0
+    dejaRebranche.current = false
     setEtat('repos')
     setParle(false)
     setSonBloque(false)
+    setSonde('')
   }, [])
 
   useEffect(() => () => { void raccrocher() }, [raccrocher])
@@ -136,7 +167,7 @@ export default function AtlasVoixPage() {
   // La sonde : l'état réel du chemin audio, relevé deux fois par seconde.
   useEffect(() => {
     if (etat !== 'en_ligne') return
-    const t = setInterval(() => {
+    const minuteur = setInterval(() => {
       const salle = roomRef.current
       const el = audioRef.current as (HTMLMediaElement & { sinkId?: string }) | null
       const distants = salle ? [...salle.remoteParticipants.values()] : []
@@ -150,6 +181,19 @@ export default function AtlasVoixPage() {
       const avance = t - dernierT.current
       dernierT.current = t
 
+      // Chien de garde : figé plus de 2 s alors qu'une piste existe et que
+      // l'élément se dit en lecture, c'est un flux mort. On re-branche une fois,
+      // puis on laisse tranquille — une boucle de réparation serait pire que le mal.
+      if (el && !el.paused && pistes > 0 && avance <= 0.05) {
+        figeDepuis.current += 1
+        if (figeDepuis.current === 4 && !dejaRebranche.current) {
+          dejaRebranche.current = true
+          void rebrancher()
+        }
+      } else {
+        figeDepuis.current = 0
+      }
+
       // L'état de la PISTE elle-même : `muted` au sens WebRTC signifie
       // « aucune donnée n'arrive », ce qui est très différent d'un volume à zéro.
       const flux = el?.srcObject as MediaStream | null
@@ -162,11 +206,12 @@ export default function AtlasVoixPage() {
           `t ${t.toFixed(1)} ${avance > 0.05 ? 'avance' : 'FIGE'}`,
           p0 ? `piste ${p0.readyState}${p0.muted ? ' SANS-DONNEES' : ' alimentee'}${p0.enabled ? '' : ' DESACTIVEE'}` : 'piste ABSENTE',
           `niveau ${niveau.toFixed(2)}`,
-        ].join(' · '),
+          dejaRebranche.current ? 'rebranche' : '',
+        ].filter(Boolean).join(' · '),
       )
     }, 500)
-    return () => clearInterval(t)
-  }, [etat])
+    return () => clearInterval(minuteur)
+  }, [etat, rebrancher])
 
   const demarrer = async () => {
     if (etat === 'connexion' || etat === 'en_ligne') return
