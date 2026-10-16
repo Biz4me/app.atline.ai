@@ -223,6 +223,34 @@ export default function AtlasVoixPage() {
     setMoi('')
     setLui('')
     setSonBloque(false)
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // LA PREMIÈRE CHOSE, et elle doit le rester.
+    //
+    // La documentation de livekit-client est explicite : la lecture audio d'un
+    // navigateur mobile reste MUETTE tant qu'un geste de l'utilisateur n'a pas
+    // déclenché l'une de ces deux choses — `startAudio()` ou `getUserMedia()`.
+    //
+    // Demander le micro ICI, en tout premier, c'est encore être dans le tap sur
+    // la mire. Tout ce qui suit (le jeton, la connexion, l'abonnement à la
+    // piste) comporte des attentes réseau : à leur sortie le geste est éteint
+    // depuis longtemps, et `setMicrophoneEnabled()` n'ouvre alors plus rien.
+    //
+    // C'est exactement ce qui rendait Atlas muet sur téléphone pendant que
+    // l'écran se croyait sain (« el joue », « lecture ok », et aucun son). Aria
+    // faisait déjà ce geste depuis longtemps, commentaire à l'appui — je ne
+    // l'avais pas repris.
+    try {
+      const flux = await navigator.mediaDevices.getUserMedia({ audio: true })
+      // On relâche tout de suite : LiveKit redemandera le micro pour de bon,
+      // la permission est désormais accordée et la lecture déverrouillée.
+      flux.getTracks().forEach((p) => p.stop())
+    } catch (e) {
+      console.warn('Atlas vocal : micro refusé', e)
+      setEtat('echec')
+      return
+    }
+
     try {
       const res = await fetch('/api/atlas/voix/token', {
         method: 'POST',
@@ -331,7 +359,7 @@ export default function AtlasVoixPage() {
 
   const libelleEtat =
     etat === 'connexion' ? 'Connexion…'
-    : etat === 'echec' ? 'Connexion impossible'
+    : etat === 'echec' ? 'Micro refusé ou connexion impossible'
     : etat !== 'en_ligne' ? 'Touche la mire pour parler'
     : parle ? 'Atlas parle'
     : muet ? 'Micro coupé'
