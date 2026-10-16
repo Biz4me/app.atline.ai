@@ -101,6 +101,7 @@ model User {
 
   // ARIA
   simSessions SimSession[]
+  consommationsVocales ConsommationVocale[]
 
   // Nova
   contentPillars   ContentPillar[]
@@ -844,6 +845,7 @@ model AtlasConversation {
   summarizedCount Int              @default(0) // nb de messages couverts par le résumé
   messages        AtlasMessage[]
   appointments    Appointment[]
+  consommationVocale ConsommationVocale[]
   createdAt       DateTime         @default(now())
   updatedAt       DateTime         @updatedAt
 }
@@ -2429,4 +2431,45 @@ model ChatwootEvenement {
   @@index([userId, createdAt])
   @@index([traiteAt])            // le traitement ne balaie que ce qui reste
   @@index([conversationId])
+}
+
+// Ce qu'une session VOCALE a réellement consommé, tous agents confondus.
+//
+// Aria écrivait déjà sa consommation, mais dans SimSession — donc inaccessible
+// dès qu'on veut un chiffre pour Atlas, ou les deux ensemble. Cette table est
+// le point unique : Atlas y écrit, Aria pourra y être basculée sans toucher à
+// son existant, et « combien m'ont coûté mes agents cette semaine » devient UNE
+// requête au lieu de trois et d'une estimation.
+//
+// On stocke les COMPTEURS BRUTS et jamais un coût : les tarifs changent, pas les
+// mesures. La conversion vit dans la configuration des tarifs.
+model ConsommationVocale {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  agent     String // "atlas" | "aria" | ce qui viendra
+  room      String   @unique // la room LiveKit : identifiant naturel, et garde-fou anti-doublon
+  // Le fil Atlas né de cette session (context "voix"), quand il y en a un.
+  conversationId String?
+  conversation   AtlasConversation? @relation(fields: [conversationId], references: [id])
+
+  dureeSecondes Float?
+  // Une ligne par fournisseur/modèle réellement sollicité, telle que l'agent la
+  // relève : secondes transcrites, caractères synthétisés, jetons. Format brut
+  // de LiveKit (`session.usage.model_usage`), volontairement non réinterprété.
+  consommation  Json?
+  // Pourquoi l'appel s'est arrêté : sans ça, un appel coupé net est inexplicable.
+  raisonFin     String?
+
+  // Ce que Deepgram FACTURE vraiment, relevé chez eux après coup. Leur compteur
+  // tourne tant que la connexion est ouverte, le nôtre ne compte que l'audio
+  // traité : l'écart va de +12 % à +25 %. Le leur fait foi.
+  sttSecondesFacturees Float?
+  factureAt            DateTime?
+
+  createdAt DateTime @default(now())
+
+  @@index([userId, createdAt])
+  @@index([agent, createdAt])
+  @@index([factureAt]) // la réconciliation ne balaie que ce qui reste à rattacher
 }
