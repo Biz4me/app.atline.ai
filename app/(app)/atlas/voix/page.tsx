@@ -54,6 +54,9 @@ export default function AtlasVoixPage() {
   // Interrupteur de diagnostic : geler la mire pour voir si c'est ELLE qui
   // étrangle le son sur mobile. Temporaire, comme la sonde.
   const [mireAnimee, setMireAnimee] = useState(true)
+  // Les statistiques WebRTC : la seule mesure qui dise si des échantillons sont
+  // réellement décodés, et si ce qui arrive porte de l'énergie ou du silence.
+  const [rtc, setRtc] = useState('')
   const dernierT = useRef(0)
   const figeDepuis = useRef(0)
   const dejaRebranche = useRef(false)
@@ -212,6 +215,40 @@ export default function AtlasVoixPage() {
           dejaRebranche.current ? 'rebranche' : '',
         ].filter(Boolean).join(' · '),
       )
+
+      // Les stats du récepteur WebRTC. C'est la mesure qui tranche :
+      //  - « ech 0 »              -> rien n'est décodé, problème de transport
+      //  - « ech monte, energie 0 » -> on nous envoie du SILENCE
+      //  - « ech monte, energie > 0 » -> le navigateur rend bien du son, et le
+      //                              problème est après lui (sortie matérielle)
+      void (async () => {
+        const piste = [...(salle?.remoteParticipants.values() ?? [])]
+          .flatMap((p) => [...p.audioTrackPublications.values()])
+          .map((pub) => pub.track)
+          .find(Boolean)
+        if (!piste) return setRtc('')
+        try {
+          const rapport = await piste.getRTCStatsReport()
+          if (!rapport) return setRtc('pas de stats')
+          for (const s of rapport.values()) {
+            if (s.type !== 'inbound-rtp' || s.kind !== 'audio') continue
+            setRtc(
+              [
+                `paquets ${s.packetsReceived ?? '?'}`,
+                `perdus ${s.packetsLost ?? 0}`,
+                `ech ${s.totalSamplesReceived ?? '?'}`,
+                `energie ${(s.totalAudioEnergy ?? 0).toFixed(3)}`,
+                `masques ${s.concealedSamples ?? 0}`,
+                `tampon ${(s.jitterBufferDelay ?? 0).toFixed(1)}`,
+              ].join(' · '),
+            )
+            return
+          }
+          setRtc('aucun flux entrant audio')
+        } catch (e) {
+          setRtc(`stats KO : ${String(e).slice(0, 40)}`)
+        }
+      })()
     }, 500)
     return () => clearInterval(minuteur)
   }, [etat, rebrancher])
@@ -435,6 +472,11 @@ export default function AtlasVoixPage() {
               <p className="max-w-[90vw] break-words text-center text-[10px] leading-relaxed text-[#F4B342]/80">
                 {sonde}
               </p>
+              {rtc && (
+                <p className="max-w-[90vw] break-words text-center text-[10px] leading-relaxed text-[#22C55E]/85">
+                  {rtc}
+                </p>
+              )}
               <button
                 onClick={() => setMireAnimee((v) => !v)}
                 className="rounded-full border border-[#F4B342]/40 px-3 py-1 text-[10px] text-[#F4B342]/80"
