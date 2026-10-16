@@ -44,6 +44,9 @@ export default function AtlasVoixPage() {
   // Le navigateur a-t-il refusé de jouer ? On le montre au lieu de laisser un
   // écran muet sans explication.
   const [sonBloque, setSonBloque] = useState(false)
+  // Les vingt minutes quotidiennes : ce qu'il reste, et le message quand c'est fini.
+  const [restant, setRestant] = useState<number | null>(null)
+  const [quotaAtteint, setQuotaAtteint] = useState('')
 
   const roomRef = useRef<Room | null>(null)
   const audioRef = useRef<HTMLMediaElement | null>(null)
@@ -95,6 +98,14 @@ export default function AtlasVoixPage() {
 
   useEffect(() => () => { void raccrocher() }, [raccrocher])
 
+  // Le décompte des vingt minutes. L'agent coupe de son côté ; ceci n'est que
+  // l'affichage, pour que la fin se voie venir au lieu de tomber dessus.
+  useEffect(() => {
+    if (etat !== 'en_ligne' || restant === null) return
+    const t = setInterval(() => setRestant((r) => (r === null ? null : Math.max(0, r - 1))), 1000)
+    return () => clearInterval(t)
+  }, [etat, restant === null])
+
   const demarrer = async () => {
     if (etat === 'connexion' || etat === 'en_ligne') return
     setEtat('connexion')
@@ -102,6 +113,7 @@ export default function AtlasVoixPage() {
     setMoi('')
     setLui('')
     setSonBloque(false)
+    setQuotaAtteint('')
 
     // ⚠️ LA PREMIÈRE INSTRUCTION, et elle doit le rester.
     //
@@ -127,8 +139,17 @@ export default function AtlasVoixPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ voix }),
       })
+      // 429 = les vingt minutes du jour sont faites. Ce n'est pas une erreur,
+      // c'est la règle du jeu : on le dit clairement et on renvoie vers l'écrit.
+      if (res.status === 429) {
+        const d = await res.json().catch(() => ({}))
+        setQuotaAtteint(d?.message || "Tu as fait tes vingt minutes de coaching parlé aujourd'hui.")
+        setEtat('repos')
+        return
+      }
       if (!res.ok) throw new Error('jeton refusé')
-      const { token, url } = await res.json()
+      const { token, url, secondesRestantes } = await res.json()
+      setRestant(typeof secondesRestantes === 'number' ? secondesRestantes : null)
 
       const room = new Room()
       roomRef.current = room
@@ -285,6 +306,27 @@ export default function AtlasVoixPage() {
           />
 
           <p className="text-2xs font-bold uppercase tracking-[0.4em] text-white/45">{libelleEtat}</p>
+
+          {/* Le temps qu'il reste, décompté pendant la conversation. */}
+          {etat === 'en_ligne' && restant !== null && (
+            <p className="text-2xs text-white/35">
+              {Math.max(0, Math.ceil(restant / 60))} min de coaching parlé aujourd’hui
+            </p>
+          )}
+
+          {/* Les vingt minutes sont faites. On ne laisse pas l'utilisateur
+              devant une porte close : le fil écrit est à un tap. */}
+          {quotaAtteint && (
+            <div className="mt-2 max-w-[34ch] rounded-2xl border border-white/10 bg-[#17181B] px-4 py-3 text-center">
+              <p className="text-sm leading-relaxed text-white/80">{quotaAtteint}</p>
+              <button
+                onClick={() => router.push('/atlas')}
+                className="mt-3 w-full rounded-xl bg-primary py-2 text-xs font-bold text-[#1A0E02]"
+              >
+                Continuer à l’écrit
+              </button>
+            </div>
+          )}
 
           {/* Recours visible quand l'élément est en pause. Le geste se contente
               de rejouer l'élément : plus de `startAudio`, plus de réveil global,
