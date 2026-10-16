@@ -46,6 +46,11 @@ export default function AtlasVoixPage() {
   const [sonBloque, setSonBloque] = useState(false)
 
   const roomRef = useRef<Room | null>(null)
+  const audioRef = useRef<HTMLMediaElement | null>(null)
+  // Un bandeau de diagnostic, visible sur l'appareil où ça cloche. Deux fausses
+  // pistes ont coûté deux allers-retours : mieux vaut lire l'état réel que
+  // deviner une troisième fois. À retirer quand le son sera stable.
+  const [sonde, setSonde] = useState('')
 
   // ── Ce qui fait respirer la mire ────────────────────────────────────────────
   //
@@ -102,6 +107,28 @@ export default function AtlasVoixPage() {
 
   useEffect(() => () => { void raccrocher() }, [raccrocher])
 
+  // La sonde : l'état réel du chemin audio, relevé deux fois par seconde.
+  useEffect(() => {
+    if (etat !== 'en_ligne') return
+    const t = setInterval(() => {
+      const salle = roomRef.current
+      const el = audioRef.current as (HTMLMediaElement & { sinkId?: string }) | null
+      const distants = salle ? [...salle.remoteParticipants.values()] : []
+      const pistes = distants.reduce((n, p) => n + p.audioTrackPublications.size, 0)
+      const niveau = distants.reduce((m, p) => Math.max(m, p.audioLevel), 0)
+      setSonde(
+        [
+          `pistes ${pistes}`,
+          `lecture ${salle?.canPlaybackAudio ? 'ok' : 'BLOQUEE'}`,
+          el ? `el ${el.paused ? 'PAUSE' : 'joue'} v${el.volume}${el.muted ? ' MUET' : ''} rs${el.readyState}` : 'el ABSENT',
+          el?.sinkId !== undefined ? `sortie «${el.sinkId || 'defaut'}»` : 'sortie n/d',
+          `niveau ${niveau.toFixed(2)}`,
+        ].join(' · '),
+      )
+    }, 500)
+    return () => clearInterval(t)
+  }, [etat])
+
   const demarrer = async () => {
     if (etat === 'connexion' || etat === 'en_ligne') return
     setEtat('connexion')
@@ -123,24 +150,27 @@ export default function AtlasVoixPage() {
 
       room.on(RoomEvent.TrackSubscribed, (piste: RemoteTrack) => {
         if (piste.kind !== Track.Kind.Audio) return
+        // ALIGNÉ MOT POUR MOT SUR L'ÉCRAN D'APPEL D'ARIA, qui s'entend très bien
+        // sur le téléphone de Patrice. Après deux diagnostics faux (l'écouteur,
+        // puis l'AudioContext), on repart de ce qui MARCHE plutôt que de ce qui
+        // paraît correct : même ordre d'appels, même routage, même tout. Les
+        // améliorations se rajouteront une par une, en vérifiant à chaque fois.
         const el = piste.attach()
         el.setAttribute('playsinline', 'true')
-        el.autoplay = true
-        el.muted = false
-        el.volume = 1
-        // Pas de setSinkId('communications') ici, contrairement à l'écran d'appel
-        // d'Aria, qui route vers l'ÉCOUTEUR du téléphone : Atlas n'est pas un
-        // appel, on le regarde, donc il parle par le haut-parleur.
-        // Pour mémoire : ce routage n'était PAS la cause du mutisme sur mobile.
-        // Aria s'en sert et s'entend très bien. La cause était l'AudioContext,
-        // voir le commentaire sur les niveaux plus haut.
-        document.body.appendChild(el)
+        const avecSink = el as HTMLMediaElement & { setSinkId?: (id: string) => Promise<void> }
+        if (typeof avecSink.setSinkId === 'function') {
+          avecSink.setSinkId('communications').catch(() => {
+            avecSink.setSinkId?.('').catch(() => {})
+          })
+        }
         el.play().catch((e) => {
-          // Ne JAMAIS avaler cette erreur : un `catch` vide transforme un refus
-          // du navigateur en écran muet sans explication.
-          console.warn('Atlas vocal : lecture refusée par le navigateur', e)
+          // On n'avale pas l'erreur, même si Aria le fait : c'est elle qui
+          // transforme un refus du navigateur en écran muet sans explication.
+          console.warn('Atlas vocal : lecture refusée', e)
           setSonBloque(true)
         })
+        document.body.appendChild(el)
+        audioRef.current = el
       })
 
       // Le mécanisme officiel de LiveKit pour le verrou des navigateurs : il
@@ -287,6 +317,13 @@ export default function AtlasVoixPage() {
           />
 
           <p className="text-2xs font-bold uppercase tracking-[0.4em] text-white/45">{libelleEtat}</p>
+
+          {/* Sonde temporaire : l'état réel du chemin audio, lisible sur place. */}
+          {sonde && (
+            <p className="max-w-[90vw] break-words text-center text-[10px] leading-relaxed text-[#F4B342]/80">
+              {sonde}
+            </p>
+          )}
 
           {/* Le navigateur bloque le son : on le DIT et on offre le geste.
               Un écran muet qui n'explique rien, c'est ce qu'on vient de corriger. */}
