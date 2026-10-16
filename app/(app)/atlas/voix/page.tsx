@@ -58,8 +58,6 @@ export default function AtlasVoixPage() {
   // réellement décodés, et si ce qui arrive porte de l'énergie ou du silence.
   const [rtc, setRtc] = useState('')
   const dernierT = useRef(0)
-  const figeDepuis = useRef(0)
-  const dejaRebranche = useRef(false)
 
   // ── Ce qui fait respirer la mire ────────────────────────────────────────────
   //
@@ -99,55 +97,6 @@ export default function AtlasVoixPage() {
     return lisser(lissSortie, niveau)
   }, [])
 
-  /**
-   * Re-brancher la piste de zéro. Recours quand le flux se fige : un élément
-   * qui « joue » avec un `currentTime` immobile ne rejouera jamais tout seul,
-   * et aucun `play()` de plus n'y changera rien. On refait donc l'attache.
-   */
-  const rebrancher = useCallback(async () => {
-    const salle = roomRef.current
-    if (!salle) return
-    for (const p of salle.remoteParticipants.values()) {
-      for (const pub of p.audioTrackPublications.values()) {
-        const piste = pub.track
-        if (!piste) continue
-        piste.detach().forEach((e) => e.remove())
-        const el = piste.attach()
-        el.setAttribute('playsinline', 'true')
-        document.body.appendChild(el)
-        audioRef.current = el
-        await el.play().catch(() => {})
-        console.warn('Atlas vocal : flux figé, piste re-branchée')
-        return
-      }
-    }
-  }, [])
-
-  /** Tenter de faire jouer le son. Idempotent, donc rappelable à volonté. */
-  const reveiller = useCallback(async () => {
-    await roomRef.current?.startAudio().catch(() => {})
-    const el = audioRef.current
-    if (el?.paused) {
-      try {
-        await el.play()
-      } catch (e) {
-        console.warn('Atlas vocal : lecture encore refusée', e)
-      }
-    }
-    setSonBloque(!!audioRef.current?.paused)
-  }, [])
-
-  // CEINTURE : n'importe quel toucher sur la page tente de réveiller le son.
-  // Un navigateur mobile n'ouvre la lecture que dans un geste, et le nôtre (le
-  // tap sur la mire) est consommé bien avant que la piste n'arrive. Plutôt que
-  // d'espérer le bon instant, on saisit tous les gestes suivants.
-  useEffect(() => {
-    if (etat !== 'en_ligne') return
-    const surGeste = () => { void reveiller() }
-    document.addEventListener('pointerdown', surGeste)
-    return () => document.removeEventListener('pointerdown', surGeste)
-  }, [etat, reveiller])
-
   const raccrocher = useCallback(async () => {
     await roomRef.current?.disconnect().catch(() => {})
     roomRef.current = null
@@ -160,8 +109,6 @@ export default function AtlasVoixPage() {
     lissSortie.current = 0
     audioRef.current = null
     dernierT.current = 0
-    figeDepuis.current = 0
-    dejaRebranche.current = false
     setEtat('repos')
     setParle(false)
     setSonBloque(false)
@@ -187,19 +134,6 @@ export default function AtlasVoixPage() {
       const avance = t - dernierT.current
       dernierT.current = t
 
-      // Chien de garde : figé plus de 2 s alors qu'une piste existe et que
-      // l'élément se dit en lecture, c'est un flux mort. On re-branche une fois,
-      // puis on laisse tranquille — une boucle de réparation serait pire que le mal.
-      if (el && !el.paused && pistes > 0 && avance <= 0.05) {
-        figeDepuis.current += 1
-        if (figeDepuis.current === 4 && !dejaRebranche.current) {
-          dejaRebranche.current = true
-          void rebrancher()
-        }
-      } else {
-        figeDepuis.current = 0
-      }
-
       // L'état de la PISTE elle-même : `muted` au sens WebRTC signifie
       // « aucune donnée n'arrive », ce qui est très différent d'un volume à zéro.
       const flux = el?.srcObject as MediaStream | null
@@ -212,7 +146,6 @@ export default function AtlasVoixPage() {
           `t ${t.toFixed(1)} ${avance > 0.05 ? 'avance' : 'FIGE'}`,
           p0 ? `piste ${p0.readyState}${p0.muted ? ' SANS-DONNEES' : ' alimentee'}${p0.enabled ? '' : ' DESACTIVEE'}` : 'piste ABSENTE',
           `niveau ${niveau.toFixed(2)}`,
-          dejaRebranche.current ? 'rebranche' : '',
         ].filter(Boolean).join(' · '),
       )
 
@@ -251,7 +184,7 @@ export default function AtlasVoixPage() {
       })()
     }, 500)
     return () => clearInterval(minuteur)
-  }, [etat, rebrancher])
+  }, [etat])
 
   const demarrer = async () => {
     if (etat === 'connexion' || etat === 'en_ligne') return
@@ -278,10 +211,10 @@ export default function AtlasVoixPage() {
     // faisait déjà ce geste depuis longtemps, commentaire à l'appui — je ne
     // l'avais pas repris.
     try {
-      const flux = await navigator.mediaDevices.getUserMedia({ audio: true })
-      // On relâche tout de suite : LiveKit redemandera le micro pour de bon,
-      // la permission est désormais accordée et la lecture déverrouillée.
-      flux.getTracks().forEach((p) => p.stop())
+      // On ne relâche PAS les pistes, contrairement à ma version précédente :
+      // Aria laisse ce flux vivant, et c'est peut-être lui qui tient la session
+      // audio ouverte sur Android. Une variable de moins entre elle et nous.
+      await navigator.mediaDevices.getUserMedia({ audio: true })
     } catch (e) {
       console.warn('Atlas vocal : micro refusé', e)
       setEtat('echec')
@@ -300,13 +233,19 @@ export default function AtlasVoixPage() {
       const room = new Room()
       roomRef.current = room
 
+      // ── LE CHEMIN AUDIO, STRICTEMENT CELUI D'ARIA ────────────────────────
+      // Les stats WebRTC ont montré que les paquets arrivent (419, aucun perdu)
+      // mais que le moteur de rendu ne démarre pas : 1920 échantillons décodés,
+      // quatre centièmes de seconde, et un tampon de gigue à 38,4. La file se
+      // remplit, personne ne la vide.
+      //
+      // J'avais empilé par-dessus : startAudio, un réveil sur chaque toucher, un
+      // chien de garde, une re-attache. Autant de variables qui m'empêchent de
+      // savoir laquelle nuit. Tout est retiré : il ne reste QUE la séquence
+      // d'Aria, qui s'entend sur ce téléphone. On réintroduira une par une, en
+      // vérifiant à chaque fois.
       room.on(RoomEvent.TrackSubscribed, (piste: RemoteTrack) => {
         if (piste.kind !== Track.Kind.Audio) return
-        // ALIGNÉ MOT POUR MOT SUR L'ÉCRAN D'APPEL D'ARIA, qui s'entend très bien
-        // sur le téléphone de Patrice. Après deux diagnostics faux (l'écouteur,
-        // puis l'AudioContext), on repart de ce qui MARCHE plutôt que de ce qui
-        // paraît correct : même ordre d'appels, même routage, même tout. Les
-        // améliorations se rajouteront une par une, en vérifiant à chaque fois.
         const el = piste.attach()
         el.setAttribute('playsinline', 'true')
         const avecSink = el as HTMLMediaElement & { setSinkId?: (id: string) => Promise<void> }
@@ -315,19 +254,9 @@ export default function AtlasVoixPage() {
             avecSink.setSinkId?.('').catch(() => {})
           })
         }
+        el.play().catch(() => {})     // comme Aria : AVANT l'insertion
         document.body.appendChild(el)
         audioRef.current = el
-        void reveiller()        // et on redemande la lecture une fois la piste là
-      })
-
-      // ATTENTION : `canPlaybackAudio` dit si LiveKit estime que le navigateur
-      // AUTORISE le son. Il ne dit PAS si notre élément joue. Les deux peuvent
-      // diverger, et c'est exactement ce qui est arrivé : « lecture ok » alors
-      // que l'élément était en pause, donc le bouton de secours restait caché.
-      // On s'en sert comme signal, jamais comme vérité : la vérité, c'est
-      // `element.paused`, relevé par la sonde.
-      room.on(RoomEvent.AudioPlaybackStatusChanged, () => {
-        if (!room.canPlaybackAudio) setSonBloque(true)
       })
 
       room.on(RoomEvent.TrackUnsubscribed, (piste) => {
@@ -365,12 +294,6 @@ export default function AtlasVoixPage() {
       })
 
       await room.connect(url, token)
-      // `startAudio()` ne joue que les éléments qui EXISTENT déjà. Appelé ici,
-      // juste après connect, il ne trouvait rien : la piste d'Atlas n'arrive
-      // qu'une seconde plus tard, dans TrackSubscribed. C'était un appel à vide,
-      // et c'est la deuxième moitié du bug. On le rappelle donc à l'arrivée de
-      // la piste (voir `reveiller`), pas seulement ici.
-      await room.startAudio().catch(() => {})
       await room.localParticipant.setMicrophoneEnabled(true)
       setMuet(false)
       setEtat('en_ligne')
@@ -486,11 +409,12 @@ export default function AtlasVoixPage() {
             </>
           )}
 
-          {/* Le navigateur bloque le son : on le DIT et on offre le geste.
-              Un écran muet qui n'explique rien, c'est ce qu'on vient de corriger. */}
+          {/* Recours visible quand l'élément est en pause. Le geste se contente
+              de rejouer l'élément : plus de `startAudio`, plus de réveil global,
+              on ne veut qu'UNE variable à la fois tant que le son ne sort pas. */}
           {sonBloque && etat === 'en_ligne' && (
             <button
-              onClick={() => void reveiller()}
+              onClick={() => void audioRef.current?.play().catch(() => {})}
               className="mt-1 flex items-center gap-2 rounded-2xl bg-primary px-4 py-2 text-xs font-bold text-[#1A0E02]"
             >
               <Volume2 size={15} />
