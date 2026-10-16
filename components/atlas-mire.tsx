@@ -37,11 +37,16 @@ export function AtlasMire({
   niveauSortie: () => number
   onClick?: () => void
   className?: string
-  /** false = on gèle l'animation. Sert à écarter la mire comme cause d'un
-   *  problème audio sur mobile : un canevas redessiné 60 fois par seconde peut
-   *  saturer le fil principal d'un téléphone. */
+  /** false fige la mire. Par défaut elle s'anime, sauf si le système demande
+   *  de limiter les animations. */
   anime?: boolean
 }) {
+  // `prefers-reduced-motion` : on respecte le réglage système plutôt que de
+  // faire tourner un canevas chez quelqu'un qui a demandé le calme.
+  const calme =
+    typeof window !== 'undefined' &&
+    window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
+  const tourne = anime && !calme
   const ref = useRef<HTMLCanvasElement | null>(null)
   // Les niveaux changent 60 fois par seconde : on les lit par référence pour ne
   // pas relancer l'animation à chaque image.
@@ -72,7 +77,7 @@ export function AtlasMire({
     let image = 0
     let t = 0
     const dessiner = () => {
-      if (anime) image = requestAnimationFrame(dessiner)
+      if (tourne) image = requestAnimationFrame(dessiner)
       t += 0.016
       const w = toile.width, h = toile.height, cx = w / 2, cy = h / 2
       ctx.clearRect(0, 0, w, h)
@@ -162,7 +167,7 @@ export function AtlasMire({
       cancelAnimationFrame(image)
       observateur.disconnect()
     }
-  }, [anime])
+  }, [tourne])
 
   return (
     <canvas

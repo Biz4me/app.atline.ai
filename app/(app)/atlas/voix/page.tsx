@@ -41,37 +41,22 @@ export default function AtlasVoixPage() {
   const [moi, setMoi] = useState('')
   const [lui, setLui] = useState('')
   const [parle, setParle] = useState(false)
-  // Le navigateur refuse-t-il de jouer le son ? Sur mobile c'est la règle tant
-  // qu'aucun geste ne l'a autorisé, et ça rendait l'écran muet en silence.
+  // Le navigateur a-t-il refusé de jouer ? On le montre au lieu de laisser un
+  // écran muet sans explication.
   const [sonBloque, setSonBloque] = useState(false)
 
   const roomRef = useRef<Room | null>(null)
   const audioRef = useRef<HTMLMediaElement | null>(null)
-  // Un bandeau de diagnostic, visible sur l'appareil où ça cloche. Deux fausses
-  // pistes ont coûté deux allers-retours : mieux vaut lire l'état réel que
-  // deviner une troisième fois. À retirer quand le son sera stable.
-  const [sonde, setSonde] = useState('')
-  // Interrupteur de diagnostic : geler la mire pour voir si c'est ELLE qui
-  // étrangle le son sur mobile. Temporaire, comme la sonde.
-  const [mireAnimee, setMireAnimee] = useState(true)
-  // Les statistiques WebRTC : la seule mesure qui dise si des échantillons sont
-  // réellement décodés, et si ce qui arrive porte de l'énergie ou du silence.
-  const [rtc, setRtc] = useState('')
-  const dernierT = useRef(0)
 
   // ── Ce qui fait respirer la mire ────────────────────────────────────────────
   //
-  // SURTOUT PAS d'AudioContext ici. Première version : un `createMediaStreamSource`
-  // sur la piste distante alimentait deux analyseurs. Sur ordinateur, parfait.
-  // Sur téléphone, Atlas devenait MUET — faire entrer une piste WebRTC distante
-  // dans un graphe Web Audio capte le flux, et comme l'analyseur n'est relié à
-  // aucune sortie, le son part dans le graphe et n'en ressort jamais. Aria, qui
-  // ne touche à aucun AudioContext, n'a jamais eu le problème : c'est la seule
-  // différence entre les deux écrans, et c'était la bonne piste.
+  // SURTOUT PAS d'AudioContext ici : faire entrer une piste WebRTC distante dans
+  // un graphe Web Audio capte le flux, et comme l'analyseur n'est relié à aucune
+  // sortie, le son y part et n'en ressort jamais.
   //
   // On se sert donc du niveau que LiveKit calcule DÉJÀ, sans toucher à l'audio.
-  // Contrepartie assumée : ce signal est rafraîchi quelques fois par seconde, pas
-  // soixante. On le lisse donc vers sa cible à chaque image, sinon la mire
+  // Contrepartie assumée : ce signal est rafraîchi quelques fois par seconde et
+  // non soixante, d'où le lissage vers la cible à chaque image — sinon la mire
   // sauterait par paliers au lieu de respirer.
   const lissEntree = useRef(0)
   const lissSortie = useRef(0)
@@ -100,91 +85,15 @@ export default function AtlasVoixPage() {
   const raccrocher = useCallback(async () => {
     await roomRef.current?.disconnect().catch(() => {})
     roomRef.current = null
-    // Les éléments <audio> posés par `attach()` survivent à la déconnexion :
-    // sans ce ménage, un second appel en empile un de plus à chaque fois.
-    document.querySelectorAll('audio[data-lk-local-player], audio').forEach((a) => {
-      if (a.parentElement === document.body) a.remove()
-    })
     lissEntree.current = 0
     lissSortie.current = 0
     audioRef.current = null
-    dernierT.current = 0
     setEtat('repos')
     setParle(false)
     setSonBloque(false)
-    setSonde('')
   }, [])
 
   useEffect(() => () => { void raccrocher() }, [raccrocher])
-
-  // La sonde : l'état réel du chemin audio, relevé deux fois par seconde.
-  useEffect(() => {
-    if (etat !== 'en_ligne') return
-    const minuteur = setInterval(() => {
-      const salle = roomRef.current
-      const el = audioRef.current as (HTMLMediaElement & { sinkId?: string }) | null
-      const distants = salle ? [...salle.remoteParticipants.values()] : []
-      const pistes = distants.reduce((n, p) => n + p.audioTrackPublications.size, 0)
-      const niveau = distants.reduce((m, p) => Math.max(m, p.audioLevel), 0)
-      // LA vérité sur le son, c'est l'élément lui-même, pas l'avis du navigateur.
-      setSonBloque(!!el?.paused)
-
-      // Le temps AVANCE-t-il ? « joue » ne veut rien dire si le flux est figé.
-      const t = el?.currentTime ?? 0
-      const avance = t - dernierT.current
-      dernierT.current = t
-
-      // L'état de la PISTE elle-même : `muted` au sens WebRTC signifie
-      // « aucune donnée n'arrive », ce qui est très différent d'un volume à zéro.
-      const flux = el?.srcObject as MediaStream | null
-      const p0 = flux?.getAudioTracks?.()[0]
-
-      setSonde(
-        [
-          `pistes ${pistes}`,
-          el ? `el ${el.paused ? 'PAUSE' : 'joue'} v${el.volume}${el.muted ? ' MUET' : ''}` : 'el ABSENT',
-          `t ${t.toFixed(1)} ${avance > 0.05 ? 'avance' : 'FIGE'}`,
-          p0 ? `piste ${p0.readyState}${p0.muted ? ' SANS-DONNEES' : ' alimentee'}${p0.enabled ? '' : ' DESACTIVEE'}` : 'piste ABSENTE',
-          `niveau ${niveau.toFixed(2)}`,
-        ].filter(Boolean).join(' · '),
-      )
-
-      // Les stats du récepteur WebRTC. C'est la mesure qui tranche :
-      //  - « ech 0 »              -> rien n'est décodé, problème de transport
-      //  - « ech monte, energie 0 » -> on nous envoie du SILENCE
-      //  - « ech monte, energie > 0 » -> le navigateur rend bien du son, et le
-      //                              problème est après lui (sortie matérielle)
-      void (async () => {
-        const piste = [...(salle?.remoteParticipants.values() ?? [])]
-          .flatMap((p) => [...p.audioTrackPublications.values()])
-          .map((pub) => pub.track)
-          .find(Boolean)
-        if (!piste) return setRtc('')
-        try {
-          const rapport = await piste.getRTCStatsReport()
-          if (!rapport) return setRtc('pas de stats')
-          for (const s of rapport.values()) {
-            if (s.type !== 'inbound-rtp' || s.kind !== 'audio') continue
-            setRtc(
-              [
-                `paquets ${s.packetsReceived ?? '?'}`,
-                `perdus ${s.packetsLost ?? 0}`,
-                `ech ${s.totalSamplesReceived ?? '?'}`,
-                `energie ${(s.totalAudioEnergy ?? 0).toFixed(3)}`,
-                `masques ${s.concealedSamples ?? 0}`,
-                `tampon ${(s.jitterBufferDelay ?? 0).toFixed(1)}`,
-              ].join(' · '),
-            )
-            return
-          }
-          setRtc('aucun flux entrant audio')
-        } catch (e) {
-          setRtc(`stats KO : ${String(e).slice(0, 40)}`)
-        }
-      })()
-    }, 500)
-    return () => clearInterval(minuteur)
-  }, [etat])
 
   const demarrer = async () => {
     if (etat === 'connexion' || etat === 'en_ligne') return
@@ -194,26 +103,17 @@ export default function AtlasVoixPage() {
     setLui('')
     setSonBloque(false)
 
-    // ─────────────────────────────────────────────────────────────────────────
-    // LA PREMIÈRE CHOSE, et elle doit le rester.
+    // ⚠️ LA PREMIÈRE INSTRUCTION, et elle doit le rester.
     //
-    // La documentation de livekit-client est explicite : la lecture audio d'un
-    // navigateur mobile reste MUETTE tant qu'un geste de l'utilisateur n'a pas
-    // déclenché l'une de ces deux choses — `startAudio()` ou `getUserMedia()`.
+    // Sur mobile, la lecture audio reste MUETTE tant qu'un geste de
+    // l'utilisateur n'a pas déclenché `getUserMedia()` ou `startAudio()`. Ici on
+    // est encore dans le tap sur la mire ; tout ce qui suit (jeton, connexion,
+    // abonnement à la piste) comporte des attentes réseau, et à leur sortie le
+    // geste est éteint. Déplacer cette ligne plus bas rend l'écran muet.
     //
-    // Demander le micro ICI, en tout premier, c'est encore être dans le tap sur
-    // la mire. Tout ce qui suit (le jeton, la connexion, l'abonnement à la
-    // piste) comporte des attentes réseau : à leur sortie le geste est éteint
-    // depuis longtemps, et `setMicrophoneEnabled()` n'ouvre alors plus rien.
-    //
-    // C'est exactement ce qui rendait Atlas muet sur téléphone pendant que
-    // l'écran se croyait sain (« el joue », « lecture ok », et aucun son). Aria
-    // faisait déjà ce geste depuis longtemps, commentaire à l'appui — je ne
-    // l'avais pas repris.
+    // On ne relâche pas non plus les pistes obtenues : ce flux vivant fait
+    // partie de la séquence qui fonctionne.
     try {
-      // On ne relâche PAS les pistes, contrairement à ma version précédente :
-      // Aria laisse ce flux vivant, et c'est peut-être lui qui tient la session
-      // audio ouverte sur Android. Une variable de moins entre elle et nous.
       await navigator.mediaDevices.getUserMedia({ audio: true })
     } catch (e) {
       console.warn('Atlas vocal : micro refusé', e)
@@ -233,17 +133,13 @@ export default function AtlasVoixPage() {
       const room = new Room()
       roomRef.current = room
 
-      // ── LE CHEMIN AUDIO, STRICTEMENT CELUI D'ARIA ────────────────────────
-      // Les stats WebRTC ont montré que les paquets arrivent (419, aucun perdu)
-      // mais que le moteur de rendu ne démarre pas : 1920 échantillons décodés,
-      // quatre centièmes de seconde, et un tampon de gigue à 38,4. La file se
-      // remplit, personne ne la vide.
+      // ⚠️ LE CHEMIN AUDIO — ne pas « améliorer » sans vérifier sur un téléphone.
       //
-      // J'avais empilé par-dessus : startAudio, un réveil sur chaque toucher, un
-      // chien de garde, une re-attache. Autant de variables qui m'empêchent de
-      // savoir laquelle nuit. Tout est retiré : il ne reste QUE la séquence
-      // d'Aria, qui s'entend sur ce téléphone. On réintroduira une par une, en
-      // vérifiant à chaque fois.
+      // C'est la séquence exacte de l'écran d'appel d'Aria, et l'ordre compte :
+      // `play()` AVANT l'insertion dans la page. Toute addition par-dessus
+      // (`startAudio()`, un réveil sur chaque toucher, un chien de garde sur le
+      // flux, une re-attache) a rendu Atlas muet sur mobile — les paquets
+      // arrivaient, mais le moteur de rendu audio ne démarrait jamais.
       room.on(RoomEvent.TrackSubscribed, (piste: RemoteTrack) => {
         if (piste.kind !== Track.Kind.Audio) return
         const el = piste.attach()
@@ -254,7 +150,9 @@ export default function AtlasVoixPage() {
             avecSink.setSinkId?.('').catch(() => {})
           })
         }
-        el.play().catch(() => {})     // comme Aria : AVANT l'insertion
+        // Un refus de lecture se voit à l'écran plutôt que de laisser un silence
+        // inexpliqué, mais on n'essaie RIEN de plus : c'est ce qui cassait.
+        el.play().catch(() => setSonBloque(true))
         document.body.appendChild(el)
         audioRef.current = el
       })
@@ -377,7 +275,6 @@ export default function AtlasVoixPage() {
           </p>
 
           <AtlasMire
-            anime={mireAnimee}
             niveauEntree={lireEntree}
             niveauSortie={lireSortie}
             onClick={etat === 'en_ligne' ? undefined : demarrer}
@@ -388,26 +285,6 @@ export default function AtlasVoixPage() {
           />
 
           <p className="text-2xs font-bold uppercase tracking-[0.4em] text-white/45">{libelleEtat}</p>
-
-          {/* Sonde temporaire : l'état réel du chemin audio, lisible sur place. */}
-          {sonde && (
-            <>
-              <p className="max-w-[90vw] break-words text-center text-[10px] leading-relaxed text-[#F4B342]/80">
-                {sonde}
-              </p>
-              {rtc && (
-                <p className="max-w-[90vw] break-words text-center text-[10px] leading-relaxed text-[#22C55E]/85">
-                  {rtc}
-                </p>
-              )}
-              <button
-                onClick={() => setMireAnimee((v) => !v)}
-                className="rounded-full border border-[#F4B342]/40 px-3 py-1 text-[10px] text-[#F4B342]/80"
-              >
-                {mireAnimee ? 'Geler la mire (test)' : 'Animer la mire'}
-              </button>
-            </>
-          )}
 
           {/* Recours visible quand l'élément est en pause. Le geste se contente
               de rejouer l'élément : plus de `startAudio`, plus de réveil global,
