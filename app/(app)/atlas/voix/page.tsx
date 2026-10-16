@@ -90,6 +90,31 @@ export default function AtlasVoixPage() {
     return lisser(lissSortie, niveau)
   }, [])
 
+  /** Tenter de faire jouer le son. Idempotent, donc rappelable à volonté. */
+  const reveiller = useCallback(async () => {
+    await roomRef.current?.startAudio().catch(() => {})
+    const el = audioRef.current
+    if (el?.paused) {
+      try {
+        await el.play()
+      } catch (e) {
+        console.warn('Atlas vocal : lecture encore refusée', e)
+      }
+    }
+    setSonBloque(!!audioRef.current?.paused)
+  }, [])
+
+  // CEINTURE : n'importe quel toucher sur la page tente de réveiller le son.
+  // Un navigateur mobile n'ouvre la lecture que dans un geste, et le nôtre (le
+  // tap sur la mire) est consommé bien avant que la piste n'arrive. Plutôt que
+  // d'espérer le bon instant, on saisit tous les gestes suivants.
+  useEffect(() => {
+    if (etat !== 'en_ligne') return
+    const surGeste = () => { void reveiller() }
+    document.addEventListener('pointerdown', surGeste)
+    return () => document.removeEventListener('pointerdown', surGeste)
+  }, [etat, reveiller])
+
   const raccrocher = useCallback(async () => {
     await roomRef.current?.disconnect().catch(() => {})
     roomRef.current = null
@@ -116,12 +141,15 @@ export default function AtlasVoixPage() {
       const distants = salle ? [...salle.remoteParticipants.values()] : []
       const pistes = distants.reduce((n, p) => n + p.audioTrackPublications.size, 0)
       const niveau = distants.reduce((m, p) => Math.max(m, p.audioLevel), 0)
+      // LA vérité sur le son, c'est l'élément lui-même, pas l'avis du navigateur.
+      // Tant qu'il est en pause, le bouton de secours doit être visible.
+      setSonBloque(!!el?.paused)
       setSonde(
         [
           `pistes ${pistes}`,
           `lecture ${salle?.canPlaybackAudio ? 'ok' : 'BLOQUEE'}`,
           el ? `el ${el.paused ? 'PAUSE' : 'joue'} v${el.volume}${el.muted ? ' MUET' : ''} rs${el.readyState}` : 'el ABSENT',
-          el?.sinkId !== undefined ? `sortie «${el.sinkId || 'defaut'}»` : 'sortie n/d',
+          `t ${el ? el.currentTime.toFixed(1) : '-'}`,
           `niveau ${niveau.toFixed(2)}`,
         ].join(' · '),
       )
@@ -163,22 +191,19 @@ export default function AtlasVoixPage() {
             avecSink.setSinkId?.('').catch(() => {})
           })
         }
-        el.play().catch((e) => {
-          // On n'avale pas l'erreur, même si Aria le fait : c'est elle qui
-          // transforme un refus du navigateur en écran muet sans explication.
-          console.warn('Atlas vocal : lecture refusée', e)
-          setSonBloque(true)
-        })
         document.body.appendChild(el)
         audioRef.current = el
+        void reveiller()        // et on redemande la lecture une fois la piste là
       })
 
-      // Le mécanisme officiel de LiveKit pour le verrou des navigateurs : il
-      // faut un geste. On tient le nôtre (le tap sur la mire), mais s'il expire
-      // ou si le navigateur refuse quand même, cet événement nous le dit au lieu
-      // de nous laisser deviner.
+      // ATTENTION : `canPlaybackAudio` dit si LiveKit estime que le navigateur
+      // AUTORISE le son. Il ne dit PAS si notre élément joue. Les deux peuvent
+      // diverger, et c'est exactement ce qui est arrivé : « lecture ok » alors
+      // que l'élément était en pause, donc le bouton de secours restait caché.
+      // On s'en sert comme signal, jamais comme vérité : la vérité, c'est
+      // `element.paused`, relevé par la sonde.
       room.on(RoomEvent.AudioPlaybackStatusChanged, () => {
-        setSonBloque(!room.canPlaybackAudio)
+        if (!room.canPlaybackAudio) setSonBloque(true)
       })
 
       room.on(RoomEvent.TrackUnsubscribed, (piste) => {
@@ -216,14 +241,12 @@ export default function AtlasVoixPage() {
       })
 
       await room.connect(url, token)
-      // Déverrouiller le son TANT QUE le geste de l'utilisateur est encore
-      // valable. `demarrer` est appelé depuis le tap sur la mire, donc on est
-      // dans la bonne pile d'appels : c'est le seul moment où les navigateurs
-      // mobiles acceptent d'ouvrir la lecture audio.
-      await room.startAudio().catch((e) => {
-        console.warn('Atlas vocal : startAudio refusé', e)
-      })
-      setSonBloque(!room.canPlaybackAudio)
+      // `startAudio()` ne joue que les éléments qui EXISTENT déjà. Appelé ici,
+      // juste après connect, il ne trouvait rien : la piste d'Atlas n'arrive
+      // qu'une seconde plus tard, dans TrackSubscribed. C'était un appel à vide,
+      // et c'est la deuxième moitié du bug. On le rappelle donc à l'arrivée de
+      // la piste (voir `reveiller`), pas seulement ici.
+      await room.startAudio().catch(() => {})
       await room.localParticipant.setMicrophoneEnabled(true)
       setMuet(false)
       setEtat('en_ligne')
@@ -329,11 +352,7 @@ export default function AtlasVoixPage() {
               Un écran muet qui n'explique rien, c'est ce qu'on vient de corriger. */}
           {sonBloque && etat === 'en_ligne' && (
             <button
-              onClick={async () => {
-                await roomRef.current?.startAudio().catch(() => {})
-                document.querySelectorAll('audio').forEach((a) => void a.play().catch(() => {}))
-                setSonBloque(!(roomRef.current?.canPlaybackAudio ?? false))
-              }}
+              onClick={() => void reveiller()}
               className="mt-1 flex items-center gap-2 rounded-2xl bg-primary px-4 py-2 text-xs font-bold text-[#1A0E02]"
             >
               <Volume2 size={15} />
@@ -341,7 +360,9 @@ export default function AtlasVoixPage() {
             </button>
           )}
 
-          {etat === 'en_ligne' && !sonBloque && (
+          {/* Le micro reste accessible même quand le son est bloqué : les deux
+              problèmes sont indépendants, les cacher l'un l'autre n'aide personne. */}
+          {etat === 'en_ligne' && (
             <button
               onClick={basculerMicro}
               className="mt-1 flex items-center gap-2 rounded-2xl bg-white/5 px-4 py-2 text-xs text-white/70 hover:text-white"
