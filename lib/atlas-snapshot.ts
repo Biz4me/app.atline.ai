@@ -135,7 +135,9 @@ export async function buildAtlasSnapshot(userId: string): Promise<string> {
         take: 5,
         select: { dueAt: true, channel: true, contactId: true },
       }),
-      db.lmsLesson.count(),
+      // Publiées seulement : sinon Atlas annonce un total que l'utilisateur
+      // ne peut pas atteindre, et sa progression plafonne sous 100 %.
+      db.lmsLesson.count({ where: { published: true } }),
       // Où il en est VRAIMENT : Atlas puisait dans les 497 fragments de la
       // formation sans savoir quelles leçons l'utilisateur avait vues. Il
       // pouvait donc lui servir une technique du module 7 avant qu'il y arrive,

@@ -124,14 +124,14 @@ export async function GET() {
   const [user, business, mindsetModule] = await Promise.all([
     db.user.findUnique({ where: { id: userId }, select: { coaching: true } }),
     db.userMlmBusiness.findUnique({ where: { id: bizId }, select: { story: true, objectif: true } }),
-    db.lmsModule.findFirst({ where: { position: 0 }, select: { id: true } }).catch(() => null),
+    db.lmsModule.findFirst({ where: { position: 0, published: true }, select: { id: true } }).catch(() => null),
   ])
   // Un module est terminé quand ses leçons sont faites ET ses quiz réussis — deux
   // tables distinctes. La règle vit dans lib/lms.ts pour n'exister qu'une fois.
   let mindsetDone = false
   if (mindsetModule) {
     const lecons = await db.lmsLesson.findMany({
-      where: { moduleId: mindsetModule.id }, select: { id: true, kind: true },
+      where: { moduleId: mindsetModule.id, published: true }, select: { id: true, kind: true },
     }).catch(() => [] as { id: string; kind: string }[])
     if (lecons.length) {
       const ids = lecons.map((l) => l.id)

@@ -31,7 +31,7 @@ export async function GET() {
     db.appointment.count({ where: { userId, done: false, startAt: { gte: now, lte: inSevenDays } } }),
     db.contact.groupBy({ by: ['prospectStage'], where: { userId, kind: 'PROSPECT' }, _count: { _all: true } }),
     db.contact.count({ where: { userId, createdAt: { gte: new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000) } } }),
-    db.lmsLesson.count(),
+    db.lmsLesson.count({ where: { published: true } }),   // le dénominateur doit être atteignable
     db.userLessonProgress.count({ where: { userId, done: true } }),
     db.campaign.count({ where: { userId } }),
     db.lead.count({ where: { campaign: { userId } } }),

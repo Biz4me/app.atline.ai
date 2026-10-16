@@ -13,8 +13,9 @@ export async function GET(
   const { moduleId, lessonId } = await props.params
 
   const [lesson, mod, allLessons, progress] = await Promise.all([
-    db.lmsLesson.findUnique({
-      where: { id: lessonId },
+    // `findFirst` : une leçon en brouillon ne s'ouvre pas, même par URL directe.
+    db.lmsLesson.findFirst({
+      where: { id: lessonId, published: true },
       select: {
         id: true, title: true, position: true, kind: true, type: true,
         durationMin: true, summary: true, intro: true, content: true,
@@ -33,8 +34,10 @@ export async function GET(
       where: { id: moduleId },
       select: { title: true, position: true },
     }),
+    // Sert à calculer « suivante »/« précédente » : sans le filtre, la flèche
+    // suivante enverrait sur un brouillon.
     db.lmsLesson.findMany({
-      where: { moduleId },
+      where: { moduleId, published: true },
       orderBy: { position: 'asc' },
       select: { id: true, position: true, kind: true, title: true },
     }),

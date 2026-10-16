@@ -7,13 +7,19 @@ export async function GET() {
   if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   const userId = session.user.id
 
+  // `published` est le seul garde-fou entre un brouillon et ce que lit un
+  // distributeur. Il n'était lu nulle part ici : les 82 leçons générées sont
+  // restées en brouillon tout en étant servies, pendant que le plan du jour,
+  // lui, les filtrait et ne proposait donc JAMAIS de leçon (silencieusement,
+  // dans un try/catch best-effort). On le fait respecter aux trois niveaux.
   const course = await db.lmsCourse.findFirst({
+    where: { published: true },
     include: {
       modules: {
+        where: { published: true },
         orderBy: { position: 'asc' },
         include: {
-          _count: { select: { lessons: true } },
-          lessons: { select: { id: true, kind: true } },
+          lessons: { where: { published: true }, select: { id: true, kind: true } },
         },
       },
     },
@@ -51,8 +57,11 @@ export async function GET() {
     const allQuizzesPassed = quizzes.length === 0 || quizzes.every((l: { id: string }) => passedQuizIds.has(l.id))
     const status = allLessonsDone && allQuizzesPassed && total > 0 ? 'DONE' : pct > 0 ? 'IN_PROGRESS' : 'NOT_STARTED'
 
+    // `_count.lessons` venait de Prisma et comptait TOUTES les leçons, brouillons
+    // compris. On le recalcule sur les seules leçons publiées : le front l'affiche
+    // (« N leçons ») et s'en sert pour pondérer la progression globale.
     const { lessons: _, ...rest } = mod
-    return { ...rest, progress: [{ pct, status }] }
+    return { ...rest, _count: { lessons: total }, progress: [{ pct, status }] }
   })
 
   return NextResponse.json({ ...course, modules: modulesWithProgress })

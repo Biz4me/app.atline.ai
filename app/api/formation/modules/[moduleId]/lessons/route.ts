@@ -4,7 +4,7 @@ import { db } from '@/lib/db'
 export async function GET(_req: Request, props: { params: Promise<{ moduleId: string }> }) {
   const { moduleId } = await props.params
   const lessons = await db.lmsLesson.findMany({
-    where: { moduleId },
+    where: { moduleId, published: true },   // un brouillon ne se sert pas
     orderBy: { position: 'asc' },
     select: {
       id: true,
