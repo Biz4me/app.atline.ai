@@ -51,6 +51,7 @@ export default function AtlasVoixPage() {
   // pistes ont coûté deux allers-retours : mieux vaut lire l'état réel que
   // deviner une troisième fois. À retirer quand le son sera stable.
   const [sonde, setSonde] = useState('')
+  const dernierT = useRef(0)
 
   // ── Ce qui fait respirer la mire ────────────────────────────────────────────
   //
@@ -142,14 +143,24 @@ export default function AtlasVoixPage() {
       const pistes = distants.reduce((n, p) => n + p.audioTrackPublications.size, 0)
       const niveau = distants.reduce((m, p) => Math.max(m, p.audioLevel), 0)
       // LA vérité sur le son, c'est l'élément lui-même, pas l'avis du navigateur.
-      // Tant qu'il est en pause, le bouton de secours doit être visible.
       setSonBloque(!!el?.paused)
+
+      // Le temps AVANCE-t-il ? « joue » ne veut rien dire si le flux est figé.
+      const t = el?.currentTime ?? 0
+      const avance = t - dernierT.current
+      dernierT.current = t
+
+      // L'état de la PISTE elle-même : `muted` au sens WebRTC signifie
+      // « aucune donnée n'arrive », ce qui est très différent d'un volume à zéro.
+      const flux = el?.srcObject as MediaStream | null
+      const p0 = flux?.getAudioTracks?.()[0]
+
       setSonde(
         [
           `pistes ${pistes}`,
-          `lecture ${salle?.canPlaybackAudio ? 'ok' : 'BLOQUEE'}`,
-          el ? `el ${el.paused ? 'PAUSE' : 'joue'} v${el.volume}${el.muted ? ' MUET' : ''} rs${el.readyState}` : 'el ABSENT',
-          `t ${el ? el.currentTime.toFixed(1) : '-'}`,
+          el ? `el ${el.paused ? 'PAUSE' : 'joue'} v${el.volume}${el.muted ? ' MUET' : ''}` : 'el ABSENT',
+          `t ${t.toFixed(1)} ${avance > 0.05 ? 'avance' : 'FIGE'}`,
+          p0 ? `piste ${p0.readyState}${p0.muted ? ' SANS-DONNEES' : ' alimentee'}${p0.enabled ? '' : ' DESACTIVEE'}` : 'piste ABSENTE',
           `niveau ${niveau.toFixed(2)}`,
         ].join(' · '),
       )
