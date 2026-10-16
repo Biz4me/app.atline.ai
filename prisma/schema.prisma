@@ -100,7 +100,8 @@ model User {
   bookInteractions UserBookInteraction[]
 
   // ARIA
-  simSessions SimSession[]
+  simSessions          SimSession[]
+  competences          UserCompetence[] // où il en est, métier par métier
   consommationsVocales ConsommationVocale[]
 
   // Nova
@@ -149,10 +150,10 @@ model User {
   eventRegistrations EventRegistration[]
 
   // IA — consommation
-  aiUsageLogs    AiUsageLog[]
-  telegramLink   TelegramLink?
-  aiUsageMonthly AiUsageMonthly[]
-  agentActions   AgentAction[]
+  aiUsageLogs        AiUsageLog[]
+  telegramLink       TelegramLink?
+  aiUsageMonthly     AiUsageMonthly[]
+  agentActions       AgentAction[]
   chatwootEvenements ChatwootEvenement[]
 }
 
@@ -415,11 +416,11 @@ model UserMlmBusiness {
 
   // Le compte Chatwoot de ce distributeur (un distributeur = un compte).
   // C'est par lui que le webhook retrouve à qui appartient une conversation.
-  chatwootAccountId Int?    @unique
-  chatwootInboxId   Int?
+  chatwootAccountId    Int?    @unique
+  chatwootInboxId      Int?
   // Le jeton du compte de service, indispensable pour REPONDRE : l'API
   // application de Chatwoot n'accepte pas le jeton plateforme.
-  chatwootUserToken String?
+  chatwootUserToken    String?
   // Par defaut FAUX : Orion propose, le distributeur valide. C'est la doctrine
   // depuis le debut, et c'est ce qui protege sa reputation le jour ou l'IA se
   // trompe de ton. Il l'active lui-meme quand il a confiance.
@@ -722,8 +723,8 @@ model GoogleConnection {
   // suivant, puisque l'historique est cumulatif depuis ce curseur.
   historyId       String?
 
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 // Ce qu'on a fait avec l'accès qu'on nous a confié.
@@ -831,23 +832,23 @@ enum AppointmentOutcome {
 // ============================================================
 
 model AtlasConversation {
-  id              String           @id @default(cuid())
-  userId          String
-  user            User             @relation(fields: [userId], references: [id])
-  mlmBusinessId   String?
-  mlmBusiness     UserMlmBusiness? @relation(fields: [mlmBusinessId], references: [id])
-  contactId       String?
-  contact         Contact?         @relation(fields: [contactId], references: [id])
-  title           String?
-  context         String? // "parcours" | "contact" | "reseau" | "messagerie"
-  agent           String           @default("atlas") // "atlas" | "aria" | "nova" — fil d'agent (nav messagerie)
-  summary         String? // résumé roulant (compaction : couvre les messages anciens hors fenêtre)
-  summarizedCount Int              @default(0) // nb de messages couverts par le résumé
-  messages        AtlasMessage[]
-  appointments    Appointment[]
+  id                 String               @id @default(cuid())
+  userId             String
+  user               User                 @relation(fields: [userId], references: [id])
+  mlmBusinessId      String?
+  mlmBusiness        UserMlmBusiness?     @relation(fields: [mlmBusinessId], references: [id])
+  contactId          String?
+  contact            Contact?             @relation(fields: [contactId], references: [id])
+  title              String?
+  context            String? // "parcours" | "contact" | "reseau" | "messagerie"
+  agent              String               @default("atlas") // "atlas" | "aria" | "nova" — fil d'agent (nav messagerie)
+  summary            String? // résumé roulant (compaction : couvre les messages anciens hors fenêtre)
+  summarizedCount    Int                  @default(0) // nb de messages couverts par le résumé
+  messages           AtlasMessage[]
+  appointments       Appointment[]
   consommationVocale ConsommationVocale[]
-  createdAt       DateTime         @default(now())
-  updatedAt       DateTime         @updatedAt
+  createdAt          DateTime             @default(now())
+  updatedAt          DateTime             @updatedAt
 }
 
 // Mémoire vivante d'Atlas — faits atomiques (style Memory Kernel) sur l'utilisateur
@@ -869,6 +870,13 @@ model AtlasFact {
   supersededById String?
   lastSeenAt     DateTime @default(now())
   createdAt      DateTime @default(now())
+
+  // Quand `bloque_sur` désigne une compétence du métier, on la nomme ici.
+  // `object` reste la formulation libre d'Atlas (utile pour la nuance), mais
+  // c'est CE champ qui permet de compter : « perte de foi » et « manque de
+  // motivation » deviennent enfin la même chose.
+  competenceId String?
+  competence   Competence? @relation(fields: [competenceId], references: [id])
 
   @@index([userId, contactId, status])
   @@index([userId, status, importance])
@@ -940,8 +948,15 @@ model LmsModule {
   resources    LmsResource[]
   progress     UserLmsProgress[]
   certificates Certificate[]
-  createdAt    DateTime          @default(now())
-  updatedAt    DateTime          @updatedAt
+
+  // La compétence que ce module enseigne. C'est ce chaînon qui manquait :
+  // finir une leçon n'apprenait rien au simulateur, et un mauvais score ne
+  // renvoyait vers aucune leçon.
+  competenceId String?
+  competence   Competence? @relation(fields: [competenceId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@unique([courseId, position])
 }
@@ -1146,17 +1161,23 @@ model SimSession {
   score             Int?
   feedback          String?
   messages          SimMessage[]
-  startedAt         DateTime     @default(now())
-  completedAt       DateTime?
+
+  // Ce que cette simulation entraînait, et ce qu'elle a mesuré compétence
+  // par compétence. `score` seul ne disait pas SUR QUOI on a progressé.
+  scenarioId  String?
+  scenario    SimScenario? @relation(fields: [scenarioId], references: [id])
+  scores      SimScore[]
+  startedAt   DateTime     @default(now())
+  completedAt DateTime?
 
   // Ce que la simulation a réellement consommé, relevé par l'agent vocal en fin de
   // session (une ligne par fournisseur/modèle : secondes transcrites, tokens, caractères).
   // On garde la mesure BRUTE et jamais le coût : les tarifs changent, pas les compteurs.
-  dureeSecondes     Float?
-  consommation      Json?
+  dureeSecondes Float?
+  consommation  Json?
   // Pourquoi l'appel s'est terminé : le distributeur a raccroché, le plafond de durée
   // est tombé, ou une erreur. Sans ça, un appel coupé net reste inexplicable.
-  raisonFin         String?
+  raisonFin     String?
 
   // Ce que Deepgram FACTURE vraiment pour cette session, relevé chez eux après coup.
   // Deux colonnes plutôt qu'une parce que les chiffres diffèrent : leur compteur tourne
@@ -1199,6 +1220,93 @@ enum SimKnowledge {
 enum SimRole {
   USER
   ARIA
+}
+
+// ============================================================
+// §10 bis — COMPÉTENCES — le vocabulaire commun qui manquait
+//
+// Constat du 16 octobre 2026 : la formation, le simulateur et la mémoire
+// d'Atlas diagnostiquaient déjà les faiblesses, chacun dans son coin et
+// chacun en texte libre. En production, `AtlasFact.bloque_sur` contenait
+// « perte de foi » (11), « manque de motivation » (8), « manque motivation »
+// (2), « manque motivation et foi » (2) : 23 observations du MÊME défaut,
+// qui ne se compteront jamais ensemble. Et `SimSession.score` était un seul
+// entier : impossible de dire « ton objection prix progresse ».
+//
+// On ne crée pas une fonctionnalité, on DÉCLARE une relation entre trois
+// organes qui existaient déjà. Même geste que les prédicats fermés
+// d'AtlasFact, appliqué au métier.
+// ============================================================
+
+// Les 11 compétences = les 11 modules de la formation. On ne les invente
+// pas : elles sont déjà nommées en verbes d'action, déjà enseignées, et le
+// simulateur en utilise déjà quatre sous le nom de SimPhase.
+// L'id est un slug stable et lisible ("invitation"), jamais un cuid :
+// il voyage dans les prompts, les logs et AtlasFact.
+model Competence {
+  id        String           @id
+  position  Int              @unique
+  label     String
+  modules   LmsModule[]
+  scenarios SimScenario[]
+  scores    SimScore[]
+  niveaux   UserCompetence[]
+  faits     AtlasFact[]
+  createdAt DateTime         @default(now())
+}
+
+// Un scénario NOMMÉ. Aujourd'hui une simulation porte characterId + phase +
+// difficulty : rien ne dit ce qu'elle ENTRAÎNE, donc rien ne peut router
+// vers une leçon. Un scénario travaille 1 à 3 compétences, pas onze.
+model SimScenario {
+  id          String       @id @default(cuid())
+  slug        String       @unique
+  titre       String
+  situation   String
+  objectif    String
+  phase       SimPhase
+  difficulty  SimDiff?
+  competences Competence[]
+  sessions    SimSession[]
+  position    Int          @default(0)
+  actif       Boolean      @default(true)
+  createdAt   DateTime     @default(now())
+}
+
+// Un score PAR compétence. `SimSession.score` reste (c'est la note globale
+// du débrief) mais il ne dit pas SUR QUOI on a progressé. On ne note que
+// ce que le scénario a réellement travaillé : onze cases à chaque appel
+// produiraient du bruit, pas du signal.
+model SimScore {
+  id           String     @id @default(cuid())
+  sessionId    String
+  session      SimSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  competenceId String
+  competence   Competence @relation(fields: [competenceId], references: [id])
+  score        Int
+  observation  String?
+  createdAt    DateTime   @default(now())
+
+  @@unique([sessionId, competenceId])
+  @@index([competenceId, score])
+}
+
+// Où en est l'utilisateur, compétence par compétence. C'est CETTE table qui
+// rend possible « ton invitation est à 42 sur 5 simulations, module 5 leçon 3,
+// puis tu en refais une » — la phrase qu'aucun prompt ne pouvait produire.
+model UserCompetence {
+  id           String     @id @default(cuid())
+  userId       String
+  user         User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  competenceId String
+  competence   Competence @relation(fields: [competenceId], references: [id])
+  niveau       Int        @default(0) // 0-100, moyenne glissante des mesures
+  mesures      Int        @default(0) // combien d'observations le soutiennent
+  derniereAt   DateTime?
+  updatedAt    DateTime   @updatedAt
+
+  @@unique([userId, competenceId])
+  @@index([userId, niveau])
 }
 
 // ============================================================
@@ -1742,11 +1850,11 @@ model ToolboxLink {
   // Un lien de parrainage périmé est PIRE qu'absent : il donne l'illusion de
   // marcher pendant que les filleuls partent chez quelqu'un d'autre. On garde
   // donc la trace de la dernière vérification, et son verdict.
-  verifieAt     DateTime?
-  statutVerif   String?         // OK | INJOIGNABLE | REDIRIGE | SANS_IDENTIFIANT | INVALIDE
-  detailVerif   String?         // ce qu'on a constaté, en clair
+  verifieAt   DateTime?
+  statutVerif String? // OK | INJOIGNABLE | REDIRIGE | SANS_IDENTIFIANT | INVALIDE
+  detailVerif String? // ce qu'on a constaté, en clair
 
-  updatedAt     DateTime        @updatedAt
+  updatedAt DateTime @updatedAt
 
   @@unique([userId, mlmBusinessId, linkType])
 }
@@ -2211,65 +2319,64 @@ enum MlmCompanyStatus {
 }
 
 model MlmCompany {
-  id          String   @id @default(cuid())
-  brandSlug   String
-  slug        String   @unique
-  name        String
-  country     String   @default("FR")
-  locale      String   @default("fr-FR")
-  currency    String   @default("EUR")
-  category    String?
-  officialUrl String?
+  id            String  @id @default(cuid())
+  brandSlug     String
+  slug          String  @unique
+  name          String
+  country       String  @default("FR")
+  locale        String  @default("fr-FR")
+  currency      String  @default("EUR")
+  category      String?
+  officialUrl   String?
   // ── PRÉSENCE FRANCE (29 juillet 2026) ────────────────────────────────
   // Le champ qui manquait : notre base était riche en sociétés américaines
   // et vide là où un distributeur français cherche. Sourcé de la FVD
   // (fédération, donc vérifié), d'Epixel et de Réussir VDI.
-  franceOperee  Boolean  @default(false)
-  siret         String?  // identité légale française — vérifiable, contrairement à une URL
-  fvdMembre     Boolean  @default(false)
-  fvdDepuis     Int?     // année d'adhésion à la Fédération de la Vente Directe
+  franceOperee  Boolean @default(false)
+  siret         String? // identité légale française — vérifiable, contrairement à une URL
+  fvdMembre     Boolean @default(false)
+  fvdDepuis     Int? // année d'adhésion à la Fédération de la Vente Directe
   anneeCreation Int?
   // ⚠️ Chiffre d'affaires MONDIAL du groupe, en millions — surtout pas français.
   caMondialM    Float?
 
   status      MlmCompanyStatus @default(DRAFT)
-  fiche       Json     @default("{}")
+  fiche       Json             @default("{}")
   sources     Json?
   publishedAt DateTime?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
 
   businesses UserMlmBusiness[]
   products   MlmProduct[]
+  constats   MlmConstat[]
 
   @@unique([brandSlug, country])
   @@index([brandSlug])
-  constats    MlmConstat[]
-
 }
 
 // Catalogue produit STRUCTURÉ par société (≠ la fiche narrative). Atlas y lit le prix
 // de façon déterministe (pas via le RAG), et Nova s'en sert pour la publication.
 // Alimenté depuis la boutique (products.json / scrape) + recherche.
 model MlmProduct {
-  id          String     @id @default(cuid())
+  id          String           @id @default(cuid())
   companyId   String
-  company     MlmCompany @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  company     MlmCompany       @relation(fields: [companyId], references: [id], onDelete: Cascade)
   name        String
   slug        String
   category    String?
   description String?
-  usage       String?    // mode d'emploi
-  price       Decimal?   @db.Decimal(10, 2)
-  currency    String     @default("EUR")
-  format      String?    // contenance / conditionnement
+  usage       String? // mode d'emploi
+  price       Decimal?         @db.Decimal(10, 2)
+  currency    String           @default("EUR")
+  format      String? // contenance / conditionnement
   imageUrl    String?
   sourceUrl   String?
-  extra       Json?      // champs libres selon le MLM
+  extra       Json? // champs libres selon le MLM
   status      MlmCompanyStatus @default(PUBLISHED)
-  position    Int        @default(0)
-  createdAt   DateTime   @default(now())
-  updatedAt   DateTime   @updatedAt
+  position    Int              @default(0)
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
 
   @@unique([companyId, slug])
   @@index([companyId])
@@ -2293,60 +2400,60 @@ model MlmProduct {
 
 enum AgentName {
   ATLAS // piloter
-  NOVA  // attirer
+  NOVA // attirer
   ORION // convertir
-  IRIS  // fideliser
-  ECHO  // dupliquer
+  IRIS // fideliser
+  ECHO // dupliquer
 }
 
 enum AgentActionType {
-  MESSAGE     // un message envoyé à un contact
-  RELANCE     // une relance programmée puis partie
+  MESSAGE // un message envoyé à un contact
+  RELANCE // une relance programmée puis partie
   PUBLICATION // un post publié sur un réseau
-  INVITATION  // une demande de mise en relation (LinkedIn)
-  APPEL       // un appel passé
-  RDV         // un rendez-vous posé
-  ETAPE       // une étape de parcours proposée à un filleul
-  LECON       // une leçon ou un entraînement proposé
+  INVITATION // une demande de mise en relation (LinkedIn)
+  APPEL // un appel passé
+  RDV // un rendez-vous posé
+  ETAPE // une étape de parcours proposée à un filleul
+  LECON // une leçon ou un entraînement proposé
 }
 
 enum AgentOutcome {
   EN_ATTENTE // trop tôt pour juger
-  REPONDU    // le contact a répondu
-  CLIQUE     // le lien a été ouvert
-  ACHETE     // une commande a suivi
-  RDV_PRIS   // un rendez-vous a été posé
-  AVANCE     // le filleul a franchi son étape
-  IGNORE     // le délai est passé sans signal
-  NEGATIF    // refus explicite, désabonnement, blocage
+  REPONDU // le contact a répondu
+  CLIQUE // le lien a été ouvert
+  ACHETE // une commande a suivi
+  RDV_PRIS // un rendez-vous a été posé
+  AVANCE // le filleul a franchi son étape
+  IGNORE // le délai est passé sans signal
+  NEGATIF // refus explicite, désabonnement, blocage
 }
 
 model AgentAction {
-  id        String          @id @default(cuid())
-  userId    String
-  user      User            @relation(fields: [userId], references: [id], onDelete: Cascade)
-  agent     AgentName
-  type      AgentActionType
+  id     String          @id @default(cuid())
+  userId String
+  user   User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  agent  AgentName
+  type   AgentActionType
 
-  contactId String?         // à qui, quand c'est adressé à quelqu'un
-  contact   Contact?        @relation(fields: [contactId], references: [id], onDelete: SetNull)
-  canal     String?         // telegram | whatsapp | linkedin | email | instagram | tel
-  sourceId  String?         // id de l'objet d'origine (Relance, ContentPost, Appointment…)
-  contenu   String?         @db.Text // ce qui est parti, tronqué — sert à comprendre POURQUOI ça marche
-  contexte  Json?           // angle, heure d'envoi, longueur, modèle, produit cité…
+  contactId String? // à qui, quand c'est adressé à quelqu'un
+  contact   Contact? @relation(fields: [contactId], references: [id], onDelete: SetNull)
+  canal     String? // telegram | whatsapp | linkedin | email | instagram | tel
+  sourceId  String? // id de l'objet d'origine (Relance, ContentPost, Appointment…)
+  contenu   String?  @db.Text // ce qui est parti, tronqué — sert à comprendre POURQUOI ça marche
+  contexte  Json? // angle, heure d'envoi, longueur, modèle, produit cité…
 
   // ── le résultat, écrit plus tard par le mesureur ────────────────────────
   outcome      AgentOutcome @default(EN_ATTENTE)
-  outcomeAt    DateTime?    // quand le signal est apparu
-  delaiMinutes Int?         // combien de temps s'est écoulé — un signal en soi
-  valeur       Float?       // clics, montant… quand c'est chiffrable
-  mesureAt     DateTime?    // quand on a tranché
-  echeance     DateTime     // au-delà, l'absence de signal vaut IGNORE
+  outcomeAt    DateTime? // quand le signal est apparu
+  delaiMinutes Int? // combien de temps s'est écoulé — un signal en soi
+  valeur       Float? // clics, montant… quand c'est chiffrable
+  mesureAt     DateTime? // quand on a tranché
+  echeance     DateTime // au-delà, l'absence de signal vaut IGNORE
 
-  createdAt DateTime        @default(now())
+  createdAt DateTime @default(now())
 
   @@index([userId, agent, createdAt])
-  @@index([outcome, echeance])   // le mesureur ne balaie que ce qui est mûr
+  @@index([outcome, echeance]) // le mesureur ne balaie que ce qui est mûr
   @@index([contactId])
 }
 
@@ -2384,11 +2491,11 @@ model MlmConstat {
   valeur String // la modalité gagnante : "le soir", "telegram", "question-ouverte"
 
   // ── les comptages qui la fondent ─────────────────────────────────────────
-  actions       Int   // combien d'actions sur cette modalité
+  actions       Int // combien d'actions sur cette modalité
   reussites     Int
   taux          Float // reussites / actions
   tauxReference Float // le taux des AUTRES modalités, pour mesurer l'écart
-  distributeurs Int   // combien de personnes distinctes — le seuil d'anonymat
+  distributeurs Int // combien de personnes distinctes — le seuil d'anonymat
 
   // La phrase telle qu'un agent peut la lire. Construite par comptage, jamais générée.
   enonce String @db.Text
@@ -2400,7 +2507,6 @@ model MlmConstat {
   @@index([companyId, agent])
 }
 
-
 // ═══════════════════════════════════════════════════════════════════════════
 // CE QUE CHATWOOT NOUS DIT (29 juillet 2026)
 //
@@ -2410,26 +2516,26 @@ model MlmConstat {
 // panne d'IA ne doit pas faire perdre le message.
 // ═══════════════════════════════════════════════════════════════════════════
 model ChatwootEvenement {
-  id             String   @id @default(cuid())
-  userId         String
-  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  accountId      Int      // compte Chatwoot
+  accountId      Int // compte Chatwoot
   conversationId Int
   messageId      Int?
-  contactId      String?  // le Contact Atline, quand on a su le retrouver
-  canal          String?  // telegram | whatsapp | email | api…
+  contactId      String? // le Contact Atline, quand on a su le retrouver
+  canal          String? // telegram | whatsapp | email | api…
   expediteur     String?
-  contenu        String?  @db.Text
-  charge         Json?    // la charge utile brute — précieuse tant que le format bouge
+  contenu        String? @db.Text
+  charge         Json? // la charge utile brute — précieuse tant que le format bouge
 
-  traiteAt       DateTime?  // quand Orion s'en est occupé
-  erreur         String?
+  traiteAt DateTime? // quand Orion s'en est occupé
+  erreur   String?
 
-  createdAt      DateTime @default(now())
+  createdAt DateTime @default(now())
 
   @@index([userId, createdAt])
-  @@index([traiteAt])            // le traitement ne balaie que ce qui reste
+  @@index([traiteAt]) // le traitement ne balaie que ce qui reste
   @@index([conversationId])
 }
 
@@ -2444,11 +2550,11 @@ model ChatwootEvenement {
 // On stocke les COMPTEURS BRUTS et jamais un coût : les tarifs changent, pas les
 // mesures. La conversion vit dans la configuration des tarifs.
 model ConsommationVocale {
-  id        String   @id @default(cuid())
-  userId    String
-  user      User     @relation(fields: [userId], references: [id])
-  agent     String // "atlas" | "aria" | ce qui viendra
-  room      String   @unique // la room LiveKit : identifiant naturel, et garde-fou anti-doublon
+  id             String             @id @default(cuid())
+  userId         String
+  user           User               @relation(fields: [userId], references: [id])
+  agent          String // "atlas" | "aria" | ce qui viendra
+  room           String             @unique // la room LiveKit : identifiant naturel, et garde-fou anti-doublon
   // Le fil Atlas né de cette session (context "voix"), quand il y en a un.
   conversationId String?
   conversation   AtlasConversation? @relation(fields: [conversationId], references: [id])
