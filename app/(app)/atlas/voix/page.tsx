@@ -47,6 +47,9 @@ export default function AtlasVoixPage() {
   // Les vingt minutes quotidiennes : ce qu'il reste, et le message quand c'est fini.
   const [restant, setRestant] = useState<number | null>(null)
   const [quotaAtteint, setQuotaAtteint] = useState('')
+  // Le budget de la semaine, lu au repos : l'utilisateur doit savoir où il en
+  // est AVANT de parler, pas le découvrir quand la voix s'arrête.
+  const [budget, setBudget] = useState<{ semaine: number; dose: number } | null>(null)
 
   const roomRef = useRef<Room | null>(null)
   const audioRef = useRef<HTMLMediaElement | null>(null)
@@ -97,6 +100,18 @@ export default function AtlasVoixPage() {
   }, [])
 
   useEffect(() => () => { void raccrocher() }, [raccrocher])
+
+  // Au repos, on relit le budget : au chargement, et après chaque conversation
+  // pour que le compteur affiché reflète ce qui vient d'être consommé.
+  useEffect(() => {
+    if (etat !== 'repos') return
+    let vivant = true
+    fetch('/api/atlas/voix/token')
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => { if (vivant && d) setBudget({ semaine: d.resteSemaine, dose: d.doseSemaine }) })
+      .catch(() => {})
+    return () => { vivant = false }
+  }, [etat])
 
   // Le décompte des vingt minutes. L'agent coupe de son côté ; ceci n'est que
   // l'affichage, pour que la fin se voie venir au lieu de tomber dessus.
@@ -307,10 +322,19 @@ export default function AtlasVoixPage() {
 
           <p className="text-2xs font-bold uppercase tracking-[0.4em] text-white/45">{libelleEtat}</p>
 
-          {/* Le temps qu'il reste, décompté pendant la conversation. */}
-          {etat === 'en_ligne' && restant !== null && (
-            <p className="text-2xs text-white/35">
-              {Math.max(0, Math.ceil(restant / 60))} min de coaching parlé aujourd’hui
+          {/* AU REPOS : le budget de la semaine, bien lisible. */}
+          {etat === 'repos' && !quotaAtteint && budget && (
+            <p className="text-2xs text-white/40">
+              {Math.ceil(budget.semaine / 60)} min de coaching parlé cette semaine
+            </p>
+          )}
+
+          {/* EN CONVERSATION : rien, SAUF les trois dernières minutes.
+              Un décompte qui tourne pendant qu'on parle transforme le coaching
+              en taxi — on regarde le compteur au lieu d'écouter. */}
+          {etat === 'en_ligne' && restant !== null && restant <= 180 && (
+            <p className="text-2xs text-[#F4B342]/80">
+              encore {Math.max(0, Math.ceil(restant / 60))} min
             </p>
           )}
 
