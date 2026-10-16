@@ -51,6 +51,9 @@ export default function AtlasVoixPage() {
   // pistes ont coûté deux allers-retours : mieux vaut lire l'état réel que
   // deviner une troisième fois. À retirer quand le son sera stable.
   const [sonde, setSonde] = useState('')
+  // Interrupteur de diagnostic : geler la mire pour voir si c'est ELLE qui
+  // étrangle le son sur mobile. Temporaire, comme la sonde.
+  const [mireAnimee, setMireAnimee] = useState(true)
   const dernierT = useRef(0)
   const figeDepuis = useRef(0)
   const dejaRebranche = useRef(false)
@@ -386,6 +389,7 @@ export default function AtlasVoixPage() {
           </p>
 
           <AtlasMire
+            anime={mireAnimee}
             niveauEntree={lireEntree}
             niveauSortie={lireSortie}
             onClick={etat === 'en_ligne' ? undefined : demarrer}
@@ -399,9 +403,17 @@ export default function AtlasVoixPage() {
 
           {/* Sonde temporaire : l'état réel du chemin audio, lisible sur place. */}
           {sonde && (
-            <p className="max-w-[90vw] break-words text-center text-[10px] leading-relaxed text-[#F4B342]/80">
-              {sonde}
-            </p>
+            <>
+              <p className="max-w-[90vw] break-words text-center text-[10px] leading-relaxed text-[#F4B342]/80">
+                {sonde}
+              </p>
+              <button
+                onClick={() => setMireAnimee((v) => !v)}
+                className="rounded-full border border-[#F4B342]/40 px-3 py-1 text-[10px] text-[#F4B342]/80"
+              >
+                {mireAnimee ? 'Geler la mire (test)' : 'Animer la mire'}
+              </button>
+            </>
           )}
 
           {/* Le navigateur bloque le son : on le DIT et on offre le geste.

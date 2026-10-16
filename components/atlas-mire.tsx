@@ -31,11 +31,16 @@ export function AtlasMire({
   niveauSortie,
   onClick,
   className,
+  anime = true,
 }: {
   niveauEntree: () => number
   niveauSortie: () => number
   onClick?: () => void
   className?: string
+  /** false = on gèle l'animation. Sert à écarter la mire comme cause d'un
+   *  problème audio sur mobile : un canevas redessiné 60 fois par seconde peut
+   *  saturer le fil principal d'un téléphone. */
+  anime?: boolean
 }) {
   const ref = useRef<HTMLCanvasElement | null>(null)
   // Les niveaux changent 60 fois par seconde : on les lit par référence pour ne
@@ -51,10 +56,14 @@ export function AtlasMire({
     const ctx = toile.getContext('2d')
     if (!ctx) return
 
+    // On plafonne la densité à 2 : sur un téléphone à 3x, un canevas de 300 px
+    // fait 900 px de côté, et sept couches de dégradés à cette taille coûtent
+    // cher pour un gain invisible à l'œil.
+    const dpr = Math.min(devicePixelRatio || 1, 2)
     const dimensionner = () => {
       const r = toile.getBoundingClientRect()
-      toile.width = r.width * devicePixelRatio
-      toile.height = r.height * devicePixelRatio
+      toile.width = r.width * dpr
+      toile.height = r.height * dpr
     }
     dimensionner()
     const observateur = new ResizeObserver(dimensionner)
@@ -63,10 +72,9 @@ export function AtlasMire({
     let image = 0
     let t = 0
     const dessiner = () => {
-      image = requestAnimationFrame(dessiner)
+      if (anime) image = requestAnimationFrame(dessiner)
       t += 0.016
       const w = toile.width, h = toile.height, cx = w / 2, cy = h / 2
-      const dpr = devicePixelRatio
       ctx.clearRect(0, 0, w, h)
       const inL = entree.current(), outL = sortie.current()
       const energy = Math.max(inL, outL * 1.3)
@@ -154,7 +162,7 @@ export function AtlasMire({
       cancelAnimationFrame(image)
       observateur.disconnect()
     }
-  }, [])
+  }, [anime])
 
   return (
     <canvas
