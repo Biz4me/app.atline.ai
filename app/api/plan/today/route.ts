@@ -332,16 +332,23 @@ export async function GET() {
     // réponse, et il suffit.
     if (pire) {
       const [cid] = pire
-      const exercice = await db.simScenario.findFirst({
-        where: { actif: true, competences: { some: { id: cid } } },
-        orderBy: { position: 'asc' },
-        select: { slug: true, titre: true, objectif: true },
-      }).catch(() => null)
+      const [exercice, competence] = await Promise.all([
+        db.simScenario.findFirst({
+          where: { actif: true, competences: { some: { id: cid } } },
+          orderBy: { position: 'asc' },
+          select: { slug: true, titre: true, objectif: true },
+        }).catch(() => null),
+        db.competence.findUnique({ where: { id: cid }, select: { label: true } }).catch(() => null),
+      ])
       if (exercice) {
+        // Le titre du scénario ne dit pas CE QU'IL TRAVAILLE : « Invitation
+        // directe » entraîne aussi l'adaptation au profil. Sans la compétence
+        // nommée, l'utilisateur ne voit pas le rapport avec sa faiblesse.
+        const quoi = competence?.label ? `Ton point faible : ${competence.label.toLowerCase()}. ` : ''
         cands.push(selfItem(
           'ENTRAINEMENT', 3,
           `Entraîne-toi : ${exercice.titre}`,
-          `${exercice.objectif}. Aria joue le prospect, tu raccroches avec un bilan.`,
+          `${quoi}${exercice.objectif}. Aria joue le prospect, tu raccroches avec un bilan.`,
           `/aria?scenario=${exercice.slug}`,
         ))
       }
