@@ -260,13 +260,70 @@ export async function GET() {
       db.lmsLesson.findMany({
         where: { published: true },
         orderBy: [{ module: { position: 'asc' } }, { position: 'asc' }],
-        select: { id: true, moduleId: true, module: { select: { title: true } } },
+        select: { id: true, moduleId: true, module: { select: { title: true, competenceId: true } } },
       }),
       db.userLessonProgress.findMany({ where: { userId, done: true }, select: { lessonId: true } }),
     ])
     const doneIds = new Set(doneProgress.map((p) => p.lessonId))
-    const nextLesson = allLessons.find((l) => !doneIds.has(l.id))
-    if (nextLesson) cands.push(selfItem('FORMATION', 2, `Continue ta formation : ${nextLesson.module.title}`, 'Un pas de formation par jour — la discipline qui paie sur 90 jours.', `/formation/${nextLesson.moduleId}`))
+
+    // ── La leçon qui répond à CE qui coince, pas la suivante dans l'ordre ──
+    // Tant qu'un module n'était relié à aucune compétence, la seule chose
+    // possible était « la prochaine leçon non faite ». Depuis la migration 0022,
+    // on sait ce que chaque module enseigne, et deux sources disent où ça coince :
+    //   · UserCompetence — mesuré par les simulations Aria
+    //   · AtlasFact bloque_sur — observé par le coach EN CONVERSATION
+    // La seconde est de loin la plus abondante (141 faits contre 3 niveaux),
+    // d'où l'intérêt de lui avoir donné le vocabulaire fermé.
+    const [niveaux, blocages] = await Promise.all([
+      db.userCompetence.findMany({
+        where: { userId },   // `competenceId` y est obligatoire, pas besoin de le filtrer
+        select: { competenceId: true, niveau: true, mesures: true },
+      }).catch(() => []),
+      db.atlasFact.findMany({
+        where: { userId, contactId: null, predicate: 'bloque_sur', status: 'active', competenceId: { not: null } },
+        select: { competenceId: true, supportCount: true, confidence: true },
+      }).catch(() => []),
+    ])
+
+    // Un score unique par compétence : plus il est bas, plus ça coince.
+    // Un blocage observé plusieurs fois pèse plus lourd qu'une seule mention.
+    const faiblesse = new Map<string, number>()
+    for (const n of niveaux) {
+      if (n.mesures > 0) faiblesse.set(n.competenceId, n.niveau)
+    }
+    for (const b of blocages) {
+      const penalite = Math.max(10, 55 - b.supportCount * 10) // vu 1 fois → 45, vu 4+ → 15
+      const actuel = faiblesse.get(b.competenceId!)
+      faiblesse.set(b.competenceId!, actuel === undefined ? penalite : Math.min(actuel, penalite))
+    }
+
+    // On ne dérange personne pour une compétence déjà correcte.
+    const pire = [...faiblesse.entries()].filter(([, v]) => v < 60).sort((a, b) => a[1] - b[1])[0]
+
+    let leconCiblee: typeof allLessons[number] | undefined
+    let raison = ''
+    if (pire) {
+      const [cid, note] = pire
+      const mesure = niveaux.find((n) => n.competenceId === cid)
+      leconCiblee = allLessons.find((l) => l.module.competenceId === cid && !doneIds.has(l.id))
+      if (leconCiblee) {
+        raison = mesure && mesure.mesures > 0
+          ? `Ton point faible mesuré : ${note} sur 100, sur ${mesure.mesures} simulation${mesure.mesures > 1 ? 's' : ''}. Cette leçon travaille exactement ça.`
+          : `C'est ce qui revient le plus souvent quand on parle ensemble. Cette leçon travaille exactement ça.`
+      }
+    }
+
+    // Repli : la prochaine leçon dans l'ordre, comme avant. On ne laisse jamais
+    // la case vide sous prétexte qu'on n'a pas encore assez mesuré.
+    const nextLesson = leconCiblee ?? allLessons.find((l) => !doneIds.has(l.id))
+    if (nextLesson) {
+      cands.push(selfItem(
+        'FORMATION', leconCiblee ? 4 : 2,
+        `${leconCiblee ? 'Travaille ton point faible' : 'Continue ta formation'} : ${nextLesson.module.title}`,
+        raison || 'Un pas de formation par jour — la discipline qui paie sur 90 jours.',
+        `/formation/${nextLesson.moduleId}`,
+      ))
+    }
     const [reads, books] = await Promise.all([
       db.userBookInteraction.findMany({ where: { userId, read: true }, select: { bookId: true } }),
       db.mlmBook.findMany({ where: { priority: 'ESSENTIEL', dispoFR: true }, orderBy: { rang: 'asc' }, select: { id: true, titreFR: true, auteur: true } }),
