@@ -9,6 +9,27 @@ export const maxDuration = 60
 
 const ATLAS_URL = process.env.ATLAS_URL || 'http://127.0.0.1:8100'
 
+// Le débrief stocke la grille avec des SLUGS (`invitation`, `etat-esprit`) :
+// stables, lisibles dans les logs, mais imprésentables à l'écran. On va chercher
+// le libellé dans la table Competence plutôt que de le dupliquer côté front —
+// sinon renommer une compétence obligerait à y penser à deux endroits.
+async function avecLibelles(feedback: Record<string, unknown>) {
+  const grille = Array.isArray(feedback?.competences) ? feedback.competences : []
+  if (!grille.length) return feedback
+  const ids = grille.map((c) => (c as { id?: string })?.id).filter(Boolean) as string[]
+  const libelles = await db.competence
+    .findMany({ where: { id: { in: ids } }, select: { id: true, label: true } })
+    .catch(() => [])
+  const parId = new Map(libelles.map((c) => [c.id, c.label]))
+  return {
+    ...feedback,
+    competences: grille.map((c) => {
+      const row = c as { id?: string }
+      return { ...row, label: parId.get(row.id ?? '') ?? row.id }
+    }),
+  }
+}
+
 async function owned(req: NextRequest, id: string) {
   const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET })
   const userId = token?.id as string | undefined
@@ -31,7 +52,7 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
     phase: sim.phase,
     scenario: sim.characterId,
     score: sim.score,
-    feedback: sim.feedback ? JSON.parse(sim.feedback) : null,
+    feedback: sim.feedback ? await avecLibelles(JSON.parse(sim.feedback)) : null,
     hasTranscript: sim.messages.length > 0,
     turns: sim.messages.length,
   })
@@ -46,7 +67,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
 
   // Déjà débriefé → renvoie l'existant (idempotent, pas de double coût)
   if (sim.feedback) {
-    return NextResponse.json({ score: sim.score, ...(JSON.parse(sim.feedback) as object) })
+    return NextResponse.json({ score: sim.score, ...(await avecLibelles(JSON.parse(sim.feedback))) })
   }
   if (!sim.messages.length) return NextResponse.json({ error: 'transcript pas encore reçu' }, { status: 409 })
 
@@ -165,5 +186,5 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
     }
   })()
 
-  return NextResponse.json({ score, ...feedback })
+  return NextResponse.json({ score, ...(await avecLibelles(feedback)) })
 }

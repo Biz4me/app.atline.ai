@@ -11,11 +11,17 @@ import { SubHeader } from '@/components/page-shell'
 type Debrief = {
   score: number | null
   resume?: string
+  // La grille : un score PAR compétence, limitée à ce que le scénario a
+  // réellement travaillé. Le score global ne disait pas SUR QUOI on progresse.
+  competences?: { id: string; label?: string; score: number; observation?: string | null }[]
   points_forts?: { citation: string; pourquoi: string }[]
   axes?: { probleme: string; conseil: string }[]
   script_alternatif?: { moment: string; mieux: string } | null
   prochain_scenario?: string
 }
+
+// Palette stricte : vert / jaune / rouge de la charte, jamais une teinte libre.
+const couleurScore = (n: number) => (n >= 70 ? '#22C55E' : n >= 50 ? '#F4B342' : '#EF4444')
 
 function DebriefContent() {
   const router = useRouter()
@@ -106,6 +112,43 @@ function DebriefContent() {
               </div>
               <p className="text-sm text-muted-foreground">Score sur 100</p>
             </div>
+
+            {/* Le détail par compétence — juste sous le score global, parce que
+                c'est lui qu'il explique : 28 sur 100, mais 28 DE QUOI. */}
+            {!!data.competences?.length && (
+              <div className="rounded-2xl border border-border bg-surface p-4">
+                <p className="mb-3 text-xs font-extrabold uppercase tracking-widest text-[#14B8A6]">
+                  Ce que cette simulation a travaillé
+                </p>
+                <div className="flex flex-col gap-4">
+                  {data.competences.map((c) => (
+                    <div key={c.id}>
+                      <div className="flex items-baseline gap-2">
+                        <p className="min-w-0 flex-1 truncate text-sm font-semibold text-foreground">
+                          {c.label ?? c.id}
+                        </p>
+                        <p className="text-sm font-extrabold" style={{ color: couleurScore(c.score) }}>
+                          {c.score}
+                        </p>
+                      </div>
+                      <div className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-muted">
+                        <div
+                          className="h-1.5 rounded-full transition-all"
+                          style={{ width: `${c.score}%`, background: couleurScore(c.score) }}
+                        />
+                      </div>
+                      {c.observation && (
+                        <p className="mt-1.5 text-xs leading-relaxed text-muted-foreground">{c.observation}</p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+                <p className="mt-4 text-xs text-muted-foreground">
+                  Seul ce que le scénario sollicitait est noté. Ces scores nourrissent ton
+                  niveau et décident de la leçon qu&apos;Atlas te proposera.
+                </p>
+              </div>
+            )}
 
             {/* Bilan Atlas */}
             {data.resume && (
