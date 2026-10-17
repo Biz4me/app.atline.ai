@@ -297,22 +297,22 @@ export async function GET() {
       faiblesse.set(b.competenceId!, actuel === undefined ? penalite : Math.min(actuel, penalite))
     }
 
-    // On ne dérange personne pour une compétence déjà correcte, et on ne retient
-    // que celles qui ont RÉELLEMENT une leçon à proposer. « adaptation » et
-    // « organisation » (ajoutées le 17 octobre) n'ont pas encore de module :
-    // sans ce filtre, la pire des deux serait élue, aucune leçon ne serait
-    // trouvée, et on retomberait sur le message générique — on aurait identifié
-    // la faiblesse pour ne rien en faire, sans que ça se voie.
-    const enseignees = new Set(allLessons.map((l) => l.module.competenceId).filter(Boolean))
-    const pire = [...faiblesse.entries()]
-      .filter(([cid, v]) => v < 60 && enseignees.has(cid))
-      .sort((a, b) => a[1] - b[1])[0]
+    // UNE SEULE faiblesse élue, et les deux propositions parlent d'ELLE.
+    // Première version : la leçon visait la pire compétence ENSEIGNÉE et
+    // l'exercice la pire TOUTES compétences. Résultat observé en prod — la
+    // leçon disait « objections », l'exercice disait « invitation directe » :
+    // deux diagnostics contradictoires sur le même écran. Un coach tient un
+    // seul discours à la fois.
+    // On ne dérange personne pour une compétence déjà correcte.
+    const pire = [...faiblesse.entries()].filter(([, v]) => v < 60).sort((a, b) => a[1] - b[1])[0]
 
     let leconCiblee: typeof allLessons[number] | undefined
     let raison = ''
     if (pire) {
       const [cid, note] = pire
       const mesure = niveaux.find((n) => n.competenceId === cid)
+      // `adaptation` et `organisation` n'ont pas de module : la leçon ciblée
+      // reste introuvable, et c'est l'exercice ci-dessous qui porte le message.
       leconCiblee = allLessons.find((l) => l.module.competenceId === cid && !doneIds.has(l.id))
       if (leconCiblee) {
         raison = mesure && mesure.mesures > 0
@@ -326,11 +326,12 @@ export async function GET() {
     // il ne pouvait dire que « refais-en une », au hasard. Or la phase ne suffit
     // pas à choisir — `objection_pyramide` est en phase « suivi » mais entraîne
     // `objections`. Seul le lien scénario → compétence donne le bon exercice.
-    // On vise la compétence la plus faible, même si elle n'a PAS de leçon :
-    // `adaptation` et `organisation` ont des scénarios sans avoir de module.
-    const pireToutesCompetences = [...faiblesse.entries()].filter(([, v]) => v < 60).sort((a, b) => a[1] - b[1])[0]
-    if (pireToutesCompetences) {
-      const [cid] = pireToutesCompetences
+    // Même compétence que la leçon ci-dessus : un seul point faible, deux
+    // façons de le travailler. `adaptation` et `organisation` n'ont pas de
+    // module mais ont des scénarios — pour elles, l'exercice est la seule
+    // réponse, et il suffit.
+    if (pire) {
+      const [cid] = pire
       const exercice = await db.simScenario.findFirst({
         where: { actif: true, competences: { some: { id: cid } } },
         orderBy: { position: 'asc' },
