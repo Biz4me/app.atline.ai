@@ -108,7 +108,7 @@ function SetupScreen({
   // Reco d'Atlas issue du dernier débrief (parcours adaptatif)
   const [lastSim, setLastSim] = useState<{ score: number; scenario: string; reco: string } | null>(null)
   // Bibliothèque de scénarios (partagée avec l'agent vocal, éditable en admin)
-  const [scenarios, setScenarios] = useState<{ id: string; label: string; phase: string }[]>([])
+  const [scenarios, setScenarios] = useState<{ id: string; label: string; phase: string; competences?: string[] }[]>([])
   const [scenario, setScenario] = useState('auto')
   useEffect(() => {
     fetch('/api/aria/sessions/last')
@@ -257,6 +257,19 @@ function SetupScreen({
                 ...scenarios.filter((s) => s.phase === PHASE_PARAMS[phase].phase).map((s) => ({ value: s.id, label: s.label })),
               ]}
             />
+            {/* Ce que le scénario choisi TRAVAILLE. Le titre ne le dit pas :
+                « objection pyramide » est rangé en phase « suivi », et
+                « invitation directe » entraîne aussi l'adaptation au profil.
+                Sans cette ligne, choisir pour corriger un point faible
+                revenait à deviner. */}
+            {(() => {
+              const trav = scenarios.find((s) => s.id === scenario)?.competences ?? []
+              return trav.length > 0 ? (
+                <p className="mt-1.5 text-xs text-muted-foreground">
+                  Travaille : <span className="font-semibold text-foreground">{trav.join(' · ')}</span>
+                </p>
+              ) : null
+            })()}
           </div>
 
           <button

@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { ChevronLeft, Mic, TrendingUp, Check, ArrowRight } from 'lucide-react'
+import { ChevronLeft, Mic, TrendingUp, Check, ArrowRight, Gauge } from 'lucide-react'
 import { AgentPanel } from '@/components/agent-panel'
 import { FilShell } from '@/components/fil-shell'
 
@@ -22,6 +22,16 @@ const DIFF_LABEL: Record<string, string> = { FACILE: 'facile', MOYEN: 'moyen', D
 const ARIA = '#14B8A6'
 
 const scenarioName = (id: string) => id.replace(/_/g, ' ')
+
+// Où en est le distributeur, par compétence (lib/competences, partagé avec le
+// plan du jour pour que l'écran et la recommandation ne divergent jamais).
+type Comp = {
+  id: string; label: string; niveau: number | null; mesures: number
+  source: 'simulation' | 'conversation' | null
+  exercice: { slug: string; titre: string } | null
+}
+// Palette stricte de la charte : vert, jaune, rouge. Jamais une teinte libre.
+const couleurNiveau = (n: number) => (n >= 70 ? '#22C55E' : n >= 50 ? '#F4B342' : '#EF4444')
 const toLines = (v: unknown): string[] =>
   Array.isArray(v)
     ? v.map((i) => (typeof i === 'string' ? i : (i as { probleme?: string; point?: string; conseil?: string })?.probleme ?? (i as { point?: string })?.point ?? '')).filter(Boolean).slice(0, 3)
@@ -37,13 +47,24 @@ export default function AriaThreadPage() {
   const openInfo = () => { setInfoOpen(true); router.replace('/chats/aria?info=1', { scroll: false }) }
   const closeInfo = () => { setInfoOpen(false); router.replace('/chats/aria', { scroll: false }) }
 
+  const [comps, setComps] = useState<Comp[]>([])
+
   useEffect(() => {
     fetch('/api/aria/sessions')
       .then((r) => (r.ok ? r.json() : []))
       .then((d) => Array.isArray(d) && setSims(d))
       .catch(() => {})
       .finally(() => setLoading(false))
+    // Chargement séparé : le journal des simulations doit s'afficher même si
+    // le bloc des compétences échoue, c'est la raison d'être du fil.
+    fetch('/api/aria/competences')
+      .then((r) => (r.ok ? r.json() : { competences: [] }))
+      .then((d) => setComps(Array.isArray(d?.competences) ? d.competences : []))
+      .catch(() => {})
   }, [])
+
+  const mesurees = comps.filter((c) => c.niveau !== null)
+  const jamaisMesurees = comps.length - mesurees.length
   useEffect(() => { endRef.current?.scrollIntoView({ block: 'end' }) }, [sims])
 
   // Progression par scénario rejoué : « objection pyramide : 45 → 78 (3 essais) »
@@ -112,6 +133,55 @@ export default function AriaThreadPage() {
             )
           })}
         </div>
+
+        {/* ── OÙ TU EN ES — les treize compétences, la plus faible d'abord ──
+            Elles existaient en base depuis le 16 octobre et ne se voyaient
+            NULLE PART : le moteur s'en servait, l'utilisateur non. Elles vivent
+            ici plutôt que dans un écran dédié, parce que ce n'est pas une
+            fonctionnalité de plus — c'est le modèle d'entraînement d'Aria, et
+            ajouter une entrée de navigation irait contre les deux axes du socle. */}
+        {mesurees.length > 0 && (
+          <div className="mt-3 rounded-2xl border border-border bg-surface px-4 py-3">
+            <p className="mb-2.5 flex items-center gap-1.5 text-2xs font-bold uppercase tracking-widest text-muted-foreground">
+              <Gauge className="size-3.5" style={{ color: ARIA }} /> Où tu en es
+            </p>
+            <div className="flex flex-col gap-3">
+              {mesurees.map((c) => (
+                <div key={c.id}>
+                  <div className="flex items-baseline gap-2">
+                    <p className="min-w-0 flex-1 truncate text-sm font-semibold text-foreground">{c.label}</p>
+                    <p className="text-sm font-extrabold" style={{ color: couleurNiveau(c.niveau!) }}>{c.niveau}</p>
+                  </div>
+                  <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-muted">
+                    <div className="h-1.5 rounded-full transition-all"
+                      style={{ width: `${c.niveau}%`, background: couleurNiveau(c.niveau!) }} />
+                  </div>
+                  <div className="mt-1 flex items-center gap-2">
+                    {/* Dire D'OÙ vient le chiffre : un score sans mesure
+                        ressemble à une invention. */}
+                    <p className="min-w-0 flex-1 truncate text-2xs text-muted-foreground">
+                      {c.source === 'simulation'
+                        ? `${c.mesures} simulation${c.mesures > 1 ? 's' : ''}`
+                        : 'observé en conversation'}
+                    </p>
+                    {c.exercice && (
+                      <button type="button"
+                        onClick={() => router.push(`/aria?scenario=${c.exercice!.slug}`)}
+                        className="shrink-0 text-2xs font-bold" style={{ color: ARIA }}>
+                        S&apos;entraîner
+                      </button>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+            {jamaisMesurees > 0 && (
+              <p className="mt-3 text-2xs text-muted-foreground">
+                {jamaisMesurees} compétence{jamaisMesurees > 1 ? 's' : ''} pas encore évaluée{jamaisMesurees > 1 ? 's' : ''}.
+              </p>
+            )}
+          </div>
+        )}
 
         {/* La progression — ce que le fil raconte en chiffres */}
         {progress.length > 0 && (
