@@ -77,11 +77,22 @@ const TRANSCRIPT = [
         select: { competenceId: true, niveau: true, mesures: true },
         orderBy: { competenceId: 'asc' },
       })
+      // `status` DOIT être filtré : sans lui, les faits supersédés remontent et
+      // on croit à des doublons alors que la supersession a parfaitement joué.
+      // C'est l'erreur de lecture du 17 octobre — la requête, pas le code.
       const faits = await prisma.atlasFact.findMany({
-        where: { userId: sim.userId, source: 'aria', competenceId: { not: null } },
-        select: { predicate: true, competenceId: true, object: true, supportCount: true, confidence: true },
-        orderBy: { lastSeenAt: 'desc' }, take: 8,
+        where: { userId: sim.userId, source: 'aria', status: 'active' },
+        select: {
+          predicate: true, competenceId: true, object: true,
+          supportCount: true, confidence: true,
+        },
+        orderBy: { lastSeenAt: 'desc' }, take: 10,
       })
+      const remplaces = await prisma.atlasFact.count({
+        where: { userId: sim.userId, source: 'aria', status: 'superseded' },
+      })
+      console.log(JSON.stringify({ score: sim.score, scores, niveaux, faits, remplaces }, null, 1))
+      return
       console.log(JSON.stringify({ score: sim.score, scores, niveaux, faits }, null, 1))
     } else if (cmd === 'nettoie') {
       // L'instantané d'AVANT est passé en JSON sur l'entrée standard : on remet
