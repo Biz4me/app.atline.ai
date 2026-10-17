@@ -27,11 +27,18 @@ export async function POST(req: NextRequest) {
     pipelineContactId = owned?.id ?? null
   }
 
+  // Même rattachement qu'en vocal : sans lui, une session en mode texte reste
+  // un score isolé, hors du calcul des compétences.
+  const catalogue = await db.simScenario
+    .findFirst({ where: { slug: scenario }, select: { id: true } })
+    .catch(() => null)
+
   const sim = await db.simSession.create({
     data: {
       userId,
       phase,
       characterId: scenario,
+      ...(catalogue ? { scenarioId: catalogue.id } : {}),
       difficulty: 'MOYEN',
       knowledgeLevel: 'JAMAIS_FAIT',
       ...(pipelineContactId ? { pipelineContactId } : {}),

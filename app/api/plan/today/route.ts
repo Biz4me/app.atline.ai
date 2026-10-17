@@ -321,6 +321,31 @@ export async function GET() {
       }
     }
 
+    // ── L'EXERCICE, pas seulement la leçon ──
+    // Atlas savait envoyer vers une leçon, jamais vers la pratique qui va avec :
+    // il ne pouvait dire que « refais-en une », au hasard. Or la phase ne suffit
+    // pas à choisir — `objection_pyramide` est en phase « suivi » mais entraîne
+    // `objections`. Seul le lien scénario → compétence donne le bon exercice.
+    // On vise la compétence la plus faible, même si elle n'a PAS de leçon :
+    // `adaptation` et `organisation` ont des scénarios sans avoir de module.
+    const pireToutesCompetences = [...faiblesse.entries()].filter(([, v]) => v < 60).sort((a, b) => a[1] - b[1])[0]
+    if (pireToutesCompetences) {
+      const [cid] = pireToutesCompetences
+      const exercice = await db.simScenario.findFirst({
+        where: { actif: true, competences: { some: { id: cid } } },
+        orderBy: { position: 'asc' },
+        select: { slug: true, titre: true, objectif: true },
+      }).catch(() => null)
+      if (exercice) {
+        cands.push(selfItem(
+          'ENTRAINEMENT', 3,
+          `Entraîne-toi : ${exercice.titre}`,
+          `${exercice.objectif}. Aria joue le prospect, tu raccroches avec un bilan.`,
+          `/aria?scenario=${exercice.slug}`,
+        ))
+      }
+    }
+
     // Repli : la prochaine leçon dans l'ordre, comme avant. On ne laisse jamais
     // la case vide sous prétexte qu'on n'a pas encore assez mesuré.
     const nextLesson = leconCiblee ?? allLessons.find((l) => !doneIds.has(l.id))

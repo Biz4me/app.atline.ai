@@ -67,11 +67,22 @@ export async function POST(req: NextRequest) {
   // Voix accordée au genre du contact (null → la voix par défaut de la config)
   const voiceId = voiceForGender(contactGender)
 
+  // Le slug seul ne dit pas ce que la simulation ENTRAÎNE : c'est la table
+  // SimScenario qui porte le lien vers les compétences. Sans ce rattachement,
+  // une session reste un score isolé, inexploitable pour recommander un
+  // exercice. `findFirst` et non `findUnique` : un slug absent du catalogue
+  // (scénario ajouté en admin mais pas encore semé) ne doit pas faire échouer
+  // le lancement de la simulation.
+  const catalogue = await db.simScenario
+    .findFirst({ where: { slug: scenario }, select: { id: true } })
+    .catch(() => null)
+
   const sim = await db.simSession.create({
     data: {
       userId,
       phase,
       characterId: scenario, // le scénario joué (bibliothèque de l'agent vocal)
+      ...(catalogue ? { scenarioId: catalogue.id } : {}),
       difficulty: 'MOYEN',
       knowledgeLevel: knowledge as 'JAMAIS_FAIT' | 'A_UN_AVIS' | 'DEJA_FAIT_MLM',
       ...(pipelineContactId ? { pipelineContactId } : {}),
