@@ -297,8 +297,16 @@ export async function GET() {
       faiblesse.set(b.competenceId!, actuel === undefined ? penalite : Math.min(actuel, penalite))
     }
 
-    // On ne dérange personne pour une compétence déjà correcte.
-    const pire = [...faiblesse.entries()].filter(([, v]) => v < 60).sort((a, b) => a[1] - b[1])[0]
+    // On ne dérange personne pour une compétence déjà correcte, et on ne retient
+    // que celles qui ont RÉELLEMENT une leçon à proposer. « adaptation » et
+    // « organisation » (ajoutées le 17 octobre) n'ont pas encore de module :
+    // sans ce filtre, la pire des deux serait élue, aucune leçon ne serait
+    // trouvée, et on retomberait sur le message générique — on aurait identifié
+    // la faiblesse pour ne rien en faire, sans que ça se voie.
+    const enseignees = new Set(allLessons.map((l) => l.module.competenceId).filter(Boolean))
+    const pire = [...faiblesse.entries()]
+      .filter(([cid, v]) => v < 60 && enseignees.has(cid))
+      .sort((a, b) => a[1] - b[1])[0]
 
     let leconCiblee: typeof allLessons[number] | undefined
     let raison = ''
