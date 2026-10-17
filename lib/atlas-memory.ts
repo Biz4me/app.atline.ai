@@ -154,7 +154,15 @@ export async function reconcileFacts(userId: string, contactId: string | null, f
         if (object.length < existing.object.length) {
           await db.atlasFact.update({ where: { id: existing.id }, data: { object } })
         }
-      } else if (STABLE_CATEGORIES.has(f.category)) {
+      } else if (competenceId || STABLE_CATEGORIES.has(f.category)) {
+        // Apparié par SLUG, c'est le même sujet par construction : une
+        // formulation différente est une reformulation ou une PROGRESSION,
+        // jamais un second blocage qui coexiste. Sans cette ligne, l'appariement
+        // trouvait bien le fait existant puis en créait un deuxième à côté —
+        // vérifié le 17 octobre : deux simulations identiques donnaient
+        // « invitation sans vendre » ET « stopper le pitch avant le rendez-vous »,
+        // deux lignes actives pour un seul défaut. On supersède (traçable,
+        // jamais de DELETE) au lieu de dupliquer.
         // Vraie contradiction sur catégorie stable → supersession traçable (jamais de DELETE)
         const neu = await create()
         await db.atlasFact.update({
