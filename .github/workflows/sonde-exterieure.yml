@@ -1,0 +1,45 @@
+name: sonde exterieure
+
+# POURQUOI CE FICHIER EXISTE
+#
+# La surveillance d'Atline (/opt/atline/surveillance.sh) tourne SUR le serveur
+# Hetzner. Elle voit tout, sauf une chose : la mort de la machine qui la porte.
+# Dans ce cas elle se tait, et son silence ressemble exactement a son calme.
+#
+# Cette sonde est le seul oeil place AILLEURS. Elle ne sait rien faire d'autre
+# que constater, elle ne porte aucun secret, et elle n'a acces a rien. Si la
+# machine ne repond plus, le travail echoue et GitHub previent le proprietaire
+# du depot par mail.
+#
+# Trois essais espaces de 20 secondes : un redemarrage de l'app ou un hoquet
+# reseau ne doit pas declencher l'alarme. Une alarme qui crie pour rien est une
+# alarme qu'on apprend a ignorer.
+#
+# ATTENTION : GitHub desactive les taches planifiees d'un depot reste 60 jours
+# sans activite. Si ce depot s'endort, cette sonde s'endort avec lui.
+
+on:
+  schedule:
+    - cron: '*/10 * * * *'
+  workflow_dispatch:
+
+jobs:
+  repond:
+    runs-on: ubuntu-latest
+    steps:
+      - name: app.atline.ai repond-elle encore ?
+        run: |
+          for essai in 1 2 3; do
+            code=$(curl -s -o /tmp/sante.json -w '%{http_code}' \
+                     --max-time 20 https://app.atline.ai/api/health || echo 000)
+            echo "essai $essai : HTTP $code"
+            cat /tmp/sante.json 2>/dev/null || true
+            echo
+            if [ "$code" = "200" ]; then
+              echo "tout repond."
+              exit 0
+            fi
+            [ "$essai" -lt 3 ] && sleep 20
+          done
+          echo "::error::app.atline.ai ne repond plus correctement (dernier code HTTP : $code)"
+          exit 1
