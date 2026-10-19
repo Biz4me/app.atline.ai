@@ -15,8 +15,13 @@ function genderOf(raw?: string | null): 'homme' | 'femme' | null {
   return null
 }
 
+// 🔴 GENRE INCONNU → VOIX FÉMININE. C'est une décision, pas un repli technique.
+// Le MLM en France est très majoritairement féminin, et dix contacts sur douze
+// n'ont aucune civilité renseignée : « inconnu » est donc le cas GÉNÉRAL, celui
+// que vit presque tout le monde. Il mérite une voix choisie, pas le hasard de la
+// configuration. La civilité se demande désormais à l'ajout d'un contact.
 function voiceForGender(genre: 'homme' | 'femme' | null): string | null {
-  if (!genre) return null
+  const vise = genre ?? 'femme'
   try {
     const cfg = JSON.parse(readFileSync(AGENT_CONFIG, 'utf-8')) as {
       tts_provider?: string
@@ -24,7 +29,7 @@ function voiceForGender(genre: 'homme' | 'femme' | null): string | null {
       voices?: { id: string; provider: string; voice_id: string; gender?: string }[]
     }
     const provider = cfg.tts_provider ?? 'cartesia'
-    const candidates = (cfg.voices ?? []).filter((v) => v.provider === provider && v.gender === genre && v.voice_id)
+    const candidates = (cfg.voices ?? []).filter((v) => v.provider === provider && v.gender === vise && v.voice_id)
     if (!candidates.length) return null
     // La voix active si elle a déjà le bon genre, sinon la première du bon genre
     const active = candidates.find((v) => v.id === cfg.active_voice)
