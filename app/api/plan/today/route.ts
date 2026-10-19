@@ -3,6 +3,9 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { db } from '@/lib/db'
 import { moduleTermine } from '@/lib/lms'
+// Source UNIQUE du point faible : le plan qui recommande et l'écran qui
+// affiche doivent lire le même chiffre, sinon ils se contredisent.
+import { etatDesCompetences, SEUIL_FAIBLESSE } from '@/lib/competences'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -274,28 +277,21 @@ export async function GET() {
     //   · AtlasFact bloque_sur — observé par le coach EN CONVERSATION
     // La seconde est de loin la plus abondante (141 faits contre 3 niveaux),
     // d'où l'intérêt de lui avoir donné le vocabulaire fermé.
-    const [niveaux, blocages] = await Promise.all([
-      db.userCompetence.findMany({
-        where: { userId },   // `competenceId` y est obligatoire, pas besoin de le filtrer
-        select: { competenceId: true, niveau: true, mesures: true },
-      }).catch(() => []),
-      db.atlasFact.findMany({
-        where: { userId, contactId: null, predicate: 'bloque_sur', status: 'active', competenceId: { not: null } },
-        select: { competenceId: true, supportCount: true, confidence: true },
-      }).catch(() => []),
-    ])
-
-    // Un score unique par compétence : plus il est bas, plus ça coince.
-    // Un blocage observé plusieurs fois pèse plus lourd qu'une seule mention.
-    const faiblesse = new Map<string, number>()
-    for (const n of niveaux) {
-      if (n.mesures > 0) faiblesse.set(n.competenceId, n.niveau)
-    }
-    for (const b of blocages) {
-      const penalite = Math.max(10, 55 - b.supportCount * 10) // vu 1 fois → 45, vu 4+ → 15
-      const actuel = faiblesse.get(b.competenceId!)
-      faiblesse.set(b.competenceId!, actuel === undefined ? penalite : Math.min(actuel, penalite))
-    }
+    // 🔴 LE CALCUL NE VIT PLUS ICI. Cette route en gardait sa PROPRE copie —
+    // sa formule de pénalité, sa règle de départage — pendant que
+    // `lib/competences.ts` en tenait une autre pour l'écran qui AFFICHE. Deux
+    // copies qui dérivent, c'est le plan du jour et le bilan qui finissent par
+    // désigner deux points faibles différents le même matin. C'était
+    // précisément ce que la centralisation du 17 octobre voulait empêcher, et
+    // la copie était restée ici.
+    //
+    // Depuis le 19 octobre, la source unique porte aussi : la non-saturation
+    // au-delà de quatre observations, l'effacement de ce qui est vieux, et la
+    // primauté d'une mesure solide sur quelques mentions.
+    const etat = await etatDesCompetences(userId)
+    const faiblesse = new Map<string, number>(
+      etat.filter((c) => c.niveau !== null).map((c) => [c.id, c.niveau as number]),
+    )
 
     // UNE SEULE faiblesse élue, et les deux propositions parlent d'ELLE.
     // Première version : la leçon visait la pire compétence ENSEIGNÉE et
@@ -304,13 +300,15 @@ export async function GET() {
     // deux diagnostics contradictoires sur le même écran. Un coach tient un
     // seul discours à la fois.
     // On ne dérange personne pour une compétence déjà correcte.
-    const pire = [...faiblesse.entries()].filter(([, v]) => v < 60).sort((a, b) => a[1] - b[1])[0]
+    const pire = [...faiblesse.entries()]
+      .filter(([, v]) => v < SEUIL_FAIBLESSE)
+      .sort((a, b) => a[1] - b[1])[0]
 
     let leconCiblee: typeof allLessons[number] | undefined
     let raison = ''
     if (pire) {
       const [cid, note] = pire
-      const mesure = niveaux.find((n) => n.competenceId === cid)
+      const mesure = etat.find((c) => c.id === cid)
       // `adaptation` et `organisation` n'ont pas de module : la leçon ciblée
       // reste introuvable, et c'est l'exercice ci-dessous qui porte le message.
       leconCiblee = allLessons.find((l) => l.module.competenceId === cid && !doneIds.has(l.id))
