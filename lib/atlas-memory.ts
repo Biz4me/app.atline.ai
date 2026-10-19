@@ -154,16 +154,38 @@ export async function reconcileFacts(userId: string, contactId: string | null, f
         if (object.length < existing.object.length) {
           await db.atlasFact.update({ where: { id: existing.id }, data: { object } })
         }
-      } else if (competenceId || STABLE_CATEGORIES.has(f.category)) {
-        // Apparié par SLUG, c'est le même sujet par construction : une
+      } else if (competenceId) {
+        // ⚠️ APPARIÉ PAR SLUG : c'est le même sujet par construction. Une
         // formulation différente est une reformulation ou une PROGRESSION,
-        // jamais un second blocage qui coexiste. Sans cette ligne, l'appariement
-        // trouvait bien le fait existant puis en créait un deuxième à côté —
-        // vérifié le 17 octobre : deux simulations identiques donnaient
-        // « invitation sans vendre » ET « stopper le pitch avant le rendez-vous »,
-        // deux lignes actives pour un seul défaut. On supersède (traçable,
-        // jamais de DELETE) au lieu de dupliquer.
-        // Vraie contradiction sur catégorie stable → supersession traçable (jamais de DELETE)
+        // jamais un second blocage qui coexiste.
+        //
+        // 🔴 CE N'EST DONC PAS UNE SUPERSESSION, C'EST UNE OBSERVATION DE PLUS.
+        // La version précédente créait ici un fait neuf et marquait l'ancien
+        // superseded — ce qui RÉINITIALISAIT `supportCount` à 1. Constaté en
+        // production le 19 octobre sur le même blocage :
+        //     18/10  superseded  vu 15  « peur objection pyramide »
+        //     19/10  ACTIVE      vu 1   « peur de l'objection pyramide »
+        // Quinze observations remplacées par une, pour un mot d'écart. Et la
+        // suite en dents de scie : 5 → 7 → 4 → 13 → 15 → 2 → 1.
+        //
+        // Or c'est `supportCount` qui donne la note du point faible
+        // (`penalite = max(10, 55 - vu*10)` dans lib/competences.ts, agrégé
+        // par compétence) : la recommandation changeait de module parce que la
+        // mémoire oubliait, pas parce que le distributeur progressait. Un coach
+        // qui oublie ce qu'il a constaté quinze fois n'est pas crédible.
+        //
+        // On met donc à jour SUR PLACE : le compteur monte, la confiance monte,
+        // et le libellé adopte la formulation la plus récente — celle qui dit
+        // où en est la personne aujourd'hui. Bénéfice second : la ligne garde
+        // son `createdAt`, donc « depuis quand ça coince », que la chaîne de
+        // supersessions effaçait.
+        await confirm(existing.id, existing)
+        await db.atlasFact.update({ where: { id: existing.id }, data: { object } })
+      } else if (STABLE_CATEGORIES.has(f.category)) {
+        // Sans slug, une catégorie stable est un vrai REMPLACEMENT : on ne vise
+        // pas 2 000 € ET 5 000 € par mois. Ici le compteur DOIT repartir — dire
+        // « vu quinze fois » d'un objectif énoncé à l'instant serait faux.
+        // Supersession traçable, jamais de DELETE.
         const neu = await create()
         await db.atlasFact.update({
           where: { id: existing.id },
