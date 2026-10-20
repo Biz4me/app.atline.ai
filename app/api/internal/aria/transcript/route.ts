@@ -1,8 +1,11 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest, NextResponse, after } from 'next/server'
 import { db } from '@/lib/db'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
+
+/** Où vit l'app qui sait fabriquer un bilan. La bascule bleu-vert la déplacera. */
+const V2_URL = process.env.V2_URL || 'http://127.0.0.1:3055'
 
 // Endpoint INTERNE : l'agent vocal LiveKit dépose le transcript en fin de session.
 // La room s'appelle aria-<simSessionId> → on retrouve la session créée par /api/livekit-token.
@@ -62,6 +65,40 @@ export async function POST(req: NextRequest) {
       ...(raisonFin ? { raisonFin } : {}),
     },
   })
+
+  /**
+   * 🔴 LE BILAN PART D'ICI, ET PLUS DU NAVIGATEUR.
+   *
+   * Jusqu'au 20 octobre, seul l'écran de simulation déclenchait le débrief —
+   * et seulement si l'utilisateur RESTAIT dessus une demi-minute après avoir
+   * raccroché. Or on raccroche en fermant l'écran. Neuf sessions avaient un
+   * vrai transcript et aucun bilan, `SimScore` était vide sur TOUTE la base,
+   * et les niveaux n'avaient pas bougé depuis le 16 octobre. Tout ce qui en
+   * dépend — le point faible, la leçon recommandée, le barreau d'aide —
+   * reposait donc sur des mesures qui n'arrivaient jamais.
+   *
+   * Le transcript qui atterrit ici EST le moment où le bilan devient
+   * possible : c'est donc d'ici qu'il part, sans dépendre de personne.
+   *
+   * `after()` et non `void` : le travail s'exécute APRÈS la réponse, sans
+   * faire attendre l'agent qui est en train de se fermer, et sans risquer
+   * d'être coupé comme le serait une promesse abandonnée.
+   */
+  if (rows.length) {
+    after(async () => {
+      try {
+        const r = await fetch(`${V2_URL}/api/simulation/${sessionId}`, {
+          method: 'POST',
+          headers: { 'x-atline-internal': process.env.INTERNAL_API_SECRET ?? '' },
+          signal: AbortSignal.timeout(90_000),
+        })
+        if (!r.ok) console.error(`[transcript ${sessionId}] bilan refusé : ${r.status}`)
+      } catch (e) {
+        // On le DIT. Un bilan perdu en silence est ce qu'on vient de réparer.
+        console.error(`[transcript ${sessionId}] bilan non déclenché :`, e)
+      }
+    })
+  }
 
   return NextResponse.json({ ok: true, saved: rows.length, mesures: consommation.length })
 }
