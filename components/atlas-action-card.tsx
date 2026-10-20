@@ -9,7 +9,27 @@ import { toast } from 'sonner'
 
 export type AtlasAction = { kind: string; params: Record<string, string> }
 
-const META: Record<string, { icon: LucideIcon; label: (p: Record<string, string>) => string; desc: (p: Record<string, string>) => string }> = {
+// 🔴 `champs` EXISTE PARCE QUE `desc` NE SUFFISAIT PAS.
+//
+// Les cartes qui ÉCRIVENT des champs (profil, activité, fiche contact) les
+// résumaient sur une seule ligne `truncate`, valeurs collées par des points
+// médians et coupées à 40 caractères. Avec trois champs, on ne voyait que le
+// premier, amputé. Constaté le 20 octobre : l'activité de Patrice portait les
+// produits d'un CONCURRENT (entendus pendant une analyse comparative), une
+// note sur un seul contact rangée en « audience », et une phrase sans rapport
+// en objectif mensuel. Il avait bien tapé « Confirmer » — sur une ligne qui ne
+// montrait rien de tout ça.
+//
+// Une confirmation qui cache ce qu'elle confirme n'est pas une confirmation.
+// Quand `champs` est là, la carte rend UNE LIGNE PAR CHAMP, valeur entière.
+type Meta = {
+  icon: LucideIcon
+  label: (p: Record<string, string>) => string
+  desc: (p: Record<string, string>) => string
+  champs?: (p: Record<string, string>) => [string, string][]
+}
+
+const META: Record<string, Meta> = {
   create_relance: {
     icon: AlarmClock,
     label: (p) => `Programmer la relance de ${p.contact_name ?? ''}`,
@@ -28,47 +48,63 @@ const META: Record<string, { icon: LucideIcon; label: (p: Record<string, string>
   update_contact: {
     icon: UserPen,
     label: (p) => `Mettre à jour la fiche de ${p.contact_name ?? ''}`,
-    desc: (p) => {
-      const FR: [string, string][] = [
-        ['telephone', 'téléphone'], ['telephone2', '2e téléphone'], ['email', 'email'],
-        ['adresse', 'adresse'], ['ville', 'ville'], ['code_postal', 'code postal'], ['pays', 'pays'],
-        ['profession', 'métier'], ['education', 'formation'], ['date_naissance', 'naissance'],
-        ['genre', 'genre'], ['prenom', 'prénom'], ['nom', 'nom'], ['tags', 'tags'],
-        ['marche', 'proximité'], ['couleur', 'couleur'], ['etape', 'étape'],
-        ['situation', 'situation'], ['interets', 'intérêts'], ['motivation', 'motivation'],
-        ['insatisfaction', 'insatisfaction'], ['reseau', 'réseau'], ['ouverture', 'ouverture'],
-      ]
-      const parts = FR.filter(([k]) => p[k]).map(([, l]) => l)
-      return parts.length ? parts.join(' · ') : 'infos de la fiche'
-    },
+    desc: () => 'infos de la fiche',
+    champs: (p) => remplis([
+      ['telephone', 'téléphone'], ['telephone2', '2e téléphone'], ['email', 'email'],
+      ['adresse', 'adresse'], ['ville', 'ville'], ['code_postal', 'code postal'], ['pays', 'pays'],
+      ['profession', 'métier'], ['education', 'formation'], ['date_naissance', 'naissance'],
+      ['genre', 'genre'], ['prenom', 'prénom'], ['nom', 'nom'], ['tags', 'tags'],
+      ['marche', 'proximité'], ['couleur', 'couleur'], ['etape', 'étape'],
+      ['situation', 'situation'], ['interets', 'intérêts'], ['motivation', 'motivation'],
+      ['insatisfaction', 'insatisfaction'], ['reseau', 'réseau'], ['ouverture', 'ouverture'],
+    ], p),
   },
   update_profile: {
     icon: CircleUserRound,
     label: () => 'Mettre à jour ton profil',
-    desc: (p) => fieldValues([
-      ['profession', 'métier'], ['education', 'formation'], ['ville', 'ville'],
-      ['date_naissance', 'naissance'], ['genre', 'genre'], ['couleur', 'couleur'], ['bio', 'bio'],
-      ['pourquoi', 'pourquoi'], ['parcours', 'parcours'], ['mindset', 'mindset'], ['passions', 'passions'],
-      ['dispo', 'disponibilité'], ['niveau', 'niveau'],
-    ], p) || 'infos du profil',
+    desc: () => 'infos du profil',
+    // La liste suit EXACTEMENT ce que `/api/atlas/actions` écrit pour ce
+    // genre. Neuf champs manquaient ici — dont le téléphone et l'email — et
+    // partaient donc en base sans jamais s'afficher.
+    champs: (p) => [
+      ...remplis([
+        ['prenom', 'prénom'], ['nom', 'nom'],
+        ['profession', 'métier'], ['education', 'formation'], ['bio', 'bio'],
+        ['telephone', 'téléphone'], ['telephone2', '2e téléphone'], ['email', 'email'],
+        ['adresse', 'adresse'], ['ville', 'ville'], ['code_postal', 'code postal'], ['pays', 'pays'],
+        ['date_naissance', 'naissance'], ['genre', 'genre'], ['couleur', 'couleur'],
+        ['pourquoi', 'pourquoi'], ['parcours', 'parcours'], ['mindset', 'mindset'],
+        ['passions', 'passions'], ['dispo', 'disponibilité'], ['niveau', 'niveau'],
+      ], p),
+      ...reseaux(p),
+    ],
   },
   update_activite: {
     icon: Briefcase,
     label: () => 'Mettre à jour ton activité',
-    desc: (p) => fieldValues([
-      ['goal', 'objectif principal'],
+    desc: () => "infos de l'activité",
+    champs: (p) => remplis([
+      ['mlm', 'société'], ['goal', 'objectif principal'],
       ['objectif_mensuel', 'objectif mensuel'], ['objectif_3m', 'objectif 3 mois'],
       ['objectif_6m', 'objectif 6 mois'], ['objectif_12m', 'objectif 12 mois'],
       ['produit', 'produit phare'], ['audience', 'audience'], ['rang', 'rang'],
-      ['story', 'ta rencontre'], ['parrain', 'parrain'],
-    ], p) || "infos de l'activité",
+      ['story', 'ta rencontre'], ['parrain', 'parrain'], ['date_demarrage', 'démarrage'],
+    ], p),
   },
 }
 
-// Résumé « label : valeur » des champs renseignés — une carte proactive (suggestion du matin)
-// doit montrer la VALEUR proposée, pas seulement le nom du champ.
-function fieldValues(fr: [string, string][], p: Record<string, string>): string {
-  return fr.filter(([k]) => p[k]?.trim()).map(([k, l]) => `${l} : ${p[k].trim().slice(0, 40)}`).join(' · ')
+/** Les champs que l'action va écrire, avec LEUR VALEUR ENTIÈRE. Rien n'est coupé. */
+function remplis(fr: [string, string][], p: Record<string, string>): [string, string][] {
+  return fr.filter(([k]) => p[k]?.trim()).map(([k, l]) => [l, p[k].trim()])
+}
+
+/** `socials` est un objet et non une chaîne : une ligne par réseau renseigné. */
+function reseaux(p: Record<string, unknown>): [string, string][] {
+  const s = p.socials
+  if (!s || typeof s !== 'object' || Array.isArray(s)) return []
+  return Object.entries(s as Record<string, unknown>)
+    .filter(([, v]) => typeof v === 'string' && v.trim())
+    .map(([k, v]) => [k.toLowerCase(), (v as string).trim()])
 }
 
 function frDate(d?: string): string {
@@ -109,18 +145,34 @@ export function AtlasActionCard({ action }: { action: AtlasAction }) {
 
   if (state === 'dismissed') return null
 
+  // Ce que la carte s'apprête à écrire. Quand il y en a, c'est ÇA qu'on
+  // montre : une ligne par champ, valeur entière. Jamais un résumé tronqué.
+  const champs = state === 'done' ? [] : (meta.champs?.(action.params) ?? [])
+
   return (
-    <div className="flex w-full items-center gap-3 rounded-2xl border border-border bg-surface px-4 py-3">
+    <div className="flex w-full items-start gap-3 rounded-2xl border border-border bg-surface px-4 py-3">
       <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary">
         {state === 'done' ? <Check className="size-5 stroke-[1.5]" /> : <Icon className="size-5 stroke-[1.5]" />}
       </span>
       <span className="min-w-0 flex-1">
-        <span className="block truncate text-lg font-semibold text-foreground lg:text-sm">
+        <span className="block text-lg font-semibold text-foreground lg:text-sm">
           {state === 'done' ? doneLabel : meta.label(action.params)}
         </span>
-        <span className="block truncate text-xs text-muted-foreground">
-          {state === 'done' ? 'Fait ✓' : meta.desc(action.params)}
-        </span>
+
+        {state === 'done' ? (
+          <span className="block text-xs text-muted-foreground">Fait ✓</span>
+        ) : champs.length ? (
+          <span className="mt-1.5 block space-y-1">
+            {champs.map(([label, valeur]) => (
+              <span key={label} className="block">
+                <span className="text-xs text-muted-foreground">{label} : </span>
+                <span className="break-words text-sm text-foreground">{valeur}</span>
+              </span>
+            ))}
+          </span>
+        ) : (
+          <span className="block text-xs text-muted-foreground">{meta.desc(action.params)}</span>
+        )}
       </span>
       {state !== 'done' && (
         <span className="flex shrink-0 items-center gap-1.5">
