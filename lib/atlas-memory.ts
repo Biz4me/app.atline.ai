@@ -31,7 +31,22 @@ export async function buildUserModel(userId: string): Promise<string> {
       db.userPreferences.findUnique({ where: { userId }, select: { atlasProfile: true } }),
       db.atlasFact.findMany({
         where: { userId, contactId: null, status: 'active' },
-        orderBy: [{ importance: 'desc' }, { lastSeenAt: 'desc' }],
+        // 🔴 `supportCount` DÉPARTAGE AVANT LA DATE, et c'est tout l'enjeu.
+        //
+        // Mesuré le 23 octobre : 8 faits seulement atteignent l'importance
+        // 0,95. Les ex aequo étaient donc départagés par la seule date, et une
+        // soirée passée sur un contact raflait la moitié des 12 places. Le
+        // 21 octobre au soir, quatre d'entre elles disaient la même chose :
+        // « relance mélanie ce soir », « appel à mélanie ce soir », « appel
+        // mélanie guilbert », « relance contact mélanie guilbert ».
+        //
+        // Pendant ce temps « objection pyramide » (51 observations),
+        // « invitation » (32) et « manque motivation et foi » (14) n'entraient
+        // jamais. Trois des blocages les plus persistants du distributeur,
+        // invisibles pour son coach.
+        //
+        // Ce qui REVIENT passe maintenant devant ce qui vient de PASSER.
+        orderBy: [{ importance: 'desc' }, { supportCount: 'desc' }, { lastSeenAt: 'desc' }],
         take: 12,
         select: { predicate: true, object: true, category: true },
       }),
@@ -54,7 +69,10 @@ export async function contactFactLines(userId: string, contactId: string): Promi
   try {
     const facts = await db.atlasFact.findMany({
       where: { userId, contactId, status: 'active' },
-      orderBy: [{ importance: 'desc' }, { lastSeenAt: 'desc' }],
+      // Même règle que pour l'utilisateur : ce qui revient avant ce qui vient
+      // de passer. Les deux chemins doivent classer pareil, sinon le fait
+      // saillant d'un contact dépend de l'écran par lequel on arrive.
+      orderBy: [{ importance: 'desc' }, { supportCount: 'desc' }, { lastSeenAt: 'desc' }],
       take: 8,
       select: { predicate: true, object: true, category: true },
     })
@@ -95,6 +113,103 @@ async function arbitrate(predicate: string, category: string, existingObject: st
   }
 }
 
+// ── Choisir le bon candidat à montrer à l'arbitre ───────────────────────────
+//
+// 🔴 LE DÉFAUT QUE CECI CORRIGE, mesuré le 23 octobre sur 1 273 faits actifs.
+//
+// L'appariement prenait UN SEUL candidat, choisi par DATE :
+//     findFirst({ where: { predicate, category }, orderBy: { lastSeenAt } })
+// « appel mélanie guilbert » tombait donc face au dernier fait écrit dans la
+// même catégorie, qui pouvait parler d'immobilier. L'arbitre répondait
+// « different », une ligne de plus était créée — alors que « relance mélanie
+// ce soir » existait trois lignes plus bas.
+//
+// Résultat en production : 60 lignes pour « mauvaise réputation marketing de
+// réseau », 14 pour « transformation de jean en partenaire », et 87 % des
+// faits actifs vus une seule fois. Les 12 places du contexte d'Atlas étaient
+// occupées par quatre façons de dire « appeler Mélanie », pendant que
+// « objection pyramide », observée 51 fois, n'y arrivait jamais.
+//
+// L'arbitre n'était pas mauvais. ON NE LUI MONTRAIT JAMAIS LE BON CANDIDAT.
+//
+// ⚠️ La ressemblance ne DÉCIDE pas, elle ORDONNE. C'est toujours l'arbitre qui
+// tranche « même chose » ou non. Un score lexical médiocre suffit donc : il
+// doit seulement placer le vrai jumeau devant les étrangers.
+
+const MOTS_VIDES = new Set([
+  'de','la','le','les','un','une','des','du','et','au','aux','en','avec','sur',
+  'dans','par','se','sa','son','ses','est','etre','avoir','plus','pas','ne',
+  'ce','cette','qui','que','pour','leur','mes','son',
+])
+
+/** Mots pleins d'un libellé, sans accents ni ponctuation. */
+function motsPleins(s: string): Set<string> {
+  const plat = s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase()
+  const tous = plat.match(/[a-z0-9]+/g) ?? []
+  const pleins = tous.filter((m) => m.length > 2 && !MOTS_VIDES.has(m))
+  return new Set(pleins.length ? pleins : tous)
+}
+
+/** Part de mots pleins communs, entre 0 et 1. */
+function ressemblance(a: Set<string>, b: Set<string>): number {
+  if (!a.size || !b.size) return 0
+  let communs = 0
+  for (const m of a) if (b.has(m)) communs++
+  return communs / (a.size + b.size - communs)
+}
+
+/** Sous ce score, on ne dérange pas l'arbitre : c'est un fait neuf. */
+const PLANCHER_APPARIEMENT = 0.25
+/** Au-dessus, c'est si évidemment le même qu'un appel de modèle serait du gaspillage. */
+const CERTITUDE = 0.8
+/** Garde-fou : le plus gros groupe mesuré en fait 508. */
+const CANDIDATS_MAX = 500
+
+type Candidat = Awaited<ReturnType<typeof db.atlasFact.findFirst>>
+
+async function meilleurCandidat(
+  userId: string,
+  contactId: string | null,
+  predicate: string,
+  competenceId: string | null,
+  category: string,
+  object: string,
+): Promise<{ fait: Candidat; score: number } | null> {
+  const candidats = await db.atlasFact.findMany({
+    where: {
+      userId, contactId, predicate, status: 'active',
+      ...(competenceId ? { competenceId } : { category }),
+    },
+    // Les faits les mieux établis d'abord : si le plafond coupe, il ne doit
+    // jamais couper la ligne canonique au profit d'une variante récente.
+    orderBy: [{ supportCount: 'desc' }, { lastSeenAt: 'desc' }],
+    take: CANDIDATS_MAX,
+  })
+  if (!candidats.length) return null
+
+  const cible = motsPleins(object)
+  let meilleur = candidats[0]
+  let score = -1
+  for (const c of candidats) {
+    const s = ressemblance(cible, motsPleins(c.object))
+    if (s > score) { score = s; meilleur = c }
+  }
+  if (score >= PLANCHER_APPARIEMENT) return { fait: meilleur, score }
+
+  // ⚠️ RIEN NE RESSEMBLE, ET LA SUITE DÉPEND DE LA CATÉGORIE.
+  //
+  // Une catégorie stable ne tolère pas deux valeurs actives : on ne vise pas
+  // 2 000 € ET 5 000 € par mois. Même sans ressemblance, le nouveau REMPLACE
+  // l'ancien, donc il faut rendre un candidat pour que la supersession ait
+  // lieu. Sans ce rattrapage, le plancher aurait créé des objectifs qui
+  // coexistent — une régression que le plancher seul introduisait.
+  if (!competenceId && STABLE_CATEGORIES.has(category)) {
+    const recent = candidats.reduce((a, b) => (a.lastSeenAt > b.lastSeenAt ? a : b))
+    return { fait: recent, score: 0 }
+  }
+  return null
+}
+
 // Réconciliation : déterministe d'abord (match exact normalisé), arbitre LLM sur l'ambigu.
 export async function reconcileFacts(userId: string, contactId: string | null, facts: ExtractedFact[], source: 'atlas' | 'aria' | 'nova' = 'atlas') {
   for (const f of facts) {
@@ -110,13 +225,12 @@ export async function reconcileFacts(userId: string, contactId: string | null, f
       // Quand le slug est connu, c'est LUI la clé : deux observations de la
       // même compétence se trouvent, quelle que soit la formulation.
       const competenceId = f.competence || null
-      const existing = await db.atlasFact.findFirst({
-        where: {
-          userId, contactId, predicate: f.predicate, status: 'active',
-          ...(competenceId ? { competenceId } : { category: f.category }),
-        },
-        orderBy: { lastSeenAt: 'desc' },
-      })
+      // 🔴 Le candidat est choisi par RESSEMBLANCE, plus par date. Voir
+      // `meilleurCandidat` au-dessus pour ce que cela corrige.
+      const trouve = await meilleurCandidat(
+        userId, contactId, f.predicate, competenceId, f.category, object,
+      )
+      const existing = trouve?.fait ?? null
 
       const confirm = async (id: string, cur: { confidence: number; importance: number }) =>
         db.atlasFact.update({
@@ -144,6 +258,16 @@ export async function reconcileFacts(userId: string, contactId: string | null, f
       if (normalizeObject(existing.object) === object) {
         // Ré-observation identique → renforce la confiance
         await confirm(existing.id, existing)
+        continue
+      }
+      // Mêmes mots pleins à un article près — « énergie et chaleur EN ouverture
+      // froide » contre « DANS ouverture froide ». Déranger l'arbitre pour ça
+      // serait payer un appel de modèle pour une évidence.
+      if ((trouve?.score ?? 0) >= CERTITUDE) {
+        await confirm(existing.id, existing)
+        if (object.length < existing.object.length) {
+          await db.atlasFact.update({ where: { id: existing.id }, data: { object } })
+        }
         continue
       }
       // Ambigu : même (predicate, category), objet différent → l'arbitre tranche
