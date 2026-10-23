@@ -18,6 +18,7 @@ datasource db {
 // ============================================================
 
 model User {
+  intentions          AtlasIntention[]
   id                  String           @id @default(cuid())
   username            String           @unique
   email               String           @unique
@@ -453,6 +454,7 @@ model MlmCatalog {
 // ============================================================
 
 model Contact {
+  intentions      AtlasIntention[]
   id              String           @id @default(cuid())
   userId          String
   user            User             @relation(fields: [userId], references: [id])
@@ -2584,4 +2586,66 @@ model ConsommationVocale {
   @@index([userId, createdAt])
   @@index([agent, createdAt])
   @@index([factureAt]) // la réconciliation ne balaie que ce qui reste à rattacher
+}
+
+// ── MÉMOIRE PROSPECTIVE ───────────────────────────────────────────────────────
+//
+// 🔴 SE SOUVENIR D'AGIR EST UNE AUTRE FACULTÉ QUE SE SOUVENIR D'UN FAIT.
+//
+// Une intention rangée en prose dans le profil est la pire forme disponible :
+// le rappel de ce qu'on doit FAIRE se dégrade à mesure que le contexte
+// s'allonge, alors que le rappel des faits tient. Et un modèle ne se fie pas
+// pour décider tout seul qu'une intention est annulée.
+//
+// On la COMPILE donc hors du modèle : des champs vérifiables par machine, et
+// une correspondance purement lexicale au moment du tour de parole. AUCUN
+// APPEL DE MODÈLE dans le chemin de correspondance — il est sur le chemin de
+// réponse, il doit être gratuit.
+//
+// Distinction avec ce qui existe déjà :
+//   · Relance  = une date. « rappeler Mélanie jeudi »          → table Relance
+//   · Intention = un ÉVÉNEMENT. « quand elle reparle de son
+//     hésitation, ressors-lui la leçon sur les hésitants »      → ici
+//
+// L'anti-harcèlement est STRUCTUREL, pas une consigne de prompt : un budget de
+// déclenchements, un temps de repos, une péremption. Une intention qui ne
+// tombe jamais s'éteint toute seule.
+enum IntentionEtat {
+  ARMEE
+  TOMBEE // a servi, en repos jusqu'à la prochaine fois
+  TERMINEE // budget épuisé
+  ANNULEE // 🔴 explicitement, JAMAIS déduit d'une conversation
+  EXPIREE
+}
+
+model AtlasIntention {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  /// Portée : si renseigné, l'intention ne tombe que dans le fil de ce contact.
+  contactId String?
+  contact   Contact? @relation(fields: [contactId], references: [id], onDelete: Cascade)
+
+  /// Ce qu'Atlas doit se rappeler de faire quand ça tombe.
+  libelle      String
+  /// Les mots qui doivent TOUS apparaître dans le tour pour que ça tombe.
+  /// Tous, et non un seul : un déclencheur trop large harcèle.
+  declencheurs String[]
+
+  etat         IntentionEtat @default(ARMEE)
+  tombees      Int           @default(0)
+  /// Combien de fois au maximum. Au-delà, l'intention est TERMINEE.
+  budget       Int           @default(3)
+  /// Le temps de repos entre deux déclenchements, en heures.
+  reposHeures  Int           @default(24)
+  derniereFois DateTime?
+  expireLe     DateTime
+
+  createdAt DateTime @default(now())
+  /// 🔴 OBLIGATOIRE ET SANS DÉFAUT EN BASE : un schéma partiel qui l'omettrait
+  /// casserait toute création.
+  updatedAt DateTime @updatedAt
+
+  @@index([userId, etat])
+  @@index([userId, contactId, etat])
 }

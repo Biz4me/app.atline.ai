@@ -4,6 +4,7 @@ import { db } from '@/lib/db'
 import { buildContactSnapshot } from '@/lib/contact-snapshot'
 import { buildAtlasSnapshot } from '@/lib/atlas-snapshot'
 import { buildUserModel, contactFactLines, reflectUserMemory, reflectContactMemory } from '@/lib/atlas-memory'
+import { intentionsQuiTombent, enTexte } from '@/lib/intentions'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -134,6 +135,18 @@ export async function POST(req: NextRequest) {
   const [user_snapshot, user_model] = isSession || isDraft
     ? ['', '']
     : await Promise.all([buildAtlasSnapshot(userId), buildUserModel(userId)])
+
+  // ── MÉMOIRE PROSPECTIVE ───────────────────────────────────────────────────
+  //
+  // Ce qu'Atlas s'était noté de faire QUAND un sujet reviendrait. La
+  // correspondance est purement lexicale et ne coûte aucun appel de modèle :
+  // elle est sur le chemin de réponse, elle doit être gratuite.
+  //
+  // Elle ne tourne pas sur une session de simulation ni sur une rédaction :
+  // ce ne sont pas des tours de conversation.
+  const intentions = isSession || isDraft
+    ? ''
+    : enTexte(await intentionsQuiTombent(userId, body.contactId ?? null, query))
   // Contexte contact : snapshot + faits atomiques retenus sur lui.
   let contact_snapshot = ''
   if (body.contactId && !isSession && !isDraft) {
@@ -228,6 +241,8 @@ export async function POST(req: NextRequest) {
         user_model,
         user_snapshot,
         contact_snapshot,
+        // Ce qu'il s'était noté de faire quand ce sujet reviendrait.
+        intentions,
         // "voix" => le service ajoute la contrainte orale au prompt (phrases
         // courtes, aucune mise en forme, aucun marqueur superflu). Le filtre de
         // l'agent est la ceinture ; ceci est la bretelle.

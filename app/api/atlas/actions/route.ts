@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getToken } from 'next-auth/jwt'
 import { db } from '@/lib/db'
 import { resolveContacts } from '@/lib/contact-snapshot'
+import { armerIntention } from '@/lib/intentions'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -94,6 +95,30 @@ export async function POST(req: NextRequest) {
       })
       void consumeProposal(userId, kind)
       return NextResponse.json({ ok: true, done: `Note ajoutée à la fiche de ${contact.name}` })
+    }
+
+    // ── MÉMOIRE PROSPECTIVE ───────────────────────────────────────────────
+    //
+    // Rien n'est écrit sans ce tap : c'est la même règle que pour les autres
+    // actions d'Atlas. Un rappel qu'on n'a pas voulu vaut moins que pas de
+    // rappel du tout.
+    if (kind === 'noter_pour_plus_tard') {
+      const quoi = typeof p.quoi === 'string' ? p.quoi.trim() : ''
+      const quand = Array.isArray(p.quand) ? p.quand.filter((x: unknown) => typeof x === 'string') : []
+      if (!quoi || !quand.length) {
+        return NextResponse.json({ error: 'il faut quoi ressortir, et à quel sujet' }, { status: 400 })
+      }
+      // La portée contact est facultative : si le nom ne tombe sur personne,
+      // l'intention vaut partout plutôt que d'échouer.
+      let contactId: string | null = null
+      if (p.contact_name) {
+        const { contact } = await findContact(userId, p.contact_name)
+        contactId = contact?.id ?? null
+      }
+      const id = await armerIntention({ userId, contactId, libelle: quoi, declencheurs: quand })
+      if (!id) return NextResponse.json({ error: 'note impossible' }, { status: 400 })
+      void consumeProposal(userId, kind)
+      return NextResponse.json({ ok: true, done: `Noté. Je te le ressors quand ${quand[0]} revient.` })
     }
 
     if (kind === 'update_contact') {

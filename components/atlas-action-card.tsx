@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { AlarmClock, Briefcase, CalendarPlus, CircleUserRound, StickyNote, UserPen, Check, Loader2, X, type LucideIcon } from 'lucide-react'
+import { AlarmClock, Bookmark, Briefcase, CalendarPlus, CircleUserRound, StickyNote, UserPen, Check, Loader2, X, type LucideIcon } from 'lucide-react'
 import { toast } from 'sonner'
 
 // Carte « action » — Atlas a proposé une action concrète (relance, RDV, note) via un outil.
@@ -30,6 +30,21 @@ type Meta = {
 }
 
 const META: Record<string, Meta> = {
+  // Une intention n'a pas de date, donc pas d'horloge : c'est un marque-page.
+  // La carte doit montrer À QUEL MOMENT ça ressortira, sinon on confirme à
+  // l'aveugle un rappel qui tombera on ne sait quand.
+  noter_pour_plus_tard: {
+    icon: Bookmark,
+    label: () => 'Garder ça pour le bon moment',
+    desc: (p) => `« ${(p.quoi ?? '').slice(0, 110) }»`,
+    champs: (p) => {
+      const quand = Array.isArray(p.quand) ? (p.quand as unknown as string[]) : []
+      return [
+        ['Quand le sujet revient', quand.join(' · ') || '—'],
+        ...(p.contact_name ? ([['Seulement avec', p.contact_name]] as [string, string][]) : []),
+      ]
+    },
+  },
   create_relance: {
     icon: AlarmClock,
     label: (p) => `Programmer la relance de ${p.contact_name ?? ''}`,

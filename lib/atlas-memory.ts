@@ -120,7 +120,17 @@ export function normalizeObject(raw: string): string {
   return raw
     .replace(/_/g, ' ')
     .replace(/\s+/g, ' ')
-    .replace(/[«»"']/g, '')
+    // 🔴 L'APOSTROPHE SE GARDE. Elle était retirée, et les mots se collaient :
+    // « simulation d'invitation » devenait « simulation dinvitation ». Constaté
+    // le 23 octobre sur 29 libellés actifs, qui partaient tels quels dans le
+    // contexte d'Atlas — du mauvais français dans la tête du coach.
+    //
+    // Bénéfice second, et il compte autant : `motsPleins` découpe sur
+    // l'apostrophe, donc « simulation d'invitation » et « simulation
+    // invitation » donnent les MÊMES mots pleins et s'apparient enfin. Collés,
+    // ils restaient deux faits distincts.
+    .replace(/[‘’ʼ]/g, "'")   // apostrophes courbes → droite
+    .replace(/[«»"]/g, '')
     .trim()
     .toLowerCase()
     .slice(0, 120)
