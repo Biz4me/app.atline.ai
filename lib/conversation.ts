@@ -197,6 +197,24 @@ export async function lireLaJournee(
   }
   tours.sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime())
 
+  // ⚠️ ON NE BORNE PAS LA PART D'ATLAS, ET C'EST UNE DÉCISION MESURÉE.
+  //
+  // Ses réponses redisent la mémoire qu'on vient de lui injecter (« tu es à
+  // 11 % de la formation »), et la nuit peut en ré-extraire un fait qui
+  // confirme le fait d'origine : il monte alors dans le classement parce
+  // qu'il y était déjà. La boucle est réelle.
+  //
+  // Mais la couper à 220 caractères a été ESSAYÉ le 23 octobre et ne prouve
+  // rien : 7 % de caractères en moins seulement — en conversation parlée les
+  // réponses d'Atlas sont courtes — et des faits extraits différents sans
+  // qu'aucune version soit meilleure. C'est de la variance de modèle, pas une
+  // correction. Un nombre magique sans gain démontré ne mérite pas d'être
+  // embarqué.
+  //
+  // Le vrai remède reste de MARQUER ce qui vient de la mémoire au moment de
+  // l'injecter, pour ne jamais le ré-extraire. Cela demande que la sortie du
+  // modèle porte cette marque, donc un contrat avec le service, donc un
+  // chantier — pas une troncature.
   const texte = tours
     .map((t) => `${t.role === 'USER' ? 'Utilisateur' : 'Atlas'}: ${t.content.slice(0, 500)}`)
     .join('\n')

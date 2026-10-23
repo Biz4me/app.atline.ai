@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
-import { reflect, reconcileFacts, proposeProfileUpdates, type ProfileProposal } from '@/lib/atlas-memory'
+import { reflect, reconcileFacts, faitsSaillants, proposeProfileUpdates, type ProfileProposal } from '@/lib/atlas-memory'
 import { buildProfileReference } from '@/lib/atlas-snapshot'
 import { buildContactSnapshot } from '@/lib/contact-snapshot'
 import { scoresUtilisateur, scoresEnTexte } from '@/lib/agents/scores'
@@ -100,6 +100,17 @@ export async function POST(req: NextRequest) {
   let recollesTotal = 0
   let replieesTotal = 0
   let machineTotal = 0
+  // Ce que la nuit a fait de la mémoire. Sans ces chiffres, elle peut échouer
+  // à moitié sans que rien ne le dise — et c'est exactement ce qu'on reproche
+  // au reste de la chaîne.
+  let profilsRebatis = 0
+  let profilsRefuses = 0
+  let profilAvant = 0
+  let profilApres = 0
+  let faitsCrees = 0
+  let faitsConfirmes = 0
+  let faitsRemplaces = 0
+  let faitsRates = 0
   for (const [userId, convIds] of userEntries.slice(0, USER_CAP)) {
     try {
       // 🔴 LA JOURNÉE RÉCONCILIÉE, plus les messages bruts. Les fragments sont
@@ -141,22 +152,52 @@ export async function POST(req: NextRequest) {
         db.user.findUnique({ where: { id: userId }, select: { firstName: true } }),
         buildProfileReference(userId),
       ])
+      // 🔴 LE PROFIL EST UNE VUE, PLUS UN STOCK. Mesuré le 23 octobre : passer
+      // le profil courant en entrée le fait ALLONGER, jamais réviser. Trois
+      // essais pour s'en assurer, dont une passe de réparation dédiée — une
+      // phrase vide de sens y a survécu à chaque fois, parce qu'elle est
+      // grammaticalement plausible et donc invérifiable sans l'échange
+      // d'origine. Voir routers/atlas.py pour le détail.
+      //
+      // On repart donc de VIDE. La continuité ne vient plus de la prose, elle
+      // vient du référentiel déclaré et des FAITS — qui, eux, se remplacent
+      // correctement (0 contradiction sur 1 960 mesurée le même jour).
+      //
+      // ⚠️ Sans les faits en entrée, le profil rebâti ne reflète que la
+      // journée : « objection pyramide » (51 observations) en disparaissait.
+      const saillants = await faitsSaillants(userId, null, 20)
+      const ancrage = saillants.length
+        ? `${reference}\n\nCE QUE LA MÉMOIRE RETIENT DE LUI :\n${saillants.join('\n')}`
+        : reference
+      const avantLong = (prefs?.atlasProfile ?? '').length
       const { profile, facts } = await reflect(
         'user',
         user?.firstName ?? '',
-        prefs?.atlasProfile ?? '',
+        '',        // 🔴 profil VIDE : on rebâtit, on ne révise pas
         exchange,
-        true,       // deep
-        reference,  // ancrage sur le profil déclaré
+        true,      // deep
+        ancrage,
       )
-      if (profile) {
+      // ⚠️ UN REBÂTI VIDE N'ÉCRASE PAS CE QUI EXISTE. Rebâtir est juste tant
+      // que le résultat tient debout ; un service en panne ne doit pas effacer
+      // le profil au passage.
+      if (profile && profile.trim().length >= 120) {
         await db.userPreferences.upsert({
           where: { userId },
           create: { userId, atlasProfile: profile, atlasProfileAt: new Date() },
           update: { atlasProfile: profile, atlasProfileAt: new Date() },
         })
+        profilsRebatis++
+        profilAvant += avantLong
+        profilApres += profile.trim().length
+      } else if (avantLong) {
+        profilsRefuses++
       }
-      if (facts.length) await reconcileFacts(userId, null, facts)
+      if (facts.length) {
+        const b = await reconcileFacts(userId, null, facts)
+        faitsCrees += b.crees; faitsConfirmes += b.confirmes
+        faitsRemplaces += b.remplaces; faitsRates += b.rates
+      }
       // Lot 4 — suggestions d'écriture structurée (goal, mindset…) → cartes à confirmer au réveil.
       try {
         const proposals = await proposeProfileUpdates(reference, exchange)
@@ -216,7 +257,11 @@ export async function POST(req: NextRequest) {
           data: { atlasMemory: profile, atlasMemoryAt: new Date() },
         })
       }
-      if (facts.length) await reconcileFacts(userId, contactId, facts)
+      if (facts.length) {
+        const b = await reconcileFacts(userId, contactId, facts)
+        faitsCrees += b.crees; faitsConfirmes += b.confirmes
+        faitsRemplaces += b.remplaces; faitsRates += b.rates
+      }
       doneContacts++
     } catch {
       /* un contact raté ne bloque pas les autres */
@@ -262,11 +307,24 @@ export async function POST(req: NextRequest) {
     contactsSkipped,
     proposals: proposalsCreated,
     judged,
-    // Ce que la réconciliation a redressé avant que la nuit ne lise.
+    // 🔴 LE JOURNAL DE LA NUIT. Le cron l'ajoute à /var/log/atlas-consolidate.log,
+    // donc une nuit qui échoue à moitié se voit le lendemain matin.
     lecture: {
       fragmentsRecolles: recollesTotal,
       reponsesEcartees: replieesTotal,
       marqueursMachine: machineTotal,
+    },
+    profils: {
+      rebatis: profilsRebatis,
+      refuses: profilsRefuses,     // rebâti trop court : l'ancien est conservé
+      caracteresAvant: profilAvant,
+      caracteresApres: profilApres,
+    },
+    faits: {
+      crees: faitsCrees,
+      confirmes: faitsConfirmes,
+      remplaces: faitsRemplaces,
+      rates: faitsRates,           // 🔴 > 0 = une partie de la nuit a échoué
     },
   })
 }

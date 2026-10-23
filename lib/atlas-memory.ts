@@ -67,24 +67,38 @@ const CADRE = {
   },
 }
 
+/**
+ * LES FAITS QUI PÈSENT LE PLUS — un seul propriétaire.
+ *
+ * Le chat les injecte, la fiche contact les montre, et la nuit s'en sert pour
+ * REBÂTIR le profil. Trois usages, une seule définition : sans ça, « ce
+ * qu'Atlas sait » dépendrait de qui pose la question.
+ */
+export async function faitsSaillants(
+  userId: string,
+  contactId: string | null,
+  combien: number,
+): Promise<string[]> {
+  const fenetre = await db.atlasFact.findMany({
+    where: { userId, contactId, status: 'active' },
+    ...CADRE,
+  })
+  return fenetre
+    .sort((a, b) => poids(b) - poids(a))
+    .slice(0, combien)
+    .map((f) => `- ${f.predicate.replace(/_/g, ' ')} : ${f.object} (${f.category})`)
+}
+
 // Bloc « mémoire vivante » injecté dans le chat : profil + faits saillants.
 export async function buildUserModel(userId: string): Promise<string> {
   try {
-    const [prefs, fenetre] = await Promise.all([
+    const [prefs, faits] = await Promise.all([
       db.userPreferences.findUnique({ where: { userId }, select: { atlasProfile: true } }),
-      db.atlasFact.findMany({
-        where: { userId, contactId: null, status: 'active' },
-        ...CADRE,
-      }),
+      faitsSaillants(userId, null, 12),
     ])
-    const facts = fenetre.sort((a, b) => poids(b) - poids(a)).slice(0, 12)
     const lines: string[] = []
     if (prefs?.atlasProfile) lines.push(prefs.atlasProfile)
-    if (facts.length) {
-      lines.push(
-        'Faits retenus :\n' + facts.map((f) => `- ${f.predicate.replace(/_/g, ' ')} : ${f.object} (${f.category})`).join('\n'),
-      )
-    }
+    if (faits.length) lines.push('Faits retenus :\n' + faits.join('\n'))
     return lines.join('\n\n')
   } catch {
     return ''
@@ -94,16 +108,7 @@ export async function buildUserModel(userId: string): Promise<string> {
 // Faits saillants d'un contact (complètent le carnet atlasMemory dans le snapshot).
 export async function contactFactLines(userId: string, contactId: string): Promise<string> {
   try {
-    // Même poids que pour l'utilisateur : les deux chemins doivent classer
-    // pareil, sinon le fait saillant d'un contact dépend de l'écran par lequel
-    // on arrive.
-    const fenetre = await db.atlasFact.findMany({
-      where: { userId, contactId, status: 'active' },
-      ...CADRE,
-    })
-    const facts = fenetre.sort((a, b) => poids(b) - poids(a)).slice(0, 8)
-    if (!facts.length) return ''
-    return facts.map((f) => `- ${f.predicate.replace(/_/g, ' ')} : ${f.object} (${f.category})`).join('\n')
+    return (await faitsSaillants(userId, contactId, 8)).join('\n')
   } catch {
     return ''
   }
@@ -248,7 +253,15 @@ async function meilleurCandidat(
 }
 
 // Réconciliation : déterministe d'abord (match exact normalisé), arbitre LLM sur l'ambigu.
-export async function reconcileFacts(userId: string, contactId: string | null, facts: ExtractedFact[], source: 'atlas' | 'aria' | 'nova' = 'atlas') {
+/** Ce qu'une réconciliation a réellement fait. Rendu pour que la nuit puisse
+ *  en laisser une trace au lieu de travailler en silence. */
+export type Bilan = { crees: number; confirmes: number; remplaces: number; rates: number }
+
+export async function reconcileFacts(
+  userId: string, contactId: string | null, facts: ExtractedFact[],
+  source: 'atlas' | 'aria' | 'nova' = 'atlas',
+): Promise<Bilan> {
+  const bilan: Bilan = { crees: 0, confirmes: 0, remplaces: 0, rates: 0 }
   for (const f of facts) {
     const object = normalizeObject(f.object || '')
     if (!object || !f.predicate || !f.category) continue
@@ -289,19 +302,19 @@ export async function reconcileFacts(userId: string, contactId: string | null, f
         })
 
       if (!existing) {
-        await create()
+        await create(); bilan.crees++
         continue
       }
       if (normalizeObject(existing.object) === object) {
         // Ré-observation identique → renforce la confiance
-        await confirm(existing.id, existing)
+        await confirm(existing.id, existing); bilan.confirmes++
         continue
       }
       // Mêmes mots pleins à un article près — « énergie et chaleur EN ouverture
       // froide » contre « DANS ouverture froide ». Déranger l'arbitre pour ça
       // serait payer un appel de modèle pour une évidence.
       if ((trouve?.score ?? 0) >= CERTITUDE) {
-        await confirm(existing.id, existing)
+        await confirm(existing.id, existing); bilan.confirmes++
         if (object.length < existing.object.length) {
           await db.atlasFact.update({ where: { id: existing.id }, data: { object } })
         }
@@ -311,7 +324,7 @@ export async function reconcileFacts(userId: string, contactId: string | null, f
       const verdict = await arbitrate(f.predicate, f.category, existing.object, object)
       if (verdict === 'same') {
         // Même concept reformulé → confirmation (et on garde le libellé le plus court = plus canonique)
-        await confirm(existing.id, existing)
+        await confirm(existing.id, existing); bilan.confirmes++
         if (object.length < existing.object.length) {
           await db.atlasFact.update({ where: { id: existing.id }, data: { object } })
         }
@@ -340,7 +353,7 @@ export async function reconcileFacts(userId: string, contactId: string | null, f
         // où en est la personne aujourd'hui. Bénéfice second : la ligne garde
         // son `createdAt`, donc « depuis quand ça coince », que la chaîne de
         // supersessions effaçait.
-        await confirm(existing.id, existing)
+        await confirm(existing.id, existing); bilan.confirmes++
         await db.atlasFact.update({ where: { id: existing.id }, data: { object } })
       } else if (STABLE_CATEGORIES.has(f.category)) {
         // Sans slug, une catégorie stable est un vrai REMPLACEMENT : on ne vise
@@ -352,13 +365,17 @@ export async function reconcileFacts(userId: string, contactId: string | null, f
           where: { id: existing.id },
           data: { status: 'superseded', supersededById: neu.id },
         })
+        bilan.remplaces++
       } else {
-        await create()
+        await create(); bilan.crees++
       }
     } catch {
-      /* un fait raté ne bloque pas les autres */
+      // Un fait raté ne bloque pas les autres — mais il se COMPTE, sinon
+      // la nuit peut échouer à moitié sans que rien ne le dise.
+      bilan.rates++
     }
   }
+  return bilan
 }
 
 // Appel du service de réflexion (haiku) : profil réécrit + faits extraits.
