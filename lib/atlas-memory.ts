@@ -24,33 +24,60 @@ export type ExtractedFact = {
   competence?: string | null
 }
 
+/**
+ * LE POIDS D'UN FAIT — ce qui décide des 12 places d'Atlas.
+ *
+ * 🔴 UN TRI LEXICOGRAPHIQUE NE CLASSE PAS, IL ÉCRASE. Mesuré le 23 octobre :
+ * `[importance, supportCount, lastSeenAt]` laissait l'importance tout décider,
+ * et 8 faits seulement atteignent 0,95. Résultat : huit des douze places
+ * portaient des faits vus 1 à 3 fois, pendant que « relance mélanie » (71
+ * observations), « langage vert marche froide » (77) et « mauvaise réputation
+ * marketing réseau » (49) n'entraient jamais.
+ *
+ * Le modèle donne 0,95 à ce qu'il vient d'entendre. L'importance dit donc
+ * « ça compte », pas « ça compte PLUS que ». Il faut la combiner, pas la
+ * classer :
+ *
+ *   poids = importance × ancrage × fraîcheur
+ *
+ * `ancrage` = log(1 + ré-observations) : revenir 70 fois pèse plus que revenir
+ * 10 fois, sans écraser le reste. `fraîcheur` décroît de moitié en 30 jours
+ * mais ne descend jamais sous 0,4 : un blocage de fond ne disparaît pas parce
+ * qu'on n'en a pas parlé ce mois-ci.
+ *
+ * ⚠️ Prisma ne sait pas trier là-dessus : on tire une fenêtre bornée, on pèse
+ * en mémoire, on coupe. La fenêtre est large devant la coupe, donc elle ne
+ * peut pas exclure un fait lourd.
+ */
+const FENETRE = 80
+
+export function poids(f: { importance: number; supportCount: number; lastSeenAt: Date }): number {
+  const jours = (Date.now() - f.lastSeenAt.getTime()) / 86_400_000
+  const fraicheur = 0.4 + 0.6 * Math.pow(0.5, jours / 30)
+  return f.importance * Math.log(1 + f.supportCount) * fraicheur
+}
+
+/** La fenêtre dans laquelle on pèse : jamais couper avant d'avoir pesé. */
+const CADRE = {
+  orderBy: [{ importance: 'desc' as const }, { supportCount: 'desc' as const }],
+  take: FENETRE,
+  select: {
+    predicate: true, object: true, category: true,
+    importance: true, supportCount: true, lastSeenAt: true,
+  },
+}
+
 // Bloc « mémoire vivante » injecté dans le chat : profil + faits saillants.
 export async function buildUserModel(userId: string): Promise<string> {
   try {
-    const [prefs, facts] = await Promise.all([
+    const [prefs, fenetre] = await Promise.all([
       db.userPreferences.findUnique({ where: { userId }, select: { atlasProfile: true } }),
       db.atlasFact.findMany({
         where: { userId, contactId: null, status: 'active' },
-        // 🔴 `supportCount` DÉPARTAGE AVANT LA DATE, et c'est tout l'enjeu.
-        //
-        // Mesuré le 23 octobre : 8 faits seulement atteignent l'importance
-        // 0,95. Les ex aequo étaient donc départagés par la seule date, et une
-        // soirée passée sur un contact raflait la moitié des 12 places. Le
-        // 21 octobre au soir, quatre d'entre elles disaient la même chose :
-        // « relance mélanie ce soir », « appel à mélanie ce soir », « appel
-        // mélanie guilbert », « relance contact mélanie guilbert ».
-        //
-        // Pendant ce temps « objection pyramide » (51 observations),
-        // « invitation » (32) et « manque motivation et foi » (14) n'entraient
-        // jamais. Trois des blocages les plus persistants du distributeur,
-        // invisibles pour son coach.
-        //
-        // Ce qui REVIENT passe maintenant devant ce qui vient de PASSER.
-        orderBy: [{ importance: 'desc' }, { supportCount: 'desc' }, { lastSeenAt: 'desc' }],
-        take: 12,
-        select: { predicate: true, object: true, category: true },
+        ...CADRE,
       }),
     ])
+    const facts = fenetre.sort((a, b) => poids(b) - poids(a)).slice(0, 12)
     const lines: string[] = []
     if (prefs?.atlasProfile) lines.push(prefs.atlasProfile)
     if (facts.length) {
@@ -67,15 +94,14 @@ export async function buildUserModel(userId: string): Promise<string> {
 // Faits saillants d'un contact (complètent le carnet atlasMemory dans le snapshot).
 export async function contactFactLines(userId: string, contactId: string): Promise<string> {
   try {
-    const facts = await db.atlasFact.findMany({
+    // Même poids que pour l'utilisateur : les deux chemins doivent classer
+    // pareil, sinon le fait saillant d'un contact dépend de l'écran par lequel
+    // on arrive.
+    const fenetre = await db.atlasFact.findMany({
       where: { userId, contactId, status: 'active' },
-      // Même règle que pour l'utilisateur : ce qui revient avant ce qui vient
-      // de passer. Les deux chemins doivent classer pareil, sinon le fait
-      // saillant d'un contact dépend de l'écran par lequel on arrive.
-      orderBy: [{ importance: 'desc' }, { supportCount: 'desc' }, { lastSeenAt: 'desc' }],
-      take: 8,
-      select: { predicate: true, object: true, category: true },
+      ...CADRE,
     })
+    const facts = fenetre.sort((a, b) => poids(b) - poids(a)).slice(0, 8)
     if (!facts.length) return ''
     return facts.map((f) => `- ${f.predicate.replace(/_/g, ' ')} : ${f.object} (${f.category})`).join('\n')
   } catch {
@@ -142,16 +168,22 @@ const MOTS_VIDES = new Set([
   'ce','cette','qui','que','pour','leur','mes','son',
 ])
 
-/** Mots pleins d'un libellé, sans accents ni ponctuation. */
-function motsPleins(s: string): Set<string> {
+/**
+ * Mots pleins d'un libellé, sans accents ni ponctuation.
+ *
+ * Exporté pour que le nettoyage de l'existant utilise CE code et pas une
+ * copie : un rattrapage qui collerait ses propres règles collapserait des
+ * faits que la production, elle, garderait séparés.
+ */
+export function motsPleins(s: string): Set<string> {
   const plat = s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase()
   const tous = plat.match(/[a-z0-9]+/g) ?? []
   const pleins = tous.filter((m) => m.length > 2 && !MOTS_VIDES.has(m))
   return new Set(pleins.length ? pleins : tous)
 }
 
-/** Part de mots pleins communs, entre 0 et 1. */
-function ressemblance(a: Set<string>, b: Set<string>): number {
+/** Part de mots pleins communs, entre 0 et 1. Exporté, voir `motsPleins`. */
+export function ressemblance(a: Set<string>, b: Set<string>): number {
   if (!a.size || !b.size) return 0
   let communs = 0
   for (const m of a) if (b.has(m)) communs++
@@ -160,8 +192,13 @@ function ressemblance(a: Set<string>, b: Set<string>): number {
 
 /** Sous ce score, on ne dérange pas l'arbitre : c'est un fait neuf. */
 const PLANCHER_APPARIEMENT = 0.25
-/** Au-dessus, c'est si évidemment le même qu'un appel de modèle serait du gaspillage. */
-const CERTITUDE = 0.8
+/**
+ * Au-dessus, c'est si évidemment le même qu'un appel de modèle serait du
+ * gaspillage. Exporté : le nettoyage de l'existant ne fusionne QUE ce que la
+ * production fusionnerait sans même consulter l'arbitre. En dessous, il faut
+ * un jugement, donc ça ne se rattrape pas en masse.
+ */
+export const CERTITUDE = 0.8
 /** Garde-fou : le plus gros groupe mesuré en fait 508. */
 const CANDIDATS_MAX = 500
 

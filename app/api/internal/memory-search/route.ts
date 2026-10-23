@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
+import { poids } from '@/lib/atlas-memory'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -29,17 +30,21 @@ export async function POST(req: NextRequest) {
         { category: { contains: t, mode: 'insensitive' as const } },
       ]),
     },
-    // Même règle que `buildUserModel` : `supportCount` départage avant la date,
-    // sinon la recherche remonte la dernière formulation plutôt que le fait le
-    // mieux établi. Les quatre chemins qui classent des faits doivent classer
-    // pareil, sinon la mémoire dépend de l'écran par lequel on arrive.
-    orderBy: [{ importance: 'desc' }, { supportCount: 'desc' }, { lastSeenAt: 'desc' }],
-    take: 15,
-    select: { predicate: true, object: true, category: true, contactId: true },
+    // Le filtre par mots-clés a déjà fait le tri de pertinence ; reste à mettre
+    // devant le fait le mieux ÉTABLI, pas la dernière formulation. On tire donc
+    // une fenêtre large et on pèse avec `poids`, comme `buildUserModel` — les
+    // chemins qui classent des faits doivent classer pareil, sinon la mémoire
+    // dépend de l'écran par lequel on arrive.
+    orderBy: [{ importance: 'desc' }, { supportCount: 'desc' }],
+    take: 60,
+    select: {
+      predicate: true, object: true, category: true, contactId: true,
+      importance: true, supportCount: true, lastSeenAt: true,
+    },
   })
 
   return NextResponse.json({
-    facts: facts.map(
+    facts: [...facts].sort((a, b) => poids(b) - poids(a)).slice(0, 15).map(
       (f) => `${f.predicate.replace(/_/g, ' ')} : ${f.object} (${f.category}${f.contactId ? ', à propos d’un contact' : ''})`,
     ),
   })
