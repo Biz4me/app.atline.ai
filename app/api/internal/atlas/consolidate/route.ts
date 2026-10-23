@@ -4,6 +4,7 @@ import { reflect, reconcileFacts, proposeProfileUpdates, type ProfileProposal } 
 import { buildProfileReference } from '@/lib/atlas-snapshot'
 import { buildContactSnapshot } from '@/lib/contact-snapshot'
 import { scoresUtilisateur, scoresEnTexte } from '@/lib/agents/scores'
+import { lireLaJournee } from '@/lib/conversation'
 
 const ATLAS_URL = process.env.ATLAS_URL || 'http://127.0.0.1:8100'
 
@@ -93,25 +94,30 @@ export async function POST(req: NextRequest) {
   const usersSkipped = Math.max(0, userEntries.length - USER_CAP)
   let doneUsers = 0
   let proposalsCreated = 0
+  // Ce que la nuit a écarté, et pourquoi. Sans ces compteurs, la réconciliation
+  // travaillerait sans laisser de trace — exactement le défaut qu'on reproche
+  // au reste de la consolidation.
+  let recollesTotal = 0
+  let replieesTotal = 0
+  let machineTotal = 0
   for (const [userId, convIds] of userEntries.slice(0, USER_CAP)) {
     try {
-      const [msgs, simsDuJour] = await Promise.all([
-        db.atlasMessage.findMany({
-          where: { conversationId: { in: convIds }, createdAt: { gte: since } },
-          orderBy: { createdAt: 'asc' },
-          take: 80,
-          select: { role: true, content: true },
-        }),
+      // 🔴 LA JOURNÉE RÉCONCILIÉE, plus les messages bruts. Les fragments sont
+      // recollés, les réponses à une phrase inachevée et les marqueurs machine
+      // écartés. Voir `lireLaJournee` pour ce que ça corrige.
+      const [journee, simsDuJour] = await Promise.all([
+        lireLaJournee(convIds, since, 80),
         db.simSession.findMany({
           where: { userId, score: { not: null }, startedAt: { gte: since } },
           orderBy: { startedAt: 'asc' },
           select: { characterId: true, score: true, feedback: true },
         }),
       ])
-      if (msgs.length < 2 && !simsDuJour.length) continue
-      let exchange = msgs
-        .map((m) => `${m.role === 'USER' ? 'Utilisateur' : 'Atlas'}: ${m.content.slice(0, 500)}`)
-        .join('\n')
+      if (journee.tours < 2 && !simsDuJour.length) continue
+      recollesTotal += journee.recolles
+      replieesTotal += journee.repliees
+      machineTotal += journee.machine
+      let exchange = journee.texte
       // Les entraînements Aria du jour font partie de la journée du distributeur
       if (simsDuJour.length) {
         const lines = simsDuJour.map((s) => {
@@ -181,21 +187,20 @@ export async function POST(req: NextRequest) {
   let doneContacts = 0
   for (const [contactId, { userId, convIds }] of contactEntries.slice(0, CONTACT_CAP)) {
     try {
-      const msgs = await db.atlasMessage.findMany({
-        where: { conversationId: { in: convIds }, createdAt: { gte: since } },
-        orderBy: { createdAt: 'asc' },
-        take: 60,
-        select: { role: true, content: true },
-      })
-      if (msgs.length < 2) continue
+      // Même porte d'entrée que pour l'utilisateur : UN SEUL propriétaire de
+      // ce que la nuit lit, sinon les deux boucles divergent au premier
+      // correctif.
+      const journee = await lireLaJournee(convIds, since, 60)
+      if (journee.tours < 2) continue
+      recollesTotal += journee.recolles
+      replieesTotal += journee.repliees
+      machineTotal += journee.machine
       const contact = await db.contact.findFirst({
         where: { id: contactId, userId },
         select: { name: true, atlasMemory: true },
       })
       if (!contact) continue
-      const exchange = msgs
-        .map((m) => `${m.role === 'USER' ? 'Utilisateur' : 'Atlas'}: ${m.content.slice(0, 500)}`)
-        .join('\n')
+      const exchange = journee.texte
       const reference = await buildContactSnapshot(userId, contactId)
       const { profile, facts } = await reflect(
         'contact',
@@ -257,5 +262,11 @@ export async function POST(req: NextRequest) {
     contactsSkipped,
     proposals: proposalsCreated,
     judged,
+    // Ce que la réconciliation a redressé avant que la nuit ne lise.
+    lecture: {
+      fragmentsRecolles: recollesTotal,
+      reponsesEcartees: replieesTotal,
+      marqueursMachine: machineTotal,
+    },
   })
 }
