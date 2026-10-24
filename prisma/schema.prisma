@@ -971,6 +971,7 @@ model LmsModule {
 
 model LmsLesson {
   audios         LeconAudio[]
+  script         LeconScript?
   id             String               @id @default(cuid())
   moduleId       String
   module         LmsModule            @relation(fields: [moduleId], references: [id], onDelete: Cascade)
@@ -2685,4 +2686,58 @@ model LeconAudio {
   updatedAt DateTime @updatedAt
 
   @@unique([lessonId, voix])
+}
+/// Le SCRIPT PARLÉ d'une leçon — le texte que les voix lisent.
+///
+/// 🔴 CE N'EST PAS LA LEÇON. La leçon s'écrit pour l'œil : des titres, des
+/// puces, du gras, des phrases longues qu'on relit quand on décroche. Le
+/// script s'écrit pour l'oreille, qui ne revient JAMAIS en arrière. Les deux
+/// ne peuvent donc pas être le même texte, et le script a sa propre vie
+/// éditoriale : on l'écrit, on le relit, on le valide, et seulement après on
+/// dépense des crédits de synthèse dessus.
+///
+/// 🔴 `empreinteSource` EST CE QUI DIT QUE LE SCRIPT EST PÉRIMÉ. C'est
+/// l'empreinte de la prose de la leçon au moment où le script a été écrit. Si
+/// la leçon est réécrite, l'empreinte ne correspond plus : le script redevient
+/// à relire, et l'audio qui en découle est à refaire. Sans ce champ, une leçon
+/// corrigée garderait silencieusement un audio qui dit autre chose — et
+/// personne ne le saurait, puisque personne ne réécoute onze minutes.
+model LeconScript {
+  id       String    @id @default(cuid())
+  lessonId String    @unique
+  lesson   LmsLesson @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+
+  /// Le texte parlé, tel qu'il part à la synthèse. Rien d'autre.
+  texte           String
+  /// Empreinte de la prose SOURCE au moment de l'écriture. Voir plus haut.
+  empreinteSource String
+
+  /// Vocabulaire FERMÉ, trois valeurs et pas une de plus :
+  ///   « brouillon » — écrit par la machine, le contrôle des termes est passé
+  ///   « a_relire »  — le contrôle a échoué, un humain doit regarder
+  ///   « valide »    — relu par un humain, bon pour la synthèse
+  /// 🔴 On ne synthétise JAMAIS un script qui n'est pas « valide » : une
+  /// erreur de fond coûte des crédits ET onze minutes d'écoute fausse.
+  etat            String   @default("brouillon")
+
+  /// Le modèle qui l'a écrit. Un fournisseur retire ses modèles en silence :
+  /// sans cette trace, on ne peut pas refaire un lot à l'identique, ni savoir
+  /// quel lot soupçonner quand la qualité baisse.
+  modele          String
+
+  /// Combien de termes ou de chiffres du source ne survivent pas à
+  /// l'adaptation. C'est CE contrôle qui rend 71 relectures tenables : on ne
+  /// lit de près que les scripts qui échouent.
+  termesManques   Int      @default(0)
+  /// Lesquels, pour que la relecture sache où regarder.
+  manquants       String[]
+
+  /// Longueurs mesurées, pour voir d'un coup d'œil un script aberrant
+  /// (une adaptation tourne autour de +9 % ; +60 % ou -40 % est un accident).
+  carSource       Int
+  carScript       Int
+
+  createdAt DateTime @default(now())
+  /// 🔴 OBLIGATOIRE ET SANS DÉFAUT EN BASE.
+  updatedAt DateTime @updatedAt
 }
