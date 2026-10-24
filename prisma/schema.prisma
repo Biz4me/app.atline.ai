@@ -970,6 +970,7 @@ model LmsModule {
 }
 
 model LmsLesson {
+  audios         LeconAudio[]
   id             String               @id @default(cuid())
   moduleId       String
   module         LmsModule            @relation(fields: [moduleId], references: [id], onDelete: Cascade)
@@ -2648,4 +2649,40 @@ model AtlasIntention {
 
   @@index([userId, etat])
   @@index([userId, contactId, etat])
+}
+
+/// L'audio d'une leçon, une ligne par voix.
+///
+/// Les fichiers vivent sur le disque, PAS en base : un MP3 de dix minutes pèse
+/// neuf mégaoctets, et une base n'est pas un entrepôt de médias. La base tient
+/// ce qu'il faut pour les servir et savoir quand les refaire.
+///
+/// 🔴 `empreinte` EST CE QUI REND LA DÉPENSE UNIQUE. C'est l'empreinte du
+/// TEXTE SOURCE de la leçon. Leçon inchangée, empreinte inchangée, on ne
+/// resynthétise pas. Sans elle, un déploiement pourrait refaire 71 leçons à
+/// chaque fois, et le « une seule fois à la création » deviendrait faux.
+///
+/// Elle sert aussi de cache-buster : l'URL la porte, donc un navigateur qui
+/// garde l'ancien fichier en cache ne peut pas servir l'audio d'un texte qui
+/// a changé.
+model LeconAudio {
+  id       String    @id @default(cuid())
+  lessonId String
+  lesson   LmsLesson @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  /// « dorian » ou « solene ».
+  voix     String
+
+  /// Le nom du fichier sur le disque, sans chemin : le dossier est une affaire
+  /// de déploiement, pas de donnée.
+  fichier  String
+  secondes Int
+  octets   Int
+
+  empreinte String
+
+  createdAt DateTime @default(now())
+  /// 🔴 OBLIGATOIRE ET SANS DÉFAUT EN BASE.
+  updatedAt DateTime @updatedAt
+
+  @@unique([lessonId, voix])
 }
