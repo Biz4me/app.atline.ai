@@ -50,17 +50,41 @@ pm2 restart atline-ai-service --update-env
 
 ## Déploiement production
 
-**TOUJOURS déployer directement sur Hetzner sans demander.**
+**Déployer sur Hetzner sans demander, OUI. Mais par le script, et depuis git.**
 
 ```bash
-ssh -i $HOME/.ssh/hetzner_atline root@178.105.219.148
-cd /opt/atline/atline-app
-# éditer les fichiers directement sur le serveur
-npm run build
-pm2 restart atline-app
+# 1. en local : éditer, committer, POUSSER
+git add -A && git commit -m "..." && git push
+
+# 2. sur le serveur : un seul appel
+ssh -i $HOME/.ssh/hetzner_atline root@178.105.219.148 \
+  /opt/atline/scripts/deployer.sh app
 ```
 
-**Process PM2 :** `atline-app`
+Le script **refuse** si l'arbre du serveur porte des modifications de fichiers
+suivis, **tire** la branche (`--ff-only`, jamais de fusion sur une machine de
+production), installe les dépendances si le verrou de version a changé,
+**construit dans `.next-new`**, échange atomiquement (coupure < 1 s), grave le
+commit dans `.next/COMMIT`, redémarre, puis **interroge `https://app.atline.ai/`
+jusqu'à dix fois**. Si l'URL ne répond pas, il **rebascule sur `.next-old`**, le
+vérifie, et crie sur Telegram.
+
+🔴 **ON N'ÉDITE PLUS SUR LE SERVEUR.** Cette section disait « éditer les fichiers
+directement sur le serveur ». Trois chemins de déploiement cohabitaient et aucun
+ne faisait `git pull` : « git fait foi » était une discipline, pas un mécanisme.
+Résultat, **la question « quel code tourne en production ? » n'avait pas de
+réponse** — le flux réel étant *éditer sur place, construire, committer*, un
+build du 23 octobre à 15h57 contenait du code committé 29 minutes plus tard, et
+aucune date ne pouvait trancher. Corrigé le 30 octobre 2026.
+
+**Pour savoir ce qui tourne :**
+
+```bash
+cat /opt/atline/atline-app/.next/COMMIT
+```
+
+**Process PM2 :** `atline-app` · journal des déploiements :
+`/opt/atline/scripts/deploiements.log`
 
 ---
 
@@ -257,44 +281,6 @@ Comprendre le problème d'abord, puis descendre l'échelle et **s'arrêter au pr
 ## Module Formation
 
 ### Structure des pages
--  — liste des modules, progression globale
--  — leçons du module, barre de progression
--  — leçon (LESSON) ou quiz (QUIZ)
-
-### Quiz player — règles critiques
-- Container quiz :  (pas )
-- En-tête (progress + question) : 
-- Options : 
-- Bouton Question suivante : 
-- Z-index : quiz , bouton , modales 
-
-### Modales quiz
-- **Quiz réussi → X** : modale félicitations + badge module → 
-- **Quiz raté → X** : modale Pas encore ! + réviser 24h → 
-- **Quiz en cours → X** : modale confirmation abandon
-- Détection phase :  (pas  —  est seulement pour les quiz réussis)
-
-### Progression modules
-- API  calcule dynamiquement depuis  + 
-- Module DONE = toutes les LESSON done + tous les QUIZ passed
-- Badge vert sur module card = 
-- Badges dans profil : 11 trophées (un par module)
-
-### DEMO_USER_ID
-- Valeur :  (UUID réel en base)
-- À remplacer par  quand l'auth est branchée
-- Fichiers concernés : tous les 
-
-### Fermeture des pages
-- Leçon/Quiz → X :  (pas )
-- Congrats modal Continuer à apprendre : 
-- Fail modal Fermer : 
-
----
-
-## Module Formation
-
-### Structure des pages
 - `/formation` — liste des modules, progression globale
 - `/formation/[moduleId]` — leçons du module, barre de progression
 - `/formation/[moduleId]/[lessonId]` — leçon (LESSON) ou quiz (QUIZ)
@@ -347,9 +333,25 @@ DATABASE_URL="$(grep DATABASE_URL .env.local | cut -d= -f2-)" npx prisma migrate
 git add prisma/migrations/ prisma/schema.prisma && git commit -m "..." && git push
 ```
 
-### État actuel
-- `prisma/migrations/0001_baseline/` — 84 tables, 59 enums (snapshot initial)
-- Dernière migration : `0020_add_contact_atlas_memory` (Contact.atlasMemory + atlasMemoryAt). Prochaine : `0021_...`
+### État mesuré le 30 octobre 2026
+
+⚠️ **Les chiffres ci-dessous se périment.** Ils portent leur date, et la seule
+source de vérité est la base. Les relire plutôt que les croire :
+
+```bash
+psql ... -c "select count(*) from information_schema.tables
+             where table_schema='public' and table_type='BASE TABLE'"
+psql ... -c "select migration_name, finished_at from _prisma_migrations
+             order by finished_at desc limit 3"
+```
+
+- **105 tables**, **75 enums** en base ; **103 modèles** dans `schema.prisma`.
+  *(Ce fichier annonçait « 84 tables, 59 enums » et l'admin « 79 tables,
+  40 enums » : trois chiffres, trois époques, aucun juste.)*
+- Dernière migration appliquée : `20261024113015_add_lecon_script`, le 24 octobre.
+  **0 migration inachevée.**
+- Le nom des migrations est passé du préfixe numéroté (`0020_…`) à l'horodatage
+  Prisma (`20261024113015_…`). Ne pas réintroduire `0021_…`.
 
 ---
 
