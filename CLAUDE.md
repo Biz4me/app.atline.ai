@@ -318,37 +318,53 @@ Comprendre le problème d'abord, puis descendre l'échelle et **s'arrêter au pr
 
 ## Prisma — Migrations
 
-**⚠️ Ne jamais utiliser `prisma db push` — uniquement `prisma migrate dev`.**
+**⚠️ Ne jamais utiliser `prisma db push`.**
+
+🔴 **Et ne jamais lancer `prisma migrate dev` contre la production.** Ce n'est
+pas une commande de production : si elle constate que la base ne correspond pas
+à ce que l'historique dit qu'elle devrait être, **elle propose de la vider et de
+la reconstruire**. Sur une base de développement c'est pratique ; sur celle qui
+porte les contacts, c'est la fin.
+
+**Écrire une migration :** `bash scripts/migration.sh <nom>`
+**L'appliquer en production :** `npx prisma migrate deploy`, qui n'applique que
+ce qui manque et ne vide **jamais** rien.
 
 Baseline effectué le 24 juin 2026 (commit b8c3c23) — la BDD est maintenant gérée par Prisma Migrate.
 
-### Workflow changement de schema — EN ÉTAT, ET IL CONTREDIT LA DOCTRINE
+### Workflow changement de schema
 
 ```bash
-# 1. Modifier prisma/schema.prisma
-# 2. Créer et appliquer la migration
+# 1. modifier prisma/schema.prisma
+# 2. ecrire la migration, SANS JAMAIS APPROCHER LA PRODUCTION
+bash scripts/migration.sh nom_du_changement
+# 3. RELIRE le SQL genere  <- le seul moment ou une migration destructrice se voit
+# 4. committer et pousser
+git add prisma/ && git commit -m "..." && git push
+# 5. appliquer en production
+ssh -i ~/.ssh/hetzner_atline root@178.105.219.148
 cd /opt/atline/atline-app
-DATABASE_URL="$(grep DATABASE_URL .env.local | cut -d= -f2-)" npx prisma migrate dev --name "description_du_changement"
-# 3. Commiter le fichier SQL généré
-git add prisma/migrations/ prisma/schema.prisma && git commit -m "..." && git push
+DATABASE_URL="$(grep DATABASE_URL .env.local | cut -d= -f2-)" npx prisma migrate deploy
+# 6. puis le deploiement normal
+/opt/atline/scripts/deployer.sh app
 ```
 
-> 🔴 **CETTE PROCÉDURE ÉDITE ET COMMITTE SUR LE SERVEUR**, ce que le reste du
-> fichier interdit depuis le 30 octobre 2026. Elle est laissée **telle quelle**
-> parce que la remplacer demande un arbitrage, pas une réécriture :
->
-> - **`prisma migrate dev` n'est pas sûr contre une base de production.** S'il
->   détecte une dérive entre le schéma et la base, il **propose de la
->   réinitialiser**. Le déplacer vers un tunnel SSH depuis le poste ne retire
->   pas ce risque, il le rapproche.
-> - La voie canonique est `migrate dev` contre une base **jetable** pour écrire
->   la migration, puis **`migrate deploy`** sur le serveur, qui n'applique que
->   ce qui manque et ne réinitialise **jamais**. Elle suppose un Postgres local
->   ou un conteneur jetable, ce qui n'existe pas encore ici.
->
-> **À trancher.** D'ici là : ne jamais lancer `migrate dev` sans avoir vérifié
-> qu'une sauvegarde du jour existe ET se restaure — `verifier-restauration.sh`
-> tourne à 04h30 et l'écrit dans `/opt/atline/backups/restauration.log`.
+**Comment `scripts/migration.sh` protège la production.** Un Postgres **jetable**
+démarre sur le serveur, sur un port à lui (5467, loin du 5433 de la production).
+L'historique entier y est rejoué avec `migrate deploy`, donc la base correspond
+**exactement** aux migrations : **aucune dérive n'est possible**, et `migrate dev`
+ne peut donc pas proposer d'effacement. Un tunnel SSH amène ce port en local, et
+`migrate dev` tourne **chez nous** : le fichier SQL naît ici et se commite ici.
+Le conteneur et le tunnel sont détruits quoi qu'il arrive.
+
+Un garde-fou refuse de partir si l'adresse ressemble à celle de la production
+(port 5433 ou nom `atline_db`), et un autre si le port 5467 est déjà occupé.
+
+✅ **Éprouvé le 30 octobre 2026** : les **50 migrations** se rejouent
+intégralement dans une base vide (« All migrations have been successfully
+applied »), un champ ajouté au schéma produit bien son `ALTER TABLE`, et la
+production est restée intacte — champ absent, toujours 50 migrations appliquées,
+dernière inchangée.
 
 ### État mesuré le 30 octobre 2026
 
