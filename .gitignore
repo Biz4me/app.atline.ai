@@ -24,3 +24,13 @@ yarn-error.log*
 next-env.d.ts
 # E2E harness deps (installed ad-hoc, not part of the app build)
 e2e/node_modules
+
+# Repertoires de build fabriques par scripts/deployer.sh (chemin D, 30 oct 2026).
+# Le deploiement construit dans .next-new, echange atomiquement et garde
+# .next-old pour pouvoir revenir en arriere ; .next-echec conserve un build qui
+# n a pas repondu a la preuve HTTP.
+# 🔴 Sans ces lignes, `git status` sur le serveur les signale comme non suivis,
+# ce qui a reellement bloque le DEUXIEME deploiement d affilee le 30 octobre.
+.next-new/
+.next-old/
+.next-echec/
