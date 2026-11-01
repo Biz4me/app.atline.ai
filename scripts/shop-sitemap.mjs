@@ -16,7 +16,7 @@
 //          node scripts/shop-sitemap.mjs --test
 //          node scripts/shop-sitemap.mjs [--limit 40] [--only slug1,slug2]
 
-import { urlsProduits, autoTest } from './lib/sitemap-produits.mjs'
+import { urlsProduits, autoTest, compteurInjoignables } from './lib/sitemap-produits.mjs'
 
 const arg = (nom, defaut = null) => {
   const i = process.argv.indexOf(nom)
@@ -256,8 +256,12 @@ async function lireProduit(url) {
 }
 
 async function moissonner(origine) {
+  // 🔴 Le compteur d'échecs de transport est global au module : on prend le
+  // delta, sinon toutes les sociétés suivantes héritent des échecs des
+  // précédentes et le relevé devient faux au fil du temps.
+  const avant = compteurInjoignables()
   const carte = await urlsProduits(origine)
-  if (!carte) return { sitemap: null }
+  if (!carte) return { sitemap: null, injoignable: compteurInjoignables() > avant }
 
   // La sonde : 5 pages. Si rien ne se lit, on n'en charge pas 300 pour rien.
   const sonde = []
@@ -371,7 +375,7 @@ async function main() {
   if (LIMIT > 0) societes = societes.slice(0, LIMIT)
   console.log(`sociétés à traiter : ${societes.length}`)
 
-  const bilan = { moissonnees: 0, publiees: 0, produits: 0, listesNotees: 0, urls: 0, sansSitemap: 0, erreurs: 0 }
+  const bilan = { moissonnees: 0, publiees: 0, produits: 0, listesNotees: 0, urls: 0, sansSitemap: 0, injoignables: 0, erreurs: 0 }
   let i = 0
   async function ouvrier() {
     while (i < societes.length) {
@@ -384,15 +388,21 @@ async function main() {
         const bfh = src.bfh && typeof src.bfh === 'object' ? src.bfh : {}
 
         if (!r.sitemap) {
+          // « Injoignable » n'est pas « pas de sitemap » : soulpurpose.com a un
+          // sitemap WordPress propre que le `fetch` de Node refuse en
+          // UND_ERR_SOCKET là où curl l'obtient. Noter la raison, pour qu'une
+          // passe ultérieure puisse reprendre CETTE classe autrement.
+          const raison = r.injoignable ? 'injoignable' : 'aucune URL de produit'
           await prisma.mlmCompany.update({
             where: { id: c.id },
-            data: { sources: { ...src, bfh: { ...bfh, sitemap: { trouve: false, testeLe: new Date().toISOString() } } } },
+            data: { sources: { ...src, bfh: { ...bfh, sitemap: { trouve: false, raison, testeLe: new Date().toISOString() } } } },
           })
-          bilan.sansSitemap++
+          if (r.injoignable) bilan.injoignables++
+          else bilan.sansSitemap++
           // 🔴 Dire lesquelles. Première version : cette branche était MUETTE,
           // donc un essai qui rendait « 9 sans sitemap » ne permettait pas de
           // savoir lesquelles, ni de vérifier à la main si c'était vrai.
-          console.log(`· ${c.brandSlug.padEnd(30)} aucun sitemap exploitable sur ${origine}`)
+          console.log(`· ${c.brandSlug.padEnd(30)} ${raison} — ${origine}`)
           continue
         }
 
@@ -442,7 +452,7 @@ async function main() {
 
   console.log(`\nRésultat : ${bilan.moissonnees} moissonnées gratuitement (${bilan.produits} produits, ${bilan.publiees} publiées)`)
   console.log(`           ${bilan.listesNotees} listes d'URL notées pour Firecrawl · ${bilan.urls} URL de produits trouvées au total`)
-  console.log(`           ${bilan.sansSitemap} sans sitemap · ${bilan.erreurs} erreurs`)
+  console.log(`           ${bilan.sansSitemap} sans sitemap · ${bilan.injoignables} injoignables (transport, PAS absence) · ${bilan.erreurs} erreurs`)
   await prisma.$disconnect()
 }
 
