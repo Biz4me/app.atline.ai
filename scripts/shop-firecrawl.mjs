@@ -7,6 +7,8 @@
 // Usage :  FIRECRAWL_KEY=... OPENROUTER_KEY=... DATABASE_URL=... \
 //            node scripts/shop-firecrawl.mjs [--limit 20] [--reserve 1500] [--only slug]
 
+import { urlsProduits } from './lib/sitemap-produits.mjs'
+
 const FKEY = (process.env.FIRECRAWL_KEY || '').trim()
 const OKEY = (process.env.OPENROUTER_KEY || '').trim()
 if (!FKEY || !OKEY) throw new Error('FIRECRAWL_KEY et OPENROUTER_KEY requis')
@@ -74,17 +76,42 @@ const filtreProduits = (links) =>
 
 async function harvestCompany(c, state) {
   const shopUrl = c.sources.bfh.shopUrl
-  const map = await fjson('https://api.firecrawl.dev/v1/map', { url: shopUrl, limit: 400 })
-  state.spent += 1
-  let links = filtreProduits(map?.links || map?.data?.links || [])
-  if (links.length < MIN_TO_PUBLISH) {
-    // Boutique SPA (catalogue en JS) : la carte de la RACINE avec recherche « product »
-    // ressort les URLs produit des sitemaps (vérifié sur USANA).
-    const root = new URL(c.officialUrl || shopUrl).origin
-    const map2 = await fjson('https://api.firecrawl.dev/v1/map', { url: root, search: 'product', limit: 300 })
-    state.spent += 1
-    links = filtreProduits(map2?.links || map2?.data?.links || [])
+  let links = []
+  let origine = 'firecrawl'
+
+  // 🔴 LE SITEMAP D'ABORD, ET IL EST GRATUIT.
+  // Le second appel `/v1/map` ci-dessous portait déjà le commentaire « ressort
+  // les URLs produit des sitemaps (vérifié sur USANA) » : on payait Firecrawl
+  // pour lire un fichier public, deux crédits par société, plafonné à 400 liens.
+  // Le lecteur maison en sort des milliers (doTERRA 5 999, Forever Living 8 265)
+  // et ne coûte rien. ⚠️ On ne passe PAS ses URL dans `filtreProduits` : ce
+  // filtre est fait pour le vidage de liens brut de Firecrawl, et il rejetterait
+  // les slugs nus de BigCommerce (« /boho-ring/ ») comme les fins VTEX (« /p »).
+  try {
+    const carte = await urlsProduits(new URL(shopUrl).origin, { urlsMax: PAGES_MAX * 4 })
+    if (carte?.urls?.length >= MIN_TO_PUBLISH) {
+      links = carte.urls
+      origine = `sitemap (${carte.via})`
+    }
+  } catch {
+    // Le sitemap n'est qu'un raccourci : son échec ne doit jamais empêcher le
+    // chemin payant de tourner.
   }
+
+  if (links.length < MIN_TO_PUBLISH) {
+    const map = await fjson('https://api.firecrawl.dev/v1/map', { url: shopUrl, limit: 400 })
+    state.spent += 1
+    links = filtreProduits(map?.links || map?.data?.links || [])
+    if (links.length < MIN_TO_PUBLISH) {
+      // Boutique SPA (catalogue en JS) : la carte de la RACINE avec recherche
+      // « product » ressort parfois ce que le sitemap ne déclare pas.
+      const root = new URL(c.officialUrl || shopUrl).origin
+      const map2 = await fjson('https://api.firecrawl.dev/v1/map', { url: root, search: 'product', limit: 300 })
+      state.spent += 1
+      links = filtreProduits(map2?.links || map2?.data?.links || [])
+    }
+  }
+  if (links.length) console.log(`   liens via ${origine} : ${links.length}`)
   const pagesUrls = [...new Set(links)].slice(0, PAGES_MAX)
   if (pagesUrls.length < MIN_TO_PUBLISH) return { skip: `carte sans liens produits (${pagesUrls.length})` }
 
