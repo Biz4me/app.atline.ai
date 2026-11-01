@@ -1,0 +1,10 @@
+# 🔴 Les scripts de ce dépôt tournent sur le serveur Linux. Un script en CRLF
+# donne « bad interpreter » parce que le shebang se termine par un \r invisible,
+# et l'erreur ne dit pas pourquoi. Git sous Windows convertit par défaut
+# (autocrlf), donc on le lui interdit ici plutôt que de compter sur la
+# configuration de chaque poste.
+#
+# Portée volontairement ÉTROITE : seuls les scripts. Un `* text=auto eol=lf`
+# renormaliserait tout l'arbre et noierait le prochain diff.
+*.sh text eol=lf
+*.py text eol=lf
