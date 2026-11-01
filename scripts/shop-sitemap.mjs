@@ -360,6 +360,14 @@ async function main() {
   })
   // La file de CE script : boutique connue, refusée par la moisson structurée.
   let societes = toutes.filter((c) => c.sources?.bfh?.shopUrl && c.sources?.bfh?.shopStructured === false)
+  // 🔴 TRIER par rang de momentum, en JS parce que le rang vit dans le JSON
+  // `sources.bfh.momentumRank` et que Prisma ne sait pas l'ordonner. Sans ce
+  // tri, `--limit 10` prend dix sociétés au hasard dans l'ordre de la base :
+  // le premier essai a ainsi rendu « 9 sans sitemap sur 10 », alors que la
+  // mesure sur les 80 mieux classées en donnait 40 % avec sitemap. Un
+  // échantillon non ordonné ne dit rien de ce que le script vaut.
+  const rang = (c) => parseInt(c.sources?.bfh?.momentumRank ?? '99999', 10) || 99999
+  societes.sort((a, b) => rang(a) - rang(b))
   if (LIMIT > 0) societes = societes.slice(0, LIMIT)
   console.log(`sociétés à traiter : ${societes.length}`)
 
@@ -381,6 +389,10 @@ async function main() {
             data: { sources: { ...src, bfh: { ...bfh, sitemap: { trouve: false, testeLe: new Date().toISOString() } } } },
           })
           bilan.sansSitemap++
+          // 🔴 Dire lesquelles. Première version : cette branche était MUETTE,
+          // donc un essai qui rendait « 9 sans sitemap » ne permettait pas de
+          // savoir lesquelles, ni de vérifier à la main si c'était vrai.
+          console.log(`· ${c.brandSlug.padEnd(30)} aucun sitemap exploitable sur ${origine}`)
           continue
         }
 
