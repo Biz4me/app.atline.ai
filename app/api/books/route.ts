@@ -1,4 +1,6 @@
 import { NextResponse } from 'next/server'
+import { getServerSession } from 'next-auth'
+import { authOptions } from '@/lib/auth'
 
 export const dynamic = 'force-dynamic'
 
@@ -24,6 +26,12 @@ function parseList(v: any): string[] {
 }
 
 export async function GET() {
+  // 🔴 Cette route servait 69 Ko sans aucun cookie : les synthèses des 19 livres
+  // (`summary` + `keyConcepts`, 54 000 caractères) se lisaient d'un navigateur
+  // anonyme. Le middleware laisse passer tout `/api/`, donc rien ne l'arrêtait.
+  const session = await getServerSession(authOptions)
+  if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
   try {
     const res = await fetch(`${AI_SERVICE}/admin/books/summaries`, { cache: 'no-store' })
     if (!res.ok) return NextResponse.json({ books: [] })

@@ -1,4 +1,6 @@
 import { NextResponse } from 'next/server'
+import { getServerSession } from 'next-auth'
+import { authOptions } from '@/lib/auth'
 
 // Config Nova côté app : lit l'endpoint interne de l'admin (localhost) pour récupérer
 // tous les prompts (chacun avec son modèle + paramètres). Fallback intégré si injoignable.
@@ -16,6 +18,12 @@ const DEFAULT_CONTENT =
 type NovaPrompt = { prompt: string; model: string; temperature: number; maxTokens: number }
 
 export async function GET() {
+  // 🔴 Cette route servait les 9 prompts Nova sans aucun cookie, soit 4 329
+  // caractères de doctrine rédigée : la façon dont on arbitre le contenu MLM,
+  // offerte à qui connaissait l'URL. Le middleware laisse passer tout `/api/`.
+  const session = await getServerSession(authOptions)
+  if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
   let prompts: Record<string, NovaPrompt> = {}
   try {
     const r = await fetch(ADMIN, { cache: 'no-store', signal: AbortSignal.timeout(2000) })
