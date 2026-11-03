@@ -1,7 +1,17 @@
 // Helper serveur du harnais E2E — tourne SUR le serveur (Prisma + next-auth + NEXTAUTH_SECRET dispos).
 // Il lit DATABASE_URL et NEXTAUTH_SECRET dans .env.local, donc l'appel SSH reste simple.
-// Usage : node e2e/server-helper.cjs <create|reset|delete> [cid]
+// Usage : node e2e/server-helper.cjs <create [email]|reset <cid>|delete <cid>>
 //  - create        -> crée un contact jetable + forge un token de session, imprime {"cid","token"}
+//  - create <email> -> idem, mais POUR CE COMPTE-LÀ.
+//
+//    🔴 Pourquoi cet argument existe, ajouté le 3 novembre 2026 : sans lui,
+//    `create` prend le propriétaire du PREMIER contact, qui n'est pas celui
+//    qu'on croit. La base porte CINQ comptes dont les initiales donnent « PH »
+//    et DEUX nommés « Patrice Haure-Pallesi » — `haurinvest@gmail.com` et
+//    `patricehaurepallesi@gmail.com`. Un écran qui lit des données rattachées
+//    à un compte précis semblait donc vide à tort, et l'avatar affichait les
+//    bonnes initiales par pure coïncidence. **Un test qui ne sait pas sous
+//    quelle identité il tourne ne prouve pas ce qu'on croit.**
 //  - reset  <cid>   -> remet le contact à zéro (qualification vide, étape NOUVEAU)
 //  - delete <cid>   -> supprime le contact jetable
 const { readFileSync } = require('fs')
@@ -25,10 +35,21 @@ const { encode } = require('next-auth/jwt')
   const prisma = new PrismaClient()
   try {
     if (cmd === 'create') {
-      const seed = await prisma.contact.findFirst({ select: { userId: true, mlmBusinessId: true } })
-      if (!seed) throw new Error('aucun contact pour semer (userId/mlmBusinessId)')
-      const u = await prisma.user.findUnique({ where: { id: seed.userId }, select: { id: true, email: true } })
-      const c = await prisma.contact.create({ data: { user: { connect: { id: u.id } }, mlmBusiness: { connect: { id: seed.mlmBusinessId } }, name: 'E2E Test', kind: 'PROSPECT', prospectStage: 'NOUVEAU', initials: 'ET', accent: '#F97316' } })
+      const voulu = process.argv[3]
+      let u, mlmBusinessId
+      if (voulu) {
+        u = await prisma.user.findUnique({ where: { email: voulu }, select: { id: true, email: true } })
+        if (!u) throw new Error(`aucun compte ${voulu}`)
+        const b = await prisma.userMlmBusiness.findFirst({ where: { userId: u.id }, select: { id: true } })
+        if (!b) throw new Error(`${voulu} n'a aucune activité : un contact doit être rattaché à une activité`)
+        mlmBusinessId = b.id
+      } else {
+        const seed = await prisma.contact.findFirst({ select: { userId: true, mlmBusinessId: true } })
+        if (!seed) throw new Error('aucun contact pour semer (userId/mlmBusinessId)')
+        u = await prisma.user.findUnique({ where: { id: seed.userId }, select: { id: true, email: true } })
+        mlmBusinessId = seed.mlmBusinessId
+      }
+      const c = await prisma.contact.create({ data: { user: { connect: { id: u.id } }, mlmBusiness: { connect: { id: mlmBusinessId } }, name: 'E2E Test', kind: 'PROSPECT', prospectStage: 'NOUVEAU', initials: 'ET', accent: '#F97316' } })
       const token = await encode({ token: { id: u.id, sub: u.id, email: u.email, onboardingCompleted: true }, secret: pick('NEXTAUTH_SECRET'), maxAge: 3600 })
       console.log(JSON.stringify({ cid: c.id, token }))
     } else if (cmd === 'reset') {

@@ -21,8 +21,13 @@ const ssh = (remote) =>
 
 const test = base.test.extend({
   // Contact jetable + token de session, forgés sur le serveur. Supprimé après le test.
+  // 🔴 `E2E_COMME=<email>` choisit SOUS QUELLE IDENTITÉ le test tourne. Sans
+  // lui, c'est le propriétaire du premier contact, et ce n'est pas celui
+  // qu'on croit : cinq comptes de la base donnent les initiales « PH ». Un
+  // test qui ignore qui il est ne prouve pas ce qu'on croit.
   seed: async ({}, use) => {
-    const { cid, token } = JSON.parse(ssh('node e2e/server-helper.cjs create').trim().split('\n').pop())
+    const comme = process.env.E2E_COMME ? ` ${process.env.E2E_COMME}` : ''
+    const { cid, token } = JSON.parse(ssh(`node e2e/server-helper.cjs create${comme}`).trim().split('\n').pop())
     await use({ cid, token })
     try { ssh(`node e2e/server-helper.cjs delete ${cid}`) } catch (e) { console.error('nettoyage KO', e.message) }
   },
