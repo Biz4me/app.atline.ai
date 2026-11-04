@@ -43,8 +43,10 @@ import { envoyerTransactionnel } from '@/lib/gmail/transactionnel'
 import { construireIcs } from '@/lib/cal/ics'
 import { lieuDepuisGoogle, lieuLisible } from '@/lib/cal/evenement'
 import {
+  corpsAnnulation,
   corpsConfirmation,
   corpsDeplacement,
+  sujetAnnulation,
   sujetConfirmation,
   sujetDeplacement,
   type Rendez,
@@ -65,6 +67,14 @@ type Charge = {
   videoCallData?: { url?: string }
   metadata?: Record<string, unknown>
   cancellationReason?: string
+  /** Qui a annulé, pour ne pas renvoyer au prospect le motif qu'il a écrit. */
+  cancelledBy?: string
+  /**
+   * La séquence iCal que Cal pose sur l'événement Google. On la reprend telle
+   * quelle : inventer la nôtre ferait diverger les deux descriptions du même
+   * rendez-vous, et un client ignorerait la mise à jour comme un doublon.
+   */
+  iCalSequence?: number | null
 }
 
 function signatureValide(corps: string, recue: string | null, secret: string): boolean {
@@ -140,7 +150,7 @@ export async function POST(req: NextRequest) {
         ...(orgNom ? [{ bookingUrl: { endsWith: `/${orgNom}` } }] : []),
       ],
     },
-    select: { userId: true },
+    select: { userId: true, bookingUrl: true },
   })
   if (!lien) {
     console.error(`[cal] aucun distributeur pour l’organisateur id=${orgId} nom=${orgNom} (${evenement})`)
@@ -156,8 +166,77 @@ export async function POST(req: NextRequest) {
     select: { id: true, contactId: true },
   })
 
+  // Qui est le distributeur, et depuis quelle boîte écrit-il. Les deux
+  // branches en ont besoin, alors on les lit une fois.
+  const hote = await db.user.findUnique({
+    where: { id: userId },
+    select: { firstName: true, lastName: true },
+  })
+  const nomHote = [hote?.firstName, hote?.lastName].filter(Boolean).join(' ') || 'Ton contact'
+  const boite = await connexionDe(userId)
+
   // ── l'annulation ──────────────────────────────────────────────────────────
+  //
+  // 🔴 Ce courrier n'est PAS une politesse. Google s'étant tu depuis le
+  // correctif du fork, c'est notre `METHOD:CANCEL` qui retire l'événement de
+  // l'agenda du prospect. Sans lui, le rendez-vous resterait posé chez lui
+  // pour toujours, rappel compris.
   if (evenement === 'BOOKING_CANCELLED' || evenement === 'BOOKING_REJECTED') {
+    const invite = c.attendees?.[0]
+    const debut = c.startTime ? new Date(c.startTime) : null
+    let courrier: { ok: boolean; message?: string } = { ok: false, message: 'rien à envoyer' }
+
+    if (invite?.email && debut && !isNaN(debut.getTime()) && boite?.email) {
+      const fin = c.endTime ? new Date(c.endTime) : new Date(debut.getTime() + 30 * 60_000)
+      const rendez: Rendez = {
+        invite: invite.name ?? '',
+        hote: nomHote,
+        debut,
+        fin,
+        fuseau: invite.timeZone || 'Europe/Paris',
+        visio: null,
+        lieu: null,
+        replanifier: null,
+      }
+      // Cal nomme l'annulant par son adresse ; si c'est l'invité, inutile de
+      // lui relire le motif qu'il vient d'écrire.
+      const parLeProspect =
+        (c.cancelledBy ?? '').toLowerCase() === invite.email.toLowerCase()
+
+      courrier = await envoyerTransactionnel({
+        userId,
+        destinataire: invite.email,
+        sujet: sujetAnnulation(rendez),
+        corps: corpsAnnulation(rendez, {
+          motif: c.cancellationReason ?? null,
+          parLeProspect,
+          reserver: lien.bookingUrl || null,
+        }),
+        contactId: existant?.contactId ?? null,
+        origine: `cal:${evenement}`,
+        invitation: {
+          methode: 'CANCEL',
+          ics: construireIcs({
+            uidReservation: uid,
+            titre: c.title ?? 'Rendez-vous annulé',
+            description: '',
+            debut,
+            fin,
+            organisateurNom: nomHote,
+            organisateurEmail: boite.email,
+            inviteNom: invite.name ?? '',
+            inviteEmail: invite.email,
+            lieu: null,
+            // 🔴 Une annulation doit porter une séquence SUPÉRIEURE à celle de
+            // l'invitation, sinon le client la prend pour un doublon périmé et
+            // ne retire rien.
+            sequence: (c.iCalSequence ?? 0) + 1,
+            methode: 'CANCEL',
+          }),
+        },
+      })
+    }
+
     if (existant) await db.appointment.delete({ where: { id: existant.id } })
     await db.notification.create({
       data: {
@@ -166,11 +245,15 @@ export async function POST(req: NextRequest) {
         color: '#EF4444',
         text: `${c.attendees?.[0]?.name ?? 'Un prospect'} a annulé le rendez-vous${
           c.cancellationReason ? ` : ${c.cancellationReason}` : ''
-        }.`,
+        }.${courrier.ok ? '' : " L'avis d'annulation N'EST PAS parti, préviens-le."}`,
         go: '/agenda',
       },
     })
-    return NextResponse.json({ ok: true, fait: existant ? 'supprimé' : 'inconnu, rien à supprimer' })
+    return NextResponse.json({
+      ok: true,
+      fait: existant ? 'supprimé' : 'inconnu, rien à supprimer',
+      courrier: courrier.ok,
+    })
   }
 
   if (evenement !== 'BOOKING_CREATED' && evenement !== 'BOOKING_RESCHEDULED') {
@@ -271,13 +354,9 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: true, fait: 'déjà connu, aucun courrier' })
   }
 
-  const hote = await db.user.findUnique({
-    where: { id: userId },
-    select: { firstName: true, lastName: true },
-  })
   const rendez: Rendez = {
     invite: invite?.name ?? '',
-    hote: [hote?.firstName, hote?.lastName].filter(Boolean).join(' ') || 'Ton contact',
+    hote: nomHote,
     debut,
     fin,
     fuseau: invite?.timeZone || 'Europe/Paris',
@@ -301,7 +380,6 @@ export async function POST(req: NextRequest) {
   // l'agenda de destination de Cal sont le même compte Google. Ils le sont
   // aujourd'hui. S'ils divergeaient, la réponse du prospect arriverait dans
   // une boîte qui ne possède pas l'événement, et ne se rattacherait à rien.
-  const boite = await connexionDe(userId)
   let invitation: { ics: string; methode: 'REQUEST' } | null = null
   if (boite?.email && invite?.email) {
     invitation = {
@@ -317,9 +395,11 @@ export async function POST(req: NextRequest) {
         inviteNom: invite.name ?? '',
         inviteEmail: invite.email,
         lieu: visio ?? lieuTexte,
-        // Cal incrémente la sienne à chaque modification ; on suit la même
-        // règle, sinon un client ignore la mise à jour comme un doublon.
-        sequence: deplacement ? 1 : 0,
+        // 🔴 On REPREND la séquence de Cal (`iCalSequence`, présente dans le
+        // payload) plutôt que d'inventer la nôtre : les deux décrivent le même
+        // événement, et une séquence qui diverge fait ignorer la mise à jour
+        // comme un doublon périmé.
+        sequence: c.iCalSequence ?? (deplacement ? 1 : 0),
       }),
     }
   }

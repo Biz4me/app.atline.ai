@@ -113,9 +113,12 @@ export function corpsConfirmation(r: Rendez): string {
   lignes.push('')
   // 🔴 LA phrase qui compte. Sans elle, l'événement n'entre pas dans son
   // agenda et aucun rappel ne sonnera. Voir l'en-tête du fichier.
+  // 🔴 LA phrase qui compte, et elle n'est vraie que depuis le correctif du
+  // fork : tant que Cal posait `responseStatus: "accepted"` à la place du
+  // prospect, aucun bouton n'apparaissait et cette demande était absurde.
   lignes.push(
-    "Tu devrais déjà le voir dans ton agenda. S'il n'y est pas, l'invitation " +
-      'jointe à ce message te permet de l’ajouter.'
+    "Accepte l'invitation ci-dessous : c'est ce qui posera le rendez-vous " +
+      'dans ton agenda et déclenchera le rappel.'
   )
 
   if (r.replanifier) {
@@ -125,6 +128,51 @@ export function corpsConfirmation(r: Rendez): string {
 
   lignes.push('')
   lignes.push('À très vite,')
+  lignes.push(r.hote)
+
+  return lignes.join('\n')
+}
+
+/**
+ * Ce qu'on écrit quand le rendez-vous est annulé.
+ *
+ * 🔴 Ce courrier n'est pas une politesse : il transporte le `METHOD:CANCEL`
+ * qui RETIRE l'événement de l'agenda du prospect. Sans lui, Google s'étant
+ * tu, le rendez-vous resterait posé chez lui pour toujours, avec son rappel.
+ * Un rendez-vous fantôme est pire que deux courriers.
+ */
+export function sujetAnnulation(r: Rendez): string {
+  return `Annulé : notre rendez-vous du ${quand(r.debut, r.fuseau || FUSEAU_DEFAUT)}`
+}
+
+export function corpsAnnulation(
+  r: Rendez,
+  extra: { motif?: string | null; parLeProspect: boolean; reserver?: string | null }
+): string {
+  const fuseau = r.fuseau || FUSEAU_DEFAUT
+  const prenom = (r.invite || '').trim().split(/\s+/)[0] || 'Bonjour'
+  const lignes: string[] = []
+
+  lignes.push(`Bonjour ${prenom},`)
+  lignes.push('')
+  lignes.push(`Notre rendez-vous du ${quand(r.debut, fuseau)} est annulé.`)
+
+  // On ne renvoie pas au prospect le motif qu'il vient lui-même d'écrire.
+  if (extra.motif && !extra.parLeProspect) {
+    lignes.push('')
+    lignes.push(extra.motif)
+  }
+
+  lignes.push('')
+  lignes.push(
+    extra.parLeProspect
+      ? "Pas de souci. Quand tu veux, tu peux en reprendre un :"
+      : 'Désolé pour le changement. Tu peux en reprendre un quand ça t’arrange :'
+  )
+  if (extra.reserver) lignes.push(extra.reserver)
+
+  lignes.push('')
+  lignes.push('À bientôt,')
   lignes.push(r.hote)
 
   return lignes.join('\n')
@@ -149,10 +197,7 @@ export function corpsDeplacement(r: Rendez): string {
     lignes.push(r.visio)
   }
   lignes.push('')
-  lignes.push(
-    "Ton agenda devrait se mettre à jour tout seul. Sinon, l'invitation jointe " +
-      'à ce message porte le nouvel horaire.'
-  )
+  lignes.push("Accepte la nouvelle invitation ci-dessous pour mettre ton agenda à jour.")
   if (r.replanifier) {
     lignes.push('')
     lignes.push(`Pour déplacer à nouveau ou annuler : ${r.replanifier}`)
