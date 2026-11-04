@@ -67,7 +67,12 @@ dans_liste () {
 # détecteur qui n'en connaît qu'un déclare saines des routes ouvertes, ou
 # ouvertes des routes saines. Les deux erreurs ont été commises le 1er novembre.
 MOTIF_SESSION='getServerSession|getToken[[:space:]]*\('
-MOTIF_JETON='INTERNAL_API_SECRET|RELANCE_API_TOKEN|RADAR_SECRET|GMAIL_PUSH_TOKEN|CRON_SECRET|x-chatwoot-signature|x-internal-secret'
+# ⚠️ CETTE LISTE EST LE DÉTECTEUR, et elle se périme à chaque nouveau secret.
+# Une route qui se garde par un jeton dont le nom n'est pas écrit ici est vue
+# comme NON GARDÉE, et le déploiement est refusé. C'est le bon sens de
+# l'erreur : on est arrêté, on n'est pas trompé. Ajouter le nom en même temps
+# que la route, jamais après.
+MOTIF_JETON='INTERNAL_API_SECRET|RELANCE_API_TOKEN|RADAR_SECRET|GMAIL_PUSH_TOKEN|CRON_SECRET|CAL_WEBHOOK_SECRET|x-chatwoot-signature|x-internal-secret|x-cal-signature-256'
 
 ouvertes=(); jeton_hors_liste=(); publiques=(); ok=0; total=0
 

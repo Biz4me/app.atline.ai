@@ -37,6 +37,9 @@ const API_A_JETON = [
   '/api/relances/', // RELANCE_API_TOKEN sur /due et /[id]/done (n8n)
   '/api/stt/ticket', // INTERNAL_API_SECRET
   '/api/atlas/chat', // INTERNAL_API_SECRET, et session acceptée aussi
+  // Cal signe le corps BRUT : HMAC-SHA256 dans `X-Cal-Signature-256`, vérifié
+  // dans la route avec `timingSafeEqual`. Cal n'a évidemment aucune session.
+  '/api/cal/webhook', // CAL_WEBHOOK_SECRET
 ]
 
 // Une entrée finissant par `/` est un préfixe ; sinon c'est un chemin exact.
