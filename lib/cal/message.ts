@@ -25,6 +25,16 @@
  * distributeur devient « connu », et toutes les invitations suivantes se
  * poseront d'elles-mêmes dans son agenda.
  *
+ * ── 🔴 CE QU'ON NE LUI DEMANDE PLUS ───────────────────────────────────────
+ *
+ * Ce texte disait « accepte l'invitation ». C'était FAUX, et mesuré le 4
+ * novembre : `CalendarService.ts:143` marque chaque invité
+ * `responseStatus: "accepted"` au moment même où Cal crée l'événement. Le
+ * prospect est donc déjà « accepté » sans avoir rien cliqué, Gmail n'a plus
+ * rien à lui demander, et aucun bouton n'apparaît. Deux conséquences : on ne
+ * lui demande pas un geste qui n'existe pas, et **on ne saura jamais s'il a
+ * vraiment confirmé** tant que Cal répondra à sa place.
+ *
  * ── STYLE ─────────────────────────────────────────────────────────────────
  *
  * On écrit comme une personne écrit, pas comme un système notifie. Pas de
@@ -104,8 +114,8 @@ export function corpsConfirmation(r: Rendez): string {
   // 🔴 LA phrase qui compte. Sans elle, l'événement n'entre pas dans son
   // agenda et aucun rappel ne sonnera. Voir l'en-tête du fichier.
   lignes.push(
-    "Ce message porte l'invitation : accepte-la, c'est ce qui posera le " +
-      'rendez-vous dans ton agenda et déclenchera le rappel.'
+    "Tu devrais déjà le voir dans ton agenda. S'il n'y est pas, l'invitation " +
+      'jointe à ce message te permet de l’ajouter.'
   )
 
   if (r.replanifier) {
@@ -139,7 +149,10 @@ export function corpsDeplacement(r: Rendez): string {
     lignes.push(r.visio)
   }
   lignes.push('')
-  lignes.push("Ce message porte la nouvelle invitation : accepte-la pour mettre ton agenda à jour.")
+  lignes.push(
+    "Ton agenda devrait se mettre à jour tout seul. Sinon, l'invitation jointe " +
+      'à ce message porte le nouvel horaire.'
+  )
   if (r.replanifier) {
     lignes.push('')
     lignes.push(`Pour déplacer à nouveau ou annuler : ${r.replanifier}`)

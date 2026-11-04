@@ -9,6 +9,7 @@
  * Lancer : npx tsx lib/cal/ics.sonde.ts
  */
 import { construireIcs } from './ics'
+import { lieuLisible } from './evenement'
 
 function octets(s: string): number {
   return Buffer.from(s, 'utf8').length
@@ -103,6 +104,16 @@ verifier('STATUS:CANCELLED', annul.includes('STATUS:CANCELLED'))
 verifier('même identifiant que la création', annul.includes('UID:wnjHLD3JY3gH7KRUjf6Nwy@Cal.diy'))
 verifier('séquence incrémentée', annul.includes('SEQUENCE:2'))
 verifier('aucun rappel sur une annulation', !annul.includes('BEGIN:VALARM'))
+
+console.log('\n=== 4. le lieu affiché au prospect ===')
+// 🔴 C'est LE défaut qui a atteint un vrai prospect le 4 novembre :
+// « On se retrouve ici : integrations:google:meet ».
+verifier('le type brut de Cal est écarté', lieuLisible('integrations:google:meet') === null)
+verifier('les autres intégrations aussi', lieuLisible('integrations:daily') === null)
+verifier('une URL passe', lieuLisible('https://meet.google.com/abc-defg-hij') === 'https://meet.google.com/abc-defg-hij')
+verifier('une vraie adresse passe', lieuLisible('12 rue des Lilas, Lyon') === '12 rue des Lilas, Lyon')
+verifier('le vide reste vide', lieuLisible('') === null && lieuLisible(null) === null && lieuLisible(undefined) === null)
+verifier('les espaces seuls ne font pas un lieu', lieuLisible('   ') === null)
 
 console.log(`\n${echecs === 0 ? '✅ tout passe' : `🔴 ${echecs} contrôle(s) en échec`}\n`)
 console.log('--- le fichier produit, pour lecture ---')

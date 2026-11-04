@@ -41,6 +41,7 @@ import { db } from '@/lib/db'
 import { connexionDe } from '@/lib/google/connexion'
 import { envoyerTransactionnel } from '@/lib/gmail/transactionnel'
 import { construireIcs } from '@/lib/cal/ics'
+import { lieuDepuisGoogle, lieuLisible } from '@/lib/cal/evenement'
 import {
   corpsConfirmation,
   corpsDeplacement,
@@ -182,7 +183,21 @@ export async function POST(req: NextRequest) {
   }
   const fin = c.endTime ? new Date(c.endTime) : null
   const invite = c.attendees?.[0]
-  const visio = lienVisio(c)
+
+  // ── le lieu, et il ne vient pas d'où on croit ────────────────────────────
+  //
+  // 🔴 Le webhook ne transporte PAS le lien de visioconférence : `location`
+  // vaut `integrations:google:meet` et `metadata` arrive vide. Le 4 novembre
+  // 2026, un prospect a donc reçu « On se retrouve ici :
+  // integrations:google:meet ». On tente d'abord ce que Cal a bien voulu
+  // donner, puis on demande l'événement à Google par son identifiant iCal.
+  let visio = lienVisio(c)
+  let lieuTexte = lieuLisible(c.location)
+  if (!visio) {
+    const g = await lieuDepuisGoogle({ userId, uidReservation: uid })
+    visio = g.visio
+    lieuTexte = lieuTexte ?? g.lieu
+  }
 
   // ── le contact ────────────────────────────────────────────────────────────
   //
@@ -267,7 +282,9 @@ export async function POST(req: NextRequest) {
     fin,
     fuseau: invite?.timeZone || 'Europe/Paris',
     visio,
-    lieu: visio ? null : (c.location ?? null),
+    // Jamais `c.location` brut : `lieuLisible` a déjà écarté les
+    // `integrations:…`, et taire le lieu vaut mieux que l'écrire en jargon.
+    lieu: visio ? null : lieuTexte,
     replanifier,
   }
 
@@ -299,7 +316,7 @@ export async function POST(req: NextRequest) {
         organisateurEmail: boite.email,
         inviteNom: invite.name ?? '',
         inviteEmail: invite.email,
-        lieu: visio ?? c.location ?? null,
+        lieu: visio ?? lieuTexte,
         // Cal incrémente la sienne à chaque modification ; on suit la même
         // règle, sinon un client ignore la mise à jour comme un doublon.
         sequence: deplacement ? 1 : 0,
