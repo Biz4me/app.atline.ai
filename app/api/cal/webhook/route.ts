@@ -1,0 +1,303 @@
+/**
+ * CE QUE CAL NOUS DIT QUAND QUELQU'UN RÉSERVE.
+ *
+ * Cal tient l'agenda public, les créneaux, la salle de visioconférence et le
+ * lien pour déplacer. Atline tient la relation. Ce fichier est la couture
+ * entre les deux, et il a trois obligations :
+ *
+ *   1. écrire le rendez-vous dans Atline, pour que l'écran Agenda ait enfin
+ *      quelque chose à montrer ;
+ *   2. envoyer au prospect un mot écrit par une personne, depuis la boîte du
+ *      distributeur (voir `lib/cal/message.ts` pour pourquoi l'invitation
+ *      d'agenda ne suffit pas) ;
+ *   3. ne JAMAIS échouer en silence.
+ *
+ * ── L'IDEMPOTENCE N'EST PAS UN LUXE ───────────────────────────────────────
+ *
+ * Cal réessaie quand il n'obtient pas de réponse. Sans précaution, un envoi
+ * Gmail un peu lent produirait deux rendez-vous et deux courriers chez le
+ * prospect. On s'appuie donc sur `Appointment.calComEventId`, qui est UNIQUE
+ * en base : on regarde si la ligne existe AVANT d'écrire, et on n'envoie le
+ * courrier que la première fois.
+ *
+ * ── POURQUOI ON REFUSE BRUYAMMENT ─────────────────────────────────────────
+ *
+ * Si on ne sait pas à quel distributeur rattacher la réservation, répondre
+ * 200 ferait disparaître le rendez-vous sans que personne ne l'apprenne. On
+ * répond donc une erreur : Cal la montre dans son journal de webhooks, et le
+ * défaut se VOIT. Une livraison en échec vaut mieux qu'un succès menteur.
+ *
+ * ── LA SIGNATURE ──────────────────────────────────────────────────────────
+ *
+ * Cal signe le corps brut : `HMAC-SHA256(secret, corps)` en hexadécimal, dans
+ * l'en-tête `X-Cal-Signature-256` (vérifié dans `sendPayload.ts:296`). Il faut
+ * donc lire le corps AVANT de l'analyser : un `await req.json()` suivi d'un
+ * `JSON.stringify` ne redonne pas les mêmes octets, et la signature tomberait.
+ */
+
+import { NextRequest, NextResponse } from 'next/server'
+import { createHmac, timingSafeEqual } from 'node:crypto'
+import { db } from '@/lib/db'
+import { envoyerTransactionnel } from '@/lib/gmail/transactionnel'
+import {
+  corpsConfirmation,
+  corpsDeplacement,
+  sujetConfirmation,
+  sujetDeplacement,
+  type Rendez,
+} from '@/lib/cal/message'
+
+export const runtime = 'nodejs'
+export const dynamic = 'force-dynamic'
+
+type Personne = { id?: number; name?: string; email?: string; timeZone?: string; username?: string }
+type Charge = {
+  uid?: string
+  title?: string
+  startTime?: string
+  endTime?: string
+  location?: string
+  organizer?: Personne
+  attendees?: Personne[]
+  videoCallData?: { url?: string }
+  metadata?: Record<string, unknown>
+  cancellationReason?: string
+}
+
+function signatureValide(corps: string, recue: string | null, secret: string): boolean {
+  if (!recue) return false
+  const attendue = createHmac('sha256', secret).update(corps).digest('hex')
+  const a = Buffer.from(attendue, 'utf8')
+  const b = Buffer.from(recue, 'utf8')
+  // `timingSafeEqual` LÈVE si les longueurs diffèrent : on compare d'abord.
+  return a.length === b.length && timingSafeEqual(a, b)
+}
+
+/**
+ * Le type de rendez-vous, déduit du lieu.
+ *
+ * ⚠️ Cal passe parfois le type brut (`integrations:google:meet`) et parfois
+ * une version lisible (« Google Meet »), selon le chemin emprunté dans
+ * `sendPayload.ts`. On reconnaît donc les deux formes.
+ */
+function typeDeLieu(lieu: string | undefined): 'VISIO' | 'CALL' | 'PRESENTIEL' | 'AUTRE' {
+  const l = (lieu ?? '').toLowerCase()
+  if (!l) return 'AUTRE'
+  if (/meet|zoom|daily|video|visio|teams|whereby|jitsi|cal\.com/.test(l)) return 'VISIO'
+  if (/phone|téléphone|telephone|appel/.test(l)) return 'CALL'
+  if (/person|place|adresse|address|lieu/.test(l)) return 'PRESENTIEL'
+  if (/^https?:\/\//.test(l)) return 'VISIO'
+  return 'AUTRE'
+}
+
+function lienVisio(c: Charge): string | null {
+  const m = c.metadata as { videoCallUrl?: unknown } | undefined
+  const candidats = [c.videoCallData?.url, typeof m?.videoCallUrl === 'string' ? m.videoCallUrl : null, c.location]
+  for (const v of candidats) {
+    if (typeof v === 'string' && /^https?:\/\//.test(v)) return v
+  }
+  return null
+}
+
+export async function POST(req: NextRequest) {
+  const secret = process.env.CAL_WEBHOOK_SECRET
+  if (!secret) {
+    console.error('[cal] CAL_WEBHOOK_SECRET absent : on refuse plutôt que d’accepter n’importe qui')
+    return NextResponse.json({ error: 'webhook non configuré' }, { status: 503 })
+  }
+
+  // Le corps BRUT, avant toute analyse. Voir l'en-tête du fichier.
+  const brut = await req.text()
+  if (!signatureValide(brut, req.headers.get('x-cal-signature-256'), secret)) {
+    return NextResponse.json({ error: 'signature invalide' }, { status: 401 })
+  }
+
+  let enveloppe: { triggerEvent?: string; payload?: Charge }
+  try {
+    enveloppe = JSON.parse(brut)
+  } catch {
+    return NextResponse.json({ error: 'corps illisible' }, { status: 400 })
+  }
+
+  const evenement = enveloppe.triggerEvent ?? ''
+  const c = enveloppe.payload ?? {}
+  const uid = c.uid
+  if (!uid) return NextResponse.json({ error: 'réservation sans identifiant' }, { status: 400 })
+
+  // ── à quel distributeur cette réservation appartient-elle ? ───────────────
+  //
+  // Le compte Cal n'a rien à voir avec le compte Atline : c'est `CalComConnection`
+  // qui fait le pont, et elle seule. Sans elle, on ne devine pas.
+  const orgId = c.organizer?.id != null ? String(c.organizer.id) : null
+  const orgNom = c.organizer?.username ?? null
+  const lien = await db.calComConnection.findFirst({
+    where: {
+      OR: [
+        ...(orgId ? [{ calComUserId: orgId }] : []),
+        ...(orgNom ? [{ bookingUrl: { endsWith: `/${orgNom}` } }] : []),
+      ],
+    },
+    select: { userId: true },
+  })
+  if (!lien) {
+    console.error(`[cal] aucun distributeur pour l’organisateur id=${orgId} nom=${orgNom} (${evenement})`)
+    return NextResponse.json(
+      { error: 'organisateur Cal non rattaché à un compte Atline' },
+      { status: 422 },
+    )
+  }
+  const userId = lien.userId
+
+  const existant = await db.appointment.findUnique({
+    where: { calComEventId: uid },
+    select: { id: true, contactId: true },
+  })
+
+  // ── l'annulation ──────────────────────────────────────────────────────────
+  if (evenement === 'BOOKING_CANCELLED' || evenement === 'BOOKING_REJECTED') {
+    if (existant) await db.appointment.delete({ where: { id: existant.id } })
+    await db.notification.create({
+      data: {
+        userId,
+        icon: 'atlas',
+        color: '#EF4444',
+        text: `${c.attendees?.[0]?.name ?? 'Un prospect'} a annulé le rendez-vous${
+          c.cancellationReason ? ` : ${c.cancellationReason}` : ''
+        }.`,
+        go: '/agenda',
+      },
+    })
+    return NextResponse.json({ ok: true, fait: existant ? 'supprimé' : 'inconnu, rien à supprimer' })
+  }
+
+  if (evenement !== 'BOOKING_CREATED' && evenement !== 'BOOKING_RESCHEDULED') {
+    return NextResponse.json({ ok: true, ignore: evenement })
+  }
+
+  const debut = c.startTime ? new Date(c.startTime) : null
+  if (!debut || isNaN(debut.getTime())) {
+    return NextResponse.json({ error: 'date de début illisible' }, { status: 400 })
+  }
+  const fin = c.endTime ? new Date(c.endTime) : null
+  const invite = c.attendees?.[0]
+  const visio = lienVisio(c)
+
+  // ── le contact ────────────────────────────────────────────────────────────
+  //
+  // Même motif exactement que la page de réservation d'Atline
+  // (`/api/booking/[slug]`) : deux chemins de réservation ne doivent pas
+  // produire deux sortes de contacts.
+  let contactId = existant?.contactId ?? null
+  const business = await db.userMlmBusiness.findFirst({
+    where: { userId, active: true },
+    select: { id: true },
+  })
+  if (!contactId && business && invite?.email) {
+    const deja = await db.contact.findFirst({
+      where: { userId, email: { equals: invite.email, mode: 'insensitive' } },
+      select: { id: true },
+    })
+    if (deja) {
+      contactId = deja.id
+    } else {
+      const nom = (invite.name ?? invite.email).trim()
+      const morceaux = nom.split(/\s+/)
+      const prenom = morceaux[0] ?? ''
+      const famille = morceaux.slice(1).join(' ')
+      const cree = await db.contact.create({
+        data: {
+          userId,
+          mlmBusinessId: business.id,
+          kind: 'PROSPECT',
+          name: nom,
+          firstName: prenom || null,
+          lastName: famille || null,
+          initials: ((prenom[0] ?? '?') + (famille[0] ?? '')).toUpperCase(),
+          accent: '#F97316',
+          email: invite.email,
+          source: 'RDV_INBOUND',
+          prospectStage: 'PRESENTATION',
+        },
+        select: { id: true },
+      })
+      contactId = cree.id
+    }
+  }
+
+  // ── le rendez-vous ────────────────────────────────────────────────────────
+  const base = process.env.CAL_BASE_URL ?? 'https://cal.atline.ai'
+  const replanifier = `${base}/booking/${uid}?changes=true`
+  const champs = {
+    userId,
+    mlmBusinessId: business?.id ?? null,
+    contactId,
+    title: c.title ?? `Rendez-vous avec ${invite?.name ?? 'un prospect'}`,
+    description: visio,
+    startAt: debut,
+    endAt: fin,
+    type: typeDeLieu(c.location) as 'VISIO' | 'CALL' | 'PRESENTIEL' | 'AUTRE',
+    calComEventId: uid,
+    calComBookingUrl: replanifier,
+  }
+
+  if (existant) {
+    await db.appointment.update({ where: { id: existant.id }, data: champs })
+  } else {
+    await db.appointment.create({ data: champs })
+  }
+
+  // 🔴 Une RELIVRAISON de Cal ne doit pas réécrire au prospect. On n'envoie
+  // qu'à la première création, ou sur un vrai déplacement.
+  const premiereFois = !existant && evenement === 'BOOKING_CREATED'
+  const deplacement = evenement === 'BOOKING_RESCHEDULED'
+  if (!premiereFois && !deplacement) {
+    return NextResponse.json({ ok: true, fait: 'déjà connu, aucun courrier' })
+  }
+
+  const hote = await db.user.findUnique({
+    where: { id: userId },
+    select: { firstName: true, lastName: true },
+  })
+  const rendez: Rendez = {
+    invite: invite?.name ?? '',
+    hote: [hote?.firstName, hote?.lastName].filter(Boolean).join(' ') || 'Ton contact',
+    debut,
+    fin,
+    fuseau: invite?.timeZone || 'Europe/Paris',
+    visio,
+    lieu: visio ? null : (c.location ?? null),
+    replanifier,
+  }
+
+  let courrier: { ok: boolean; message?: string } = { ok: false, message: 'aucune adresse' }
+  if (invite?.email) {
+    courrier = await envoyerTransactionnel({
+      userId,
+      destinataire: invite.email,
+      sujet: deplacement ? sujetDeplacement(rendez) : sujetConfirmation(rendez),
+      corps: deplacement ? corpsDeplacement(rendez) : corpsConfirmation(rendez),
+      contactId,
+      origine: `cal:${evenement}`,
+    })
+  }
+
+  // ── on le dit, dans les deux cas ──────────────────────────────────────────
+  //
+  // 🔴 Surtout quand le courrier n'est pas parti : le distributeur croirait
+  // que son prospect a été confirmé alors que personne ne lui a écrit.
+  await db.notification.create({
+    data: {
+      userId,
+      icon: 'atlas',
+      color: courrier.ok ? '#22C55E' : '#EF4444',
+      text: courrier.ok
+        ? `${invite?.name ?? 'Un prospect'} a réservé. Le mot de confirmation est parti de ta boîte.`
+        : `${invite?.name ?? 'Un prospect'} a réservé, mais la confirmation N'EST PAS partie (${
+            courrier.message ?? 'raison inconnue'
+          }). Écris-lui.`,
+      go: '/agenda',
+    },
+  })
+
+  return NextResponse.json({ ok: true, courrier: courrier.ok, fait: deplacement ? 'déplacé' : 'créé' })
+}
