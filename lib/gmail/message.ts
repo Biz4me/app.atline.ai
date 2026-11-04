@@ -22,6 +22,12 @@ export function encoderEntete(valeur: string): string {
   return `=?UTF-8?B?${Buffer.from(valeur, 'utf8').toString('base64')}?=`
 }
 
+/** Base64 découpé à 76 caractères : au-delà, certains serveurs coupent la
+ * ligne eux-mêmes, au mauvais endroit, et le message arrive tronqué. */
+function enBase64(texte: string): string {
+  return Buffer.from(texte, 'utf8').toString('base64').replace(/(.{76})/g, '$1\r\n')
+}
+
 export function construireMessage(m: {
   nomAffiche: string
   adresseEnvoi: string
@@ -29,21 +35,56 @@ export function construireMessage(m: {
   sujet: string
   corps: string
   repondA?: string | null
+  /**
+   * Un `.ics` à transporter, qui fait de ce courrier une VRAIE invitation :
+   * c'est lui qui déclenche les boutons Oui / Peut-être / Non chez le
+   * destinataire. Absent, le message reste un simple texte, exactement comme
+   * avant — tout le chemin de prospection passe par là et ne doit pas bouger.
+   */
+  invitation?: { ics: string; methode: 'REQUEST' | 'CANCEL' } | null
 }): string {
-  const lignes = [
+  const entetes = [
     `From: ${encoderEntete(`"${m.nomAffiche}"`)} <${m.adresseEnvoi}>`,
     `To: ${m.destinataire}`,
     `Subject: ${encoderEntete(m.sujet)}`,
     'MIME-Version: 1.0',
+  ]
+  if (m.repondA) entetes.push(`In-Reply-To: ${m.repondA}`, `References: ${m.repondA}`)
+
+  if (!m.invitation) {
+    entetes.push('Content-Type: text/plain; charset="UTF-8"', 'Content-Transfer-Encoding: base64')
+    return `${entetes.join('\r\n')}\r\n\r\n${enBase64(m.corps)}`
+  }
+
+  // ── le courrier devient une invitation ───────────────────────────────────
+  //
+  // `multipart/alternative` et pas `mixed` : les deux parties disent LA MÊME
+  // chose, l'une pour les yeux, l'autre pour l'agenda. En `mixed`, le client
+  // afficherait une pièce jointe à ouvrir à la main au lieu des boutons.
+  //
+  // ⚠️ La frontière ne doit apparaître dans AUCUNE des deux parties, sinon le
+  // message se coupe en plein milieu. D'où un tirage aléatoire plutôt qu'une
+  // constante.
+  const f = `atline-${Buffer.from(String(Math.random())).toString('hex').slice(0, 24)}`
+  entetes.push(`Content-Type: multipart/alternative; boundary="${f}"`)
+
+  const corps = [
+    `--${f}`,
     'Content-Type: text/plain; charset="UTF-8"',
     'Content-Transfer-Encoding: base64',
-  ]
-  if (m.repondA) lignes.push(`In-Reply-To: ${m.repondA}`, `References: ${m.repondA}`)
+    '',
+    enBase64(m.corps),
+    `--${f}`,
+    // `method` est répété ici ET dans le .ics : certains clients ne lisent que
+    // l'un des deux, et un désaccord entre eux fait ignorer l'invitation.
+    `Content-Type: text/calendar; charset="UTF-8"; method=${m.invitation.methode}`,
+    'Content-Transfer-Encoding: base64',
+    '',
+    enBase64(m.invitation.ics),
+    `--${f}--`,
+  ].join('\r\n')
 
-  // Base64 découpé à 76 caractères : au-delà, certains serveurs coupent la
-  // ligne eux-mêmes, au mauvais endroit, et le message arrive tronqué.
-  const corps = Buffer.from(m.corps, 'utf8').toString('base64').replace(/(.{76})/g, '$1\r\n')
-  return `${lignes.join('\r\n')}\r\n\r\n${corps}`
+  return `${entetes.join('\r\n')}\r\n\r\n${corps}`
 }
 
 /**

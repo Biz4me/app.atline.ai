@@ -60,6 +60,8 @@ export async function envoyerTransactionnel(args: {
   contactId?: string | null
   /** Ce qui a déclenché l'envoi, pour le journal. Ex. « cal:BOOKING_CREATED ». */
   origine: string
+  /** Un `.ics` qui fait de ce courrier une vraie invitation d'agenda. */
+  invitation?: { ics: string; methode: 'REQUEST' | 'CANCEL' } | null
 }): Promise<EnvoiTransactionnel> {
   const { userId, destinataire, sujet, corps, origine } = args
 
@@ -97,6 +99,7 @@ export async function envoyerTransactionnel(args: {
     destinataire,
     sujet,
     corps,
+    invitation: args.invitation ?? null,
   })
 
   let reponse: { id?: string; threadId?: string }

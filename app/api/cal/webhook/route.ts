@@ -38,7 +38,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createHmac, timingSafeEqual } from 'node:crypto'
 import { db } from '@/lib/db'
+import { connexionDe } from '@/lib/google/connexion'
 import { envoyerTransactionnel } from '@/lib/gmail/transactionnel'
+import { construireIcs } from '@/lib/cal/ics'
 import {
   corpsConfirmation,
   corpsDeplacement,
@@ -269,15 +271,52 @@ export async function POST(req: NextRequest) {
     replanifier,
   }
 
+  const corps = deplacement ? corpsDeplacement(rendez) : corpsConfirmation(rendez)
+
+  // ── le courrier EST l'invitation ──────────────────────────────────────────
+  //
+  // 🔴 L'organisateur du `.ics` doit être l'adresse qui ENVOIE : c'est à elle
+  // que le client du prospect adressera son « Oui ». On la lit donc chez
+  // Google plutôt que de la déduire du compte Atline, qui peut être une tout
+  // autre adresse.
+  //
+  // ⚠️ Hypothèse à surveiller : on suppose que la boîte raccordée à Atline et
+  // l'agenda de destination de Cal sont le même compte Google. Ils le sont
+  // aujourd'hui. S'ils divergeaient, la réponse du prospect arriverait dans
+  // une boîte qui ne possède pas l'événement, et ne se rattacherait à rien.
+  const boite = await connexionDe(userId)
+  let invitation: { ics: string; methode: 'REQUEST' } | null = null
+  if (boite?.email && invite?.email) {
+    invitation = {
+      methode: 'REQUEST',
+      ics: construireIcs({
+        uidReservation: uid,
+        titre: champs.title,
+        description: corps,
+        debut,
+        fin: fin ?? new Date(debut.getTime() + 30 * 60_000),
+        organisateurNom: rendez.hote,
+        organisateurEmail: boite.email,
+        inviteNom: invite.name ?? '',
+        inviteEmail: invite.email,
+        lieu: visio ?? c.location ?? null,
+        // Cal incrémente la sienne à chaque modification ; on suit la même
+        // règle, sinon un client ignore la mise à jour comme un doublon.
+        sequence: deplacement ? 1 : 0,
+      }),
+    }
+  }
+
   let courrier: { ok: boolean; message?: string } = { ok: false, message: 'aucune adresse' }
   if (invite?.email) {
     courrier = await envoyerTransactionnel({
       userId,
       destinataire: invite.email,
       sujet: deplacement ? sujetDeplacement(rendez) : sujetConfirmation(rendez),
-      corps: deplacement ? corpsDeplacement(rendez) : corpsConfirmation(rendez),
+      corps,
       contactId,
       origine: `cal:${evenement}`,
+      invitation,
     })
   }
 

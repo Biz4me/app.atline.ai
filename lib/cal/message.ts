@@ -104,8 +104,8 @@ export function corpsConfirmation(r: Rendez): string {
   // 🔴 LA phrase qui compte. Sans elle, l'événement n'entre pas dans son
   // agenda et aucun rappel ne sonnera. Voir l'en-tête du fichier.
   lignes.push(
-    "Tu as aussi reçu une invitation d'agenda. Pense à l'accepter, c'est ce qui " +
-      'posera le rendez-vous dans ton calendrier et déclenchera le rappel.'
+    "Ce message porte l'invitation : accepte-la, c'est ce qui posera le " +
+      'rendez-vous dans ton agenda et déclenchera le rappel.'
   )
 
   if (r.replanifier) {
@@ -139,7 +139,7 @@ export function corpsDeplacement(r: Rendez): string {
     lignes.push(r.visio)
   }
   lignes.push('')
-  lignes.push("Une nouvelle invitation d'agenda est partie, pense à l'accepter.")
+  lignes.push("Ce message porte la nouvelle invitation : accepte-la pour mettre ton agenda à jour.")
   if (r.replanifier) {
     lignes.push('')
     lignes.push(`Pour déplacer à nouveau ou annuler : ${r.replanifier}`)
