@@ -205,3 +205,54 @@ test('le point de contrôle de la production est au vert', async ({ page }) => {
   const d = await r.json()
   expect(d.ok, `problèmes : ${(d.problemes ?? []).join(' | ')}`).toBe(true)
 })
+
+test('le menu de l’agenda : raccordement et historique', async ({ page, pageErrors }) => {
+  await page.goto('/agenda', { waitUntil: 'domcontentloaded' })
+  await expect(page.getByRole('heading', { level: 1, name: 'Agenda' })).toBeVisible({
+    timeout: 20_000,
+  })
+
+  // Le geste reste allumé pendant que le menu est ouvert — l'invariant de la
+  // référence, vérifié par un clic à blanc et non par `toBeVisible`.
+  const bouton = page.getByRole('button', { name: /^Menu Agenda$/ })
+  await bouton.click()
+  await page.getByRole('link', { name: 'Ajouter un rendez-vous' }).click({ trial: true })
+
+  // 🔴 LE LIBELLÉ DIT L'ÉTAT. Le compte de test a raccordé son agenda le
+  // 30 juillet 2026 : lui proposer de « connecter » serait simplement faux.
+  // ⚠️ Et une LIGNE `GoogleConnection` ne suffit pas à l'affirmer — il faut le
+  // scope `calendar.readonly`. C'est ce que ce libellé prouve au passage.
+  const raccordement = page.getByRole('link', { name: 'Mon agenda Google' })
+  await expect(raccordement).toHaveCount(1)
+  await expect(page.getByRole('link', { name: 'Ce qui est passé' })).toHaveCount(1)
+
+  await page.screenshot({ path: 'capture-menu-agenda.png', animations: 'disabled' })
+
+  // ── LE RACCORDEMENT ──
+  await raccordement.click()
+  await expect(page.getByRole('heading', { level: 1, name: 'Mon agenda' })).toBeVisible({
+    timeout: 20_000,
+  })
+  await expect(page.getByRole('navigation', { name: 'Navigation principale' })).toHaveCount(0)
+
+  const dit = await page.locator('main').innerText()
+  expect(dit, 'l’écran doit annoncer l’état').toMatch(/Raccordé/i)
+  // 🔴 LA LIMITE EST ÉCRITE. Quelqu'un qui croit son agenda synchronisé ne
+  // vérifiera pas, et découvrira le trou le jour du rendez-vous.
+  expect(dit, 'le sens unique n’est pas annoncé').toMatch(/n’apparaît pas dans Google/)
+  // Le départ se fait depuis V1 : son adresse de retour est la seule
+  // enregistrée dans la console Google.
+  await expect(page.locator('a[href^="https://app.atline.ai/api/calendar/connect"]')).toHaveCount(1)
+  await page.screenshot({ path: 'capture-agenda-connexion.png', animations: 'disabled' })
+
+  // ── L'HISTORIQUE ──
+  await page.goto('/agenda/passe', { waitUntil: 'domcontentloaded' })
+  await expect(page.getByRole('heading', { level: 1, name: 'Ce qui est passé' })).toBeVisible({
+    timeout: 20_000,
+  })
+  await expect(page.getByRole('navigation', { name: 'Navigation principale' })).toHaveCount(0)
+  await expect(page.getByRole('link', { name: 'Retour à l’agenda' })).toBeVisible()
+  await page.screenshot({ path: 'capture-agenda-passe.png', animations: 'disabled' })
+
+  expect(pageErrors, `exceptions JS : ${pageErrors.join(' | ')}`).toHaveLength(0)
+})
