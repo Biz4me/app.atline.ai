@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { db } from '@/lib/db'
 import { saveUpload } from '@/lib/storage'
+import { activiteCourante } from '@/lib/mlm/activite'
 
 const BUCKETS = ['PRESENTER', 'FORMER', 'VENDRE']
 const MAX_BYTES = 25 * 1024 * 1024 // 25 Mo
@@ -18,7 +19,7 @@ export async function POST(req: Request) {
   if (!BUCKETS.includes(bucket)) return NextResponse.json({ error: 'invalid bucket' }, { status: 400 })
   if (file.size > MAX_BYTES) return NextResponse.json({ error: 'file too large' }, { status: 413 })
 
-  const business = await db.userMlmBusiness.findFirst({ where: { userId: session.user.id, active: true } })
+  const business = await activiteCourante(session.user.id)
   if (!business) return NextResponse.json({ error: 'No active business' }, { status: 400 })
 
   const title = (String(form.get('title') ?? '').trim() || file.name.replace(/\.[^.]+$/, '')).slice(0, 120)

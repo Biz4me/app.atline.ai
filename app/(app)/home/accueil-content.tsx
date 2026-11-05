@@ -22,7 +22,11 @@ export function AccueilContent() {
 
   useEffect(() => {
     fetch('/api/me').then((r) => (r.ok ? r.json() : null)).then((u) => { if (u?.firstName) setFirstName(u.firstName) }).catch(() => {})
-    fetch('/api/mantras/random').then((r) => (r.ok ? r.json() : null)).then((d) => { if (d?.mantra) setMantra(d.mantra) }).catch(() => {})
+    // 🔴 L'API renvoie `{ text }`, pas `{ mantra }`. En lisant la mauvaise
+    // clé, cet écran a affiché son texte de repli depuis le premier jour, sans
+    // qu'aucune erreur ne soit levée. L'écran Atlas, lui, lit `text` et marche :
+    // deux lecteurs d'un même contrat, un seul correct.
+    fetch('/api/mantras/random').then((r) => (r.ok ? r.json() : null)).then((d) => { if (d?.text) setMantra(d.text) }).catch(() => {})
     fetch('/api/plan/today').then((r) => (r.ok ? r.json() : null)).then((d) => { setPlan(d?.items?.slice(0, 4) ?? []); setPlanObj(d?.objectif ?? null) }).catch(() => {})
     fetch('/api/home/stats').then((r) => (r.ok ? r.json() : null)).then((d) => { if (d) setFormationPct(d.formationPct) }).catch(() => {})
   }, [])

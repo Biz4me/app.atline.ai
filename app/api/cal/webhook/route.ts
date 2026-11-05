@@ -42,6 +42,7 @@ import { connexionDe } from '@/lib/google/connexion'
 import { envoyerTransactionnel } from '@/lib/gmail/transactionnel'
 import { construireIcs } from '@/lib/cal/ics'
 import { lieuDepuisGoogle, lieuLisible } from '@/lib/cal/evenement'
+import { activiteCourante } from '@/lib/mlm/activite'
 import {
   corpsAnnulation,
   corpsConfirmation,
@@ -301,10 +302,10 @@ export async function POST(req: NextRequest) {
   // (`/api/booking/[slug]`) : deux chemins de réservation ne doivent pas
   // produire deux sortes de contacts.
   let contactId = existant?.contactId ?? null
-  const business = await db.userMlmBusiness.findFirst({
-    where: { userId, active: true },
-    select: { id: true },
-  })
+  // 🔴 Prenait `findFirst({ active: true })`, donc l'activité que la base
+  // rendait en premier : pour un distributeur qui en a deux actives, le
+  // rendez-vous et son contact pouvaient atterrir dans la mauvaise.
+  const business = await activiteCourante(userId)
   if (!contactId && business && invite?.email) {
     const deja = await db.contact.findFirst({
       where: { userId, email: { equals: invite.email, mode: 'insensitive' } },

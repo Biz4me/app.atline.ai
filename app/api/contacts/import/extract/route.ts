@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { db } from '@/lib/db'
 import { readAtlas } from '@/lib/atlas'
+import { activiteCourante } from '@/lib/mlm/activite'
 
 const digits = (s: string) => (s ?? '').replace(/\D/g, '')
 
@@ -11,7 +12,7 @@ export async function POST(req: Request) {
   const session = await getServerSession(authOptions)
   if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const business = await db.userMlmBusiness.findFirst({ where: { userId: session.user.id, active: true } })
+  const business = await activiteCourante(session.user.id)
   if (!business) return NextResponse.json({ error: 'No active business' }, { status: 400 })
 
   const { text } = await req.json()

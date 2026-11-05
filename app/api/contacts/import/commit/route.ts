@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { db } from '@/lib/db'
+import { activiteCourante } from '@/lib/mlm/activite'
 
 const ACCENTS = ['#F97316', '#14B8A6', '#8B5CF6', '#3B82F6', '#22C55E', '#EF4444']
 
@@ -10,7 +11,7 @@ export async function POST(req: Request) {
   const session = await getServerSession(authOptions)
   if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const business = await db.userMlmBusiness.findFirst({ where: { userId: session.user.id, active: true } })
+  const business = await activiteCourante(session.user.id)
   if (!business) return NextResponse.json({ error: 'No active business' }, { status: 400 })
 
   const { contacts } = await req.json()

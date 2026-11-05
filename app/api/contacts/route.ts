@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { db } from '@/lib/db'
+import { activiteCourante } from '@/lib/mlm/activite'
 
 function toStage(c: { kind: string; prospectStage: string | null; clientStage: string | null; partnerStage: string | null }) {
   if (c.kind === 'CLIENT') return 'client'
@@ -21,7 +22,7 @@ export async function GET(req: Request) {
 
   const business = businessId
     ? await db.userMlmBusiness.findFirst({ where: { id: businessId, userId: session.user.id } })
-    : await db.userMlmBusiness.findFirst({ where: { userId: session.user.id, active: true } })
+    : await activiteCourante(session.user.id)
 
   if (!business) return NextResponse.json([])
 
@@ -86,7 +87,7 @@ export async function POST(req: Request) {
 
   const business = businessId
     ? await db.userMlmBusiness.findFirst({ where: { id: businessId, userId: session.user.id } })
-    : await db.userMlmBusiness.findFirst({ where: { userId: session.user.id, active: true } })
+    : await activiteCourante(session.user.id)
   if (!business) return NextResponse.json({ error: 'No active business' }, { status: 400 })
 
   // Derive kind and stage from front-end stage string

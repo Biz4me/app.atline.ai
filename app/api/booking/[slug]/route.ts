@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { slotsForDay } from '@/lib/availability'
+import { activiteCourante } from '@/lib/mlm/activite'
 
 // PUBLIC — info distributeur
 export async function GET(_: Request, ctx: { params: Promise<{ slug: string }> }) {
@@ -27,7 +28,9 @@ export async function POST(req: Request, ctx: { params: Promise<{ slug: string }
   if (!free.includes(startAt.toISOString())) return NextResponse.json({ error: 'slot taken' }, { status: 409 })
 
   // Crée le prospect (sous l'activité active) + le RDV
-  const business = await db.userMlmBusiness.findFirst({ where: { userId: user.id, active: true } })
+  // Respecte l'activité CHOISIE par le distributeur, au lieu de prendre celle
+  // que la base rend en premier. Voir `lib/mlm/activite.ts`.
+  const business = await activiteCourante(user.id)
   let contactId: string | null = null
   if (business) {
     const parts = String(name).trim().split(/\s+/)
