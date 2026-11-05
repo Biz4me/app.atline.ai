@@ -19,6 +19,10 @@
 //      dans la liste. On vise donc la liste explicitement, sinon Playwright
 //      refuse, à juste titre, de choisir à notre place.
 
+// 🔴 SUR L'ACCUEIL, et plus sur « Mes gens ». La bande d'activité ne vit
+// que sur l'accueil et dans le menu depuis le 5 novembre : le hall d'entrée
+// porte l'identité, les quatre lieux portent le travail. Ce test cherchait
+// la bande là où elle n'est plus.
 const { test, expect } = require('../fixtures.cjs')
 
 // On la regarde debout, d'une main. C'est aussi la seule taille où la capture
@@ -26,7 +30,7 @@ const { test, expect } = require('../fixtures.cjs')
 test.use({ viewport: { width: 390, height: 844 } })
 
 test('la bande d’activité se voit, et s’ouvre', async ({ page, pageErrors }) => {
-  await page.goto('/gens', { waitUntil: 'domcontentloaded' })
+  await page.goto('/accueil', { waitUntil: 'domcontentloaded' })
 
   // Par le libellé d'accessibilité, pas par une classe : une classe change au
   // premier coup de peigne, le sens non.
@@ -34,7 +38,7 @@ test('la bande d’activité se voit, et s’ouvre', async ({ page, pageErrors }
   await expect(bande).toBeVisible({ timeout: 20_000 })
   await expect(bande).toContainText('NHT Global')
 
-  await page.screenshot({ path: 'capture-bande-fermee.png', clip: { x: 0, y: 0, width: 390, height: 210 } })
+  await page.screenshot({ path: 'capture-bande-fermee.png', clip: { x: 0, y: 0, width: 390, height: 210 }, animations: 'disabled' })
 
   await bande.click()
 
@@ -46,9 +50,15 @@ test('la bande d’activité se voit, et s’ouvre', async ({ page, pageErrors }
   await expect(choix.filter({ hasText: 'NHT Global' })).toBeVisible({ timeout: 10_000 })
   await expect(choix.filter({ hasText: 'Forever Living' })).toBeVisible()
 
-  // La feuille occupe 88 % de la hauteur : on prend l'écran entier, sinon on
+  // La feuille épouse son contenu : on prend l'écran entier, sinon on
   // photographie son bord supérieur et rien du choix.
-  await page.screenshot({ path: 'capture-bande-ouverte.png' })
+  //
+  // 🔴 `animations: 'disabled'`, ET C'EST LA TROISIÈME FOIS. Sans ce drapeau,
+  // Playwright photographie la feuille PENDANT sa montée de 0,24 s : la
+  // dernière ligne paraît coupée par la barre du bas. J'ai cru à un défaut de
+  // mise en page, écrit une sonde pour le mesurer — et la sonde, prise au
+  // même instant, mentait pareil. Une mesure vaut ce que vaut son moment.
+  await page.screenshot({ path: 'capture-bande-ouverte.png', animations: 'disabled' })
 
   // 🔴 Le filet : une exception client ne casse aucune assertion ci-dessus,
   // mais elle casserait l'écran chez le distributeur.
@@ -65,7 +75,7 @@ test('la bande d’activité se voit, et s’ouvre', async ({ page, pageErrors }
 //     npx playwright test tests/capture-selecteur.spec.cjs -g 'une seule'
 
 test('avec une seule activité, la bande informe sans se cliquer', async ({ page, pageErrors }) => {
-  await page.goto('/gens', { waitUntil: 'domcontentloaded' })
+  await page.goto('/accueil', { waitUntil: 'domcontentloaded' })
 
   // Le nom de l'activité est bien affiché…
   await expect(page.getByText('Forever Living').first()).toBeVisible({ timeout: 20_000 })
@@ -73,7 +83,7 @@ test('avec une seule activité, la bande informe sans se cliquer', async ({ page
   // …et AUCUN bouton ne propose d'en changer.
   await expect(page.getByRole('button', { name: /Changer d’activité|Changer d'activité/ })).toHaveCount(0)
 
-  await page.screenshot({ path: 'capture-bande-seule.png', clip: { x: 0, y: 0, width: 390, height: 210 } })
+  await page.screenshot({ path: 'capture-bande-seule.png', clip: { x: 0, y: 0, width: 390, height: 210 }, animations: 'disabled' })
 
   expect(pageErrors, `exceptions JS : ${pageErrors.join(' | ')}`).toHaveLength(0)
 })

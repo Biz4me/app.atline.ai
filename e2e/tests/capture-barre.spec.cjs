@@ -43,6 +43,13 @@ test('l’accueil, la barre à cinq, et le menu qui bascule', async ({ page, pag
   await expect(panneau).toBeVisible({ timeout: 10_000 })
   await expect(panneau.getByText('Ton compte')).toBeVisible()
 
+  // 🔴 UNE SEULE FOIS. Le menu redessinait sa propre barre du haut, avec son
+  // sélecteur et son avatar : sur l'accueil, l'activité s'affichait donc DEUX
+  // fois, et deux contrôles du même nom cohabitaient. Aucune assertion de
+  // présence ne l'aurait vu — `toBeVisible` se contente du premier.
+  await expect(page.getByText('Forever Living')).toHaveCount(1)
+  await expect(page.getByRole('link', { name: /Mon compte/ })).toHaveCount(1)
+
   // 🔴 Le clic à blanc échoue si quelque chose s'interpose. `toBeVisible` non.
   await barre.getByRole('link', { name: 'Agenda' }).click({ trial: true, timeout: 5_000 })
   await page.screenshot({ path: 'capture-menu.png', animations: 'disabled' })
@@ -70,6 +77,17 @@ test('l’accueil, la barre à cinq, et le menu qui bascule', async ({ page, pag
   await menu.click()
   await expect(panneau).toBeVisible({ timeout: 10_000 })
   await expect(allumees).toHaveCount(0)
+
+  // 🔴 LE MENU EST IDENTITAIRE MÊME OUVERT DEPUIS UN LIEU. C'est la correction
+  // du 5 novembre : j'avais lié l'identité au seul chemin `/accueil`, si bien
+  // qu'ouvrir le menu depuis Formation gardait « Formation » en haut, sans
+  // sélecteur ni avatar. Deux écrans la portent, pas un.
+  await expect(page.getByText('Forever Living')).toBeVisible()
+  await expect(page.getByRole('link', { name: /Mon compte/ })).toBeVisible()
+  // …et le nom du lieu a cédé la place, sinon l'écran répondrait deux fois à
+  // « où suis-je » dans le même coin.
+  await expect(page.getByRole('heading', { level: 1, name: 'Formation' })).toHaveCount(0)
+  await page.screenshot({ path: 'capture-menu-depuis-lieu.png', animations: 'disabled' })
 
   // L'image depuis un LIEU, pas depuis l'accueil : c'est là qu'on voit
   // qu'une entrée déjà allumée s'est bien éteinte.
