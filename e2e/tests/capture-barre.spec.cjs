@@ -58,5 +58,27 @@ test('l’accueil, la barre à cinq, et le menu qui bascule', async ({ page, pag
   await expect(page.getByRole('link', { name: /Retour à l’accueil/ })).toBeVisible()
   await page.screenshot({ path: 'capture-lieu.png', clip: { x: 0, y: 0, width: 390, height: 150 }, animations: 'disabled' })
 
+  // ── 5. LE MENU ÉTEINT LES AUTRES, ET LES RALLUME ─────────────────────
+  //
+  // 🔴 En TROIS temps, pas un. Vérifier seulement l'extinction ne dirait
+  // pas qu'on retrouve son lieu en refermant — et une barre qui oublie où
+  // l'on était est pire qu'une barre qui en allume deux.
+  const allumees = barre.locator('[aria-current="page"]')
+  await expect(allumees).toHaveCount(1)
+  await expect(allumees).toHaveText(/Formation/)
+
+  await menu.click()
+  await expect(panneau).toBeVisible({ timeout: 10_000 })
+  await expect(allumees).toHaveCount(0)
+
+  // L'image depuis un LIEU, pas depuis l'accueil : c'est là qu'on voit
+  // qu'une entrée déjà allumée s'est bien éteinte.
+  await page.screenshot({ path: 'capture-barre-menu-ouvert.png', clip: { x: 0, y: 844 - 80, width: 390, height: 80 }, animations: 'disabled' })
+
+  await menu.click()
+  await expect(panneau).toBeHidden({ timeout: 5_000 })
+  await expect(allumees).toHaveCount(1)
+  await expect(allumees).toHaveText(/Formation/)
+
   expect(pageErrors, `exceptions JS : ${pageErrors.join(' | ')}`).toHaveLength(0)
 })
