@@ -13,7 +13,10 @@ const { test, expect } = require('../fixtures.cjs')
 
 test.use({ viewport: { width: 390, height: 844 } })
 
-test('l’agenda mène au formulaire, qui est une pleine page', async ({ page, pageErrors }) => {
+test('l’agenda mène au sélecteur de créneau, qui est une pleine page', async ({
+  page,
+  pageErrors,
+}) => {
   await page.goto('/agenda', { waitUntil: 'domcontentloaded' })
   await expect(page.getByRole('heading', { level: 1, name: 'Agenda' })).toBeVisible({
     timeout: 20_000,
@@ -29,35 +32,52 @@ test('l’agenda mène au formulaire, qui est une pleine page', async ({ page, p
   await ajouter.click({ trial: true })
   await ajouter.click()
 
+  // ── LE SÉLECTEUR ──
   await expect(page).toHaveURL(/\/agenda\/nouveau/, { timeout: 20_000 })
-  await expect(page.getByRole('heading', { level: 1, name: /Nouveau rendez-vous/ })).toBeVisible()
+  await expect(page.getByRole('heading', { level: 1, name: 'Quand ?' })).toBeVisible()
 
-  // ── Une PLEINE PAGE : pas de barre du bas, la flèche pour seule sortie ──
-  // On ne doit pas pouvoir partir ailleurs d'une touche au milieu d'une saisie.
+  // Une PLEINE PAGE : pas de barre du bas, la flèche pour seule sortie. On ne
+  // doit pas pouvoir partir ailleurs d'une touche au milieu d'une prise.
   await expect(page.getByRole('navigation', { name: 'Navigation principale' })).toHaveCount(0)
   await expect(page.getByRole('link', { name: 'Retour à l’agenda' })).toBeVisible()
 
-  // ── 🔴 LE GESTE EST AU RAS DU BAS, PAS À 64 PX DU VIDE ──
-  //
-  // C'est la mesure de la correction : `ConteneurAction` posait sa hauteur en
-  // dur, calée sur une barre du bas qui n'existe pas ici. Sans ce contrôle, le
-  // bouton flotterait au-dessus d'une bande vide et personne ne saurait dire
-  // pourquoi « ça fait bizarre ».
-  const enregistrer = page.getByRole('button', { name: 'Enregistrer' })
-  await expect(enregistrer).toBeVisible()
-  await enregistrer.click({ trial: true })
-  const cadre = await enregistrer.boundingBox()
-  const vide = 844 - (cadre.y + cadre.height)
-  expect(vide, `le bouton laisse ${Math.round(vide)} px de vide sous lui`).toBeLessThan(32)
+  // La bande des 14 jours, et un seul jour allumé.
+  const jours = page.locator('a[href^="/agenda/nouveau?jour="]')
+  await expect(jours).toHaveCount(14)
+  await expect(page.locator('[aria-current="date"]')).toHaveCount(1)
 
-  // ── Les champs, et CEUX QU'ON NE DEMANDE PAS ──
-  await expect(page.locator('#date')).toHaveAttribute('required', '')
-  await expect(page.locator('#heure')).toHaveAttribute('required', '')
-  // La date part sur aujourd'hui ; l'heure reste vide, parce que c'est une
-  // décision et pas un défaut.
-  expect(await page.locator('#date').inputValue()).toMatch(/^\d{4}-\d{2}-\d{2}$/)
-  expect(await page.locator('#heure').inputValue()).toBe('')
-  await expect(page.locator('#titre')).toBeVisible()
+  // ── 🔴 L'AGENDA GOOGLE EST VRAIMENT LU ───────────────────────────────
+  //
+  // C'est LE contrôle de toute la chaîne, et il tient en une absence. Si la
+  // clé de chiffrement manquait à V2, si le jeton ne se renouvelait pas, ou
+  // si Google refusait l'appel, `occupeGoogle` rendrait `null` — et cette
+  // bannière apparaîtrait. Le compte de test a raccordé son agenda le
+  // 30 juillet 2026 avec `calendar.readonly` : elle ne doit pas être là.
+  //
+  // ⚠️ Et c'est bien une ABSENCE qu'on vérifie, pas une présence : il n'y a
+  // rien d'autre à l'écran qui dise « Google a répondu ».
+  await expect(page.getByText(/agenda Google n’est pas raccordé/)).toHaveCount(0)
+
+  await page.screenshot({ path: 'capture-creneaux.png', animations: 'disabled' })
+
+  // ── Un créneau libre mène au formulaire, créneau porté ──
+  const libre = page.locator('a[href^="/agenda/nouveau/quoi"]').first()
+  await expect(libre).toBeVisible()
+  const heure = (await libre.innerText()).split(/\s+/)[0].trim()
+  await libre.click()
+
+  await expect(page).toHaveURL(/\/agenda\/nouveau\/quoi\?date=.+&heure=/, { timeout: 20_000 })
+  await expect(page.getByRole('heading', { level: 1, name: 'Le rendez-vous' })).toBeVisible()
+
+  // 🔴 LE « QUAND » N'EST PLUS DEMANDÉ, il est ANNONCÉ. Le redemander en deux
+  // champs serait poser deux fois la même question sur deux écrans.
+  await expect(page.locator('#date')).toHaveCount(0)
+  await expect(page.locator('#heure')).toHaveCount(0)
+  const corps = await page.locator('main').innerText()
+  expect(corps, `le créneau ${heure} n’est pas annoncé`).toContain(heure)
+  // Et il voyage réellement jusqu'au serveur.
+  expect(await page.locator('form input[name="heure"]').inputValue()).toBe(heure)
+  await expect(page.getByRole('link', { name: 'Choisir un autre créneau' })).toBeVisible()
 
   // 🔴 PLUS AUCUN `<select>` NATIF. C'est lui qui faisait dessiner la moitié
   // de l'écran par le système : bordure grise, coins carrés, et sur téléphone
@@ -66,29 +86,23 @@ test('l’agenda mène au formulaire, qui est une pleine page', async ({ page, p
   for (const champ of ['contact', 'minutes', 'canal']) {
     await expect(page.locator(`form input[name="${champ}"]`)).toHaveCount(1)
   }
-  // 🔴 AUCUN CHAMP QUI NE SE VOIT PAS SUR L'AGENDA. `description` existe en
-  // base et n'est lu nulle part : le proposer inviterait à écrire dans le vide.
-  //
-  // ⚠️ `form [name=…]` ET NON `[name=…]` : le document porte un
-  // `<meta name="description">` dans sa tête, que mon premier sélecteur
-  // comptait comme un champ. Il a donc échoué — en accusant l'app d'un défaut
-  // qui était dans la sonde.
   await expect(page.locator('form [name="description"]')).toHaveCount(0)
-
-  // Et le canal ne présélectionne rien : l'agenda préfère se taire plutôt que
-  // d'annoncer « Autre », qui n'apprend à personne.
   expect(await page.locator('form input[name="canal"]').inputValue()).toBe('AUTRE')
+
+  // ── Le geste est AU RAS DU BAS, pas à 64 px du vide ──
+  const enregistrer = page.getByRole('button', { name: 'Enregistrer' })
+  await expect(enregistrer).toBeVisible()
+  await enregistrer.click({ trial: true })
+  const cadre = await enregistrer.boundingBox()
+  expect(844 - (cadre.y + cadre.height), 'le bouton flotte au-dessus du vide').toBeLessThan(32)
 
   // ── 🔴 UNE SAISIE ET UN DÉROULANT SONT LE MÊME OBJET À L'ŒIL ──────────
   //
-  // C'est l'invariant pour lequel la classe `CHAMP` existe, et c'est celui
-  // qui a lâché le 5 novembre 2026 : la constante vivait dans un module
-  // `'use client'`, donc la page SERVEUR en recevait une référence et non une
-  // chaîne. L'attribut `class` des saisies a contenu le texte d'un message
-  // d'erreur — sans build rouge, sans exception, sans une ligne de console.
-  // Elles faisaient **21 px de haut sans bordure** contre 47 avec pour le
-  // déroulant voisin. Visible à l'œil, muet pour toutes les machines, et ma
-  // sonde d'alors se contentait de `toBeVisible()`.
+  // L'invariant pour lequel la classe `CHAMP` existe, et celui qui a lâché le
+  // 5 novembre 2026 : la constante vivait dans un module `'use client'`, donc
+  // la page SERVEUR en recevait une référence. L'attribut `class` des saisies
+  // contenait le texte d'un message d'erreur — build vert, console muette —
+  // et elles faisaient 21 px de haut sans bordure contre 47 pour le déroulant.
   const mesures = await page.evaluate(() => {
     const lire = (el) => {
       const s = getComputedStyle(el)
@@ -112,7 +126,8 @@ test('l’agenda mène au formulaire, qui est une pleine page', async ({ page, p
 
 test('le déroulant s’ouvre sous le champ, et reste dans l’écran', async ({ page, pageErrors }) => {
   await page.goto('/agenda/nouveau', { waitUntil: 'domcontentloaded' })
-  await expect(page.getByRole('heading', { level: 1, name: /Nouveau rendez-vous/ })).toBeVisible({
+  await page.locator('a[href^="/agenda/nouveau/quoi"]').first().click()
+  await expect(page.getByRole('heading', { level: 1, name: 'Le rendez-vous' })).toBeVisible({
     timeout: 20_000,
   })
 
