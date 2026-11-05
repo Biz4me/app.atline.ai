@@ -93,30 +93,32 @@ test('cinq lieux, un seul nom chacun, et l’identité sur l’accueil seul', as
     })
   }
 
-  // ⚠️ « Répéter » EST ABSENT DE CETTE BOUCLE, et il faut le dire ici plutôt
-  // que de le découvrir : `/coach/repeter` est un écran d'APPEL immersif. Il
-  // n'a ni barre du haut ni barre du bas, et se referme par sa propre croix.
-  // C'est la seule entrée de la barre dont la destination masque la barre —
-  // une porte à sens unique. Contrôlé séparément plus bas.
-  for (const nom of ['Formation', 'Agenda', 'Contacts']) await lieuConforme(nom)
+  // 🔴 « RÉPÉTER » EST ENTRÉ DANS CETTE BOUCLE LE 5 NOVEMBRE 2026, et c'est
+  // le sens de l'antichambre. Jusque-là `/coach/repeter` ouvrait l'écran
+  // d'appel immersif : ni barre du haut ni barre du bas, une croix pour seule
+  // sortie. C'était la SEULE entrée de la barre dont la destination masquait
+  // la barre — une porte à sens unique au milieu de la navigation. L'appel
+  // vit désormais un cran plus bas, et c'est l'antichambre qui a la coquille.
+  //
+  // ⚠️ Contacts reste EN DERNIER : le contrôle d'après lit l'entrée allumée.
+  for (const nom of ['Formation', 'Répéter', 'Agenda', 'Contacts']) await lieuConforme(nom)
 
   // ── 4. une seule entrée allumée, et c'est la bonne ─────────────────────
   const allumees = barre.locator('[aria-current="page"]')
   await expect(allumees).toHaveCount(1)
   await expect(allumees).toHaveText(/Contacts/)
 
-  // ── RÉPÉTER : immersif, mais il doit RAMENER ───────────────────
+  // ── L'APPEL, un cran plus bas : immersif, et il doit RAMENER ──────────
   //
-  // 🔴 Une destination qui masque la barre doit avoir une sortie, sinon
-  // c'est un cul-de-sac. On vérifie qu'elle existe et qu'elle ramène à
-  // l'accueil — pas à `/coach`, dont la redirection est faite pour les liens
-  // qu'on ne maîtrise plus, pas pour notre propre code.
-  await barre.getByRole('link', { name: 'Répéter' }).click()
-  await expect(page).toHaveURL(/\/coach\/repeter/, { timeout: 15_000 })
+  // 🔴 Une destination qui masque la barre doit avoir une sortie, sinon c'est
+  // un cul-de-sac. L'écran d'appel est le SEUL qui a le droit de la masquer —
+  // on parle, on ne navigue pas — et il se referme par sa propre croix.
+  await page.goto('/coach/repeter/appel', { waitUntil: 'domcontentloaded' })
+  await expect(page.getByRole('navigation', { name: /Navigation principale/ })).toHaveCount(0)
   const sortie = page.getByRole('button', { name: /Fermer|Quitter|Raccrocher/ })
-  await expect(sortie.first()).toBeVisible({ timeout: 15_000 })
+  await expect(sortie.first()).toBeVisible({ timeout: 20_000 })
   await poser(page)
-  await page.screenshot({ path: 'capture-repeter.png', animations: 'disabled' })
+  await page.screenshot({ path: 'capture-appel.png', animations: 'disabled' })
 
   // ── 5. /coach ne rend pas 404, il ramène à l'accueil ───────────────────
   //
