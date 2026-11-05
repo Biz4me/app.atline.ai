@@ -240,9 +240,15 @@ test('le menu de l’agenda : raccordement et historique', async ({ page, pageEr
   // 🔴 LA LIMITE EST ÉCRITE. Quelqu'un qui croit son agenda synchronisé ne
   // vérifiera pas, et découvrira le trou le jour du rendez-vous.
   expect(dit, 'le sens unique n’est pas annoncé').toMatch(/n’apparaît pas dans Google/)
-  // Le départ se fait depuis V1 : son adresse de retour est la seule
-  // enregistrée dans la console Google.
-  await expect(page.locator('a[href^="https://app.atline.ai/api/calendar/connect"]')).toHaveCount(1)
+  // 🔴 LE DÉPART EST LOCAL DEPUIS LE 5 NOVEMBRE 2026. Il passait par
+  // `app.atline.ai`, faute d'adresse de retour enregistrée pour V2 ; elle l'est
+  // maintenant, sur le client **Atline Web** que les deux apps partagent — et
+  // pas sur celui de Cal, où elle avait d'abord été posée.
+  //
+  // ⚠️ Un `<a>` NATIF et non un `<Link>`, même pour une adresse locale : au
+  // bout il y a une route qui redirige HORS du site, qu'une navigation interne
+  // de Next ne suivrait pas.
+  await expect(page.locator('a[href="/api/calendar/connect"]')).toHaveCount(1)
   await page.screenshot({ path: 'capture-agenda-connexion.png', animations: 'disabled' })
 
   // ── L'HISTORIQUE ──
