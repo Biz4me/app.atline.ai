@@ -24,7 +24,17 @@ test('la dernière ligne de la feuille reste au-dessus de la barre', async ({ pa
   // 🔴 ON TERMINE LES ANIMATIONS AVANT DE MESURER. La feuille monte en
   // 0,24 s ; mesurée pendant, elle paraît déborder de l'écran — j'ai failli
   // corriger un défaut qui n'existait pas. Même cause que la capture floue.
-  await page.evaluate(() => document.getAnimations().forEach((a) => a.finish()))
+  await page.evaluate(() =>
+    // 🔴 `finish()` LANCE sur une animation INFINIE (« Cannot finish
+    // Animation with an infinite target effect end ») — un pouls, un
+    // chargeur. On ne peut donc pas la terminer : on l'ignore, elle ne
+    // déplace rien. Ce sont les transitions BORNÉES qui faussent une mesure.
+    document.getAnimations().forEach((a) => {
+      try {
+        a.finish()
+      } catch {}
+    }),
+  )
 
   const derniere = feuille.getByRole('button').filter({ hasText: 'Forever Living' })
   await expect(derniere).toBeVisible()

@@ -25,12 +25,32 @@ test('l’accueil, la barre à cinq, et le menu qui bascule', async ({ page, pag
   await expect(barre).toBeVisible({ timeout: 20_000 })
 
   const entrees = (await barre.innerText()).split('\n').map((t) => t.trim()).filter(Boolean)
-  expect(entrees).toEqual(['Menu', 'Formation', 'Coach', 'Agenda', 'Mes gens'])
+  // 🔴 CES CINQ MOTS SONT AUSSI LES TITRES DES ÉCRANS, depuis le 5 nov. La
+  // barre du bas disait « Formation » quand la barre du haut disait « Ton
+  // parcours » : deux noms pour un même lieu. Le test ci-dessous, en §4,
+  // vérifie que le titre de l'écran EST le libellé de son entrée.
+  expect(entrees).toEqual(['Menu', 'Formation', 'Coaching', 'Agenda', 'Contacts'])
 
   // L'accueil porte l'identité : l'activité et l'avatar.
   await expect(page.getByText('Forever Living')).toBeVisible()
   await expect(page.getByRole('link', { name: /Mon compte/ })).toBeVisible()
   await page.screenshot({ path: 'capture-accueil.png', animations: 'disabled' })
+
+  // On retient la hauteur de la barre du haut : le §4 la comparera à celle
+  // d'un lieu. ⚠️ Animations terminées d'abord — une mesure prise en vol ment
+  // exactement comme une capture.
+  await page.evaluate(() =>
+    // 🔴 `finish()` LANCE sur une animation INFINIE (« Cannot finish
+    // Animation with an infinite target effect end ») — un pouls, un
+    // chargeur. On ne peut donc pas la terminer : on l'ignore, elle ne
+    // déplace rien. Ce sont les transitions BORNÉES qui faussent une mesure.
+    document.getAnimations().forEach((a) => {
+      try {
+        a.finish()
+      } catch {}
+    }),
+  )
+  const hautAccueil = Math.round((await page.locator('header').boundingBox()).height)
 
   // ── 2. le menu s'ouvre et laisse la barre atteignable ───────────────────
   const menu = barre.getByRole('button', { name: 'Menu' })
@@ -58,11 +78,74 @@ test('l’accueil, la barre à cinq, et le menu qui bascule', async ({ page, pag
   await menu.click()
   await expect(panneau).toBeHidden({ timeout: 5_000 })
 
-  // ── 4. un lieu ne porte NI sélecteur NI avatar ──────────────────────────
+  // ── 4. LES QUATRE LIEUX, PAS SEULEMENT UN ──────────────────────────────
+  //
+  // 🔴 Une règle vérifiée sur un écran n'est vérifiée qu'au quart. Les trois
+  // mesures ci-dessous — le nom, la hauteur, le centrage — valent pour chacun
+  // des quatre lieux, et c'est le seul moyen qu'elles ne se perdent pas au
+  // prochain écran ajouté.
+  async function lieuConforme(nom) {
+    await barre.getByRole('link', { name: nom }).click()
+    await expect(page.getByRole('heading', { level: 1, name: nom })).toBeVisible({ timeout: 15_000 })
+    await page.evaluate(() =>
+      document.getAnimations().forEach((a) => {
+        try {
+          a.finish()
+        } catch {}
+      }),
+    )
+    const cadre = await page.locator('header').boundingBox()
+    const bloc = await page.locator('header > div').first().boundingBox()
+    const ecart = Math.round(bloc.x + bloc.width / 2 - (cadre.x + cadre.width / 2))
+    expect(Math.round(cadre.height), `${nom} : barre du haut`).toBe(hautAccueil)
+    expect(Math.abs(ecart), `${nom} : paire décalée de ${ecart} px`).toBeLessThanOrEqual(1)
+    // La barre du haut seule : c'est elle qu'on regarde, pas la page.
+    await page.screenshot({
+      path: `capture-haut-${nom.toLowerCase()}.png`,
+      clip: { x: 0, y: 0, width: 390, height: 66 },
+      animations: 'disabled',
+    })
+  }
+
+  for (const nom of ['Coaching', 'Agenda', 'Contacts']) await lieuConforme(nom)
+
   await barre.getByRole('link', { name: 'Formation' }).click()
   await expect(page).toHaveURL(/\/parcours$/, { timeout: 15_000 })
   await expect(page.getByRole('link', { name: /Mon compte/ })).toHaveCount(0)
   await expect(page.getByRole('link', { name: /Retour à l’accueil/ })).toBeVisible()
+
+  // 🔴 LE TITRE DE L'ÉCRAN EST LE LIBELLÉ DE SON ENTRÉE. Ce lieu disait « Ton
+  // parcours » en haut et « Formation » en bas — deux noms, une question de
+  // plus à chaque arrivée.
+  await expect(page.getByRole('heading', { level: 1, name: 'Formation' })).toBeVisible()
+
+  // 🔴 ET LA BARRE DU HAUT A LA MÊME HAUTEUR QUE SUR L'ACCUEIL. Elle valait
+  // 66 px ici (surtitre + titre sur deux lignes) contre 64 là-bas : elle
+  // sautait au changement d'écran, et l'icône se décalait contre un bloc de
+  // deux lignes. Une égalité ne se constate pas à l'œil, elle se mesure.
+  await page.evaluate(() =>
+    // 🔴 `finish()` LANCE sur une animation INFINIE (« Cannot finish
+    // Animation with an infinite target effect end ») — un pouls, un
+    // chargeur. On ne peut donc pas la terminer : on l'ignore, elle ne
+    // déplace rien. Ce sont les transitions BORNÉES qui faussent une mesure.
+    document.getAnimations().forEach((a) => {
+      try {
+        a.finish()
+      } catch {}
+    }),
+  )
+  const cadre = await page.locator('header').boundingBox()
+  const hautLieu = Math.round(cadre.height)
+  expect(hautLieu, `accueil ${hautAccueil} px, lieu ${hautLieu} px`).toBe(hautAccueil)
+
+  // 🔴 ET LA PAIRE ICÔNE + NOM EST VRAIMENT CENTRÉE. Un `justify-center` ne
+  // centre que dans l'espace QUI RESTE : avec un logo à gauche et rien à
+  // droite, le nom tombait une vingtaine de pixels trop loin. L'œil voit ce
+  // décalage sans savoir le nommer — un contrepoids vide rétablit la symétrie,
+  // et seule une mesure dit qu'il fait la bonne taille.
+  const bloc = await page.locator('header > div').first().boundingBox()
+  const ecart = Math.round(bloc.x + bloc.width / 2 - (cadre.x + cadre.width / 2))
+  expect(Math.abs(ecart), `la paire est décalée de ${ecart} px`).toBeLessThanOrEqual(1)
   await page.screenshot({ path: 'capture-lieu.png', clip: { x: 0, y: 0, width: 390, height: 150 }, animations: 'disabled' })
 
   // ── 5. LE MENU ÉTEINT LES AUTRES, ET LES RALLUME ─────────────────────
