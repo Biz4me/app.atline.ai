@@ -34,3 +34,7 @@ e2e/node_modules
 .next-new/
 .next-old/
 .next-echec/
+
+# Les captures du harnais sont des SORTIES, pas des sources : elles se
+# refabriquent en quatre secondes et dateraient dans le depot.
+e2e/capture-*.png
