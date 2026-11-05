@@ -54,6 +54,23 @@ test('cinq lieux, un seul nom chacun, et l’identité sur l’accueil seul', as
   // le réintroduire par inadvertance.
   await expect(barre.getByRole('button', { name: 'Menu' })).toHaveCount(0)
 
+  // 🔴 LE GESTE DE L'ACCUEIL EST FIXE, et il n'existe qu'UNE fois.
+  // Il a porté « Ouvrir le module 8 » : un raccourci vers Formation, qui a
+  // déjà son entrée dans la barre, et un verbe qui changeait à chaque visite.
+  // Le compte vérifie aussi qu'aucune carte ne le redouble.
+  const parler = page.getByRole('link', { name: 'Parler à Atlas' })
+  await expect(parler).toHaveCount(1)
+  await expect(parler).toHaveAttribute('href', '/coach/parler')
+  // ⚠️ Le conteneur fixe ne porte QU'UN geste. Mon premier contrôle visait
+  // à côté : il interdisait « Ouvrir le module » sur toute la page, alors que
+  // la carte du plan le porte — légitimement, depuis que le bouton du bas ne
+  // reprend plus la première ligne. Ce qui compte, c'est qu'il soit SEUL en
+  // bas.
+  await expect(parler.locator('xpath=..').getByRole('link')).toHaveCount(1)
+
+  // …et que chaque ligne du plan ait bien retrouvé la sienne.
+  await expect(page.getByRole('link', { name: /Ouvrir le module/ })).toHaveCount(1)
+
   // ── 3. chaque lieu : son nom, sa hauteur, son centrage ─────────────────
   async function lieuConforme(nom) {
     await barre.getByRole('link', { name: nom }).click()
