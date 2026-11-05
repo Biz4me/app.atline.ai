@@ -20,10 +20,13 @@ test("l'agenda de V2 s'affiche pour un utilisateur authentifié", async ({ page,
   // route existe.
   await expect(page.getByRole('heading', { name: 'Agenda', level: 1 })).toBeVisible()
 
-  // La barre du bas doit porter QUATRE destinations depuis le 3 novembre.
-  // Trois voudrait dire que la coquille n'a pas été déployée.
+  // La barre du bas porte CINQ destinations depuis le 5 novembre 2026 :
+  // Accueil · Formation · Simulation · Agenda · Contacts. Quatre voudrait dire
+  // qu'on regarde un déploiement d'avant la recomposition — ce contrôle a
+  // justement attrapé sa propre péremption, en annonçant 4 là où l'app en
+  // servait 5 depuis des heures.
   const barre = page.getByRole('navigation', { name: 'Navigation principale' })
-  await expect(barre.getByRole('link')).toHaveCount(4)
+  await expect(barre.getByRole('link')).toHaveCount(5)
   await expect(barre.getByRole('link', { name: 'Agenda' })).toBeVisible()
 
   // « Ce qui vient » est toujours là, rempli ou vide.

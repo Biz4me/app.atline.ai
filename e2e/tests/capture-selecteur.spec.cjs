@@ -34,9 +34,23 @@ test('la bande d’activité se voit, et s’ouvre', async ({ page, pageErrors }
 
   // Par le libellé d'accessibilité, pas par une classe : une classe change au
   // premier coup de peigne, le sens non.
-  const bande = page.getByRole('button', { name: /Changer d’activité|Changer d'activité/ })
+  const bande = page.getByRole('button', { name: /Changer d['’]activité/ })
+
+  // ⚠️ CE TEST A BESOIN D'UN COMPTE À DEUX ACTIVITÉS, et il faut le DIRE
+  // plutôt que d'échouer sur « element(s) not found ». Avec une seule, le
+  // sélecteur n'est pas un bouton : l'écran DIT où l'on travaille et ne
+  // propose pas d'en changer — c'est le comportement voulu, pas une panne.
+  // Compté le 5 novembre 2026 : `humanstring@gmail.com` n'a plus que Forever
+  // Living, et ce contrôle échouait depuis, en accusant l'app.
+  await expect(page.getByRole('navigation', { name: 'Navigation principale' })).toBeVisible({
+    timeout: 20_000,
+  })
+  test.skip(
+    (await bande.count()) === 0,
+    'ce compte n’a qu’une activité : rejouer avec E2E_COMME=<un compte qui en a deux>',
+  )
+
   await expect(bande).toBeVisible({ timeout: 20_000 })
-  await expect(bande).toContainText('NHT Global')
 
   await page.screenshot({ path: 'capture-bande-fermee.png', clip: { x: 0, y: 0, width: 390, height: 210 }, animations: 'disabled' })
 

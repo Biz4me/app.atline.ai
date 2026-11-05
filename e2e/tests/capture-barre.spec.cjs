@@ -40,7 +40,7 @@ test('cinq lieux, un seul nom chacun, et l’identité sur l’accueil seul', as
   await expect(barre).toBeVisible({ timeout: 20_000 })
 
   const entrees = (await barre.innerText()).split('\n').map((t) => t.trim()).filter(Boolean)
-  expect(entrees).toEqual(['Accueil', 'Formation', 'Répéter', 'Agenda', 'Contacts'])
+  expect(entrees).toEqual(['Accueil', 'Formation', 'Simulation', 'Agenda', 'Contacts'])
 
   // ── 2. l'accueil porte l'identité, et lui seul ─────────────────────────
   await expect(page.getByText('Forever Living')).toHaveCount(1)
@@ -93,7 +93,7 @@ test('cinq lieux, un seul nom chacun, et l’identité sur l’accueil seul', as
     })
   }
 
-  // 🔴 « RÉPÉTER » EST ENTRÉ DANS CETTE BOUCLE LE 5 NOVEMBRE 2026, et c'est
+  // 🔴 « SIMULATION » (« Répéter » alors) EST ENTRÉ DANS CETTE BOUCLE LE 5 NOVEMBRE 2026, et c'est
   // le sens de l'antichambre. Jusque-là `/coach/repeter` ouvrait l'écran
   // d'appel immersif : ni barre du haut ni barre du bas, une croix pour seule
   // sortie. C'était la SEULE entrée de la barre dont la destination masquait
@@ -101,7 +101,7 @@ test('cinq lieux, un seul nom chacun, et l’identité sur l’accueil seul', as
   // vit désormais un cran plus bas, et c'est l'antichambre qui a la coquille.
   //
   // ⚠️ Contacts reste EN DERNIER : le contrôle d'après lit l'entrée allumée.
-  for (const nom of ['Formation', 'Répéter', 'Agenda', 'Contacts']) await lieuConforme(nom)
+  for (const nom of ['Formation', 'Simulation', 'Agenda', 'Contacts']) await lieuConforme(nom)
 
   // ── 4. une seule entrée allumée, et c'est la bonne ─────────────────────
   const allumees = barre.locator('[aria-current="page"]')
@@ -117,6 +117,27 @@ test('cinq lieux, un seul nom chacun, et l’identité sur l’accueil seul', as
   await expect(page.getByRole('navigation', { name: /Navigation principale/ })).toHaveCount(0)
   const sortie = page.getByRole('button', { name: /Fermer|Quitter|Raccrocher/ })
   await expect(sortie.first()).toBeVisible({ timeout: 20_000 })
+
+  // ⚠️ ATTENDRE QUE LA MIRE AIT PEINT. Elle vit dans un `<canvas>` : sa
+  // présence dans le DOM ne dit RIEN de ce qu'on y voit, et une capture peut
+  // partir avant sa première image. Elle est sortie vide d'une capture du
+  // 5 novembre — j'y ai d'abord lu un défaut de l'app, mesure à l'appui
+  // ailleurs (`mire-figee.spec.cjs`) : c'était la capture qui courait.
+  await expect
+    .poll(
+      () =>
+        page.evaluate(() => {
+          const c = document.querySelector('canvas')
+          if (!c) return 0
+          const d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data
+          let n = 0
+          for (let i = 3; i < d.length; i += 4) if (d[i] > 8) n++
+          return n
+        }),
+      { timeout: 10_000 },
+    )
+    .toBeGreaterThan(0)
+
   await poser(page)
   await page.screenshot({ path: 'capture-appel.png', animations: 'disabled' })
 

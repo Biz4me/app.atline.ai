@@ -1,4 +1,4 @@
-// L'ANTICHAMBRE DE RÉPÉTER, SON MENU, ET SES DEUX PLEINES PAGES.
+// L'ANTICHAMBRE DE LA SIMULATION, SON MENU, ET SES DEUX PLEINES PAGES.
 //
 //   E2E_BASE=https://v2.atline.ai E2E_COMME=humanstring@gmail.com \
 //     npx playwright test tests/antichambre-repeter.spec.cjs
@@ -41,35 +41,35 @@ test('le menu : des titres, et le geste reste allumé', async ({ page, pageError
   await page.goto('/coach/repeter', { waitUntil: 'domcontentloaded' })
 
   // ── 1. c'est un LIEU, pas une porte à sens unique ──────────────────────
-  await expect(page.getByRole('heading', { level: 1, name: 'Répéter' })).toBeVisible({
+  await expect(page.getByRole('heading', { level: 1, name: 'Simulation' })).toBeVisible({
     timeout: 20_000,
   })
   const barre = page.getByRole('navigation', { name: BARRE })
   await expect(barre).toBeVisible()
-  await expect(barre.locator('[aria-current="page"]')).toHaveText(/Répéter/)
+  await expect(barre.locator('[aria-current="page"]')).toHaveText(/Simulation/)
   // ⚠️ Un seul h1. Deux titres sur une page, c'est la faute déjà payée sur
   // les leçons — et elle ne se voit pas à l'écran.
   await expect(page.locator('h1')).toHaveCount(1)
 
   // ── 2. la rangée fixe : deux commandes, et le geste est TOUCHABLE ──────
-  const appeler = page.getByRole('link', { name: 'Appeler', exact: true })
-  await expect(appeler).toHaveCount(1)
-  await expect(appeler).toHaveAttribute('href', /\/coach\/repeter\/appel/)
+  const commencer = page.getByRole('link', { name: 'Commencer', exact: true })
+  await expect(commencer).toHaveCount(1)
+  await expect(commencer).toHaveAttribute('href', /\/coach\/repeter\/appel/)
 
-  const rangee = appeler.locator('xpath=..')
+  const rangee = commencer.locator('xpath=..')
   await expect(rangee.getByRole('link')).toHaveCount(1)
   const bouton = rangee.getByRole('button')
   await expect(bouton).toHaveCount(1)
-  await expect(bouton).toHaveAccessibleName(/^Menu Répéter$/)
+  await expect(bouton).toHaveAccessibleName(/^Menu Simulation$/)
 
   // 🔴 `toBeVisible` NE DÉTECTE PAS L'OCCLUSION : un bouton recouvert reste
   // « visible ». Seul un clic à blanc le dit.
   await poser(page)
-  await appeler.click({ trial: true })
+  await commencer.click({ trial: true })
   await bouton.click({ trial: true })
 
   const cadreMenu = await bouton.boundingBox()
-  const cadreGeste = await appeler.boundingBox()
+  const cadreGeste = await commencer.boundingBox()
   expect(cadreMenu.x + cadreMenu.width, 'le menu doit être À GAUCHE du geste').toBeLessThanOrEqual(
     cadreGeste.x + 1,
   )
@@ -88,7 +88,7 @@ test('le menu : des titres, et le geste reste allumé', async ({ page, pageError
   // le texte, il mesure la feuille de style.
   expect(texteAvant).toMatch(/Réussi si/i)
   expect(texteAvant).toMatch(/La situation/i)
-  await expect(corps.getByRole('link', { name: /Appeler/ })).toHaveCount(0)
+  await expect(corps.getByRole('link', { name: /Commencer/ })).toHaveCount(0)
 
   // ── 4. LE MENU OUVERT ──────────────────────────────────────────────────
   await bouton.click()
@@ -98,8 +98,8 @@ test('le menu : des titres, et le geste reste allumé', async ({ page, pageError
   // référence : le voile éteint la PAGE, pas la barre d'action. Avant
   // correction, une feuille recouvrait tout — on choisissait, et le seul
   // geste suivant était hors d'atteinte sous le voile.
-  await expect(appeler).toBeVisible()
-  await appeler.click({ trial: true })
+  await expect(commencer).toBeVisible()
+  await commencer.click({ trial: true })
   // Le bouton de gauche est devenu une croix, à la même place.
   await expect(bouton).toHaveAccessibleName(/^Fermer le menu$/)
   const apres = await bouton.boundingBox()
@@ -124,10 +124,10 @@ test('le menu : des titres, et le geste reste allumé', async ({ page, pageError
   await expect(page).toHaveURL(/\/coach\/repeter\/appels/, { timeout: 20_000 })
   await expect(page.getByRole('heading', { level: 1, name: /Sur quoi t['’]entraîner/ })).toBeVisible()
   await expect(page.getByRole('navigation', { name: BARRE })).toHaveCount(0)
-  await expect(page.getByRole('link', { name: 'Retour à Répéter' })).toBeVisible()
+  await expect(page.getByRole('link', { name: 'Retour à la simulation' })).toBeVisible()
   // ⚠️ Et pas de geste dominant : il se placerait au-dessus d'une barre du
   // bas qui n'existe plus ici, et flotterait à 64 px du vide.
-  await expect(page.getByRole('link', { name: 'Appeler', exact: true })).toHaveCount(0)
+  await expect(page.getByRole('link', { name: 'Commencer', exact: true })).toHaveCount(0)
   await poser(page)
   await page.screenshot({ path: 'capture-appels.png', animations: 'disabled' })
 
@@ -145,7 +145,7 @@ test('le menu : des titres, et le geste reste allumé', async ({ page, pageError
   expect(texteApres, `« ${titreChoisi} » choisi mais pas annoncé`).toContain(titreChoisi)
 
   // ── 7. le retour d'un détour ne perd PAS le choix ──────────────────────
-  await page.getByRole('button', { name: /^Menu Répéter$/ }).click()
+  await page.getByRole('button', { name: /^Menu Simulation$/ }).click()
   await page.getByRole('link', { name: /Où tu en es/ }).click()
   await expect(page.getByRole('heading', { level: 1, name: /Où tu en es/ })).toBeVisible({
     timeout: 20_000,
@@ -154,7 +154,7 @@ test('le menu : des titres, et le geste reste allumé', async ({ page, pageError
   await poser(page)
   await page.screenshot({ path: 'capture-resultats.png', animations: 'disabled' })
 
-  await page.getByRole('link', { name: 'Retour à Répéter' }).click()
+  await page.getByRole('link', { name: 'Retour à la simulation' }).click()
   // 🔴 AVEC LE PARAMÈTRE. Quatre endroits construisaient cette adresse : un
   // `encodeURIComponent` oublié quelque part ferait retomber sur le briefing
   // par défaut, et l'écran s'afficherait très bien — personne ne le verrait.
@@ -172,13 +172,13 @@ test('l’antichambre et l’appel ne peuvent pas se contredire', async ({ page,
   // travailler objections » et Aria jouant l'invitation. Rien, côté build,
   // ne l'aurait dit.
   await page.goto('/coach/repeter', { waitUntil: 'domcontentloaded' })
-  await expect(page.getByRole('heading', { level: 1, name: 'Répéter' })).toBeVisible({
+  await expect(page.getByRole('heading', { level: 1, name: 'Simulation' })).toBeVisible({
     timeout: 20_000,
   })
 
   const brief = await page.locator('main').innerText()
 
-  await page.getByRole('link', { name: 'Appeler', exact: true }).click()
+  await page.getByRole('link', { name: 'Commencer', exact: true }).click()
   await expect(page).toHaveURL(/\/coach\/repeter\/appel/, { timeout: 20_000 })
 
   const sortie = page.getByRole('button', { name: 'Fermer' })
@@ -188,7 +188,7 @@ test('l’antichambre et l’appel ne peuvent pas se contredire', async ({ page,
   // L'appel ne garde QUE l'ask : plus de briefing par-dessus la mire.
   expect(dansLAppel, 'le briefing ne doit pas se rejouer dans l’appel').not.toMatch(/Réussi si/i)
   expect(dansLAppel).not.toMatch(/La situation/i)
-  expect(dansLAppel).toMatch(/Touche la mire pour commencer/i)
+  expect(dansLAppel).toMatch(/Touche pour appeler/i)
 
   // ⚠️ L'ask de l'antichambre se retrouve mot pour mot dans l'appel. C'est la
   // même donnée, lue par la même fonction : si les deux écrans divergent,
@@ -202,7 +202,7 @@ test('l’antichambre et l’appel ne peuvent pas se contredire', async ({ page,
   // ── Fermer remonte à l'ANTICHAMBRE, pas à l'accueil ───────────────────
   await sortie.click()
   await expect(page).toHaveURL(/\/coach\/repeter(\?|$)/, { timeout: 20_000 })
-  await expect(page.getByRole('heading', { level: 1, name: 'Répéter' })).toBeVisible()
+  await expect(page.getByRole('heading', { level: 1, name: 'Simulation' })).toBeVisible()
 
   expect(pageErrors, `exceptions JS : ${pageErrors.join(' | ')}`).toHaveLength(0)
 })

@@ -3,6 +3,16 @@
 // immédiate ni au départ de la fiche via keepalive) + la LECTURE Qualification (« Son contexte »).
 const { test, expect } = require('../fixtures.cjs')
 
+// ⚠️ CE TEST EST CELUI DE V1 (`app.atline.ai`), et `/contacts/:id` n'existe
+// pas sur V2. Lancé sur `tests/` en bloc avec `E2E_BASE=https://v2.atline.ai`,
+// il échouait — et un rouge qui ne dénonce rien est pire qu'un test absent :
+// le 5 novembre 2026, il m'a fait chercher une régression qui n'existait pas.
+// On le saute explicitement, en disant quoi faire.
+test.skip(
+  /v2\.atline\.ai|app\.atline\.online/.test(process.env.E2E_BASE || ''),
+  'fiche contact = V1 : relancer avec E2E_BASE=https://app.atline.ai',
+)
+
 test('Contexte → lu en Qualification, survit au reload et au départ (keepalive)', async ({ page, seed, pageErrors }) => {
   const { cid } = seed
 
