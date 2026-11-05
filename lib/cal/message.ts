@@ -113,12 +113,22 @@ export function corpsConfirmation(r: Rendez): string {
   lignes.push('')
   // 🔴 LA phrase qui compte. Sans elle, l'événement n'entre pas dans son
   // agenda et aucun rappel ne sonnera. Voir l'en-tête du fichier.
-  // 🔴 LA phrase qui compte, et elle n'est vraie que depuis le correctif du
-  // fork : tant que Cal posait `responseStatus: "accepted"` à la place du
-  // prospect, aucun bouton n'apparaissait et cette demande était absurde.
+  // 🔴 LA phrase qui compte, et elle a été fausse deux fois avant d'être juste.
+  //
+  // ① Elle disait « accepte l'invitation » alors que Cal répondait oui à la
+  //    place du prospect : il n'y avait rien à accepter. Corrigé dans le fork.
+  // ② Elle disait « ci-dessous », en croyant que le bouton serait dans le
+  //    courrier. Mesuré le 5 novembre 2026 : Google pose l'événement dans
+  //    l'agenda de l'invité et c'est LÀ qu'il affiche Oui / Non / Peut-être.
+  //    Aucun bouton n'apparaît dans le message, et c'est normal.
+  //
+  // ⚠️ Elle doit rester vraie pour un prospect qui n'est PAS chez Google :
+  // son client lira notre `.ics` et posera l'événement de son côté. D'où
+  // « dans ton agenda », qui vaut dans les deux cas, plutôt que de désigner
+  // un bouton à un endroit précis.
   lignes.push(
-    "Accepte l'invitation ci-dessous : c'est ce qui posera le rendez-vous " +
-      'dans ton agenda et déclenchera le rappel.'
+    "Tu le trouveras dans ton agenda, en attente de ta réponse. Un clic sur " +
+      '« Oui » et c’est confirmé, avec le rappel.'
   )
 
   if (r.replanifier) {
@@ -197,7 +207,7 @@ export function corpsDeplacement(r: Rendez): string {
     lignes.push(r.visio)
   }
   lignes.push('')
-  lignes.push("Accepte la nouvelle invitation ci-dessous pour mettre ton agenda à jour.")
+  lignes.push("Ton agenda est mis à jour, et attend de nouveau ta réponse.")
   if (r.replanifier) {
     lignes.push('')
     lignes.push(`Pour déplacer à nouveau ou annuler : ${r.replanifier}`)
