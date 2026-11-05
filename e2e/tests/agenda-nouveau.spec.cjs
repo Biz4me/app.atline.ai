@@ -57,8 +57,14 @@ test('l’agenda mène au formulaire, qui est une pleine page', async ({ page, p
   // décision et pas un défaut.
   expect(await page.locator('#date').inputValue()).toMatch(/^\d{4}-\d{2}-\d{2}$/)
   expect(await page.locator('#heure').inputValue()).toBe('')
-  for (const id of ['#contact', '#titre', '#minutes', '#canal']) {
-    await expect(page.locator(id)).toBeVisible()
+  await expect(page.locator('#titre')).toBeVisible()
+
+  // 🔴 PLUS AUCUN `<select>` NATIF. C'est lui qui faisait dessiner la moitié
+  // de l'écran par le système : bordure grise, coins carrés, et sur téléphone
+  // une roulette qui monte du bas — à l'autre bout de l'endroit touché.
+  await expect(page.locator('form select')).toHaveCount(0)
+  for (const champ of ['contact', 'minutes', 'canal']) {
+    await expect(page.locator(`form input[name="${champ}"]`)).toHaveCount(1)
   }
   // 🔴 AUCUN CHAMP QUI NE SE VOIT PAS SUR L'AGENDA. `description` existe en
   // base et n'est lu nulle part : le proposer inviterait à écrire dans le vide.
@@ -71,9 +77,105 @@ test('l’agenda mène au formulaire, qui est une pleine page', async ({ page, p
 
   // Et le canal ne présélectionne rien : l'agenda préfère se taire plutôt que
   // d'annoncer « Autre », qui n'apprend à personne.
-  expect(await page.locator('#canal').inputValue()).toBe('AUTRE')
+  expect(await page.locator('form input[name="canal"]').inputValue()).toBe('AUTRE')
+
+  // ── 🔴 UNE SAISIE ET UN DÉROULANT SONT LE MÊME OBJET À L'ŒIL ──────────
+  //
+  // C'est l'invariant pour lequel la classe `CHAMP` existe, et c'est celui
+  // qui a lâché le 5 novembre 2026 : la constante vivait dans un module
+  // `'use client'`, donc la page SERVEUR en recevait une référence et non une
+  // chaîne. L'attribut `class` des saisies a contenu le texte d'un message
+  // d'erreur — sans build rouge, sans exception, sans une ligne de console.
+  // Elles faisaient **21 px de haut sans bordure** contre 47 avec pour le
+  // déroulant voisin. Visible à l'œil, muet pour toutes les machines, et ma
+  // sonde d'alors se contentait de `toBeVisible()`.
+  const mesures = await page.evaluate(() => {
+    const lire = (el) => {
+      const s = getComputedStyle(el)
+      return { h: Math.round(el.getBoundingClientRect().height), b: s.borderTopWidth }
+    }
+    return {
+      saisie: lire(document.querySelector('#titre')),
+      deroulant: lire(document.querySelector('form button[aria-haspopup="listbox"]')),
+    }
+  })
+  expect(
+    mesures.saisie.h,
+    `saisie ${mesures.saisie.h} px contre ${mesures.deroulant.h} px pour le déroulant`,
+  ).toBe(mesures.deroulant.h)
+  expect(mesures.saisie.b, 'la saisie n’a pas de bordure').toBe(mesures.deroulant.b)
+  expect(mesures.saisie.b, 'personne n’a de bordure').not.toBe('0px')
 
   await page.screenshot({ path: 'capture-agenda-nouveau.png', animations: 'disabled' })
+  expect(pageErrors, `exceptions JS : ${pageErrors.join(' | ')}`).toHaveLength(0)
+})
+
+test('le déroulant s’ouvre sous le champ, et reste dans l’écran', async ({ page, pageErrors }) => {
+  await page.goto('/agenda/nouveau', { waitUntil: 'domcontentloaded' })
+  await expect(page.getByRole('heading', { level: 1, name: /Nouveau rendez-vous/ })).toBeVisible({
+    timeout: 20_000,
+  })
+
+  // « Comment » est le DERNIER champ, donc le plus bas : c'est précisément
+  // celui dont le panneau déborderait sous l'écran s'il ne savait pas
+  // remonter. Le tester sur le premier champ ne prouverait rien.
+  const bouton = page.getByRole('button', { name: /^Comment : / })
+  await expect(bouton).toBeVisible()
+  await bouton.click()
+
+  const liste = page.getByRole('listbox')
+  await expect(liste).toBeVisible({ timeout: 5_000 })
+  // Les animations finies : une mesure prise pendant l'ouverture ment comme
+  // une capture prise pendant l'ouverture.
+  await page.evaluate(() =>
+    document.getAnimations().forEach((a) => {
+      try {
+        a.finish()
+      } catch {}
+    }),
+  )
+
+  const champ = await bouton.boundingBox()
+  const panneau = await liste.boundingBox()
+
+  // 🔴 IL EST COLLÉ À SON CHAMP, d'un côté ou de l'autre. C'est tout le
+  // propos : un `<select>` natif ouvre sa roulette au bas de l'écran, loin du
+  // doigt. On n'impose pas le sens — seulement l'adjacence.
+  const dessous = Math.abs(panneau.y - (champ.y + champ.height))
+  const dessus = Math.abs(champ.y - (panneau.y + panneau.height))
+  expect(
+    Math.min(dessous, dessus),
+    `le panneau est à ${Math.round(Math.min(dessous, dessus))} px de son champ`,
+  ).toBeLessThan(12)
+
+  // 🔴 ET ENTIÈREMENT DANS L'ÉCRAN. Un panneau qui dépasse est un panneau
+  // dont on ne voit pas les derniers choix — et personne ne devine qu'il
+  // faut faire défiler une liste qu'on ne sait pas tronquée.
+  expect(panneau.y, 'le panneau sort par le haut').toBeGreaterThanOrEqual(0)
+  expect(panneau.y + panneau.height, 'le panneau sort par le bas').toBeLessThanOrEqual(844)
+
+  // Et il est aligné sur la largeur du champ, pas posé n'importe où.
+  expect(Math.abs(panneau.x - champ.x)).toBeLessThanOrEqual(1)
+
+  // ── 🔴 ET IL NE MORD PAS SUR LE GESTE DU JOUR ────────────────────────
+  //
+  // Mesuré le 5 novembre 2026 : il restait **4 px**. Ça passait par accident,
+  // parce que la hauteur estimée du panneau surestimait la vraie et
+  // compensait un plancher calculé au bas de l'ÉCRAN au lieu du haut de la
+  // barre d'action. Deux erreurs qui s'annulent, donc une bombe à retardement
+  // — une option de moins et le panneau s'ouvrait par-dessus « Enregistrer ».
+  const geste = await page.getByRole('button', { name: 'Enregistrer' }).boundingBox()
+  const chevauche = !(panneau.y + panneau.height <= geste.y || geste.y + geste.height <= panneau.y)
+  expect(chevauche, 'le panneau recouvre le geste du jour').toBe(false)
+
+  await page.screenshot({ path: 'capture-deroulant.png', animations: 'disabled' })
+
+  // ── Choisir met à jour CE QUI PART AU SERVEUR, pas seulement l'étiquette ──
+  await page.getByRole('option', { name: 'En visio' }).click()
+  await expect(liste).toHaveCount(0)
+  await expect(bouton).toHaveAccessibleName(/En visio/)
+  expect(await page.locator('form input[name="canal"]').inputValue()).toBe('VISIO')
+
   expect(pageErrors, `exceptions JS : ${pageErrors.join(' | ')}`).toHaveLength(0)
 })
 

@@ -85,6 +85,26 @@ test('cinq lieux, un seul nom chacun, et l’identité sur l’accueil seul', as
     // pouce. Ce contrôle est le seul qui empêcherait de la réintroduire.
     await expect(page.getByRole('link', { name: /Retour à l’accueil/ })).toHaveCount(0)
 
+    // ── 🔴 AUCUNE CLASSE NE CONTIENT DE CODE ─────────────────────────────
+    //
+    // Importer une constante depuis un module `'use client'` dans un
+    // composant SERVEUR ne rend pas sa valeur : Next donne une référence, et
+    // interpolée dans un gabarit de chaîne elle se convertit en TEXTE. Vu le
+    // 5 novembre 2026 : l'attribut `class` des saisies d'un formulaire
+    // contenait « function(){throw Error("Attempted to call CHAMP() from the
+    // server…")} ». Build vert, aucune exception, console muette — l'élément
+    // perdait simplement toute sa mise en forme.
+    //
+    // 🧭 Le balayage coûte une ligne et couvre TOUTE la famille, sur chaque
+    // écran, plutôt que l'endroit où elle s'est montrée une fois.
+    const codeEnClasse = await page.evaluate(() =>
+      [...document.querySelectorAll('[class]')]
+        .map((e) => e.getAttribute('class') || '')
+        .filter((c) => /function\s*\(|=>|throw |\[object /.test(c))
+        .slice(0, 3),
+    )
+    expect(codeEnClasse, `${nom} : du code dans un attribut class`).toEqual([])
+
     await poser(page)
     const cadre = await page.locator('header').boundingBox()
     const bloc = await page.locator('header > div').first().boundingBox()
