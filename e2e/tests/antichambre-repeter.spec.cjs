@@ -164,6 +164,66 @@ test('le menu : des titres, et le geste reste allumé', async ({ page, pageError
   expect(pageErrors, `exceptions JS : ${pageErrors.join(' | ')}`).toHaveLength(0)
 })
 
+// 🔴 LA COULEUR DIT QUI PARLE. Sur la simulation c'est Aria, donc le teal —
+// l'icône du haut, celle du bas, et le geste dominant. Le code a porté la
+// règle inverse (« orange sur TOUS les écrans »), et une règle qu'on retourne
+// se re-retourne toute seule au prochain coup de peigne si rien ne la tient.
+//
+// ⚠️ On compare des couleurs CALCULÉES, jamais des chaînes écrites à la main :
+// le jeton est résolu par la page elle-même, donc un changement de palette ne
+// fait pas échouer la sonde pour rien — elle vérifie une ÉGALITÉ, pas un hex.
+const jeton = (page, nom) =>
+  page.evaluate((n) => {
+    const d = document.createElement('div')
+    d.style.backgroundColor = `var(${n})`
+    document.body.appendChild(d)
+    const c = getComputedStyle(d).backgroundColor
+    d.remove()
+    return c
+  }, nom)
+
+test('la couleur dit qui parle : teal sur la simulation, orange au hall', async ({
+  page,
+  pageErrors,
+}) => {
+  await page.goto('/coach/repeter', { waitUntil: 'domcontentloaded' })
+  const commencer = page.getByRole('link', { name: 'Commencer', exact: true })
+  await expect(commencer).toBeVisible({ timeout: 20_000 })
+
+  const aria = await jeton(page, '--color-aria')
+  const atlas = await jeton(page, '--color-atlas')
+  expect(aria, 'les deux jetons doivent différer, sinon ce test ne prouve rien').not.toBe(atlas)
+
+  // Le geste dominant.
+  expect(await commencer.evaluate((el) => getComputedStyle(el).backgroundColor)).toBe(aria)
+
+  // L'entrée allumée de la barre du bas — le mot ET le glyphe.
+  const allumee = page.locator('nav[aria-label="Navigation principale"] [aria-current="page"]')
+  expect(await allumee.locator('span').evaluate((el) => getComputedStyle(el).color)).toBe(aria)
+  expect(await allumee.locator('svg').evaluate((el) => getComputedStyle(el).stroke)).toBe(aria)
+
+  // L'icône de la barre du haut, à côté du titre.
+  //
+  // ⚠️ `header > div svg` ET NON `header svg` : le premier `<svg>` de l'en-tête
+  // est la MARQUE ATLINE, qui se dessine en `fill` — mon premier jet mesurait
+  // donc le logo et lisait « none ». Il a bien échoué, mais pour la mauvaise
+  // raison : si la marque avait eu un contour, la sonde serait passée en
+  // mesurant le mauvais élément.
+  const icone = page.locator('header > div svg').first()
+  expect(await icone.evaluate((el) => getComputedStyle(el).stroke)).toBe(aria)
+
+  // ── ET L'ACCUEIL RESTE ORANGE ──
+  // Sans ce contre-contrôle, un teal passé en dur quelque part passerait pour
+  // une réussite : on vérifierait que c'est teal partout, pas que c'est la
+  // couleur DU LIEU.
+  await page.goto('/accueil', { waitUntil: 'domcontentloaded' })
+  const parler = page.getByRole('link', { name: 'Parler à Atlas' })
+  await expect(parler).toBeVisible({ timeout: 20_000 })
+  expect(await parler.evaluate((el) => getComputedStyle(el).backgroundColor)).toBe(atlas)
+
+  expect(pageErrors, `exceptions JS : ${pageErrors.join(' | ')}`).toHaveLength(0)
+})
+
 test('l’antichambre et l’appel ne peuvent pas se contredire', async ({ page, pageErrors }) => {
   // 🔴 LE CONTRÔLE QUI JUSTIFIE `lib/repetition.ts`. La règle qui choisit
   // l'exercice est subtile — un choix explicite l'emporte sur le point faible,
