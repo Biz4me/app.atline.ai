@@ -38,13 +38,17 @@ test('la bande d’activité se voit, et s’ouvre', async ({ page, pageErrors }
 
   await bande.click()
 
-  // Les choix vivent dans la liste. Les viser là évite l'ambiguïté avec la
-  // bande, qui porte le même nom d'activité.
-  const choix = page.getByRole('list').getByRole('button')
+  // Les choix vivent dans la FEUILLE, pas dans la bande. On s'y ancre par le
+  // rôle `dialog` : une classe change au premier coup de peigne, le rôle non.
+  const feuille = page.getByRole('dialog', { name: /Où tu travailles/ })
+  await expect(feuille).toBeVisible({ timeout: 10_000 })
+  const choix = feuille.getByRole('button')
   await expect(choix.filter({ hasText: 'NHT Global' })).toBeVisible({ timeout: 10_000 })
   await expect(choix.filter({ hasText: 'Forever Living' })).toBeVisible()
 
-  await page.screenshot({ path: 'capture-bande-ouverte.png', clip: { x: 0, y: 0, width: 390, height: 320 } })
+  // La feuille occupe 88 % de la hauteur : on prend l'écran entier, sinon on
+  // photographie son bord supérieur et rien du choix.
+  await page.screenshot({ path: 'capture-bande-ouverte.png' })
 
   // 🔴 Le filet : une exception client ne casse aucune assertion ci-dessus,
   // mais elle casserait l'écran chez le distributeur.
