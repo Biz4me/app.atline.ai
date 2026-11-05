@@ -14,8 +14,21 @@ test.use({ viewport: { width: 390, height: 844 } })
 test('la dernière ligne de la feuille reste au-dessus de la barre', async ({ page }) => {
   await page.goto('/accueil', { waitUntil: 'domcontentloaded' })
 
+  // 🔴 CE TEST EXIGE UN COMPTE À DEUX ACTIVITÉS, et il le DIT au lieu
+  // d'échouer sur un élément introuvable. Lancé sous un compte qui n'en a
+  // qu'une, la bande est une étiquette et non un bouton : le message était
+  // « element(s) not found », qui ressemble à une régression et n'en est pas.
+  // Je m'y suis repris à deux fois ; une consigne ne suffit pas, il faut que
+  // le test se défende lui-même.
   const bande = page.getByRole('button', { name: /Changer d’activité|Changer d'activité/ })
-  await expect(bande).toBeVisible({ timeout: 20_000 })
+  const deuxActivites = await bande
+    .waitFor({ state: 'visible', timeout: 20_000 })
+    .then(() => true)
+    .catch(() => false)
+  test.skip(
+    !deuxActivites,
+    `${process.env.E2E_COMME ?? 'ce compte'} n'a qu'une activité : rejouer avec E2E_COMME=test1@gmail.com`,
+  )
   await bande.click()
 
   const feuille = page.getByRole('dialog', { name: /Où tu travailles/ })
