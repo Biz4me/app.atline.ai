@@ -1,24 +1,26 @@
-// L'ANTICHAMBRE DE RÉPÉTER, ET LE MENU DE L'ÉCRAN.
+// L'ANTICHAMBRE DE RÉPÉTER, SON MENU, ET SES DEUX PLEINES PAGES.
 //
 //   E2E_BASE=https://v2.atline.ai E2E_COMME=humanstring@gmail.com \
 //     npx playwright test tests/antichambre-repeter.spec.cjs
 //
-// 🔴 Ce que ce test cherche, et qu'une assertion de présence ne trouverait pas :
+// 🔴 Ce que ces tests cherchent, et qu'une assertion de présence ne trouverait
+// pas :
 //
-//   1. que le conteneur fixe porte EXACTEMENT deux commandes — le menu et le
-//      geste — et que le geste est réellement touchable, pas seulement
-//      « visible » ;
-//   2. que le menu ne redouble AUCUNE destination de la barre du bas. C'était
-//      la faute du menu global supprimé le 5 novembre : deux gestes différents
-//      menant au même endroit sans qu'on sache lequel était le bon ;
-//   3. 🔴 QUE L'ANTICHAMBRE ET L'APPEL ANNONCENT LE MÊME ASK. C'est le seul
+//   1. que le geste du jour RESTE allumé et touchable pendant que le menu est
+//      ouvert. C'est tout le point de la référence : on ne referme pas pour
+//      reprendre le chemin par défaut. `toBeVisible` ne le dirait pas — un
+//      bouton sous un voile modal reste « visible » ;
+//   2. que le menu ne porte que des TITRES, et qu'aucun ne redouble une
+//      destination de la barre du bas. C'était la faute du menu global
+//      supprimé le 5 novembre : deux gestes menant au même endroit ;
+//   3. que les détours sont de PLEINES PAGES — pas de barre du bas, une
+//      flèche pour seule sortie, et pas de geste dominant qui flotterait au
+//      -dessus d'une barre absente ;
+//   4. 🔴 QUE L'ANTICHAMBRE ET L'APPEL ANNONCENT LE MÊME ASK. C'est le seul
 //      contrôle qui attrape la dérive que `lib/repetition.ts` existe pour
-//      empêcher : le briefing disant « obtenir un rendez-vous » et Aria jouant
-//      autre chose. Deux copies du calcul auraient passé tous les autres
-//      contrôles de ce fichier ;
-//   4. que fermer l'appel remonte à l'ANTICHAMBRE et pas à l'accueil — sinon
-//      un second essai demande de refaire tout le chemin ;
-//   5. qu'aucun « N sur 100 » ne se contredit entre la page et le menu.
+//      empêcher ; deux copies du calcul passeraient tous les autres ;
+//   5. que le choix circule : le prendre dans la liste doit changer le
+//      briefing, et le retour ne doit pas l'effacer.
 
 const { test, expect } = require('../fixtures.cjs')
 
@@ -33,42 +35,40 @@ const poser = (page) =>
     }),
   )
 
-const DESTINATIONS = ['/accueil', '/parcours', '/coach/repeter', '/agenda', '/gens']
+const BARRE = /Navigation principale/
 
-test('l’antichambre a la coquille, son geste et son menu', async ({ page, pageErrors }) => {
+test('le menu : des titres, et le geste reste allumé', async ({ page, pageErrors }) => {
   await page.goto('/coach/repeter', { waitUntil: 'domcontentloaded' })
 
   // ── 1. c'est un LIEU, pas une porte à sens unique ──────────────────────
   await expect(page.getByRole('heading', { level: 1, name: 'Répéter' })).toBeVisible({
     timeout: 20_000,
   })
-  const barre = page.getByRole('navigation', { name: /Navigation principale/ })
+  const barre = page.getByRole('navigation', { name: BARRE })
   await expect(barre).toBeVisible()
   await expect(barre.locator('[aria-current="page"]')).toHaveText(/Répéter/)
   // ⚠️ Un seul h1. Deux titres sur une page, c'est la faute déjà payée sur
   // les leçons — et elle ne se voit pas à l'écran.
   await expect(page.locator('h1')).toHaveCount(1)
 
-  // ── 2. le conteneur fixe : deux commandes, et le geste est TOUCHABLE ───
+  // ── 2. la rangée fixe : deux commandes, et le geste est TOUCHABLE ──────
   const appeler = page.getByRole('link', { name: 'Appeler', exact: true })
   await expect(appeler).toHaveCount(1)
   await expect(appeler).toHaveAttribute('href', /\/coach\/repeter\/appel/)
 
-  const bas = appeler.locator('xpath=..')
-  await expect(bas.getByRole('link')).toHaveCount(1)
-  const menuBouton = bas.getByRole('button', { name: /^Menu Répéter$/ })
-  await expect(menuBouton).toHaveCount(1)
-  await expect(bas.getByRole('button')).toHaveCount(1)
+  const rangee = appeler.locator('xpath=..')
+  await expect(rangee.getByRole('link')).toHaveCount(1)
+  const bouton = rangee.getByRole('button')
+  await expect(bouton).toHaveCount(1)
+  await expect(bouton).toHaveAccessibleName(/^Menu Répéter$/)
 
-  // 🔴 `toBeVisible` NE DÉTECTE PAS L'OCCLUSION : un bouton recouvert par la
-  // barre du bas reste « visible ». Seul un clic à blanc le dit.
+  // 🔴 `toBeVisible` NE DÉTECTE PAS L'OCCLUSION : un bouton recouvert reste
+  // « visible ». Seul un clic à blanc le dit.
   await poser(page)
   await appeler.click({ trial: true })
-  await menuBouton.click({ trial: true })
+  await bouton.click({ trial: true })
 
-  // Les deux côte à côte, sur la même rangée, et dans cet ordre : le menu à
-  // gauche, le geste à droite.
-  const cadreMenu = await menuBouton.boundingBox()
+  const cadreMenu = await bouton.boundingBox()
   const cadreGeste = await appeler.boundingBox()
   expect(cadreMenu.x + cadreMenu.width, 'le menu doit être À GAUCHE du geste').toBeLessThanOrEqual(
     cadreGeste.x + 1,
@@ -80,88 +80,97 @@ test('l’antichambre a la coquille, son geste et son menu', async ({ page, page
 
   await page.screenshot({ path: 'capture-antichambre.png', animations: 'disabled' })
 
-  // ── 3. le briefing dit l'ASK, et la page ne redouble pas le geste ──────
+  // ── 3. le briefing, et aucun jumeau du geste dans la page ──────────────
   const corps = page.locator('main')
   const texteAvant = await corps.innerText()
-  // ⚠️ `/i` PARTOUT OÙ UN LIBELLÉ EST UN SURTITRE. `innerText` applique
-  // `text-transform`, donc « La situation » revient « LA SITUATION » — le
-  // piège de `references/pieges.md`, dans lequel je suis retombé en écrivant
-  // ce fichier. Un contrôle sensible à la casse ne mesure pas le texte, il
-  // mesure la feuille de style.
-  expect(texteAvant).toMatch(/Réussi si/)
+  // ⚠️ `/i` : `innerText` applique `text-transform`, donc « La situation »
+  // revient « LA SITUATION ». Un contrôle sensible à la casse ne mesure pas
+  // le texte, il mesure la feuille de style.
+  expect(texteAvant).toMatch(/Réussi si/i)
   expect(texteAvant).toMatch(/La situation/i)
-  // Le geste du bas n'a pas de jumeau dans la page.
   await expect(corps.getByRole('link', { name: /Appeler/ })).toHaveCount(0)
 
-  // ── 4. LE MENU ─────────────────────────────────────────────────────────
-  await menuBouton.click()
-  const feuille = page.getByRole('dialog', { name: 'Répéter' })
-  await expect(feuille).toBeVisible({ timeout: 10_000 })
+  // ── 4. LE MENU OUVERT ──────────────────────────────────────────────────
+  await bouton.click()
   await poser(page)
-  await page.screenshot({ path: 'capture-menu-repeter.png', animations: 'disabled' })
-  const texteMenu = await feuille.innerText()
-  expect(texteMenu, 'le menu porte les deux choses nommées').toMatch(/Où tu en es/i)
-  expect(texteMenu).toMatch(/Sur quoi t[’']entraîner/i)
 
-  // 🔴 AUCUNE DESTINATION DE LA BARRE DANS LE MENU. Sauf `/coach/repeter`
-  // lui-même, que les choix d'appel portent légitimement : ils reviennent ici
-  // avec un paramètre, ils ne mènent pas ailleurs.
-  const liens = await feuille.getByRole('link').evaluateAll((as) =>
-    as.map((a) => a.getAttribute('href')),
-  )
-  expect(liens.length, 'un menu vide ne s’ouvre pas').toBeGreaterThan(0)
-  for (const href of liens) {
-    expect(href, `${href} : le menu redouble la barre du bas`).toMatch(/^\/coach\/repeter\?appel=/)
+  // 🔴 LE GESTE RESTE, ET IL RESTE TOUCHABLE. C'est l'invariant de la
+  // référence : le voile éteint la PAGE, pas la barre d'action. Avant
+  // correction, une feuille recouvrait tout — on choisissait, et le seul
+  // geste suivant était hors d'atteinte sous le voile.
+  await expect(appeler).toBeVisible()
+  await appeler.click({ trial: true })
+  // Le bouton de gauche est devenu une croix, à la même place.
+  await expect(bouton).toHaveAccessibleName(/^Fermer le menu$/)
+  const apres = await bouton.boundingBox()
+  expect(Math.round(apres.x), 'la croix a bougé').toBe(Math.round(cadreMenu.x))
+
+  // ⚠️ DES TITRES, ET RIEN QUE DES TITRES. Pas de chiffres, pas de listes :
+  // un menu qui contient le contenu n'est plus un menu.
+  const titres = page.getByRole('link', { name: /Où tu en es|Sur quoi t['’]entraîner/ })
+  await expect(titres).toHaveCount(2)
+  const cibles = await titres.evaluateAll((as) => as.map((a) => a.getAttribute('href')))
+  for (const href of cibles) {
+    // 🔴 AUCUNE DESTINATION DE LA BARRE DU BAS. Sauf un détour de Répéter,
+    // qui en est une sous-page et non un ailleurs.
+    expect(href, `${href} : le menu redouble la barre du bas`).toMatch(
+      /^\/coach\/repeter\/(resultats|appels)/,
+    )
   }
+  await page.screenshot({ path: 'capture-menu-repeter.png', animations: 'disabled' })
 
-  // Aucun chiffre ne se contredit entre la page et le menu.
-  const notes = [...(texteAvant + '\n' + texteMenu).matchAll(/(\d+)\s+sur\s+100/g)].map((m) => m[1])
-  expect(new Set(notes).size, `« N sur 100 » dit ${notes.join(' et ')}`).toBeLessThanOrEqual(1)
+  // ── 5. UNE PLEINE PAGE : pas de barre, une flèche pour sortir ──────────
+  await page.getByRole('link', { name: /Sur quoi t['’]entraîner/ }).click()
+  await expect(page).toHaveURL(/\/coach\/repeter\/appels/, { timeout: 20_000 })
+  await expect(page.getByRole('heading', { level: 1, name: /Sur quoi t['’]entraîner/ })).toBeVisible()
+  await expect(page.getByRole('navigation', { name: BARRE })).toHaveCount(0)
+  await expect(page.getByRole('link', { name: 'Retour à Répéter' })).toBeVisible()
+  // ⚠️ Et pas de geste dominant : il se placerait au-dessus d'une barre du
+  // bas qui n'existe plus ici, et flotterait à 64 px du vide.
+  await expect(page.getByRole('link', { name: 'Appeler', exact: true })).toHaveCount(0)
+  await poser(page)
+  await page.screenshot({ path: 'capture-appels.png', animations: 'disabled' })
 
-  // ── 5. choisir un appel ramène ICI, avec le choix marqué ───────────────
-  //
-  // ⚠️ On prend un appel QU'ON N'A PAS DÉJÀ : cliquer celui qui est marqué
-  // « Choisi » ne prouverait rien — l'écran reviendrait identique et le test
-  // passerait sans que le choix ait jamais circulé.
-  const tous = feuille.getByRole('link')
-  const textes = await tous.allInnerTexts()
+  // ── 6. choisir change le briefing ──────────────────────────────────────
+  const liens = page.locator('main').getByRole('link')
+  const textes = await liens.allInnerTexts()
   const rang = textes.findIndex((t) => !/choisi/i.test(t))
   expect(rang, 'tous les appels sont marqués « Choisi »').toBeGreaterThanOrEqual(0)
-  const choix = tous.nth(rang)
   const titreChoisi = textes[rang].split('\n')[0].trim()
-  await choix.click()
-  await expect(page.getByRole('heading', { level: 1, name: 'Répéter' })).toBeVisible({
-    timeout: 20_000,
-  })
-  await expect(page).toHaveURL(/\/coach\/repeter\?appel=/)
+  await liens.nth(rang).click()
 
-  // 🔴 ET LA FEUILLE S'EST REFERMÉE. Elle restait ouverte jusqu'au 5 novembre
-  // 2026 : la navigation ne changeant que la requête, React gardait l'état du
-  // composant. Le briefing se mettait à jour DERRIÈRE le panneau, voile modal
-  // compris, et le geste suivant était hors d'atteinte. Un contrôle de
-  // présence sur la nouvelle page ne l'aurait jamais vu — `main` se lit très
-  // bien sous une feuille.
-  await expect(feuille).toHaveCount(0)
-
+  await expect(page).toHaveURL(/\/coach\/repeter\?appel=/, { timeout: 20_000 })
+  await expect(page.getByRole('navigation', { name: BARRE })).toBeVisible()
   const texteApres = await page.locator('main').innerText()
   expect(texteApres, `« ${titreChoisi} » choisi mais pas annoncé`).toContain(titreChoisi)
 
-  // 🔴 ET UN SEUL « Choisi » dans le menu. Deux marques voudraient dire que le
-  // serveur et l'URL ne tombent pas d'accord sur l'appel courant.
+  // ── 7. le retour d'un détour ne perd PAS le choix ──────────────────────
   await page.getByRole('button', { name: /^Menu Répéter$/ }).click()
-  await expect(
-    page.getByRole('dialog', { name: 'Répéter' }).getByText(/^choisi$/i),
-  ).toHaveCount(1)
+  await page.getByRole('link', { name: /Où tu en es/ }).click()
+  await expect(page.getByRole('heading', { level: 1, name: /Où tu en es/ })).toBeVisible({
+    timeout: 20_000,
+  })
+  await expect(page.getByRole('navigation', { name: BARRE })).toHaveCount(0)
+  await poser(page)
+  await page.screenshot({ path: 'capture-resultats.png', animations: 'disabled' })
+
+  await page.getByRole('link', { name: 'Retour à Répéter' }).click()
+  // 🔴 AVEC LE PARAMÈTRE. Quatre endroits construisaient cette adresse : un
+  // `encodeURIComponent` oublié quelque part ferait retomber sur le briefing
+  // par défaut, et l'écran s'afficherait très bien — personne ne le verrait.
+  await expect(page).toHaveURL(/\/coach\/repeter\?appel=/, { timeout: 20_000 })
+  expect(await page.locator('main').innerText()).toContain(titreChoisi)
 
   expect(pageErrors, `exceptions JS : ${pageErrors.join(' | ')}`).toHaveLength(0)
 })
 
 test('l’antichambre et l’appel ne peuvent pas se contredire', async ({ page, pageErrors }) => {
   // 🔴 LE CONTRÔLE QUI JUSTIFIE `lib/repetition.ts`. La règle qui choisit
-  // l'exercice est subtile — un choix explicite l'emporte sur le point faible
-  // — et elle vit désormais dans UNE fonction que les deux écrans appellent.
-  // Recopiée, elle aurait dérivé : l'antichambre annonçant « pour travailler
-  // objections » et Aria jouant l'invitation. Rien, côté build, ne l'aurait dit.
+  // l'exercice est subtile — un choix explicite l'emporte sur le point faible,
+  // et sur l'étape du contact — et elle vit dans UNE fonction que trois écrans
+  // appellent. Recopiée, elle aurait dérivé : l'antichambre annonçant « pour
+  // travailler objections » et Aria jouant l'invitation. Rien, côté build,
+  // ne l'aurait dit.
   await page.goto('/coach/repeter', { waitUntil: 'domcontentloaded' })
   await expect(page.getByRole('heading', { level: 1, name: 'Répéter' })).toBeVisible({
     timeout: 20_000,
@@ -181,14 +190,14 @@ test('l’antichambre et l’appel ne peuvent pas se contredire', async ({ page,
   expect(dansLAppel).not.toMatch(/La situation/i)
   expect(dansLAppel).toMatch(/Touche la mire pour commencer/i)
 
-  // ⚠️ L'ask de l'antichambre se retrouve mot pour mot dans l'appel. C'est
-  // la même donnée, lue par la même fonction : si les deux écrans divergent,
+  // ⚠️ L'ask de l'antichambre se retrouve mot pour mot dans l'appel. C'est la
+  // même donnée, lue par la même fonction : si les deux écrans divergent,
   // cette ligne tombe.
   const ask = brief
     .split('\n')
     .map((l) => l.trim())
     .find((l) => dansLAppel.includes(l) && l.length > 12)
-  expect(ask, `aucune phrase commune entre le briefing et l’appel`).toBeTruthy()
+  expect(ask, 'aucune phrase commune entre le briefing et l’appel').toBeTruthy()
 
   // ── Fermer remonte à l'ANTICHAMBRE, pas à l'accueil ───────────────────
   await sortie.click()
