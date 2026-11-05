@@ -54,3 +54,26 @@ test('la bande d’activité se voit, et s’ouvre', async ({ page, pageErrors }
   // mais elle casserait l'écran chez le distributeur.
   expect(pageErrors, `exceptions JS : ${pageErrors.join(' | ')}`).toHaveLength(0)
 })
+
+// L'AUTRE CAS, ET IL EST LE PLUS FRÉQUENT : une seule activité.
+//
+// 🔴 La bande doit Être LÀ — elle dit où l'on travaille — mais ne doit PAS
+// se cliquer : il n'y a rien à choisir. Un contrôle qui ne vérifierait que la
+// présence laisserait passer un bouton qui ne mène nulle part.
+//
+//   E2E_BASE=https://v2.atline.ai E2E_COMME=humanstring@gmail.com \
+//     npx playwright test tests/capture-selecteur.spec.cjs -g 'une seule'
+
+test('avec une seule activité, la bande informe sans se cliquer', async ({ page, pageErrors }) => {
+  await page.goto('/gens', { waitUntil: 'domcontentloaded' })
+
+  // Le nom de l'activité est bien affiché…
+  await expect(page.getByText('Forever Living').first()).toBeVisible({ timeout: 20_000 })
+
+  // …et AUCUN bouton ne propose d'en changer.
+  await expect(page.getByRole('button', { name: /Changer d’activité|Changer d'activité/ })).toHaveCount(0)
+
+  await page.screenshot({ path: 'capture-bande-seule.png', clip: { x: 0, y: 0, width: 390, height: 210 } })
+
+  expect(pageErrors, `exceptions JS : ${pageErrors.join(' | ')}`).toHaveLength(0)
+})
