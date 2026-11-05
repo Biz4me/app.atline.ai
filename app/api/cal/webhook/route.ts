@@ -67,6 +67,16 @@ type Charge = {
   videoCallData?: { url?: string }
   metadata?: Record<string, unknown>
   cancellationReason?: string
+  /**
+   * Le nom du type de rendez-vous (« Premier échange ») et le texte que le
+   * distributeur a écrit dans Cal pour dire ce qui va s'y passer.
+   *
+   * 🧭 C'est SA voix, et elle diffère pour chaque type. Un texte générique
+   * qu'on écrirait ici serait le même pour tout le monde — et il faudrait un
+   * déploiement pour le changer.
+   */
+  eventTitle?: string | null
+  eventDescription?: string | null
   /** Qui a annulé, pour ne pas renvoyer au prospect le motif qu'il a écrit. */
   cancelledBy?: string
   /**
@@ -191,6 +201,9 @@ export async function POST(req: NextRequest) {
       const rendez: Rendez = {
         invite: invite.name ?? '',
         hote: nomHote,
+        typeNom: c.eventTitle ?? null,
+        // Sur une annulation, on ne redit pas ce qui allait s'y passer.
+        quoi: null,
         debut,
         fin,
         fuseau: invite.timeZone || 'Europe/Paris',
@@ -357,6 +370,8 @@ export async function POST(req: NextRequest) {
   const rendez: Rendez = {
     invite: invite?.name ?? '',
     hote: nomHote,
+    typeNom: c.eventTitle ?? null,
+    quoi: c.eventDescription ?? null,
     debut,
     fin,
     fuseau: invite?.timeZone || 'Europe/Paris',

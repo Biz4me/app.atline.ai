@@ -50,6 +50,15 @@ export type Rendez = {
   invite: string
   /** Le nom affiché du distributeur. */
   hote: string
+  /** Le nom du type de rendez-vous : « Premier échange ». */
+  typeNom: string | null
+  /**
+   * CE QUI VA SE PASSER, écrit par le distributeur dans Cal, et différent
+   * pour chaque type de rendez-vous. C'est le cœur du message : un texte
+   * générique que j'aurais inventé serait le même pour tout le monde, alors
+   * que celui-ci est sa voix et qu'il peut le changer sans toucher au code.
+   */
+  quoi: string | null
   debut: Date
   fin: Date | null
   /** Le fuseau du prospect, tel que Cal l'a relevé. */
@@ -62,14 +71,22 @@ export type Rendez = {
   replanifier: string | null
 }
 
-/** « jeudi 5 novembre 2026 à 21:00 » dans le fuseau du prospect. */
+/**
+ * « jeudi 19 novembre à 12:00 » dans le fuseau du prospect.
+ *
+ * ⚠️ L'année n'apparaît que si elle n'est pas l'année en cours. Pour un
+ * rendez-vous dans deux semaines, « 2026 » est du bruit ; pour un rendez-vous
+ * en janvier pris en décembre, c'est une information.
+ */
 function quand(d: Date, fuseau: string): string {
+  const anneeDuRdv = new Intl.DateTimeFormat('fr-FR', { timeZone: fuseau, year: 'numeric' }).format(d)
+  const anneeCourante = new Intl.DateTimeFormat('fr-FR', { timeZone: fuseau, year: 'numeric' }).format(new Date())
   const date = new Intl.DateTimeFormat('fr-FR', {
     timeZone: fuseau,
     weekday: 'long',
     day: 'numeric',
     month: 'long',
-    year: 'numeric',
+    ...(anneeDuRdv === anneeCourante ? {} : { year: 'numeric' as const }),
   }).format(d)
   const heure = new Intl.DateTimeFormat('fr-FR', {
     timeZone: fuseau,
@@ -79,31 +96,54 @@ function quand(d: Date, fuseau: string): string {
   return `${date} à ${heure}`
 }
 
+/**
+ * Le prénom, tel qu'on osera l'écrire en tête du message.
+ *
+ * ⚠️ On reprend ce que le prospect a tapé, et il tape souvent en minuscules :
+ * « Bonjour marie » fait négligé. On relève la première lettre, et RIEN
+ * d'autre — rabaisser le reste casserait « McDonald » ou « Le Goff ».
+ */
+function prenomDe(nom: string): string {
+  const p = (nom || '').trim().split(/\s+/)[0] ?? ''
+  return p ? p.charAt(0).toUpperCase() + p.slice(1) : ''
+}
+
 function duree(debut: Date, fin: Date | null): string {
   if (!fin) return ''
   const min = Math.round((fin.getTime() - debut.getTime()) / 60000)
-  return min > 0 ? ` (${min} minutes)` : ''
+  return min > 0 ? `, pendant ${min} minutes` : ''
 }
 
+/**
+ * « Premier échange : jeudi 19 novembre à 12:00 »
+ *
+ * Le nom du type dit DE QUOI il s'agit, la date permet de le retrouver deux
+ * semaines plus tard dans une boîte pleine. Rien d'autre.
+ */
 export function sujetConfirmation(r: Rendez): string {
-  return `C'est noté pour ${quand(r.debut, r.fuseau || FUSEAU_DEFAUT)}`
+  const d = quand(r.debut, r.fuseau || FUSEAU_DEFAUT)
+  return r.typeNom ? `${r.typeNom} : ${d}` : `C'est noté pour ${d}`
 }
 
 export function corpsConfirmation(r: Rendez): string {
   const fuseau = r.fuseau || FUSEAU_DEFAUT
-  const prenom = (r.invite || '').trim().split(/\s+/)[0] || 'Bonjour'
+  const prenom = prenomDe(r.invite)
   const lignes: string[] = []
 
-  lignes.push(`Bonjour ${prenom},`)
+  lignes.push(prenom ? `Bonjour ${prenom},` : 'Bonjour,')
   lignes.push('')
   lignes.push(`C'est noté pour le ${quand(r.debut, fuseau)}${duree(r.debut, r.fin)}.`)
-  lignes.push('')
 
-  if (r.visio) {
-    lignes.push('On se retrouve en visio, voici le lien :')
-    lignes.push(r.visio)
+  // 🔴 CE QUI VA SE PASSER, dans ses mots à lui. Voir le type `Rendez`.
+  if (r.quoi) {
     lignes.push('')
-    lignes.push("Pas besoin d'installer quoi que ce soit, il s'ouvre dans le navigateur.")
+    lignes.push(r.quoi.trim())
+  }
+
+  lignes.push('')
+  if (r.visio) {
+    lignes.push(`On se retrouve en visio : ${r.visio}`)
+    lignes.push("Rien à installer, ça s'ouvre dans le navigateur.")
   } else if (r.lieu) {
     lignes.push(`On se retrouve ici : ${r.lieu}`)
   } else {
@@ -111,29 +151,26 @@ export function corpsConfirmation(r: Rendez): string {
   }
 
   lignes.push('')
-  // 🔴 LA phrase qui compte. Sans elle, l'événement n'entre pas dans son
-  // agenda et aucun rappel ne sonnera. Voir l'en-tête du fichier.
-  // 🔴 LA phrase qui compte, et elle a été fausse deux fois avant d'être juste.
+  // 🔴 CETTE LIGNE N'EST PAS DE LA POLITESSE, ET ELLE REMPLACE UNE DEMANDE
+  // DE CONFIRMATION QUI ÉTAIT ÉCRITE DU MAUVAIS CÔTÉ.
   //
-  // ① Elle disait « accepte l'invitation » alors que Cal répondait oui à la
-  //    place du prospect : il n'y avait rien à accepter. Corrigé dans le fork.
-  // ② Elle disait « ci-dessous », en croyant que le bouton serait dans le
-  //    courrier. Mesuré le 5 novembre 2026 : Google pose l'événement dans
-  //    l'agenda de l'invité et c'est LÀ qu'il affiche Oui / Non / Peut-être.
-  //    Aucun bouton n'apparaît dans le message, et c'est normal.
+  // Le rendez-vous est DÉJÀ posé dans l'agenda du prospect et le rappel
+  // sonnera de toute façon : cliquer « Oui » ne lui sert à rien. Le
+  // « 1 en attente » est un signal pour le DISTRIBUTEUR, et il l'a sans rien
+  // demander. (Et « c'est déjà dans ton agenda » serait FAUX pour un prospect
+  // chez Outlook, dont le client ne le posera qu'après acceptation : une
+  // phrase vraie pour la moitié des lecteurs n'a rien à faire ici.)
   //
-  // ⚠️ Elle doit rester vraie pour un prospect qui n'est PAS chez Google :
-  // son client lira notre `.ics` et posera l'événement de son côté. D'où
-  // « dans ton agenda », qui vaut dans les deux cas, plutôt que de désigner
-  // un bouton à un endroit précis.
-  lignes.push(
-    "Tu le trouveras dans ton agenda, en attente de ta réponse. Un clic sur " +
-      '« Oui » et c’est confirmé, avec le rappel.'
-  )
+  // Une réponse, elle, fait trois choses d'un coup : elle confirme en termes
+  // humains, elle ouvre le fil que la surveillance Gmail lit déjà, et elle
+  // fait du distributeur un « expéditeur connu » chez Google — après quoi
+  // TOUTES ses invitations futures se posent d'elles-mêmes dans l'agenda de
+  // cette personne.
+  lignes.push("Si tu as une question d'ici là, réponds simplement à ce message.")
 
   if (r.replanifier) {
-    lignes.push('')
-    lignes.push(`Si tu as un empêchement, tu peux déplacer ou annuler ici : ${r.replanifier}`)
+    lignes.push('Et si tu as un empêchement, tu peux déplacer ou annuler ici :')
+    lignes.push(r.replanifier)
   }
 
   lignes.push('')
@@ -152,7 +189,8 @@ export function corpsConfirmation(r: Rendez): string {
  * Un rendez-vous fantôme est pire que deux courriers.
  */
 export function sujetAnnulation(r: Rendez): string {
-  return `Annulé : notre rendez-vous du ${quand(r.debut, r.fuseau || FUSEAU_DEFAUT)}`
+  const d = quand(r.debut, r.fuseau || FUSEAU_DEFAUT)
+  return r.typeNom ? `${r.typeNom} annulé : ${d}` : `Annulé : notre rendez-vous du ${d}`
 }
 
 export function corpsAnnulation(
@@ -160,10 +198,10 @@ export function corpsAnnulation(
   extra: { motif?: string | null; parLeProspect: boolean; reserver?: string | null }
 ): string {
   const fuseau = r.fuseau || FUSEAU_DEFAUT
-  const prenom = (r.invite || '').trim().split(/\s+/)[0] || 'Bonjour'
+  const prenom = prenomDe(r.invite)
   const lignes: string[] = []
 
-  lignes.push(`Bonjour ${prenom},`)
+  lignes.push(prenom ? `Bonjour ${prenom},` : 'Bonjour,')
   lignes.push('')
   lignes.push(`Notre rendez-vous du ${quand(r.debut, fuseau)} est annulé.`)
 
@@ -190,15 +228,16 @@ export function corpsAnnulation(
 
 /** Ce qu'on écrit quand le rendez-vous a été déplacé. */
 export function sujetDeplacement(r: Rendez): string {
-  return `Nouveau créneau : ${quand(r.debut, r.fuseau || FUSEAU_DEFAUT)}`
+  const d = quand(r.debut, r.fuseau || FUSEAU_DEFAUT)
+  return r.typeNom ? `${r.typeNom} déplacé : ${d}` : `Nouveau créneau : ${d}`
 }
 
 export function corpsDeplacement(r: Rendez): string {
   const fuseau = r.fuseau || FUSEAU_DEFAUT
-  const prenom = (r.invite || '').trim().split(/\s+/)[0] || 'Bonjour'
+  const prenom = prenomDe(r.invite)
   const lignes: string[] = []
 
-  lignes.push(`Bonjour ${prenom},`)
+  lignes.push(prenom ? `Bonjour ${prenom},` : 'Bonjour,')
   lignes.push('')
   lignes.push(`Notre rendez-vous a été déplacé au ${quand(r.debut, fuseau)}${duree(r.debut, r.fin)}.`)
   if (r.visio) {
@@ -207,10 +246,13 @@ export function corpsDeplacement(r: Rendez): string {
     lignes.push(r.visio)
   }
   lignes.push('')
-  lignes.push("Ton agenda est mis à jour, et attend de nouveau ta réponse.")
+  // Même raison que dans la confirmation : l'agenda se met à jour tout
+  // seul, et redemander un clic ne sert qu’à nous. Une réponse, si.
+  lignes.push("Si ça ne t’arrange pas, dis-le-moi en répondant à ce message.")
   if (r.replanifier) {
     lignes.push('')
-    lignes.push(`Pour déplacer à nouveau ou annuler : ${r.replanifier}`)
+    lignes.push('Ou pour déplacer à nouveau, c’est ici :')
+    lignes.push(r.replanifier)
   }
   lignes.push('')
   lignes.push('À très vite,')
