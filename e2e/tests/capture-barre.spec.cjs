@@ -77,7 +77,13 @@ test('cinq lieux, un seul nom chacun, et l’identité sur l’accueil seul', as
     await expect(page.getByRole('heading', { level: 1, name: nom })).toBeVisible({ timeout: 15_000 })
     // Un lieu ne porte NI sélecteur NI avatar : l'identité est au hall.
     await expect(page.getByRole('link', { name: /Mon compte/ })).toHaveCount(0)
-    await expect(page.getByRole('link', { name: /Retour à l’accueil/ })).toBeVisible()
+
+    // 🔴 ET PLUS AUCUN LIEN VERS L'ACCUEIL EN HAUT À GAUCHE (5 nov 2026). La
+    // marque Atline y menait, c'est-à-dire une destination que la barre du bas
+    // atteint déjà — la faute exacte qui a fait supprimer le menu global, et
+    // par le plus difficile des deux gestes : le coin haut-gauche contre le
+    // pouce. Ce contrôle est le seul qui empêcherait de la réintroduire.
+    await expect(page.getByRole('link', { name: /Retour à l’accueil/ })).toHaveCount(0)
 
     await poser(page)
     const cadre = await page.locator('header').boundingBox()
