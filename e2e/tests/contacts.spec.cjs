@@ -185,3 +185,48 @@ test('la bande des trois populations : le titre et le geste suivent', async ({
 
   expect(pageErrors, `exceptions JS : ${pageErrors.join(' | ')}`).toHaveLength(0)
 })
+
+test('importer : on regarde avant d’écrire, et rien n’est écrit en regardant', async ({
+  page,
+  pageErrors,
+}) => {
+  // 🔴 CETTE SONDE N'ÉCRIT RIEN. Elle s'arrête à l'aperçu — qui est
+  // justement la moitié qu'on veut garantir : voir avant de toucher.
+  // L'aller-retour complet (création, mise à jour partielle, vérification
+  // que rien n'est effacé) a été joué une fois, à la main, sur un contact
+  // d'essai supprimé ensuite.
+  await page.goto('/gens/importer', { waitUntil: 'domcontentloaded' })
+  await expect(page.getByRole('heading', { level: 1, name: 'Importer' })).toBeVisible({
+    timeout: 20_000,
+  })
+  await expect(page.getByRole('navigation', { name: 'Navigation principale' })).toHaveCount(0)
+
+  const T = (l) => l.map((x) => x.join('\t')).join('\n')
+  await page.locator('textarea').fill(
+    T([
+      ['Prénom', 'Nom', 'Marché', 'Couleur chaussette'],
+      ['Aperçu', 'Seulement', 'Tiède', 'rayée'],
+      ['Ligne', 'Fautive', 'Bouillant', ''],
+      ['', 'Sans prénom', 'Chaud', ''],
+    ]),
+  )
+  await page.getByRole('button', { name: /Regarder/ }).click()
+
+  // ⚠️ Une ligne bonne, deux refusées — et chacune dit POURQUOI.
+  await expect(page.getByText(/1 nouveau, 0 mis à jour/)).toBeVisible({ timeout: 15_000 })
+  const dit = await page.locator('main').innerText()
+  // 🔴 On nomme la valeur ET la colonne : « ça n'a pas marché » ne se corrige
+  // pas, « Bouillant n'est pas attendu pour Marché » si.
+  expect(dit, 'la valeur inconnue n’est pas nommée').toMatch(/Bouillant.+Marché/s)
+  expect(dit, 'le prénom manquant n’est pas signalé').toMatch(/il manque le prénom/)
+  // ⚠️ Une colonne qu'on ne sait pas lire se DIT. La taire laisserait croire
+  // qu'elle a été prise en compte.
+  expect(dit, 'la colonne inconnue n’est pas signalée').toMatch(/Couleur chaussette/)
+
+  // 🔴 ET RIEN N'A ÉTÉ ÉCRIT : le bouton d'écriture est un SECOND geste, qu'on
+  // ne touche pas ici. On vérifie que le carnet n'a pas bougé.
+  await page.goto('/gens', { waitUntil: 'domcontentloaded' })
+  expect(await page.locator('main').innerText(), 'regarder a écrit').not.toMatch(/Aperçu/)
+
+  expect(pageErrors, `exceptions JS : ${pageErrors.join(' | ')}`).toHaveLength(0)
+})
