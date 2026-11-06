@@ -681,6 +681,19 @@ model Appointment {
   atlasDebrief     AtlasConversation?  @relation(fields: [atlasDebriefId], references: [id])
   calComEventId    String?             @unique
   calComBookingUrl String?
+  /// L'identifiant de l'événement dans l'agenda Google du distributeur.
+  ///
+  /// 🔴 SANS LUI, ON NE PEUT NI DÉPLACER NI SUPPRIMER CE QU'ON A CRÉÉ. C'est
+  /// très exactement le défaut qui a laissé deux FANTÔMES dans l'agenda de
+  /// Patrice : Cal avait créé les événements chez Google et n'avait pas
+  /// enregistré leur identifiant (`BookingReference.uid` vide), si bien qu'à
+  /// l'annulation il n'avait rien à supprimer. 2 réservations sur 6.
+  ///
+  /// ⚠️ PAS `@unique`, contrairement à `calComEventId`. Celui-là protège
+  /// l'idempotence d'un webhook rejoué ; ici rien n'est rejoué, et une
+  /// contrainte d'unicité ferait échouer une création légitime le jour où
+  /// deux rendez-vous pointeraient la même occurrence.
+  googleEventId    String?
   linkedMlmEventId String?
   createdAt        DateTime            @default(now())
   updatedAt        DateTime            @updatedAt
