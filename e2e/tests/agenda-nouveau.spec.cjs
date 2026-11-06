@@ -237,9 +237,31 @@ test('le menu de l’agenda : raccordement et historique', async ({ page, pageEr
 
   const dit = await page.locator('main').innerText()
   expect(dit, 'l’écran doit annoncer l’état').toMatch(/Raccordé/i)
-  // 🔴 LA LIMITE EST ÉCRITE. Quelqu'un qui croit son agenda synchronisé ne
-  // vérifiera pas, et découvrira le trou le jour du rendez-vous.
-  expect(dit, 'le sens unique n’est pas annoncé').toMatch(/n’apparaît pas dans Google/)
+
+  // ── 🔴 L'ÉCRAN DIT LA VÉRITÉ DE SON ÉTAT, et c'est l'invariant qui
+  // survit aux trois états.
+  //
+  // ⚠️ Ce contrôle exigeait d'abord la phrase « n'apparaît pas dans Google ».
+  // Il a échoué le 6 novembre 2026 **parce que l'app a cessé de mentir** :
+  // Patrice venait d'accorder `calendar.events.owned`, la limite du sens
+  // unique n'existait plus, et l'écran le disait. Une sonde qui fige une
+  // limite la défend contre sa propre disparition.
+  //
+  //   lecture seule → la limite DOIT être écrite ; quelqu'un qui croit son
+  //                   agenda synchronisé ne vérifiera pas
+  //   les deux      → elle NE DOIT PLUS l'être, et l'écran doit promettre
+  //                   que le rendez-vous arrive dans Google
+  const lectureSeule = /lecture seule/i.test(dit)
+  if (lectureSeule) {
+    expect(dit, 'le sens unique n’est pas annoncé').toMatch(/n’apparaît pas dans Google/)
+  } else {
+    expect(dit, 'l’écriture est accordée mais l’écran ne la promet pas').toMatch(
+      /arrive dans ton agenda Google/,
+    )
+    expect(dit, 'l’écran annonce une limite qui n’existe plus').not.toMatch(
+      /n’apparaît pas dans Google/,
+    )
+  }
   // 🔴 LE DÉPART EST LOCAL DEPUIS LE 5 NOVEMBRE 2026. Il passait par
   // `app.atline.ai`, faute d'adresse de retour enregistrée pour V2 ; elle l'est
   // maintenant, sur le client **Atline Web** que les deux apps partagent — et
