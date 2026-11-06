@@ -49,4 +49,53 @@ const test = base.test.extend({
   },
 })
 
-module.exports = { test, expect: base.expect, BASE }
+/**
+ * TOUCHER UN BOUTON QUI DÉPEND DE REACT, ET S'ASSURER QU'IL A ÉTÉ ENTENDU.
+ *
+ * ── 🔴 LE DÉFAUT QUE CECI CORRIGE (mesuré le 6 novembre 2026) ─────────────
+ *
+ * Trois sondes différentes tombaient par intermittence, toujours de la même
+ * façon : elles passaient seules, échouaient dans la suite complète, et le
+ * cliché d'erreur montrait le bouton AVEC LE FOCUS et rien d'ouvert. Le clic
+ * atterrissait ; React ne le voyait pas.
+ *
+ * La cause est la fenêtre d'HYDRATATION. Le HTML du serveur est peint et
+ * parfaitement cliquable avant que React n'attache ses écouteurs, et
+ * `click()` n'attend que l'« actionnabilité » du DOM — visible, stable,
+ * recevant les événements — ce qui est vrai pendant toute cette fenêtre.
+ * **Le clic est perdu, et rien ne le signale** : ni erreur, ni console, ni
+ * requête en échec.
+ *
+ * Mesure, contexte neuf à chaque tour, sur la fiche contact :
+ *
+ *     fenêtre morte (ms) : 97, 0, 0, 111, 55, 101, 0, 0   → pire cas 111 ms
+ *
+ * ⚠️ CE N'EST PAS UN DÉFAUT DE L'APP À CETTE ÉCHELLE : il faut environ
+ * 250 ms à un humain pour réagir à quelque chose qui apparaît, donc personne
+ * ne tape dans cette fenêtre. Playwright, lui, tape en quelques
+ * millisecondes. La réparation appartient donc au HARNAIS. Elle serait à
+ * revoir le jour où la fenêtre s'allongerait — sur un téléphone lent, elle
+ * est plus large que 111 ms.
+ *
+ * 🧭 On ne dort pas, on ne devine pas : on retouche jusqu'à ce que la
+ * CONSÉQUENCE attendue soit là. Un `waitForTimeout` arbitraire serait un
+ * pari, et il mentirait le jour où la page devient plus lourde.
+ */
+async function toucher(cible, consequence, { essais = 40, pas = 50 } = {}) {
+  for (let i = 0; i < essais; i++) {
+    await cible.click()
+    try {
+      await consequence.waitFor({ state: 'visible', timeout: pas })
+      return
+    } catch {
+      // Le clic a pu être perdu avant hydratation : on retouche. Si le
+      // bouton est une BASCULE, un second clic refermerait — d'où le fait
+      // qu'on ne retouche que tant que la conséquence est ABSENTE.
+    }
+  }
+  // On laisse l'assertion de l'appelant produire le vrai message d'échec,
+  // avec son cliché : c'est elle qui sait ce qu'on cherchait.
+  await consequence.waitFor({ state: 'visible', timeout: 5000 })
+}
+
+module.exports = { test, expect: base.expect, BASE, toucher }

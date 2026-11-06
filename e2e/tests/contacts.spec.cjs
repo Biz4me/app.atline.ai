@@ -7,7 +7,7 @@
 // rien dans l'app ne sait en effacer un. On vérifie le formulaire, le filtre
 // et l'écran des manques — pas la création.
 
-const { test, expect } = require('../fixtures.cjs')
+const { test, expect, toucher } = require('../fixtures.cjs')
 
 test.use({ viewport: { width: 390, height: 844 } })
 
@@ -76,7 +76,14 @@ test('le filtre annonce ce qu’il donnera, et la liste dit qu’elle est filtr�
   })
   const total = await page.locator('main a[href="#"], main').count()
 
-  await page.getByRole('button', { name: /^Menu Contacts$/ }).click()
+  // ⚠️ `toucher` et non `click` : le menu est piloté par l'état React, et un
+  // clic qui arrive avant l'hydratation est perdu EN SILENCE. C'est ce qui
+  // faisait tomber cette sonde dans la suite complète alors qu'elle passait
+  // seule. Fenêtre mesurée le 6 novembre 2026 : jusqu'à 111 ms.
+  await toucher(
+    page.getByRole('button', { name: /^Menu Contacts$/ }),
+    page.getByRole('link', { name: 'Ce qui manque' }),
+  )
   await expect(page.getByRole('link', { name: 'Ce qui manque' })).toHaveCount(1)
   await page.getByRole('link', { name: 'Filtrer' }).click()
 
