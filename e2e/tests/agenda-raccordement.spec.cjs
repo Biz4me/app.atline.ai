@@ -46,10 +46,21 @@ test('le départ vers Google porte ce qu’il faut', async ({ page }) => {
   expect(p.get('prompt')).toBe('select_account consent')
   expect(p.get('access_type')).toBe('offline')
 
-  expect(p.get('scope')).toContain('https://www.googleapis.com/auth/calendar.readonly')
+  // 🔴 `calendar.events.owned`, ET PAS `calendar.readonly` : ce dernier n'est
+  // plus déclaré dans la console depuis le 6 novembre 2026, et demander un
+  // scope non déclaré c'est demander à Google de refuser. Celui-ci lit ET
+  // écrit — « consulter, créer, modifier et supprimer des événements dans les
+  // agendas dont vous êtes propriétaire ».
+  expect(p.get('scope')).toContain('https://www.googleapis.com/auth/calendar.events.owned')
+  expect(p.get('scope'), 'readonly n’est plus déclaré : ne plus le demander').not.toContain(
+    'calendar.readonly',
+  )
   // ⚠️ Et RIEN de plus que ce qu'on vient demander : pas de Gmail glissé dans
-  // la même demande. On ne demande jamais tout d'un coup.
+  // la même demande, et pas `calendar.events` ni `calendar`, plus larges.
   expect(p.get('scope')).not.toContain('gmail')
+  expect(p.get('scope'), 'un scope plus large que nécessaire').not.toMatch(
+    /auth\/calendar(\s|$)|auth\/calendar\.events(\s|$)/,
+  )
 
   expect(p.get('state'), 'pas d’état : la garde CSRF n’existe pas').toBeTruthy()
 })
