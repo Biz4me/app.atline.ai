@@ -247,3 +247,29 @@ test('importer : on regarde avant d’écrire, et rien n’est écrit en regarda
 
   expect(pageErrors, `exceptions JS : ${pageErrors.join(' | ')}`).toHaveLength(0)
 })
+
+test('le prochain pas est une phrase française, même sans dernier échange', async ({
+  page,
+  pageErrors,
+}) => {
+  // 🔴 VU À L'ÉCRAN, PAS SUPPOSÉ. Après l'import de trente contacts dont
+  // aucun n'avait de dernier échange, la liste affichait :
+  //
+  //   « Partenaire sans nouvelles depuis jamais contacté »
+  //   « Client sans contact jamais contacté »
+  //
+  // Une seule variable portait deux grammaires. Le défaut dormait depuis le
+  // début : il a fallu des contacts SANS date pour qu'il se voie.
+  await page.goto('/gens', { waitUntil: 'domcontentloaded' })
+  await expect(page.getByRole('heading', { level: 1, name: 'Contacts' })).toBeVisible({
+    timeout: 20_000,
+  })
+  const dit = await page.locator('main').innerText()
+
+  expect(dit, 'deux grammaires dans la même phrase').not.toMatch(/depuis jamais/)
+  expect(dit, '« sans contact jamais contacté »').not.toMatch(/sans (nouvelles|contact) jamais/)
+  // ⚠️ Et la faute qui existait MÊME avec une date.
+  expect(dit, '« depuis il y a N jours »').not.toMatch(/depuis il y a/)
+
+  expect(pageErrors, `exceptions JS : ${pageErrors.join(' | ')}`).toHaveLength(0)
+})
