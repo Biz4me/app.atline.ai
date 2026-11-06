@@ -27,7 +27,9 @@ test('le geste mène au formulaire, en pleine page', async ({ page, pageErrors }
   await ajouter.click()
 
   await expect(page).toHaveURL(/\/gens\/nouveau/, { timeout: 20_000 })
-  await expect(page.getByRole('heading', { level: 1, name: 'Ajouter un contact' })).toBeVisible()
+  // ⚠️ Sans population choisie, c'est « un prospect » : c'est le défaut de
+  // la base comme du métier, et le mot le dit plutôt que de rester vague.
+  await expect(page.getByRole('heading', { level: 1, name: 'Ajouter un prospect' })).toBeVisible()
 
   // Pleine page : pas de barre du bas, la flèche pour seule sortie — on ne
   // part pas ailleurs d'une touche au milieu d'une saisie.
@@ -55,7 +57,7 @@ test('le geste mène au formulaire, en pleine page', async ({ page, pageErrors }
   expect(await page.locator('form input[name="marche"]').inputValue()).toBe('')
 
   // Le geste au ras du bas, pas à 64 px du vide.
-  const envoyer = page.getByRole('button', { name: 'Ajouter à ma liste' })
+  const envoyer = page.getByRole('button', { name: /^Ajouter ce / })
   await envoyer.click({ trial: true })
   const cadre = await envoyer.boundingBox()
   expect(844 - (cadre.y + cadre.height), 'le bouton flotte au-dessus du vide').toBeLessThan(32)
@@ -132,5 +134,54 @@ test('ce qui manque compte des trous réels', async ({ page, pageErrors }) => {
   expect(dit, 'aucun manque trouvé alors que la base en est pleine').toMatch(/il manque/)
 
   await page.screenshot({ path: 'capture-contact-manques.png', animations: 'disabled' })
+  expect(pageErrors, `exceptions JS : ${pageErrors.join(' | ')}`).toHaveLength(0)
+})
+
+test('la bande des trois populations : le titre et le geste suivent', async ({
+  page,
+  pageErrors,
+}) => {
+  await page.goto('/gens', { waitUntil: 'domcontentloaded' })
+
+  // 🔴 PAR DÉFAUT, « TOUS » — et le titre de l'écran reste « Contacts ».
+  // Une porte à trois choix casserait « ce qui stagne passe devant » :
+  // l'écran demanderait « tu veux voir qui ? » au lieu de répondre.
+  await expect(page.getByRole('heading', { level: 1, name: 'Contacts' })).toBeVisible({
+    timeout: 20_000,
+  })
+  const bande = page.locator('main a[href^="/gens"]').filter({ hasText: /Tous|Prospects|Clients|Partenaires/ })
+  await expect(bande).toHaveCount(4)
+  await expect(page.locator('[aria-current="true"]').first()).toContainText('Tous')
+
+  // 🔴 LES COMPTES S'ADDITIONNENT. Si « prospect » voulait dire deux choses
+  // selon l'endroit, les trois populations ne feraient pas le total — et
+  // personne ne saurait laquelle a raison.
+  const nombres = await bande.evaluateAll((as) =>
+    as.map((a) => Number((a.textContent || '').match(/\d+/)?.[0] ?? -1)),
+  )
+  expect(nombres.every((n) => n >= 0), 'une pastille sans compte').toBe(true)
+  expect(nombres[1] + nombres[2] + nombres[3], 'les trois ne font pas le total').toBe(nombres[0])
+
+  // ── Le titre ET le geste suivent la pastille ──
+  await page.getByRole('link', { name: /Partenaires/ }).click()
+  await expect(page.getByRole('heading', { level: 1, name: 'Partenaires' })).toBeVisible({
+    timeout: 20_000,
+  })
+  // ⚠️ Regarder ses partenaires et toucher « ajouter un contact » pour
+  // obtenir un prospect serait un petit mensonge.
+  const geste = page.getByRole('link', { name: 'Ajouter un partenaire' })
+  await expect(geste).toHaveCount(1)
+  await page.screenshot({ path: 'capture-contact-bande.png', animations: 'disabled' })
+
+  // Et le formulaire arrive avec la bonne population ET ses propres étapes.
+  await geste.click()
+  await expect(page.getByRole('heading', { level: 1, name: 'Ajouter un partenaire' })).toBeVisible({
+    timeout: 20_000,
+  })
+  expect(await page.locator('form input[name="type"]').inputValue()).toBe('partenaire')
+  // 🔴 Les étapes sont celles des PARTENAIRES, pas le tunnel prospect.
+  expect(await page.locator('form input[name="etape"]').inputValue()).toBe('DEMARRAGE')
+  await page.getByRole('button', { name: /^Comment|^Où il en est/ }).first().click().catch(() => {})
+
   expect(pageErrors, `exceptions JS : ${pageErrors.join(' | ')}`).toHaveLength(0)
 })

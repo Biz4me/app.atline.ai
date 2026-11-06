@@ -85,6 +85,19 @@ test('cinq lieux, un seul nom chacun, et l’identité sur l’accueil seul', as
     // pouce. Ce contrôle est le seul qui empêcherait de la réintroduire.
     await expect(page.getByRole('link', { name: /Retour à l’accueil/ })).toHaveCount(0)
 
+    // ── 🔴 L'ÉCRAN A VRAIMENT ÉTÉ RENDU ──────────────────────────────────
+    //
+    // Le 6 novembre 2026, `/gens` a rendu « This page couldn't load » en
+    // production : une FONCTION passée d'un composant serveur à un composant
+    // client, ce qui n'est pas sérialisable. ⚠️ Ni le typecheck ni le build
+    // ne l'ont vu — ça ne se manifeste qu'au rendu. La sonde l'a bien
+    // attrapé, mais par accident : c'est l'absence du `<h1>` attendu qui a
+    // parlé. Un écran qui tombe doit se dire COMME TEL, sur chaque lieu.
+    expect(
+      await page.locator('body').innerText(),
+      `${nom} : la page n'a pas pu être rendue`,
+    ).not.toMatch(/This page couldn’t load|A server error occurred/)
+
     // ── 🔴 AUCUNE CLASSE NE CONTIENT DE CODE ─────────────────────────────
     //
     // Importer une constante depuis un module `'use client'` dans un
