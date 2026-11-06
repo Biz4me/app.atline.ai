@@ -213,7 +213,12 @@ test('importer : on regarde avant d’écrire, et rien n’est écrit en regarda
   await page.getByRole('button', { name: /Regarder/ }).click()
 
   // ⚠️ Une ligne bonne, deux refusées — et chacune dit POURQUOI.
-  await expect(page.getByText(/1 nouveau, 0 mis à jour/)).toBeVisible({ timeout: 15_000 })
+  //
+  // ⚠️ 30 s ET NON 15 : ce qu'on attend ici n'est pas un rendu, c'est un
+  // ALLER-RETOUR SERVEUR. Lancée seule la sonde passait, et elle a lâché une
+  // fois dans la suite complète — un délai taillé pour un rendu mesure mal un
+  // appel qui attend la base sous charge.
+  await expect(page.getByText(/1 nouveau, 0 mis à jour/)).toBeVisible({ timeout: 30_000 })
   const dit = await page.locator('main').innerText()
   // 🔴 On nomme la valeur ET la colonne : « ça n'a pas marché » ne se corrige
   // pas, « Bouillant n'est pas attendu pour Marché » si.
