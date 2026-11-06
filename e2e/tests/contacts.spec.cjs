@@ -88,27 +88,39 @@ test('le filtre annonce ce qu’il donnera, et la liste dit qu’elle est filtr�
   // 🔴 LE BOUTON DIT LE RÉSULTAT, PAS L'ACTION. « Appliquer » ne renseigne
   // sur rien ; un compte dit ce qui va se passer, et surtout quand il ne va
   // rien se passer.
+  //
+  // ⚠️ ET ON NE FIGE AUCUN CHIFFRE. Ce contrôle exigeait d'abord « Personne
+  // ne correspond » sur l'étape Leader — vrai le 6 novembre à 11 h, faux à
+  // midi quand l'import a posé un Leader. **Une sonde qui fige un fait sur
+  // les données le défend contre la réalité.** L'invariant, lui, survit :
+  // ce que le bouton ANNONCE est ce que la liste MONTRE.
   const geste = page.getByRole('link', { name: /Voir|Personne ne correspond/ })
   await expect(geste).toHaveCount(1)
 
-  // On pose un filtre qui ne garde personne : « Leader » n'existe pas dans
-  // cette base (0 contact à cette étape, mesuré le 6 novembre 2026).
-  await page.getByRole('link', { name: 'Leader', exact: true }).click()
-  await expect(page.getByRole('link', { name: 'Personne ne correspond' })).toBeVisible({
-    timeout: 15_000,
-  })
+  await page.getByRole('link', { name: 'Closing', exact: true }).click()
+  // 🔴 ON ATTEND L'ÉTAT QU'ON VIENT DE DEMANDER, pas un élément qui était
+  // déjà là. Le bouton est visible AVANT comme APRÈS la navigation : une
+  // attente sur sa visibilité passe instantanément, et on lit le compte de
+  // la page d'avant.
+  await expect(page).toHaveURL(/\/gens\/filtrer\?etape=CLOSING/, { timeout: 15_000 })
 
-  // 🔴 ET LE COMPTE NE MENT PAS : on applique, et la liste est bien vide.
-  // Deux calculs séparés, et le bouton promettrait 3 là où la liste en
-  // montre 2 — c'est pour ça que `lib/filtre-gens.ts` est écrit une fois.
-  await page.getByRole('link', { name: 'Personne ne correspond' }).click()
-  await expect(page).toHaveURL(/\/gens\?etape=LEADER/, { timeout: 20_000 })
+  const annonce = await page.getByRole('link', { name: /Voir|Personne ne correspond/ }).innerText()
+  const promis = Number(annonce.match(/\d+/)?.[0] ?? 0)
+
+  await page.getByRole('link', { name: /Voir|Personne ne correspond/ }).click()
+  await expect(page).toHaveURL(/\/gens\?etape=CLOSING/, { timeout: 20_000 })
+
+  // 🔴 LE COMPTE NE MENT PAS. Deux calculs séparés, et le bouton promettrait
+  // 3 là où la liste en montre 2 — c'est pour ça que `lib/filtre-gens.ts` est
+  // écrit une fois.
+  const montres = await page.locator('[data-contact]').count()
+  expect(montres, `annoncé ${promis}, montré ${montres}`).toBe(promis)
 
   // 🔴 LA LISTE DIT QU'ELLE EST FILTRÉE. Sans ça, une liste réduite se lit
   // « j'ai perdu des contacts » — la panne la plus inquiétante qu'on puisse
   // infliger à quelqu'un dont le carnet EST le métier.
   const corps = await page.locator('main').innerText()
-  expect(corps, 'rien ne dit que la liste est filtrée').toMatch(/Leader/)
+  expect(corps, 'rien ne dit que la liste est filtrée').toMatch(/Closing/)
   await expect(page.getByRole('link', { name: 'Tout voir' })).toBeVisible()
 
   // Et on en sort.
