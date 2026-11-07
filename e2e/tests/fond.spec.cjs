@@ -159,8 +159,24 @@ test('les deux rendus sont le MÊME cadrage, pas deux photos', async ({ page }) 
       url,
     )
 
-  const sombre = await hauteurDeTete('/fonds/atlas-sombre.webp')
-  const clair = await hauteurDeTete('/fonds/atlas-clair.webp')
+  /**
+   * 🔴 LES ADRESSES SE LISENT SUR LA PAGE, ELLES NE S'ÉCRIVENT PAS ICI. Ma
+   * première version portait `/fonds/atlas-sombre.webp` en dur ; le jour où
+   * les fichiers ont pris un suffixe de version, la sonde est tombée sur deux
+   * 404 et a crié sur un écran parfaitement correct. 🧭 **Une sonde qui
+   * connaît un nom de fichier surveille le nom, pas le comportement** — et un
+   * contrôle qui crie à tort cesse d'être écouté.
+   */
+  const adresses = await page.evaluate(
+    (sel) =>
+      [...document.querySelectorAll(sel)]
+        .map((e) => getComputedStyle(e).backgroundImage.match(/url\("([^"]+)"\)/)?.[1])
+        .filter(Boolean),
+    COUCHES,
+  )
+  expect(adresses.length, 'il doit y avoir un rendu par thème').toBe(2)
+  const sombre = await hauteurDeTete(adresses.find((u) => u.includes('sombre')))
+  const clair = await hauteurDeTete(adresses.find((u) => u.includes('clair')))
   console.log(`  haut de la tête — sombre ${(sombre * 100).toFixed(0)} % · clair ${(clair * 100).toFixed(0)} %`)
   expect(
     Math.abs(sombre - clair),
