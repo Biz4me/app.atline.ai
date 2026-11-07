@@ -7,7 +7,7 @@
 // rien dans l'app ne sait en effacer un. On vérifie le formulaire, le filtre
 // et l'écran des manques — pas la création.
 
-const { test, expect, toucher } = require('../fixtures.cjs')
+const { test, expect, toucher, remplir } = require('../fixtures.cjs')
 
 test.use({ viewport: { width: 390, height: 844 } })
 
@@ -221,15 +221,23 @@ test('importer : on regarde avant d’écrire, et rien n’est écrit en regarda
   await expect(page.getByRole('navigation', { name: 'Navigation principale' })).toHaveCount(0)
 
   const T = (l) => l.map((x) => x.join('\t')).join('\n')
-  await page.locator('textarea').fill(
+  const regarder = page.getByRole('button', { name: /Regarder/ })
+
+  // ⚠️ `remplir` ET NON `fill` : voir fixtures.cjs. Un `fill` arrivé avant
+  // l'hydratation pose bien la valeur dans le champ, mais l'état React reste
+  // vide — et ce bouton, qui en dépend, reste grisé pour toujours. Le
+  // symptôme désignait le bouton ; la cause était le champ d'à côté.
+  await remplir(
+    page.locator('textarea'),
     T([
       ['Prénom', 'Nom', 'Marché', 'Couleur chaussette'],
       ['Aperçu', 'Seulement', 'Tiède', 'rayée'],
       ['Ligne', 'Fautive', 'Bouillant', ''],
       ['', 'Sans prénom', 'Chaud', ''],
     ]),
+    () => regarder.isEnabled().catch(() => false),
   )
-  await page.getByRole('button', { name: /Regarder/ }).click()
+  await regarder.click()
 
   // ⚠️ Une ligne bonne, deux refusées — et chacune dit POURQUOI.
   //

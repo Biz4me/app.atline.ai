@@ -81,21 +81,121 @@ const test = base.test.extend({
  * CONSÉQUENCE attendue soit là. Un `waitForTimeout` arbitraire serait un
  * pari, et il mentirait le jour où la page devient plus lourde.
  */
-async function toucher(cible, consequence, { essais = 40, pas = 50 } = {}) {
+/**
+ * RÉPÉTER UN GESTE JUSQU'À CE QUE REACT L'AIT VU.
+ *
+ * 🔴 CHAQUE GESTE A DROIT À SON DÉLAI AVANT D'ÊTRE REJOUÉ, et c'est tout
+ * l'intérêt. Une première version vérifiait **immédiatement** après le geste,
+ * donc toujours avant que React n'ait rendu : elle rejouait 40 fois sans
+ * jamais voir le résultat, puis abandonnait en silence. Sur l'import de
+ * tableur, ça donnait un bouton « Regarder » grisé et une sonde qui expirait
+ * au bout de 60 s — alors qu'un seul `fill` suffisait, mesuré.
+ *
+ * 🧭 Le piège était dans un refactor : la version d'origine attendait, j'ai
+ * extrait la boucle et **perdu l'attente en chemin**. Ce qui faisait marcher
+ * la fonction n'était pas la répétition, c'était la patience entre deux
+ * répétitions.
+ */
+async function insister(geste, estFait, { essais = 40, pas = 50 } = {}) {
   for (let i = 0; i < essais; i++) {
-    await cible.click()
-    try {
-      await consequence.waitFor({ state: 'visible', timeout: pas })
-      return
-    } catch {
-      // Le clic a pu être perdu avant hydratation : on retouche. Si le
-      // bouton est une BASCULE, un second clic refermerait — d'où le fait
-      // qu'on ne retouche que tant que la conséquence est ABSENTE.
-    }
+    await geste()
+    const limite = Date.now() + pas
+    do {
+      if (await estFait()) return true
+      await new Promise((r) => setTimeout(r, 10))
+    } while (Date.now() < limite)
   }
+  return false
+}
+
+/**
+ * CLIQUER, et s'assurer que React a entendu.
+ *
+ * ⚠️ On ne reclique QUE tant que la conséquence est absente : sur une
+ * BASCULE, un second clic refermerait ce que le premier vient d'ouvrir.
+ */
+async function toucher(cible, consequence, options) {
+  const vu = () => consequence.isVisible().catch(() => false)
+  await insister(() => cible.click(), vu, options)
   // On laisse l'assertion de l'appelant produire le vrai message d'échec,
   // avec son cliché : c'est elle qui sait ce qu'on cherchait.
   await consequence.waitFor({ state: 'visible', timeout: 5000 })
 }
 
-module.exports = { test, expect: base.expect, BASE, toucher }
+/**
+ * SUIVRE UN LIEN, et s'assurer qu'on est bien parti.
+ *
+ * 🔴 UN `<Link>` DE NEXT A UNE FENÊTRE OÙ IL AVALE LE CLIC. Avant
+ * hydratation, c'est un `<a href>` ordinaire : le clic navigue pour de vrai.
+ * Après, le routeur prend la main proprement. **Entre les deux**, React a
+ * posé son écouteur — qui annule la navigation native — alors que le routeur
+ * n'est pas encore prêt à la refaire : le clic ne fait rien, et rien ne le
+ * dit. C'est ce qui faisait tomber « l'antichambre et l'appel ne peuvent pas
+ * se contredire » environ une fois sur trois, et uniquement dans la suite
+ * complète, où chaque test repart d'un contexte neuf.
+ */
+async function suivre(lien, page, motif, options) {
+  const arrive = () => Promise.resolve(motif.test(page.url()))
+  await insister(() => lien.click().catch(() => {}), arrive, options)
+  await base.expect(page).toHaveURL(motif, { timeout: 10_000 })
+}
+
+/**
+ * SAISIR, et s'assurer que React a entendu.
+ *
+ * 🔴 UN `fill()` SE PERD EXACTEMENT COMME UN CLIC. Il pose la valeur dans le
+ * DOM et émet un événement `input` ; React 19 l'écoute par délégation depuis
+ * la racine, et cet écouteur n'existe qu'après hydratation. Avant, la valeur
+ * est bien DANS le champ mais l'état React reste vide — et un bouton piloté
+ * par cet état reste `disabled` pour toujours.
+ *
+ * Vécu le 7 novembre 2026 sur l'import de tableur : « Regarder ce que ça
+ * donnerait » restait grisé, la sonde expirait au bout de 60 s, et le champ
+ * affichait pourtant le texte collé. **Le symptôme désigne le bouton, la
+ * cause est dans le champ d'à côté.**
+ *
+ * `estFait` est une fonction : ce qui prouve que React a vu n'est pas
+ * toujours quelque chose de VISIBLE — ici c'est un bouton qui cesse d'être
+ * désactivé.
+ */
+async function remplir(champ, valeur, estFait, options) {
+  /**
+   * 🔴 ON VIDE AVANT DE REPOSER, ET C'EST LA SEULE CHOSE QUI MARCHE.
+   *
+   * Mesuré le 7 novembre 2026, contexte neuf à chaque cas, sur l'import :
+   *
+   *     six fois la MÊME valeur ............... ✗ jamais vu
+   *     une valeur DIFFÉRENTE à chaque fois ... ✗ jamais vu
+   *     une frappe clavier après le fill ...... ✗ jamais vu
+   *     vider ('') puis reposer ............... ✓ vu
+   *
+   * Pourquoi : React suit la valeur d'un champ contrôlé par un « traqueur »
+   * posé à l'hydratation, initialisé avec ce que le DOM contient À CE
+   * MOMENT-LÀ. Si une saisie est arrivée AVANT, le traqueur naît déjà égal au
+   * texte affiché alors que l'état React, lui, vaut `''`. Les deux ne se
+   * recroiseront plus jamais : aucun `change` ne part, quoi qu'on tape.
+   * Repasser par la chaîne vide les resynchronise.
+   *
+   * ⚠️ Le symptôme, lui, est muet : le texte est bien à l'écran et le bouton
+   * reste grisé sans rien dire. 369 essais en 25 s n'y changeaient rien —
+   * c'est ce qui prouve que ce n'était PAS une course de quelques
+   * millisecondes, contrairement à ce que j'ai cru deux fois.
+   */
+  const poser = async () => {
+    await champ.fill('')
+    await champ.fill(valeur)
+  }
+  // 🔴 ELLE CRIE QUAND ELLE ABANDONNE. Sa première version se contentait de
+  // revenir, et l'échec se manifestait vingt lignes plus loin par un clic sur
+  // un bouton grisé — un symptôme qui désigne le mauvais coupable. Une aide
+  // qui renonce en silence est exactement le défaut qu'on traque ailleurs.
+  const ok = await insister(poser, estFait, options)
+  if (!ok) {
+    throw new Error(
+      `remplir : la saisie n'a jamais été vue par React après ${options?.essais ?? 40} essais. ` +
+        `Valeur posée dans le DOM : « ${(await champ.inputValue().catch(() => '?')).slice(0, 60)} ».`,
+    )
+  }
+}
+
+module.exports = { test, expect: base.expect, BASE, toucher, remplir, suivre, insister }

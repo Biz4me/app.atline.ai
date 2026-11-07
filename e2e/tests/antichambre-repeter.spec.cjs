@@ -22,7 +22,7 @@
 //   5. que le choix circule : le prendre dans la liste doit changer le
 //      briefing, et le retour ne doit pas l'effacer.
 
-const { test, expect } = require('../fixtures.cjs')
+const { test, expect, suivre } = require('../fixtures.cjs')
 
 test.use({ viewport: { width: 390, height: 844 } })
 
@@ -238,8 +238,14 @@ test('l’antichambre et l’appel ne peuvent pas se contredire', async ({ page,
 
   const brief = await page.locator('main').innerText()
 
-  await page.getByRole('link', { name: 'Commencer', exact: true }).click()
-  await expect(page).toHaveURL(/\/coach\/repeter\/appel/, { timeout: 20_000 })
+  // ⚠️ `suivre` ET NON `click` : voir fixtures.cjs. Un `<Link>` de Next a une
+  // fenêtre où React annule la navigation native sans que le routeur soit
+  // prêt à la refaire — le clic ne fait rien, et rien ne le dit.
+  await suivre(
+    page.getByRole('link', { name: 'Commencer', exact: true }),
+    page,
+    /\/coach\/repeter\/appel/,
+  )
 
   const sortie = page.getByRole('button', { name: 'Fermer' })
   await expect(sortie).toBeVisible({ timeout: 20_000 })
