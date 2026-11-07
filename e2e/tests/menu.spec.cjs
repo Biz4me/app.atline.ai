@@ -72,6 +72,64 @@ test('le menu annonce ce qui manque sans promettre de porte', async ({ page }) =
   expect(faux, 'une entrée non construite est cliquable').toBe(0)
 
   const combien = await page.getByText('bientôt', { exact: true }).count()
-  console.log(`  ${combien} entrées annoncées « bientôt »`)
-  expect(combien).toBeGreaterThan(8)
+  console.log(`  ${combien} entrées annoncées « bientôt » dans le menu`)
+  expect(combien).toBeGreaterThan(5)
+})
+test('aucune destination n’est à la fois dans le menu et derrière l’avatar', async ({ page }) => {
+  /**
+   * 🔴 DEUX DOUBLONS EXISTAIENT, et c'est la faute qui a fait supprimer le
+   * menu global le 5 novembre : deux gestes vers le même endroit, sans qu'on
+   * sache lequel est le bon. 🧭 **Chaque destination a un seul propriétaire** —
+   * le compte appartient à l'avatar.
+   *
+   * ⚠️ On compare sur les mots NORMALISÉS, pas à l'identique : le doublon
+   * s'écrivait « Mes activités MLM » ici et « Activité MLM » là. Une
+   * comparaison stricte ne l'aurait pas vu, et c'est précisément comme ça
+   * qu'il était passé.
+   *
+   * ⚠️ ET LA NORMALISATION VIT CÔTÉ NODE, PAS DANS LA PAGE. Ma première
+   * version l'injectait dans `page.evaluate` ; son `\b` est arrivé dans le
+   * fichier sous forme d'un VRAI caractère « retour arrière » (0x08), si bien
+   * que la règle ne correspondait plus à rien et que le contrôle se taisait.
+   * Ici elle est écrite une fois, sans la moindre barre oblique inverse, et
+   * elle est mise à l'épreuve avant de servir.
+   */
+  const sansAccent = (t) =>
+    t
+      .normalize('NFD')
+      .split('')
+      .filter((c) => c.charCodeAt(0) < 768 || c.charCodeAt(0) > 879)
+      .join('')
+
+  const normaliser = (t) =>
+    sansAccent(t.toLowerCase())
+      .replace(/^(mes|ton|ta|la|le|les) /, '')
+      .split(' ')
+      .map((m) => (m.endsWith('s') ? m.slice(0, -1) : m))
+      .join(' ')
+      .trim()
+
+  const noms = async (url) => {
+    await page.goto(url, { waitUntil: 'domcontentloaded' })
+    await expect(page.locator('main ul li').first()).toBeVisible({ timeout: 20_000 })
+    const bruts = await page.evaluate(() =>
+      [...document.querySelectorAll('main ul li')].map(
+        (e) => e.querySelector('span')?.textContent ?? '',
+      ),
+    )
+    return bruts.map(normaliser)
+  }
+
+  // 🔴 ON PROUVE D'ABORD QUE LE DÉTECTEUR DÉTECTE, sur le VRAI couple qui
+  // était passé. Un contrôle d'absence qui n'a jamais rien trouvé ne vaut rien.
+  expect(
+    normaliser('Mes activités MLM'),
+    'le détecteur ne verrait pas le doublon qu’il surveille',
+  ).toBe(normaliser('Activité MLM'))
+
+  const menu = await noms('/accueil?menu=1')
+  const compte = await noms('/compte')
+  const communs = menu.filter((n) => n && compte.includes(n))
+  console.log(`  menu ${menu.length} · compte ${compte.length} · communs ${communs.length}`)
+  expect(communs, 'une destination a deux portes').toEqual([])
 })
