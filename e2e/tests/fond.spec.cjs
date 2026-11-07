@@ -112,3 +112,58 @@ test('① aucun fond opaque ne recouvre le décor, et la sonde sait le voir', as
     'la sonde ne voit pas le défaut qu’elle surveille',
   ).toBeGreaterThan(0)
 })
+
+test('les deux rendus sont le MÊME cadrage, pas deux photos', async ({ page }) => {
+  await page.goto('/accueil', { waitUntil: 'domcontentloaded' })
+  await expect(page.locator(COUCHES).first()).toHaveCount(1, { timeout: 20_000 })
+
+  /**
+   * 🔴 LE DÉFAUT QUE CECI ATTRAPE, trouvé par Patrice à l'œil : les deux
+   * rendus avaient été générés INDÉPENDAMMENT, donc c'étaient deux photos —
+   * tête à 11 % du cadre dans l'une, 16 % dans l'autre. L'app changeait de
+   * portrait quand on basculait le thème.
+   *
+   * 🧭 On mesure la PREMIÈRE RANGÉE QUI BOUGE : un fond plat a une variance
+   * nulle, le haut de la tête la fait monter. Le critère ne dépend donc pas
+   * de la clarté du fond, et c'est ce qui permet de comparer un rendu sombre
+   * à un rendu clair.
+   */
+  const hauteurDeTete = (url) =>
+    page.evaluate(
+      (u) =>
+        new Promise((res, rej) => {
+          const i = new Image()
+          i.onerror = () => rej(new Error('image illisible : ' + u))
+          i.onload = () => {
+            const c = document.createElement('canvas')
+            c.width = i.naturalWidth
+            c.height = i.naturalHeight
+            const x = c.getContext('2d')
+            x.drawImage(i, 0, 0)
+            for (let y = 0; y < c.height; y += 2) {
+              const d = x.getImageData(0, y, c.width, 1).data
+              let somme = 0
+              let carres = 0
+              for (let p = 0; p < d.length; p += 4) {
+                const l = 0.2126 * d[p] + 0.7152 * d[p + 1] + 0.0722 * d[p + 2]
+                somme += l
+                carres += l * l
+              }
+              const n = d.length / 4
+              if (Math.sqrt(carres / n - (somme / n) ** 2) > 6) return res(y / c.height)
+            }
+            res(1)
+          }
+          i.src = u
+        }),
+      url,
+    )
+
+  const sombre = await hauteurDeTete('/fonds/atlas-sombre.webp')
+  const clair = await hauteurDeTete('/fonds/atlas-clair.webp')
+  console.log(`  haut de la tête — sombre ${(sombre * 100).toFixed(0)} % · clair ${(clair * 100).toFixed(0)} %`)
+  expect(
+    Math.abs(sombre - clair),
+    'les deux thèmes ne montrent pas le même cadrage',
+  ).toBeLessThan(0.03)
+})
