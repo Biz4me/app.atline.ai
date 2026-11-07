@@ -175,10 +175,21 @@ async function toucher(cible, consequence, options) {
  * dit. C'est ce qui faisait tomber « l'antichambre et l'appel ne peuvent pas
  * se contredire » environ une fois sur trois, et uniquement dans la suite
  * complète, où chaque test repart d'un contexte neuf.
+ *
+ * ⚠️ TROIS ESSAIS ESPACÉS DE TROIS SECONDES, ET SURTOUT PAS LE RÉGLAGE PAR
+ * DÉFAUT. Sa première version héritait de `insister` : 40 clics en deux
+ * secondes. Elle recliquait donc EN PLEINE NAVIGATION, et la cassait — la
+ * sonde tombait alors avec `page.url()` à vide, ce qui n'arrive jamais sur
+ * une page normale. 🧭 Un rattrapage qui frappe plus vite que la chose qu'il
+ * attend finit par la provoquer, le défaut qu'il devait corriger.
  */
 async function suivre(lien, page, motif, options) {
   const arrive = () => Promise.resolve(motif.test(page.url()))
-  await insister(() => lien.click().catch(() => {}), arrive, options)
+  await insister(() => lien.click().catch(() => {}), arrive, {
+    essais: 3,
+    pas: 3000,
+    ...options,
+  })
   await base.expect(page).toHaveURL(motif, { timeout: 10_000 })
 }
 
