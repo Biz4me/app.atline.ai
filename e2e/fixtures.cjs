@@ -41,6 +41,48 @@ const test = base.test.extend({
     await use(context)
   },
 
+  /**
+   * 🔴 ON N'AGIT JAMAIS SUR UNE PAGE QUI N'EST PAS ENCORE VIVANTE.
+   *
+   * Le HTML du serveur est peint et parfaitement cliquable avant que React
+   * n'attache ses écouteurs. `click()` n'attend que l'actionnabilité du DOM
+   * — vraie pendant toute cette fenêtre — donc le geste part, atterrit, et
+   * **personne ne dit qu'il s'est perdu**. Un humain ne tape pas dans cette
+   * fenêtre ; Playwright, si, à chaque test.
+   *
+   * ⚠️ Pour une SAISIE, c'est pire qu'une course : la valeur se pose dans le
+   * champ mais React garde son état vide **définitivement**, parce que son
+   * traqueur de valeur naît à l'hydratation déjà égal au texte affiché.
+   * Mesuré le 7 novembre 2026 : 369 remplissages en 25 s n'y changent rien.
+   *
+   * 🧭 D'OÙ CE CROCHET PLUTÔT QUE DES RATTRAPAGES. On patchait les clics un
+   * par un — le menu des contacts, puis le déroulant de la fiche, puis le
+   * lien de l'antichambre, puis le menu de l'agenda. Quatre fois la même
+   * cause, quatre correctifs locaux, et le prochain écran l'aurait reprise.
+   * L'app pose `data-vivant` dans un effet (donc après hydratation, donc ça
+   * ne peut pas mentir) et on l'attend ICI, pour tous les tests à la fois.
+   *
+   * ⚠️ `waitForFunction` et non un `waitForSelector` : l'attribut est posé
+   * sur `<html>`, qui existe dès la première peinture.
+   */
+  page: async ({ page }, use) => {
+    const brut = page.goto.bind(page)
+    page.goto = async (url, options) => {
+      const r = await brut(url, options)
+      await page
+        .waitForFunction(() => document.documentElement.dataset.vivant === '1', undefined, {
+          timeout: 30_000,
+        })
+        .catch(() => {
+          // On ne fait pas échouer ici : certaines pages d'erreur ou de
+          // redirection n'ont pas de React du tout, et c'est légitime.
+          // L'assertion de l'appelant dira mieux ce qui manquait.
+        })
+      return r
+    }
+    await use(page)
+  },
+
   // Exceptions JS non capturées survenues pendant le test (à asserter vide en fin de scénario).
   pageErrors: async ({ page }, use) => {
     const errors = []
