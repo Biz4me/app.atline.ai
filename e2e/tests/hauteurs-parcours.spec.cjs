@@ -10,7 +10,22 @@ const { test, expect } = require('../fixtures.cjs')
 
 const LARGEURS = [320, 360, 390, 430]
 
-async function controler(page, nom, selecteurCarte, selecteurTitre) {
+async function controler(page, nom, selecteurCarte, selecteurTitre, combien) {
+  // 🔴 UNE SONDE DOIT PROUVER QU'ELLE A MESURÉ QUELQUE CHOSE.
+  //
+  // Les deux versions précédentes se sont trompées de deux façons opposées, et
+  // aucune ne l'a dit :
+  //   · l'une cherchait un `p` là où le titre était devenu un `span` : zéro
+  //     élément, donc « zéro rogné », donc verte en permanence ;
+  //   · l'autre écrivait `span:nth-child(2)` SANS le combinateur direct, et
+  //     attrapait aussi un `sr-only` haut de 1 px, qu'elle comptait comme un
+  //     titre rogné — elle criait sur un écran correct.
+  //
+  // 🧭 Les deux échouent pareil : on cesse de s'en servir. D'où le compte
+  // attendu, déclaré par l'appelant et vérifié avant toute autre mesure.
+  const vus = await page.locator(selecteurTitre).count()
+  expect(vus, `${nom} : la sonde voit ${vus} titre(s) au lieu de ${combien}`).toBe(combien)
+
   for (const l of LARGEURS) {
     await page.setViewportSize({ width: l, height: 844 })
     const h = await page.locator(selecteurCarte).evaluateAll((n) =>
@@ -28,7 +43,7 @@ async function controler(page, nom, selecteurCarte, selecteurTitre) {
 test('les modules', async ({ page, pageErrors }) => {
   await page.goto('/parcours', { waitUntil: 'domcontentloaded' })
   await expect(page.locator('ol li a').first()).toBeVisible({ timeout: 20_000 })
-  await controler(page, 'modules', 'ol li a', 'ol li a span:nth-child(2)')
+  await controler(page, 'modules', 'ol li a', 'ol li a > span:nth-child(2)', 11)
   expect(pageErrors).toEqual([])
 })
 
@@ -40,7 +55,8 @@ test('les leçons, sur les trois modules aux titres les plus longs', async ({ pa
   for (const i of [0, 3, 10]) {
     await page.goto(liens[i], { waitUntil: 'domcontentloaded' })
     await expect(page.locator('ol li a').first()).toBeVisible({ timeout: 20_000 })
-    await controler(page, `module ${i + 1}`, 'ol li a', 'ol li a span.min-w-0 > span:nth-child(2)')
+    const combien = await page.locator('ol li a').count()
+    await controler(page, `module ${i + 1}`, 'ol li a', 'ol li a span.min-w-0 > span:nth-child(2)', combien)
   }
   expect(pageErrors).toEqual([])
 })

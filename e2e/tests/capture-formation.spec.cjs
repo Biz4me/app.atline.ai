@@ -4,18 +4,10 @@ test('formation', async ({ page, pageErrors }) => {
   await page.goto('/parcours', { waitUntil: 'domcontentloaded' })
   await expect(page.getByRole('heading', { level: 1 })).toBeVisible({ timeout: 20_000 })
   await page.evaluate(() => { document.getAnimations().forEach((a) => { try { a.finish() } catch {} }) })
-  // 🔴 LA HAUTEUR DES ONZE CARTES. C'est la demande de Patrice, et c'est le
-  // genre de chose qu'une capture ne dit pas : à 390 px tout peut sembler
-  // aligné pendant qu'un titre long déborde à 320.
-  for (const l of [320, 360, 390, 430]) {
-    await page.setViewportSize({ width: l, height: 844 })
-    const h = await page.locator('ol li a').evaluateAll((n) => n.map((e) => Math.round(e.getBoundingClientRect().height)))
-    const rognes = await page.locator('ol li a p:nth-child(2)').evaluateAll((n) => n.filter((e) => e.scrollHeight > e.clientHeight + 1).length)
-    console.log(`  ${l}px : ${new Set(h).size} hauteur(s) ${[...new Set(h)].join('/')} · ${rognes} titre(s) rogné(s)`)
-    expect(new Set(h).size, `${l}px : les cartes n'ont pas toutes la même hauteur`).toBe(1)
-    expect(rognes, `${l}px : un titre de module est rogné`).toBe(0)
-  }
-  await page.setViewportSize({ width: 390, height: 844 })
+  // ⚠️ ELLE NE MESURE PLUS RIEN : les hauteurs et les titres rognés sont
+  // vérifiés par `hauteurs-parcours.spec.cjs`, qui le fait sur les DEUX écrans
+  // et déclare le nombre de titres qu'il doit voir. Ici on ne fait qu'une
+  // image — et une sonde qui mesure en double finit par diverger de l'autre.
   console.log('  bouton : ' + (await page.locator('main ~ a, a').filter({ hasText: /module/i }).last().innerText().catch(() => '?')))
   await page.screenshot({ path: 'formation.png', fullPage: true })
   expect(pageErrors).toEqual([])
