@@ -41,14 +41,14 @@ async function controler(page, nom, selecteurCarte, selecteurTitre, combien) {
 }
 
 test('les modules', async ({ page, pageErrors }) => {
-  await page.goto('/parcours', { waitUntil: 'domcontentloaded' })
+  await page.goto('/parcours/cours', { waitUntil: 'domcontentloaded' })
   await expect(page.locator('ol li a').first()).toBeVisible({ timeout: 20_000 })
   await controler(page, 'modules', 'ol li a', 'ol li a > span:nth-child(2)', 11)
   expect(pageErrors).toEqual([])
 })
 
 test('les leçons, sur les trois modules aux titres les plus longs', async ({ page, pageErrors }) => {
-  await page.goto('/parcours', { waitUntil: 'domcontentloaded' })
+  await page.goto('/parcours/cours', { waitUntil: 'domcontentloaded' })
   await expect(page.locator('ol li a').first()).toBeVisible({ timeout: 20_000 })
   // Modules 1, 4 et 11 : ils portent les titres de 76, 70 et 71 caractères.
   const liens = await page.locator('ol li a').evaluateAll((n) => n.map((e) => e.getAttribute('href')))
@@ -75,7 +75,7 @@ test('le tracé passe par le centre des nœuds', async ({ page }) => {
    * Un alignement se vérifie par un nombre, jamais par une capture.
    */
   await page.setViewportSize({ width: 390, height: 844 })
-  await page.goto('/parcours', { waitUntil: 'domcontentloaded' })
+  await page.goto('/parcours/cours', { waitUntil: 'domcontentloaded' })
   const href = await page.locator('ol li a').nth(1).getAttribute('href')
   await page.goto(href, { waitUntil: 'domcontentloaded' })
   await expect(page.locator('ol li a[data-lecon]').first()).toBeVisible({ timeout: 20_000 })

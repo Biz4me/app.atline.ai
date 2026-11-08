@@ -1,7 +1,7 @@
 const { test, expect } = require('../fixtures.cjs')
 test('un module', async ({ page, pageErrors }) => {
   await page.setViewportSize({ width: 390, height: 844 })
-  await page.goto('/parcours', { waitUntil: 'domcontentloaded' })
+  await page.goto('/parcours/cours', { waitUntil: 'domcontentloaded' })
   await expect(page.locator('ol li a').first()).toBeVisible({ timeout: 20_000 })
   const href = await page.locator('ol li a').nth(1).getAttribute('href')
   await page.goto(href, { waitUntil: 'domcontentloaded' })

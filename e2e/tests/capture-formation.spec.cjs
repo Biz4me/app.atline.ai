@@ -1,7 +1,7 @@
 const { test, expect } = require('../fixtures.cjs')
 test('formation', async ({ page, pageErrors }) => {
   await page.setViewportSize({ width: 390, height: 844 })
-  await page.goto('/parcours', { waitUntil: 'domcontentloaded' })
+  await page.goto('/parcours/cours', { waitUntil: 'domcontentloaded' })
   await expect(page.getByRole('heading', { level: 1 })).toBeVisible({ timeout: 20_000 })
   await page.evaluate(() => { document.getAnimations().forEach((a) => { try { a.finish() } catch {} }) })
   // ⚠️ ELLE NE MESURE PLUS RIEN : les hauteurs et les titres rognés sont
