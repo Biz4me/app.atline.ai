@@ -2,10 +2,17 @@
 const { test, expect } = require('../fixtures.cjs')
 test.use({ viewport: { width: 390, height: 844 } })
 
-test('la barre a quatre entrées, et plus de Simulation', async ({ page, pageErrors }) => {
+test('plus aucune entrée « Simulation » dans la barre', async ({ page, pageErrors }) => {
+  /**
+   * ⚠️ CETTE SONDE A COMPTÉ 4 PENDANT UNE JOURNÉE, et c'était juste : la case
+   * libérée par le simulateur est restée vide tant que le fil d'Atlas n'avait
+   * pas d'adresse. Elle en compte 5 depuis. 🧭 Ce qu'elle surveille n'est pas
+   * le nombre — il bougera encore — mais le fait que **le simulateur ne
+   * revienne pas** dans la barre : il se lance depuis un contexte.
+   */
   await page.goto('/parcours', { waitUntil: 'domcontentloaded' })
   const cases = page.locator('nav[aria-label="Navigation principale"] a')
-  await expect(cases).toHaveCount(4, { timeout: 20_000 })
+  await expect(cases).toHaveCount(5, { timeout: 20_000 })
   const mots = await cases.evaluateAll((n) => n.map((e) => e.textContent.trim()))
   console.log(`  barre : ${mots.join(' · ')}`)
   expect(mots.join(' ')).not.toMatch(/Simulation/)
