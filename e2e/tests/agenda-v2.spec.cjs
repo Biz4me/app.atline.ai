@@ -26,8 +26,15 @@ test("l'agenda de V2 s'affiche pour un utilisateur authentifié", async ({ page,
   // justement attrapé sa propre péremption, en annonçant 4 là où l'app en
   // servait 5 depuis des heures.
   const barre = page.getByRole('navigation', { name: 'Navigation principale' })
-  await expect(barre.getByRole('link')).toHaveCount(5)
-  await expect(barre.getByRole('link', { name: 'Agenda' })).toBeVisible()
+  // 🔴 QUATRE, PLUS CINQ : l'agenda est monté en haut à droite le 10 novembre
+  // 2026. Il reste un LIEU — titre centré, icône, teinte, sous-pages — il n'a
+  // perdu que sa case.
+  await expect(barre.getByRole('link')).toHaveCount(4)
+  // ⚠️ ET ON L'ATTEINT PAR LE HAUT. Le contrôle disait « visible dans la
+  // barre » ; le remplacer par rien aurait laissé l'agenda joignable depuis
+  // nulle part sans que personne le voie.
+  await expect(barre.getByRole('link', { name: 'Agenda' })).toHaveCount(0)
+  await expect(page.locator('[data-agenda-haut]')).toHaveCount(0) // on y EST déjà
 
   // « Ce qui vient » est toujours là, rempli ou vide.
   await expect(page.getByRole('heading', { name: 'Ce qui vient', level: 2 })).toBeVisible()

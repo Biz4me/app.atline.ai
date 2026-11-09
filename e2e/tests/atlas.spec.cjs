@@ -4,10 +4,17 @@ test.use({ viewport: { width: 390, height: 844 } })
 
 const BARRE = 'nav[aria-label="Navigation principale"]'
 
-test('cinq entrées, Atlas au centre, et il mène au fil', async ({ page, pageErrors }) => {
+test('quatre entrées, Atlas en troisième, et il mène au fil', async ({ page, pageErrors }) => {
   await page.goto('/accueil', { waitUntil: 'domcontentloaded' })
   const cases = page.locator(`${BARRE} a`)
-  await expect(cases).toHaveCount(5, { timeout: 20_000 })
+  // 🔴 ET ATLAS N'EST PLUS « AU CENTRE ». La barre est passée à QUATRE le 10
+  // novembre 2026 : à cinq, la troisième case était le milieu exact, et
+  // `destinations.ts` disait que c'était « la place qu'il mérite, la plus
+  // facile à atteindre après les bords ». À quatre, il n'y a pas de milieu.
+  // Il garde sa position — on ne déplace pas un réflexe sans raison — mais
+  // l'argument qui la justifiait est tombé avec la cinquième case, et il
+  // faudra le reposer le jour où une cinquième reviendra.
+  await expect(cases).toHaveCount(4, { timeout: 20_000 })
   const mots = await cases.evaluateAll((n) => n.map((e) => e.textContent.trim()))
   console.log(`  barre : ${mots.join(' · ')}`)
   expect(mots[2]).toMatch(/Atlas/)

@@ -44,8 +44,13 @@ test('elle ouvre le menu, le referme, et la barre reste utilisable', async ({
   // jamais piege ». Un menu plein ecran qui enfermerait serait pire que pas
   // de menu.
   const cases = page.locator('nav[aria-label="Navigation principale"] a')
-  await expect(cases).toHaveCount(5)
-  await expect(cases.nth(4)).toHaveAttribute('href', '/gens')
+  // 🔴 QUATRE, PLUS CINQ : l'agenda est monté en haut à droite le 10 novembre
+  // 2026. Il reste un LIEU — titre centré, icône, teinte, sous-pages — il n'a
+  // perdu que sa case.
+  await expect(cases).toHaveCount(4)
+  // ⚠️ `nth(3)` ET NON `nth(4)` : Contacts est le DERNIER, et la barre a
+  // perdu une case. Un index écrit en dur suit le compte, toujours.
+  await expect(cases.nth(3)).toHaveAttribute('href', '/gens')
 
   // La fleche referme.
   await suivre(page.locator(PREMIERE), page, /\/accueil$/)

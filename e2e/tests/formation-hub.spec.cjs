@@ -12,7 +12,10 @@ test('plus aucune entrée « Simulation » dans la barre', async ({ page, pageEr
    */
   await page.goto('/parcours', { waitUntil: 'domcontentloaded' })
   const cases = page.locator('nav[aria-label="Navigation principale"] a')
-  await expect(cases).toHaveCount(5, { timeout: 20_000 })
+  // 🔴 QUATRE, PLUS CINQ : l'agenda est monté en haut à droite le 10 novembre
+  // 2026. Il reste un LIEU — titre centré, icône, teinte, sous-pages — il n'a
+  // perdu que sa case.
+  await expect(cases).toHaveCount(4, { timeout: 20_000 })
   const mots = await cases.evaluateAll((n) => n.map((e) => e.textContent.trim()))
   console.log(`  barre : ${mots.join(' · ')}`)
   expect(mots.join(' ')).not.toMatch(/Simulation/)

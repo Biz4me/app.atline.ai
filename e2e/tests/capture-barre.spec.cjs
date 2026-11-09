@@ -40,12 +40,11 @@ test('cinq lieux, un seul nom chacun, et l’identité sur l’accueil seul', as
   await expect(barre).toBeVisible({ timeout: 20_000 })
 
   const entrees = (await barre.innerText()).split('\n').map((t) => t.trim()).filter(Boolean)
-  // 🔴 MIS À JOUR LE 10 NOVEMBRE 2026, APRÈS DEUX JOURS DE ROUGE. La barre a
-  // changé deux fois le 8 : « Simulation » est rentrée dans Formation et sa
-  // case est revenue à Atlas, et la PREMIÈRE case dit « Menu » quand on est
-  // déjà chez soi. Cette sonde décrivait donc une app qui n'existait plus, et
-  // personne ne l'a relancée — c'est le vrai défaut, pas le libellé.
-  expect(entrees).toEqual(['Menu', 'Formation', 'Atlas', 'Agenda', 'Contacts'])
+  // 🔴 MISE À JOUR DEUX FOIS. Le 8 novembre, « Simulation » est rentrée dans
+  // Formation et sa case est revenue à Atlas ; la PREMIÈRE case dit « Menu »
+  // quand on est déjà chez soi. Puis le 10, **l'agenda est monté en haut à
+  // droite** : la barre tombe à QUATRE.
+  expect(entrees).toEqual(['Menu', 'Formation', 'Atlas', 'Contacts'])
 
   // ── 2. l'accueil porte l'identité, et lui seul ─────────────────────────
   await expect(page.getByText('Forever Living')).toHaveCount(1)
@@ -132,7 +131,14 @@ test('cinq lieux, un seul nom chacun, et l’identité sur l’accueil seul', as
 
     await poser(page)
     const cadre = await page.locator('header').boundingBox()
-    const bloc = await page.locator('header > div').first().boundingBox()
+    // 🔴 LA DEUXIÈME CELLULE, PLUS LA PREMIÈRE. L'en-tête est passé en grille
+    // à trois cellules le 10 novembre 2026, pour que le titre d'un lieu reste
+    // centré malgré l'agenda posé à droite. Le premier `div` était le bloc du
+    // titre tant que la gauche n'était qu'un lien nu ; c'est maintenant la
+    // cellule de GAUCHE, et la sonde mesurait donc un élément collé au bord —
+    // elle a bien crié, mais en disant « décalé de 179 px » au lieu de « je
+    // regarde ailleurs ».
+    const bloc = await page.locator('header > div:nth-child(2)').boundingBox()
     const ecart = Math.round(bloc.x + bloc.width / 2 - (cadre.x + cadre.width / 2))
     expect(Math.round(cadre.height), `${nom} : barre du haut`).toBe(hautAccueil)
     expect(Math.abs(ecart), `${nom} : paire décalée de ${ecart} px`).toBeLessThanOrEqual(1)
@@ -153,12 +159,15 @@ test('cinq lieux, un seul nom chacun, et l’identité sur l’accueil seul', as
   //
   // 🔴 ET « SIMULATION » EN EST SORTI LE 8 NOVEMBRE 2026, remplacé par ATLAS.
   // Le simulateur est rentré dans Formation — il ne se visite pas, il se
-  // LANCE depuis un contexte — et la case libérée est revenue à Atlas, qui
-  // n'avait aucune adresse à lui. L'antichambre garde sa coquille, elle est
-  // juste atteinte par Formation.
+  // LANCE depuis un contexte — et la case libérée est revenue à Atlas.
+  //
+  // 🔴 L'AGENDA EST SORTI DE CETTE BOUCLE LE 10 NOVEMBRE : il reste un LIEU
+  // — titre centré, icône, teinte, sous-pages — mais on ne l'atteint plus
+  // par la barre. Il est couvert par `agenda-en-haut.spec.cjs`, qui vérifie
+  // justement qu'il n'a rien perdu d'autre que sa case.
   //
   // ⚠️ Contacts reste EN DERNIER : le contrôle d'après lit l'entrée allumée.
-  for (const nom of ['Formation', 'Atlas', 'Agenda', 'Contacts']) await lieuConforme(nom)
+  for (const nom of ['Formation', 'Atlas', 'Contacts']) await lieuConforme(nom)
 
   // ── 4. une seule entrée allumée, et c'est la bonne ─────────────────────
   const allumees = barre.locator('[aria-current="page"]')
