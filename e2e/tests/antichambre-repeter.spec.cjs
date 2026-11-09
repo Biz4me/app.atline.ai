@@ -46,11 +46,12 @@ test('le menu : des titres, et le geste reste allumé', async ({ page, pageError
   })
   const barre = page.getByRole('navigation', { name: BARRE })
   await expect(barre).toBeVisible()
-  // 🔴 « Formation » ET NON « Simulation » : le simulateur est rentré dans
-  // Formation le 8 novembre 2026, et c'est `destinations.ts` qui le déclare
+  // 🔴 « Apprendre » ET NON « Simulation » : le simulateur est rentré dans ce
+  // lieu le 8 novembre 2026, et c'est `destinations.ts` qui le déclare
   // (`autres: ['/coach/repeter']`). Le titre de la page reste « Simulation » —
-  // c'est bien ce qu'on fait ici — mais le LIEU est Formation.
-  await expect(barre.locator('[aria-current="page"]')).toHaveText(/Formation/)
+  // c'est bien ce qu'on fait ici — mais le LIEU est Apprendre.
+  // ⚠️ Le lieu s'appelait « Formation » jusqu'au 10 novembre 2026.
+  await expect(barre.locator('[aria-current="page"]')).toHaveText(/Apprendre/)
   // ⚠️ Un seul h1. Deux titres sur une page, c'est la faute déjà payée sur
   // les leçons — et elle ne se voit pas à l'écran.
   await expect(page.locator('h1')).toHaveCount(1)

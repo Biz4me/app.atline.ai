@@ -83,6 +83,47 @@ test('les quatre gestes, dans l’ordre, et éteints sans coordonnée', async ({
   expect(pageErrors, `exception client : ${pageErrors.join(' · ')}`).toHaveLength(0)
 })
 
+test('aucun geste ne porte son propre fond — pas de cadre dans un cadre', async ({ page, seed }) => {
+  /**
+   * 🔴 LE DÉFAUT, VU PAR PATRICE LE 10 NOVEMBRE 2026 : *« je vois des carrés
+   * en transparence derrière les icônes »*. Il les voyait parce qu'ils y
+   * étaient. La correction précédente avait retiré la BORDURE et gardé le
+   * REMPLISSAGE : quatre `--color-fond` en rayon 12 dans une barre qui est à
+   * `--color-surface`, donc quatre carrés d'une autre couleur que leur propre
+   * barre, dans les deux thèmes.
+   *
+   * 🧭 LA RÈGLE QUE ÇA FIGE : **le mobilier n'a pas de fond.** Les gestes sont
+   * la barre, ils ne sont pas DANS la barre. Ce qui dit « ça se touche », c'est
+   * la pastille colorée autour du glyphe et l'encre du verbe — pas un cadre.
+   *
+   * ⚠️ ON LIT LA COULEUR CALCULÉE, PAS LA CLASSE. `bg-[var(--color-fond)]`,
+   * une couleur en dur ou un fond hérité donnent le même carré et ne se
+   * ressemblent pas dans le source.
+   */
+  await page.goto(`/gens/${seed.cid}`, { waitUntil: 'domcontentloaded' })
+  await expect(page.getByRole('heading', { level: 1 })).toBeVisible({ timeout: 20_000 })
+  await expect(gestes(page)).toHaveCount(ATTENDUS.length)
+
+  const opaque = (c) => {
+    const p = (c || '').match(/[\d.]+/g)
+    return !!p && (p.length < 4 || parseFloat(p[3]) > 0)
+  }
+
+  const fonds = await gestes(page).evaluateAll((n) =>
+    n.map((e) => ({ mot: e.getAttribute('data-geste'), fond: getComputedStyle(e).backgroundColor })),
+  )
+  console.log(`  fonds : ${fonds.map((f) => `${f.mot}=${f.fond}`).join(' · ')}`)
+
+  // 🔴 ON PROUVE QUE LE DÉTECTEUR DÉTECTE, avec la VRAIE valeur du défaut.
+  expect(opaque('rgb(245, 245, 246)'), 'le détecteur ne verrait pas le carré').toBe(true)
+  expect(opaque('rgba(0, 0, 0, 0)'), 'le détecteur crierait sur un fond absent').toBe(false)
+
+  expect(
+    fonds.filter((f) => opaque(f.fond)).map((f) => `${f.mot} (${f.fond})`),
+    'un geste peint son propre fond : le cadre dans le cadre est revenu',
+  ).toEqual([])
+})
+
 test('un numéro allume Appeler et SMS, et fait apparaître WhatsApp', async ({ page, seed }) => {
   await page.goto(`/gens/${seed.cid}`, { waitUntil: 'domcontentloaded' })
   await expect(page.getByRole('heading', { level: 1 })).toBeVisible({ timeout: 20_000 })

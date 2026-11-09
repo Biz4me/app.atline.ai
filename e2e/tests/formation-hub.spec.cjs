@@ -32,13 +32,14 @@ test('les trois portes mènent quelque part, et Formation s’allume aussi en si
   console.log(`  portes : ${portes.join(' ')}`)
   expect(portes).toEqual(['/parcours/cours', '/parcours/competences', '/coach/repeter'])
 
-  // 🔴 Le simulateur vit sous /coach/repeter mais appartient a Formation :
+  // 🔴 Le simulateur vit sous /coach/repeter mais appartient a Apprendre :
   // sans `autres` dans destinations.ts, aucune entree ne s'allumerait et
   // l'ecran perdrait sa couleur de lieu — on y serait sans savoir ou.
+  // ⚠️ Le lieu s'appelait « Formation » jusqu'au 10 novembre 2026.
   await page.goto('/coach/repeter', { waitUntil: 'domcontentloaded' })
   const actif = page.locator('nav[aria-label="Navigation principale"] a[aria-current="page"]')
   await expect(actif).toHaveCount(1, { timeout: 20_000 })
-  await expect(actif).toHaveText(/Formation/)
+  await expect(actif).toHaveText(/Apprendre/)
 })
 
 test('le nom d’Aria n’est plus écrit nulle part', async ({ page }) => {

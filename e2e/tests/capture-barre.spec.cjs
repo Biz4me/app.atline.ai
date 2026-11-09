@@ -40,11 +40,12 @@ test('cinq lieux, un seul nom chacun, et l’identité sur l’accueil seul', as
   await expect(barre).toBeVisible({ timeout: 20_000 })
 
   const entrees = (await barre.innerText()).split('\n').map((t) => t.trim()).filter(Boolean)
-  // 🔴 MISE À JOUR DEUX FOIS. Le 8 novembre, « Simulation » est rentrée dans
+  // 🔴 MISE À JOUR TROIS FOIS. Le 8 novembre, « Simulation » est rentrée dans
   // Formation et sa case est revenue à Atlas ; la PREMIÈRE case dit « Menu »
-  // quand on est déjà chez soi. Puis le 10, **l'agenda est monté en haut à
-  // droite** : la barre tombe à QUATRE.
-  expect(entrees).toEqual(['Menu', 'Formation', 'Atlas', 'Contacts'])
+  // quand on est déjà chez soi. Le 10 au matin, **l'agenda est monté en haut
+  // à droite** : la barre tombe à QUATRE. Le 10 au soir, **« Formation » est
+  // devenue « Apprendre »** — le lieu portait quatre mots selon l'écran.
+  expect(entrees).toEqual(['Menu', 'Apprendre', 'Atlas', 'Contacts'])
 
   // ── 2. l'accueil porte l'identité, et lui seul ─────────────────────────
   await expect(page.getByText('Forever Living')).toHaveCount(1)
@@ -167,7 +168,7 @@ test('cinq lieux, un seul nom chacun, et l’identité sur l’accueil seul', as
   // justement qu'il n'a rien perdu d'autre que sa case.
   //
   // ⚠️ Contacts reste EN DERNIER : le contrôle d'après lit l'entrée allumée.
-  for (const nom of ['Formation', 'Atlas', 'Contacts']) await lieuConforme(nom)
+  for (const nom of ['Apprendre', 'Atlas', 'Contacts']) await lieuConforme(nom)
 
   // ── 4. une seule entrée allumée, et c'est la bonne ─────────────────────
   const allumees = barre.locator('[aria-current="page"]')

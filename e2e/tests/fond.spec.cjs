@@ -113,6 +113,138 @@ test('① aucun fond opaque ne recouvre le décor, et la sonde sait le voir', as
   ).toBeGreaterThan(0)
 })
 
+test('④ les deux thèmes ne diffèrent pas en PRÉSENCE COLORÉE', async ({ page }) => {
+  /**
+   * 🔴 LE QUATRIÈME DÉFAUT, trouvé par Patrice le 10 novembre 2026 : *« on le
+   * voit trop en sombre »*. Les trois contrôles au-dessus ne pouvaient PAS le
+   * voir — ils regardent l'opacité, le recouvrement et le cadrage, et les
+   * trois étaient corrects.
+   *
+   * 🧭 CE N'ÉTAIT PAS L'OPACITÉ. Mesuré sur la bande visible, le dernier
+   * tiers : contraste de luminance 29,1 contre 24,7, soit **1,18×** — presque
+   * rien. Saturation 161,8 contre 73,2, soit **2,21×**. Le défaut était la
+   * COULEUR : un pull rouille éclairé d'orange contre un beige pâle.
+   *
+   * ⚠️ CE CONTRÔLE NE FIGE PAS LE NOIR ET BLANC, il fige l'ÉGALITÉ. Demain
+   * on peut vouloir de la couleur — à condition que les deux thèmes en
+   * portent autant. Remettre de la couleur dans un seul fait crier la sonde,
+   * et c'est exactement la faute qu'on vient de payer.
+   */
+  await page.goto('/accueil', { waitUntil: 'domcontentloaded' })
+  await expect(page.locator(COUCHES).first()).toHaveCount(1, { timeout: 20_000 })
+
+  /**
+   * 🔴 ON MESURE LE COMPOSÉ, PAS LE FICHIER — et ma première version s'est
+   * trompée là-dessus. Elle lisait l'image brute avec son filtre, hors sol :
+   * l'écart tombait à 1,38× et **mon propre contre-contrôle a refusé de se
+   * valider**, ce qui est exactement son travail. L'œil, lui, ne voit jamais
+   * le fichier : il voit l'image à son OPACITÉ, par-dessus le FOND du thème.
+   * C'est la composition qui fait la couleur perçue.
+   *
+   * 🧭 Même leçon qu'une maquette jugée sur le mauvais fond : **une sonde ne
+   * prouve que ce que son contexte prouve.**
+   */
+  const saturationComposee = (theme, filtreForce) =>
+    page.evaluate(
+      async ([t, forcer]) => {
+        document.documentElement.dataset.theme = t
+        // Laisser la requête média et les variables se recalculer.
+        await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)))
+        const couche = [...document.querySelectorAll('[aria-hidden="true"].fixed > div')].find(
+          (e) => Number(getComputedStyle(e).opacity) > 0.01,
+        )
+        if (!couche) throw new Error('aucune couche allumée en thème ' + t)
+        const s = getComputedStyle(couche)
+        const url = s.backgroundImage.match(/url\("([^"]+)"\)/)?.[1]
+        const opacite = Number(s.opacity)
+        const filtre = forcer ?? s.filter
+        const fond = getComputedStyle(document.body).backgroundColor
+
+        const i = new Image()
+        await new Promise((res, rej) => {
+          i.onload = res
+          i.onerror = () => rej(new Error('image illisible : ' + url))
+          i.src = url
+        })
+        const c = document.createElement('canvas')
+        c.width = i.naturalWidth
+        c.height = i.naturalHeight
+        const x = c.getContext('2d')
+        // ① le fond du thème, ② l'image par-dessus, à son filtre et son opacité
+        x.fillStyle = fond
+        x.fillRect(0, 0, c.width, c.height)
+        x.filter = filtre && filtre !== 'none' ? filtre : 'none'
+        x.globalAlpha = opacite
+        x.drawImage(i, 0, 0)
+
+        // La bande VISIBLE : le dernier tiers, celui que les cartes ne
+        // couvrent pas.
+        const haut = Math.floor(c.height * 0.62)
+        const d = x.getImageData(0, haut, c.width, c.height - haut).data
+        let somme = 0
+        for (let p = 0; p < d.length; p += 4) {
+          const max = Math.max(d[p], d[p + 1], d[p + 2])
+          const min = Math.min(d[p], d[p + 1], d[p + 2])
+          somme += max === 0 ? 0 : ((max - min) / max) * 255
+        }
+        return { saturation: somme / (d.length / 4), url, opacite, filtre, fond }
+      },
+      [theme, filtreForce],
+    )
+
+  // 🔴 LE MÊME TRAITEMENT AUX DEUX, et c'est l'invariant de la faute ③ :
+  // « un sombre atténué n'est pas un clair ». Ce qu'on fait à l'un se fait à
+  // l'autre, sinon les deux thèmes cessent d'être la même app.
+  const filtres = await page.evaluate(
+    (sel) => [...document.querySelectorAll(sel)].map((e) => getComputedStyle(e).filter),
+    COUCHES,
+  )
+  expect(filtres.length, 'il doit y avoir un rendu par thème').toBe(2)
+  expect(filtres[0], 'les deux rendus ne subissent pas le même traitement').toBe(filtres[1])
+
+  /**
+   * 🔴 UN ÉCART ABSOLU, PAS UN RAPPORT — et c'est la sonde elle-même qui me
+   * l'a appris. Ma version précédente divisait : en noir et blanc elle a
+   * annoncé **14,79×** sur un sombre à 14,8 et un clair à 0,6, c'est-à-dire
+   * deux gris. Un rapport explose dès que le dénominateur approche zéro, et
+   * il aurait fait crier la sonde sur l'état qu'on venait de choisir.
+   *
+   * ⚠️ ET LES 14,8 NE VIENNENT MÊME PAS DU DÉCOR : le fond sombre est
+   * `rgb(15, 16, 18)`, donc légèrement BLEU — (18-15)/18, soit 42 de
+   * saturation à lui tout seul. La sonde mesurait la teinte du papier.
+   *
+   * 🧭 On compare donc des saturations dans leur unité, 0 à 255 : le défaut
+   * du 9 novembre valait **87 points d'écart**, l'état d'aujourd'hui en vaut
+   * 14. Le seuil tient confortablement entre les deux, et il ne dépend pas
+   * de la teinte d'un fond.
+   */
+  const sombre = await saturationComposee('dark', null)
+  const clair = await saturationComposee('light', null)
+  const ecart = Math.abs(sombre.saturation - clair.saturation)
+  console.log(
+    `  composé — sombre ${sombre.saturation.toFixed(1)} sur ${sombre.fond} · clair ${clair.saturation.toFixed(1)} sur ${clair.fond} · écart ${ecart.toFixed(1)} pts  (filtre « ${sombre.filtre} »)`,
+  )
+
+  /**
+   * 🔴 ON PROUVE D'ABORD QUE LA SONDE VOIT LE DÉFAUT, et on le fait avec le
+   * VRAI défaut : les mêmes couches, composées pareil, mais SANS filtre —
+   * c'est-à-dire l'état exact du 9 novembre, 2,21×. Un contrôle d'absence qui
+   * n'a jamais rien trouvé ne vaut rien ; c'est écrit en tête de ce fichier.
+   */
+  const avantS = await saturationComposee('dark', 'none')
+  const avantC = await saturationComposee('light', 'none')
+  const ecartAvant = Math.abs(avantS.saturation - avantC.saturation)
+  console.log(
+    `  sans filtre (l'état du 9 nov) — sombre ${avantS.saturation.toFixed(1)} · clair ${avantC.saturation.toFixed(1)} · écart ${ecartAvant.toFixed(1)} pts`,
+  )
+  expect(ecartAvant, 'la sonde ne voit pas le défaut qu’elle surveille').toBeGreaterThan(50)
+
+  expect(
+    ecart,
+    `un thème porte ${ecart.toFixed(1)} points de saturation de plus que l’autre`,
+  ).toBeLessThan(30)
+})
+
 test('les deux rendus sont le MÊME cadrage, pas deux photos', async ({ page }) => {
   await page.goto('/accueil', { waitUntil: 'domcontentloaded' })
   await expect(page.locator(COUCHES).first()).toHaveCount(1, { timeout: 20_000 })

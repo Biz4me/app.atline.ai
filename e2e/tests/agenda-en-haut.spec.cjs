@@ -19,7 +19,7 @@ const haut = (page) => page.locator('[data-agenda-haut]')
 test('l’agenda est en haut sur les lieux, et plus dans la barre', async ({ page, pageErrors }) => {
   for (const [adresse, titre] of [
     ['/accueil', 'Accueil'],
-    ['/parcours', 'Formation'],
+    ['/parcours', 'Apprendre'],
     ['/gens', 'Contacts'],
   ]) {
     await page.goto(adresse, { waitUntil: 'domcontentloaded' })
