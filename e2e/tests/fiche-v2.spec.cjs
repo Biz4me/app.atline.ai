@@ -24,11 +24,16 @@ test('une LIGNE mène à une PAGE, et la page rend vraiment', async ({ page, pag
   await expect(page.getByRole('heading', { level: 1 })).toBeVisible({ timeout: 20_000 })
   await expect(page.getByText(/couldn.t load|Application error/i)).toHaveCount(0)
 
-  // Une sous-page d'un lieu : la flèche ET la barre du bas. Ce n'est pas un
-  // détour ouvert depuis un menu, on doit pouvoir partir ailleurs sans
-  // d'abord faire marche arrière.
-  await expect(page.getByRole('link', { name: 'Retour aux contacts' })).toBeVisible()
-  await expect(page.getByRole('navigation', { name: 'Navigation principale' })).toBeVisible()
+  // 🔴 CE CONTRÔLE DISAIT L'INVERSE JUSQU'AU 10 NOVEMBRE 2026 — « la flèche ET
+  // la barre du bas », au motif qu'une fiche n'est pas un détour. La fiche est
+  // passée en PLEINE PAGE : la barre du bas disparaît, et ses 64 px paient les
+  // 76 px de la rangée de gestes fixée sous le pouce. La sortie n'est pas
+  // perdue pour autant — l'en-tête est `sticky`, donc la croix est atteignable
+  // sur toute la hauteur des 1,6 à 2,1 écrans que fait une fiche.
+  await expect(page.getByRole('link', { name: 'Fermer la fiche' })).toBeVisible()
+  await expect(page.getByRole('navigation', { name: 'Navigation principale' })).toHaveCount(0)
+  // …et la rangée de gestes la remplace vraiment, en bas.
+  await expect(page.locator('[data-gestes]')).toBeVisible()
 
   expect(pageErrors, `exception client : ${pageErrors.join(' · ')}`).toHaveLength(0)
 })

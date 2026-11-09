@@ -100,12 +100,97 @@ test('un numéro allume Appeler et SMS, et fait apparaître WhatsApp', async ({ 
         } catch {}
       }),
     )
-    await page.screenshot({
-      path: `capture-gestes-${theme}.png`,
-      clip: { x: 0, y: 0, width: 390, height: 430 },
-      animations: 'disabled',
-    })
+    // ⚠️ L'ÉCRAN ENTIER, plus un rognage du haut : depuis que la rangée est
+    // fixée en bas, une capture des 430 premiers pixels montre exactement ce
+    // qu'on a déplacé — c'est-à-dire plus rien.
+    await page.screenshot({ path: `capture-gestes-${theme}.png`, animations: 'disabled' })
   }
+})
+
+test('la rangée est FIXE, en bas, et survit au défilement', async ({ page, seed }) => {
+  await page.goto(`/gens/${seed.cid}`, { waitUntil: 'domcontentloaded' })
+  await expect(page.locator('[data-gestes]')).toBeVisible({ timeout: 20_000 })
+
+  const mesure = () =>
+    page.evaluate(() => {
+      const r = document.querySelector('[data-gestes]').getBoundingClientRect()
+      return {
+        bas: Math.round(window.innerHeight - r.bottom),
+        haut: Math.round(r.top),
+        page: Math.round(document.documentElement.scrollHeight),
+        vue: window.innerHeight,
+      }
+    })
+
+  const avant = await mesure()
+  // Collée au bas de la VUE, pas du document.
+  expect(avant.bas, 'la rangée ne touche pas le bas').toBeLessThanOrEqual(1)
+
+  // 🔴 LA PREUVE QUI COMPTE : elle est toujours là après avoir défilé. C'est
+  // tout l'objet du changement — avant, les cartes occupaient y = 90–175 et
+  // disparaissaient au premier coup de pouce sur une fiche de 1,6 à 2,1
+  // écrans.
+  expect(
+    avant.page,
+    'cette fiche tient dans un écran : le défilement ne prouverait rien',
+  ).toBeGreaterThan(avant.vue + 200)
+  await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight))
+  const apres = await mesure()
+  expect(apres.bas, 'la rangée a bougé en défilant').toBeLessThanOrEqual(1)
+  expect(apres.haut).toBe(avant.haut)
+
+  // ⚠️ ET RIEN NE PASSE DESSOUS. La coquille réserve `HAUTEUR_ACTION` via
+  // `barre` ; si quelqu'un retirait ce drapeau, le dernier élément de la
+  // page glisserait derrière la rangée et personne ne le verrait.
+  const dernier = page.locator('main *').last()
+  const recouvert = await dernier.evaluate(
+    (e, basRangee) => e.getBoundingClientRect().bottom > basRangee,
+    await page.evaluate(() => document.querySelector('[data-gestes]').getBoundingClientRect().top),
+  )
+  expect(recouvert, 'le bas de la page passe sous la rangée').toBe(false)
+})
+
+test('la croix referme sur la liste', async ({ page, seed }) => {
+  await page.goto(`/gens/${seed.cid}`, { waitUntil: 'domcontentloaded' })
+  const croix = page.getByRole('link', { name: 'Fermer la fiche' })
+  await expect(croix).toBeVisible({ timeout: 20_000 })
+  // ⚠️ `click({trial:true})` d'abord : `toBeVisible` ne détecte PAS
+  // l'occultation, et l'en-tête est `sticky` au-dessus du contenu.
+  await croix.click({ trial: true })
+  await croix.click()
+  await expect(page).toHaveURL(/\/gens$/, { timeout: 20_000 })
+})
+
+test('Simuler depuis une fiche joue l’appel que SON étape impose', async ({ page, seed }) => {
+  // 🔴 LE DÉFAUT QUE CE CONTRÔLE GARDE : `preparerRepetition` écartait le
+  // point faible dès qu'un contact était passé, si bien qu'un CLIENT — qui
+  // n'a aucune étape, donc aucun appel imposé, six en production le 10
+  // novembre 2026 — retombait sur `catalogue[0]`, le premier scénario de la
+  // liste, pendant que l'écran annonçait « En face : <prénom> ».
+  await page.goto(`/gens/${seed.cid}`, { waitUntil: 'domcontentloaded' })
+  await expect(page.locator('[data-gestes]')).toBeVisible({ timeout: 20_000 })
+
+  // Le contact jetable est PROSPECT / NOUVEAU : la fiche annonce donc l'appel
+  // que cette étape impose. On lit ce qu'elle promet…
+  const promis = (await page.locator('section', { hasText: 'À simuler' }).first().innerText())
+    .split('\n')
+    .map((l) => l.trim())
+    .filter(Boolean)
+  expect(promis.length, 'la bande « À simuler » est absente ou vide').toBeGreaterThan(1)
+  const titreAppel = promis[1]
+
+  // …puis on suit le geste, et les deux écrans doivent dire la MÊME chose.
+  await page.locator('[data-geste="Simuler"]').click()
+  await expect(page).toHaveURL(/\/coach\/repeter/, { timeout: 20_000 })
+  await expect(page.getByRole('heading', { level: 1 })).toBeVisible({ timeout: 20_000 })
+
+  const corps = await page.locator('body').innerText()
+  expect(corps, `l’antichambre ne parle pas de « ${titreAppel} »`).toContain(titreAppel)
+  // Et elle sait qui elle a en face.
+  // ⚠️ INSENSIBLE À LA CASSE : `innerText` APPLIQUE `text-transform`, donc la
+  // page rend « EN FACE : … ». C'est l'inverse exact du piège de `toContainText`,
+  // qui lui lit la source — les deux m'ont eu le même jour.
+  expect(corps).toMatch(/en face\s*:/i)
 })
 
 test('aucun doublon : une seule porte vers la simulation, et plus de geste du jour', async ({
@@ -190,7 +275,10 @@ test('les quatre cartes tiennent, et à la MÊME hauteur, de 320 à 430', async 
 })
 
 test('Atlas et Contacts n’ont plus le même glyphe', async ({ page, seed }) => {
-  await page.goto(`/gens/${seed.cid}`, { waitUntil: 'domcontentloaded' })
+  // ⚠️ L'ACCUEIL, PAS LA FICHE : depuis le 10 novembre 2026 la fiche est en
+  // pleine page et n'a plus de barre du bas. Ma sonde y cherchait encore la
+  // barre — elle mesurait le bon glyphe au mauvais endroit.
+  await page.goto('/accueil', { waitUntil: 'domcontentloaded' })
   const barre = page.getByRole('navigation', { name: 'Navigation principale' })
   await expect(barre).toBeVisible({ timeout: 20_000 })
 
