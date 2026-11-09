@@ -6,7 +6,7 @@
 // 🔴 ON N'ÉCRIT QUE SUR LE CONTACT JETABLE. La fixture `seed` en crée un par
 // test et le supprime : les contacts de Patrice sont sa matière première.
 
-const { test, expect, toucher } = require('../fixtures.cjs')
+const { test, expect, toucher, compter } = require('../fixtures.cjs')
 
 test.use({ viewport: { width: 390, height: 844 } })
 
@@ -18,6 +18,38 @@ const geste = (page, nom) => page.locator(`[data-geste="${nom}"]`)
  *  elle doit trouver passe au vert quand elle n'en trouve aucun — c'est ce
  *  qui a laissé deux sondes de hauteur mentir en même temps le 8 novembre. */
 const ATTENDUS = ['Appeler', 'Simuler', 'SMS', 'E-mail']
+
+/**
+ * SE COMPORTER COMME UN TÉLÉPHONE.
+ *
+ * 🔴 SANS ÇA, LA SONDE DU JOURNAL EST INTERMITTENTE, et le symptôme ne
+ * désigne pas la cause. Chrome sans tête n'a **aucun gestionnaire** pour
+ * `tel:` : le clic déclenche une navigation qu'il finit par abandonner, et
+ * pendant ce temps la page commence à se décharger — le DOM reste peint, mais
+ * React ne reçoit plus les événements. Le clic suivant tombe alors dans le
+ * vide, sans la moindre exception. Mesuré le 10 novembre 2026 : le défaut
+ * n'apparaissait QUE lorsqu'une seconde s'écoulait entre les deux clics.
+ *
+ * ⚠️ Sur un vrai téléphone, `tel:`, `sms:` et `mailto:` passent la main à une
+ * autre application **sans décharger la page** : au retour, la question est
+ * encore là. C'est ce comportement-là qu'on reproduit, pas un contournement —
+ * on empêche la navigation, et rien d'autre.
+ *
+ * `capture: true` arrive AVANT la délégation de React (qui écoute en phase de
+ * bouillonnement depuis la racine) : le `onClick` du composant part
+ * normalement, seule la navigation est annulée.
+ */
+const commeUnTelephone = (page) =>
+  page.addInitScript(() => {
+    document.addEventListener(
+      'click',
+      (e) => {
+        const a = e.target instanceof Element ? e.target.closest('a[href]') : null
+        if (a && /^(tel|sms|mailto):/i.test(a.getAttribute('href') || '')) e.preventDefault()
+      },
+      true,
+    )
+  })
 
 test('les quatre gestes, dans l’ordre, et éteints sans coordonnée', async ({
   page,
@@ -62,9 +94,12 @@ test('un numéro allume Appeler et SMS, et fait apparaître WhatsApp', async ({ 
   await toucher(puce, page.getByRole('textbox').last())
   await page.getByRole('textbox').last().fill('+33 6 12 34 56 78')
   await page.getByRole('button', { name: 'Enregistrer' }).click()
+  // 🔴 ATTENDRE QUE LA RANGÉE SE REFERME SUR SA VALEUR AVANT DE RECHARGER.
+  // Sans ça, le rechargement court contre l'action serveur : la fiche revient
+  // parfois SANS le numéro, « Appeler » est alors éteint, et la sonde échoue
+  // en désignant le `href` — le symptôme est à dix lignes de la cause.
+  await expect(page.locator('[data-champ="phone"]')).toContainText('+33', { timeout: 20_000 })
 
-  // 🔴 LE RECHARGEMENT EST LA SEULE PREUVE. Un état React qui a l'air
-  // d'avoir enregistré ne dit rien du serveur.
   await page.reload({ waitUntil: 'domcontentloaded' })
   await expect(page.getByRole('heading', { level: 1 })).toBeVisible({ timeout: 20_000 })
 
@@ -148,6 +183,93 @@ test('la rangée est FIXE, en bas, et survit au défilement', async ({ page, see
     await page.evaluate(() => document.querySelector('[data-gestes]').getBoundingClientRect().top),
   )
   expect(recouvert, 'le bas de la page passe sous la rangée').toBe(false)
+})
+
+test('un appel journalisé monte le compteur d’expositions EN BASE', async ({ page, seed }) => {
+  // 🔴 ON COMPTE EN BASE, PAS À L'ÉCRAN. Un `revalidatePath` rafraîchit un
+  // écran à partir de ce qu'il trouve ; il ne prouve pas qu'on a écrit.
+  const avant = compter(seed.cid)
+  expect(avant.exposures, 'le contact jetable devrait partir de zéro').toBe(0)
+  expect(avant.interactions).toHaveLength(0)
+
+  // Il faut un numéro pour que « Appeler » soit allumé.
+  await commeUnTelephone(page)
+  await page.goto(`/gens/${seed.cid}`, { waitUntil: 'domcontentloaded' })
+  const puce = page.locator('[data-manque="phone"]')
+  await expect(puce).toBeVisible({ timeout: 20_000 })
+  await toucher(puce, page.getByRole('textbox').last())
+  await page.getByRole('textbox').last().fill('+33 6 12 34 56 78')
+  await page.getByRole('button', { name: 'Enregistrer' }).click()
+  // Attendre la rangee refermee sur sa valeur : recharger tout de suite court
+  // contre l'action serveur, et « Appeler » revient parfois eteint.
+  await expect(page.locator('[data-champ="phone"]')).toContainText('+33', { timeout: 20_000 })
+  await page.reload({ waitUntil: 'domcontentloaded' })
+
+  const appeler = page.locator('[data-geste="Appeler"]')
+  await expect(appeler).toBeVisible({ timeout: 20_000 })
+
+  // ⚠️ RIEN N'EST ÉCRIT AU MOMENT DU GESTE. Ouvrir le téléphone ne prouve
+  // pas qu'on a parlé : c'est la règle du journal, et on la vérifie ici.
+  await appeler.click()
+  await expect(page.locator('[data-question]')).toBeVisible({ timeout: 10_000 })
+  const pendant = compter(seed.cid)
+  expect(pendant.exposures, 'une exposition a été comptée AVANT la réponse').toBe(0)
+  expect(pendant.interactions).toHaveLength(0)
+
+  // …et la réponse, elle, écrit.
+  await page.locator('[data-issue="POSITIF"]').click()
+  await expect(page.locator('[data-enregistre]')).toBeVisible({ timeout: 15_000 })
+
+  const apres = compter(seed.cid)
+  expect(apres.exposures, 'l’exposition n’a pas été comptée').toBe(1)
+  expect(apres.lastContact, 'le dernier échange n’a pas été daté').not.toBeNull()
+  expect(apres.interactions).toHaveLength(1)
+  expect(apres.interactions[0]).toMatchObject({
+    type: 'APPEL',
+    outcome: 'POSITIF',
+    direction: 'OUT',
+    isExposure: true,
+  })
+})
+
+test('« Pas fait » n’écrit rien, et c’est le point', async ({ page, seed }) => {
+  await commeUnTelephone(page)
+  await page.goto(`/gens/${seed.cid}`, { waitUntil: 'domcontentloaded' })
+  const puce = page.locator('[data-manque="phone"]')
+  await expect(puce).toBeVisible({ timeout: 20_000 })
+  await toucher(puce, page.getByRole('textbox').last())
+  await page.getByRole('textbox').last().fill('+33 6 12 34 56 78')
+  await page.getByRole('button', { name: 'Enregistrer' }).click()
+  // Attendre la rangee refermee sur sa valeur : recharger tout de suite court
+  // contre l'action serveur, et « Appeler » revient parfois eteint.
+  await expect(page.locator('[data-champ="phone"]')).toContainText('+33', { timeout: 20_000 })
+  await page.reload({ waitUntil: 'domcontentloaded' })
+
+  await page.locator('[data-geste="Appeler"]').click()
+  await expect(page.locator('[data-question]')).toBeVisible({ timeout: 10_000 })
+  await page.getByRole('button', { name: 'Pas fait' }).click()
+
+  // La rangée reprend sa forme, et la base n'a pas bougé.
+  await expect(page.locator('[data-geste="Appeler"]')).toBeVisible({ timeout: 10_000 })
+  const etat = compter(seed.cid)
+  expect(etat.exposures, 'un compteur gonflé par un appel qu’on n’a pas passé').toBe(0)
+  expect(etat.interactions).toHaveLength(0)
+})
+
+test('Simuler ne compte JAMAIS comme une exposition', async ({ page, seed }) => {
+  // 🔴 S'entraîner n'est pas joindre quelqu'un. Sans ce contrôle, un canal
+  // ajouté par distraction sur « Simuler » gonflerait le compteur qui décide
+  // du prochain pas — on croirait avoir parlé à quelqu'un à qui l'on s'est
+  // contenté de penser.
+  await page.goto(`/gens/${seed.cid}`, { waitUntil: 'domcontentloaded' })
+  const simuler = page.locator('[data-geste="Simuler"]')
+  await expect(simuler).toBeVisible({ timeout: 20_000 })
+  await simuler.click()
+  await expect(page).toHaveURL(/\/coach\/repeter/, { timeout: 20_000 })
+
+  const etat = compter(seed.cid)
+  expect(etat.exposures).toBe(0)
+  expect(etat.interactions).toHaveLength(0)
 })
 
 test('la croix referme sur la liste', async ({ page, seed }) => {
