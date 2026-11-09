@@ -13,6 +13,9 @@
 //    bonnes initiales par pure coïncidence. **Un test qui ne sait pas sous
 //    quelle identité il tourne ne prouve pas ce qu'on croit.**
 //  - reset  <cid>   -> remet le contact à zéro (qualification vide, étape NOUVEAU)
+//  - compter <cid>  -> imprime {exposures, lastContact, interactions[]} : CE QUE LE
+//                      SERVEUR A GARDÉ. Lecture seule. Un test de navigateur prouve
+//                      qu'un écran a changé, pas qu'une ligne est écrite.
 //  - delete <cid>   -> supprime le contact jetable
 const { readFileSync } = require('fs')
 
@@ -55,11 +58,35 @@ const { encode } = require('next-auth/jwt')
     } else if (cmd === 'reset') {
       await prisma.contact.update({ where: { id: cid }, data: { qualification: {}, prospectStage: 'NOUVEAU' } })
       console.log('reset ok')
+    } else if (cmd === 'compter') {
+      /**
+       * CE QUE LE SERVEUR A VRAIMENT GARDÉ, pour un contact.
+       *
+       * 🔴 AJOUTÉ LE 10 NOVEMBRE 2026 POUR LE JOURNAL DES ÉCHANGES. Un test
+       * de navigateur prouve qu'un écran a changé ; il ne dit RIEN de ce qui
+       * est écrit. Et le journal n'a d'intérêt que persisté : c'est lui qui
+       * nourrit « 3 expositions » et « froide depuis 6 jours », donc l'appel
+       * que l'étape impose, donc le prochain pas.
+       *
+       * ⚠️ LECTURE SEULE. Ce helper sait déjà créer et supprimer un contact
+       * jetable ; compter ne touche à rien.
+       */
+      const c = await prisma.contact.findUnique({
+        where: { id: cid },
+        select: { exposures: true, lastContact: true },
+      })
+      if (!c) throw new Error(`aucun contact ${cid}`)
+      const interactions = await prisma.interaction.findMany({
+        where: { contactId: cid },
+        orderBy: { createdAt: 'desc' },
+        select: { type: true, outcome: true, direction: true, isExposure: true },
+      })
+      console.log(JSON.stringify({ exposures: c.exposures, lastContact: c.lastContact, interactions }))
     } else if (cmd === 'delete') {
       await prisma.contact.delete({ where: { id: cid } })
       console.log('delete ok')
     } else {
-      throw new Error('commande ? create | reset <cid> | delete <cid>')
+      throw new Error('commande ? create | reset <cid> | compter <cid> | delete <cid>')
     }
   } finally {
     await prisma.$disconnect()

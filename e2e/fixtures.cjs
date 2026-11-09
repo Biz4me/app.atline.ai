@@ -251,4 +251,17 @@ async function remplir(champ, valeur, estFait, options) {
   }
 }
 
-module.exports = { test, expect: base.expect, BASE, toucher, remplir, suivre, insister }
+/**
+ * CE QUE LE SERVEUR A VRAIMENT GARDÉ pour ce contact.
+ *
+ * 🔴 LA SEULE PREUVE QUI COMPTE POUR UNE ÉCRITURE. Un test de navigateur
+ * montre qu'un écran a changé ; il ne dit rien de ce qui est persisté. Le
+ * harnais le répète depuis le début à propos du rechargement — ici on va un
+ * cran plus loin et on COMPTE EN BASE, parce qu'un `revalidatePath` peut
+ * très bien rafraîchir un écran à partir de rien.
+ *
+ * Lecture seule. Rend `{ exposures, lastContact, interactions[] }`.
+ */
+const compter = (cid) => JSON.parse(ssh(`node e2e/server-helper.cjs compter ${cid}`).trim().split('\n').pop())
+
+module.exports = { test, expect: base.expect, BASE, toucher, remplir, suivre, insister, compter }
