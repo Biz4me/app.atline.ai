@@ -40,7 +40,12 @@ test('cinq lieux, un seul nom chacun, et l’identité sur l’accueil seul', as
   await expect(barre).toBeVisible({ timeout: 20_000 })
 
   const entrees = (await barre.innerText()).split('\n').map((t) => t.trim()).filter(Boolean)
-  expect(entrees).toEqual(['Accueil', 'Formation', 'Simulation', 'Agenda', 'Contacts'])
+  // 🔴 MIS À JOUR LE 10 NOVEMBRE 2026, APRÈS DEUX JOURS DE ROUGE. La barre a
+  // changé deux fois le 8 : « Simulation » est rentrée dans Formation et sa
+  // case est revenue à Atlas, et la PREMIÈRE case dit « Menu » quand on est
+  // déjà chez soi. Cette sonde décrivait donc une app qui n'existait plus, et
+  // personne ne l'a relancée — c'est le vrai défaut, pas le libellé.
+  expect(entrees).toEqual(['Menu', 'Formation', 'Atlas', 'Agenda', 'Contacts'])
 
   // ── 2. l'accueil porte l'identité, et lui seul ─────────────────────────
   await expect(page.getByText('Forever Living')).toHaveCount(1)
@@ -58,15 +63,22 @@ test('cinq lieux, un seul nom chacun, et l’identité sur l’accueil seul', as
   // Il a porté « Ouvrir le module 8 » : un raccourci vers Formation, qui a
   // déjà son entrée dans la barre, et un verbe qui changeait à chaque visite.
   // Le compte vérifie aussi qu'aucune carte ne le redouble.
-  const parler = page.getByRole('link', { name: 'Parler à Atlas' })
-  await expect(parler).toHaveCount(1)
-  await expect(parler).toHaveAttribute('href', '/coach/parler')
-  // ⚠️ Le conteneur fixe ne porte QU'UN geste. Mon premier contrôle visait
-  // à côté : il interdisait « Ouvrir le module » sur toute la page, alors que
-  // la carte du plan le porte — légitimement, depuis que le bouton du bas ne
-  // reprend plus la première ligne. Ce qui compte, c'est qu'il soit SEUL en
-  // bas.
-  await expect(parler.locator('xpath=..').getByRole('link')).toHaveCount(1)
+  // 🔴 L'ACCUEIL N'A PLUS DE GESTE DU JOUR DU TOUT, depuis le 8 novembre
+  // 2026. « Parler à Atlas » menait exactement où mène la case Atlas de la
+  // barre — deux gestes vers le même endroit, dont le MOINS accessible — et
+  // aucun des gestes restants n'était dominant : en élire un au hasard aurait
+  // été un pari sur le calcul.
+  await expect(page.getByRole('link', { name: 'Parler à Atlas' })).toHaveCount(0)
+  await expect(page.locator('[data-barre-action]')).toHaveCount(0)
+
+  // 🔴 ET LA PREUVE QUE CETTE SONDE SAIT VOIR LA CHOSE. Un contrôle
+  // d'absence sur un sélecteur qui ne marche nulle part est vert pour
+  // toujours : c'est la classe de panne qui a laissé deux sondes de hauteur
+  // mentir ensemble le 8 novembre. Formation, elle, porte bien un geste fixe.
+  await page.goto('/parcours/cours', { waitUntil: 'domcontentloaded' })
+  await expect(page.locator('[data-barre-action]')).toHaveCount(1, { timeout: 20_000 })
+  await page.goto('/accueil', { waitUntil: 'domcontentloaded' })
+  await expect(barre).toBeVisible({ timeout: 20_000 })
 
   // …et que chaque ligne du plan ait bien retrouvé la sienne.
   await expect(page.getByRole('link', { name: /Ouvrir le module/ })).toHaveCount(1)
@@ -139,8 +151,14 @@ test('cinq lieux, un seul nom chacun, et l’identité sur l’accueil seul', as
   // la barre — une porte à sens unique au milieu de la navigation. L'appel
   // vit désormais un cran plus bas, et c'est l'antichambre qui a la coquille.
   //
+  // 🔴 ET « SIMULATION » EN EST SORTI LE 8 NOVEMBRE 2026, remplacé par ATLAS.
+  // Le simulateur est rentré dans Formation — il ne se visite pas, il se
+  // LANCE depuis un contexte — et la case libérée est revenue à Atlas, qui
+  // n'avait aucune adresse à lui. L'antichambre garde sa coquille, elle est
+  // juste atteinte par Formation.
+  //
   // ⚠️ Contacts reste EN DERNIER : le contrôle d'après lit l'entrée allumée.
-  for (const nom of ['Formation', 'Simulation', 'Agenda', 'Contacts']) await lieuConforme(nom)
+  for (const nom of ['Formation', 'Atlas', 'Agenda', 'Contacts']) await lieuConforme(nom)
 
   // ── 4. une seule entrée allumée, et c'est la bonne ─────────────────────
   const allumees = barre.locator('[aria-current="page"]')

@@ -17,9 +17,19 @@ test('Formation : un geste unique, atteignable, qui mène vraiment quelque part'
   page,
   pageErrors,
 }) => {
-  await page.goto('/parcours', { waitUntil: 'domcontentloaded' })
+  // 🔴 `/parcours/cours` ET NON `/parcours`. Formation est devenue un HUB à
+  // trois portes le 8 novembre 2026 ; la liste des modules — ce que ce test
+  // mesure — a déménagé d'un cran. Cette sonde interrogeait donc un écran qui
+  // ne porte plus de modules, et elle est restée rouge deux jours sans que
+  // personne la relance.
+  await page.goto('/parcours/cours', { waitUntil: 'domcontentloaded' })
 
-  const geste = page.getByRole('link', { name: /^(Leçon suivante|Faire le quiz)$/ })
+  // ⚠️ ET LE LIBELLÉ A CHANGÉ AVEC. Le geste nomme désormais SA DESTINATION
+  // — « Reprendre le module 3 » — au lieu d'un « Leçon suivante » qui ne
+  // disait pas où il menait.
+  const geste = page.getByRole('link', {
+    name: /^(Reprendre|Commencer) le module \d+$|^Faire le quiz du module \d+$/,
+  })
   await expect(geste).toBeVisible({ timeout: 20_000 })
 
   // ── 1. UN SEUL déclencheur ─────────────────────────────────────────────

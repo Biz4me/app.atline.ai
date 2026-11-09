@@ -52,12 +52,15 @@ test('avec enregistrement : le lecteur accompagne, puis le bouton avance', async
   expect(pageErrors, `exceptions JS : ${pageErrors.join(' | ')}`).toHaveLength(0)
 })
 
-test('sans enregistrement : rien en haut, et JAMAIS sans issue en bas', async ({
+test('la leçon suivante a son son, et JAMAIS sans issue en bas', async ({
   page,
   pageErrors,
 }) => {
-  // On passe par la leçon qui a l'audio pour atteindre la suivante, qui n'en a
-  // pas : c'est le chemin réel, et il vérifie au passage que le geste avance.
+  // On avance d'une leçon à la suivante par le geste du bas : c'est le chemin
+  // réel, et il vérifie au passage que le geste avance pour de bon.
+  //
+  // ⚠️ Ce commentaire disait « la suivante, qui n'en a pas » — vrai jusqu'au
+  // 9 novembre 2026, faux depuis que les 71 leçons sont enregistrées.
   await page.goto(AVEC_AUDIO, { waitUntil: 'domcontentloaded' })
   await page.locator('[data-fin-de-lecon]').scrollIntoViewIfNeeded()
   const avancer = page.getByRole('button', { name: /^(Leçon suivante|Terminer le module)/ })
@@ -72,7 +75,19 @@ test('sans enregistrement : rien en haut, et JAMAIS sans issue en bas', async ({
   // document, et rien d'autre ne le regarde.
   await expect(page.getByRole('heading', { level: 1 })).toHaveCount(1)
   await expect(page.getByRole('heading', { level: 1 })).toBeVisible({ timeout: 15_000 })
-  await expect(page.getByRole('button', { name: /Écouter la leçon/ })).toHaveCount(0)
+  // 🔴 CETTE SONDE ATTENDAIT L'ABSENCE DE BARRE AUDIO, ET SA PRÉMISSE EST
+  // MORTE LE 9 NOVEMBRE 2026 : les 71 leçons ont été enregistrées, dans les
+  // deux voix. Il n'existe plus une seule leçon sans son.
+  //
+  // 🧭 On ne SUPPRIME pas le contrôle, on le retourne. L'invariant qui compte
+  // n'a jamais été « pas de barre » mais « la barre dit la vérité sur ce qui
+  // existe » — et aujourd'hui la vérité, c'est qu'il y a un enregistrement
+  // partout. Le jour où une leçon neuve arrivera sans son, c'est CE contrôle
+  // qui le dira, au lieu d'un vert silencieux.
+  //
+  // ⚠️ Laisser l'ancienne assertion aurait été pire que de la retirer : cinq
+  // sondes rouges en permanence apprennent à ignorer le rouge.
+  await expect(page.getByRole('button', { name: /Écouter la leçon/ })).toHaveCount(1)
 
   // ── Au bout : de quoi avancer, toujours ────────────────────────────────
   await page.locator('[data-fin-de-lecon]').scrollIntoViewIfNeeded()

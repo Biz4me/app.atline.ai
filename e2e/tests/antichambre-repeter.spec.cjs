@@ -46,7 +46,11 @@ test('le menu : des titres, et le geste reste allumé', async ({ page, pageError
   })
   const barre = page.getByRole('navigation', { name: BARRE })
   await expect(barre).toBeVisible()
-  await expect(barre.locator('[aria-current="page"]')).toHaveText(/Simulation/)
+  // 🔴 « Formation » ET NON « Simulation » : le simulateur est rentré dans
+  // Formation le 8 novembre 2026, et c'est `destinations.ts` qui le déclare
+  // (`autres: ['/coach/repeter']`). Le titre de la page reste « Simulation » —
+  // c'est bien ce qu'on fait ici — mais le LIEU est Formation.
+  await expect(barre.locator('[aria-current="page"]')).toHaveText(/Formation/)
   // ⚠️ Un seul h1. Deux titres sur une page, c'est la faute déjà payée sur
   // les leçons — et elle ne se voit pas à l'écran.
   await expect(page.locator('h1')).toHaveCount(1)
@@ -216,10 +220,16 @@ test('la couleur dit qui parle : teal sur la simulation, orange au hall', async 
   // Sans ce contre-contrôle, un teal passé en dur quelque part passerait pour
   // une réussite : on vérifierait que c'est teal partout, pas que c'est la
   // couleur DU LIEU.
+  // 🔴 CE CONTRE-CONTRÔLE MESURAIT « PARLER À ATLAS », RETIRÉ LE 8 NOVEMBRE
+  // 2026 : il menait exactement où mène la case Atlas de la barre, donc deux
+  // gestes vers le même endroit. Le contre-contrôle, lui, garde toute sa
+  // raison d'être — sans lui, un teal écrit en dur quelque part passerait
+  // pour une réussite. Il porte donc sur ce qui dit ENCORE la couleur du
+  // lieu : l'entrée allumée de la barre.
   await page.goto('/accueil', { waitUntil: 'domcontentloaded' })
-  const parler = page.getByRole('link', { name: 'Parler à Atlas' })
-  await expect(parler).toBeVisible({ timeout: 20_000 })
-  expect(await parler.evaluate((el) => getComputedStyle(el).backgroundColor)).toBe(atlas)
+  const ici = page.locator('nav[aria-label="Navigation principale"] [aria-current="page"]')
+  await expect(ici).toBeVisible({ timeout: 20_000 })
+  expect(await ici.locator('span').evaluate((el) => getComputedStyle(el).color)).toBe(atlas)
 
   expect(pageErrors, `exceptions JS : ${pageErrors.join(' | ')}`).toHaveLength(0)
 })
