@@ -76,7 +76,20 @@ test("la touche du retour enregistre vraiment, et la ligne porte le visage", asy
     // ── La touche ──
     expect(sql(`select coalesce(outcome::text, 'VIDE') from "Appointment" where id = '${PASSE}'`)).toBe('VIDE')
 
-    await page.getByRole('button', { name: 'Positif' }).first().click()
+    /**
+     * 🔴 LA LIGNE QUI EST LA NÔTRE, PAS LA PREMIÈRE VENUE. Cette sonde
+     * cliquait `.first()` et a été rouge deux fois sans qu'on sache pourquoi,
+     * verte en solo à chaque coup. La cause, mesurée le 10 novembre 2026 :
+     * **sept rendez-vous passés sans issue** attendent dans cette zone, tous
+     * réels. Le `.first()` dépendait d'un ordre que la sonde ne contrôle pas.
+     *
+     * ⚠️ ET ON VÉRIFIE QUE LA PRISE EXISTE AVANT DE CLIQUER. Sans ça, une
+     * couture retirée du composant ferait échouer le clic dix lignes plus
+     * loin, en désignant la base plutôt que le sélecteur.
+     */
+    const ligne = page.locator(`[data-rdv="${PASSE}"]`)
+    await expect(ligne, 'la ligne du rendez-vous jetable est introuvable').toHaveCount(1)
+    await ligne.getByRole('button', { name: 'Positif' }).click()
 
     // 🔴 On attend l'ÉCRITURE, pas l'écran : un bouton peut disparaître pour
     // dix raisons, la base ne ment pas.
@@ -92,7 +105,9 @@ test("la touche du retour enregistre vraiment, et la ligne porte le visage", asy
     expect(sql(`select done::text from "Appointment" where id = '${PASSE}'`)).toBe('true')
 
     // Et la ligne quitte la zone, puisqu'elle n'attend plus rien.
-    await expect(page.getByText('Présentation jetable')).toBeHidden({ timeout: 15_000 })
+    await expect(ligne, 'la ligne reste alors qu’elle n’attend plus rien').toHaveCount(0, {
+      timeout: 15_000,
+    })
 
     expect(pageErrors, `exceptions JS : ${pageErrors.join(' | ')}`).toEqual([])
   } finally {

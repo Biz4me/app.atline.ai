@@ -347,19 +347,34 @@ test('deux onglets, et la liste brute n’en est pas un', async ({ page }) => {
   await page.goto('/atlas?historique=1', { waitUntil: 'domcontentloaded' })
   await expect(panneau(page)).toBeVisible({ timeout: 20_000 })
 
-  const onglets = page.locator('[data-onglet]')
+  /**
+   * ⚠️ ILS SONT RENDUS PAR `Raccourcis`, le gabarit de la bande de Contacts —
+   * un paramètre, pas une copie. On les atteint donc comme elle : par le rôle
+   * et le nom de la bande, et `aria-current` y vaut « true », pas « page ».
+   */
+  const bande = panneau(page).getByRole('navigation')
+  const onglets = bande.getByRole('link')
   await expect(onglets, 'il ne doit y avoir QUE deux onglets').toHaveCount(2)
-  expect(await onglets.evaluateAll((n) => n.map((e) => e.textContent.trim()))).toEqual([
-    'Sujets',
-    'Jours',
-  ])
+  const mots = await onglets.evaluateAll((n) =>
+    n.map((e) => e.querySelector('span:last-child').textContent.trim()),
+  )
+  expect(mots).toEqual(['Sujets', 'Jours'])
+
+  // 🔴 ET CHAQUE CASE PORTE SON CHIFFRE. Une case sans nombre casserait la
+  // grammaire de la maison ; un nombre faux serait pire que pas de nombre.
+  const chiffres = await onglets.evaluateAll((n) =>
+    n.map((e) => Number(e.querySelector('span').textContent.trim())),
+  )
+  console.log(`  cases : ${mots[0]} ${chiffres[0]} · ${mots[1]} ${chiffres[1]}`)
+  expect(chiffres.every((c) => Number.isFinite(c) && c >= 0), 'une case sans chiffre').toBe(true)
 
   // L'onglet allumé suit l'adresse, dans les deux sens.
-  await expect(page.locator('[data-onglet="Sujets"]')).toHaveAttribute('aria-current', 'page')
-  await page.locator('[data-onglet="Jours"]').click()
+  await expect(onglets.first()).toHaveAttribute('aria-current', 'true')
+  await onglets.last().click()
   await expect(page).toHaveURL(/historique=jours$/, { timeout: 20_000 })
-  await expect(page.locator('[data-onglet="Jours"]')).toHaveAttribute('aria-current', 'page')
-  await expect(page.locator('[data-onglet="Sujets"]')).not.toHaveAttribute('aria-current', 'page')
+  const apres = panneau(page).getByRole('navigation').getByRole('link')
+  await expect(apres.last()).toHaveAttribute('aria-current', 'true')
+  await expect(apres.first()).not.toHaveAttribute('aria-current', 'true')
 
   /**
    * 🔴 ET LA LISTE BRUTE GARDE « SUJETS » ALLUMÉ. Elle vit SOUS eux. Sans
@@ -368,11 +383,16 @@ test('deux onglets, et la liste brute n’en est pas un', async ({ page }) => {
    */
   await page.goto('/atlas?historique=fils', { waitUntil: 'domcontentloaded' })
   await expect(panneau(page)).toBeVisible({ timeout: 20_000 })
+  const surLaBrute = panneau(page).getByRole('navigation').getByRole('link')
   await expect(
-    page.locator('[data-onglet][aria-current="page"]'),
-    'aucun onglet allumé sur la liste brute',
-  ).toHaveCount(1)
-  await expect(page.locator('[data-onglet="Sujets"]')).toHaveAttribute('aria-current', 'page')
+    surLaBrute.filter({ has: page.locator('[aria-current]') }).or(surLaBrute),
+    'la bande a disparu sur la liste brute',
+  ).toHaveCount(2)
+  await expect(surLaBrute.first(), 'la liste brute n’allume pas « Sujets »').toHaveAttribute(
+    'aria-current',
+    'true',
+  )
+  await expect(surLaBrute.last()).not.toHaveAttribute('aria-current', 'true')
 })
 
 test('les jours : du plus récent, jamais vides, et le compte s’accorde', async ({ page }) => {
