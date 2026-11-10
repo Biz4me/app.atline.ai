@@ -94,6 +94,79 @@ test('refermer repose exactement où l’on était', async ({ page }) => {
   await champ.fill('')
 })
 
+test('le balayage vers le haut referme — et SEULEMENT depuis le haut', async ({ page }) => {
+  /**
+   * 🔴 C'EST LE GESTE QUE PERSONNE NE VERRAIT CASSER. Le lien du coin se
+   * vérifie à l'œil ; un balayage qui ne part pas, on l'essaie une fois, on
+   * se dit qu'on l'a mal fait, et on retouche l'icône. Il ne proteste jamais.
+   *
+   * ⚠️ On dispatche de VRAIS `TouchEvent` : la souris ne déclenche pas
+   * `onTouchStart`, donc un `mouse.move` aurait validé un écran qui ne marche
+   * sur aucun téléphone.
+   */
+  const balayer = (page, deDy, versDy) =>
+    page.evaluate(
+      ([a, b]) => {
+        const el = document.querySelector('[data-historique]')
+        const toucher = (type, y) => {
+          const t = new Touch({ identifier: 1, target: el, clientX: 190, clientY: y })
+          el.dispatchEvent(
+            new TouchEvent(type, {
+              bubbles: true,
+              cancelable: true,
+              touches: type === 'touchend' ? [] : [t],
+              targetTouches: type === 'touchend' ? [] : [t],
+              changedTouches: [t],
+            }),
+          )
+        }
+        toucher('touchstart', a)
+        toucher('touchmove', b)
+        toucher('touchend', b)
+      },
+      [deDy, versDy],
+    )
+
+  await page.goto('/atlas?historique=1', { waitUntil: 'domcontentloaded' })
+  await expect(panneau(page)).toBeVisible({ timeout: 20_000 })
+
+  // ① UN FRÔLEMENT NE REFERME PAS. 40 px : sous le seuil de 60.
+  await balayer(page, 500, 460)
+  await page.waitForTimeout(400)
+  await expect(panneau(page), 'un frôlement a refermé le panneau').toBeVisible()
+
+  // ② UN VRAI BALAYAGE REFERME, et l'adresse suit.
+  await balayer(page, 600, 400)
+  await expect(panneau(page)).toHaveCount(0, { timeout: 20_000 })
+  await expect(page).toHaveURL(/\/atlas$/)
+
+  /**
+   * ③ ET PAS DEPUIS LE MILIEU DE LA LISTE. Sans cette condition, remonter
+   * dans une longue liste refermerait le panneau : le geste de lecture et le
+   * geste de sortie seraient le même, et le second gagnerait toujours.
+   */
+  await page.goto('/atlas?historique=1', { waitUntil: 'domcontentloaded' })
+  await expect(panneau(page)).toBeVisible({ timeout: 20_000 })
+  const defile = await page.evaluate(() => {
+    const l = document.querySelector('[data-historique] .overflow-y-auto')
+    if (!l || l.scrollHeight <= l.clientHeight + 50) return false
+    l.scrollTop = 150
+    return l.scrollTop > 50
+  })
+  // ⚠️ Si la liste est trop courte pour défiler, ce cas n'existe pas : on le
+  // DIT au lieu de passer au vert sans avoir rien mesuré.
+  if (!defile) {
+    console.log('  liste trop courte pour défiler : le cas ③ n’a pas été éprouvé')
+    return
+  }
+  await balayer(page, 600, 400)
+  await page.waitForTimeout(400)
+  await expect(
+    panneau(page),
+    'le panneau s’est refermé alors qu’on remontait dans la liste',
+  ).toBeVisible()
+})
+
 test('la liste dit QUAND, et ouvre une conversation en PAGE', async ({ page }) => {
   await page.goto('/atlas?historique=1', { waitUntil: 'domcontentloaded' })
   await expect(panneau(page)).toBeVisible({ timeout: 20_000 })
