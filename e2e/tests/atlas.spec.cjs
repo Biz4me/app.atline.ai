@@ -57,24 +57,28 @@ test('le fil tient la colonne, garde la barre, et l’ancienne adresse redirige'
 
 test('la barre s’efface pendant la saisie, et revient', async ({ page }) => {
   /**
-   * ⚠️ LE CHAMP N'EST PAS LÀ AU DÉPART : le composeur propose « Parler », et
-   * le clavier derrière « Écrire plutôt ». Chercher le champ d'emblée faisait
-   * échouer la sonde sur un écran parfaitement correct.
+   * ⚠️ CETTE SONDE CLIQUAIT « Écrire plutôt » POUR FAIRE APPARAÎTRE LE CHAMP.
+   * Le composeur du 10 novembre 2026 n'a plus de mode : le champ est toujours
+   * là, et ce bouton n'existe plus. **Elle surveillait un mécanisme, pas un
+   * comportement** — le comportement, lui, n'a pas bougé d'un pouce.
+   *
+   * 🧭 Le commentaire d'origine vaut d'être gardé : ce clic avait trouvé un
+   * vrai défaut, un bouton présent dans le document mais ENTIÈREMENT
+   * recouvert par la barre du bas, donc incliquable. Playwright attend
+   * l'actionnabilité, pas la présence — et c'est ce qui sépare une sonde d'un
+   * contrôle de présence. Le `click()` ci-dessous garde cette propriété.
    */
   await page.goto('/atlas', { waitUntil: 'domcontentloaded' })
   const barre = page.locator(BARRE)
   await expect(barre).toBeVisible({ timeout: 20_000 })
 
-  // 🔴 CE CLIC EST LA SONDE QUI A TROUVE LE DEFAUT : le bouton etait dans le
-  // document mais ENTIEREMENT recouvert par la barre du bas, donc
-  // incliquable. Playwright attend l'actionnabilite, pas la presence — et
-  // c'est exactement ce qui separe une sonde d'un controle de presence.
-  await expect(page.getByRole('button', { name: 'Écrire plutôt' })).toBeVisible({ timeout: 10_000 })
-  await page.getByRole('button', { name: 'Écrire plutôt' }).click()
-  const champ = page.getByPlaceholder('Écris à Atlas')
+  const champ = page.getByPlaceholder('Écris à Atlas…')
   await expect(champ).toBeVisible({ timeout: 10_000 })
+  // La barre est encore là TANT QU'ON N'ÉCRIT PAS : c'est la moitié qu'on
+  // oublie de vérifier, et sans elle « elle disparaît » ne prouve rien.
+  await expect(barre, 'la barre est partie avant même la saisie').toBeVisible()
 
-  // 🔴 `autoFocus` le met déjà au focus : la barre doit donc DÉJÀ être partie.
+  await champ.click()
   await expect(barre, 'la barre reste pendant la saisie').toBeHidden({ timeout: 5_000 })
   await champ.blur()
   await expect(barre, 'la barre ne revient pas après la saisie').toBeVisible({ timeout: 5_000 })
