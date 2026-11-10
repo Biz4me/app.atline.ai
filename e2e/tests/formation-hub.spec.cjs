@@ -22,7 +22,34 @@ test('plus aucune entrée « Simulation » dans la barre', async ({ page, pageEr
   expect(pageErrors).toEqual([])
 })
 
-test('les trois portes mènent quelque part, et Formation s’allume aussi en simulation', async ({
+test('la flèche d’un module repose là d’où l’on vient : les cours', async ({ page }) => {
+  /**
+   * 🔴 ELLE VISAIT LE HUB, donc un cran trop haut : on choisit un module DANS
+   * « Les cours », et la flèche déposait ailleurs. Corrigé le 10 novembre 2026
+   * sur décision de Patrice. Règle ② de la maison : **le retour ne fait jamais
+   * perdre sa place.**
+   *
+   * ⚠️ On suit le VRAI chemin — la liste, puis un module — au lieu d'ouvrir
+   * une adresse de module écrite ici. Une sonde qui connaît un identifiant
+   * surveille cet identifiant, pas le comportement.
+   */
+  await page.goto('/parcours/cours', { waitUntil: 'domcontentloaded' })
+  const modules = page.locator('main a[href^="/parcours/"]')
+  await expect(modules.first()).toBeVisible({ timeout: 20_000 })
+  await modules.first().click()
+  await expect(page).toHaveURL(/\/parcours\/[^/]+$/, { timeout: 20_000 })
+  await expect(page.getByRole('heading', { level: 1 })).toContainText(/Module/)
+
+  const fleche = page.locator('header a[href]').first()
+  await expect(fleche).toHaveAttribute('href', '/parcours/cours')
+  // ⚠️ ET ELLE OUVRE VRAIMENT : un `href` correct sur un élément occulté par
+  // l'en-tête collant serait vert pour rien.
+  await fleche.click()
+  await expect(page).toHaveURL(/\/parcours\/cours$/, { timeout: 20_000 })
+  await expect(page.getByRole('heading', { level: 1, name: 'Les cours' })).toBeVisible()
+})
+
+test('les trois portes mènent quelque part, et Apprendre s’allume aussi en simulation', async ({
   page,
 }) => {
   await page.goto('/parcours', { waitUntil: 'domcontentloaded' })
