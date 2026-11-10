@@ -210,7 +210,7 @@ test('une seule chose PLEINE à la fois dans le composeur', async ({ page }) => 
       d.remove()
       return [...document.querySelectorAll('[data-composeur] button')]
         .filter((b) => getComputedStyle(b).backgroundColor === ref)
-        .map((b) => b.dataset.voix || b.dataset.texte || b.textContent.trim())
+        .map((b) => b.dataset.bouton || b.textContent.trim())
     })
 
   // ⚠️ ON PROUVE QUE LE DÉTECTEUR VOIT UN PLEIN avant de compter : sans ça,
