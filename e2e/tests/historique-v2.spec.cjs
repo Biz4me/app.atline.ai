@@ -334,3 +334,88 @@ test('« a changé » ne compte pas des orthographes', async ({ page }) => {
     'deux formulations du même sujet comptent comme deux changements',
   ).toEqual([])
 })
+
+// ── LES JOURS, ET LES ONGLETS ────────────────────────────────────────────
+
+test('deux onglets, et la liste brute n’en est pas un', async ({ page }) => {
+  /**
+   * 🧭 DEUX, ET DEUX SEULEMENT, parce que c'est le socle : un SUJET traverse
+   * le temps, un JOUR le coupe. Un troisième onglet serait le signe qu'on ne
+   * sait pas où ranger — et la liste brute n'est NI un sujet NI un jour :
+   * ce n'est pas un axe, c'est la plomberie.
+   */
+  await page.goto('/atlas?historique=1', { waitUntil: 'domcontentloaded' })
+  await expect(panneau(page)).toBeVisible({ timeout: 20_000 })
+
+  const onglets = page.locator('[data-onglet]')
+  await expect(onglets, 'il ne doit y avoir QUE deux onglets').toHaveCount(2)
+  expect(await onglets.evaluateAll((n) => n.map((e) => e.textContent.trim()))).toEqual([
+    'Sujets',
+    'Jours',
+  ])
+
+  // L'onglet allumé suit l'adresse, dans les deux sens.
+  await expect(page.locator('[data-onglet="Sujets"]')).toHaveAttribute('aria-current', 'page')
+  await page.locator('[data-onglet="Jours"]').click()
+  await expect(page).toHaveURL(/historique=jours$/, { timeout: 20_000 })
+  await expect(page.locator('[data-onglet="Jours"]')).toHaveAttribute('aria-current', 'page')
+  await expect(page.locator('[data-onglet="Sujets"]')).not.toHaveAttribute('aria-current', 'page')
+
+  /**
+   * 🔴 ET LA LISTE BRUTE GARDE « SUJETS » ALLUMÉ. Elle vit SOUS eux. Sans
+   * ça, aucun onglet ne serait allumé et on ne saurait plus où l'on est —
+   * exactement le défaut corrigé sur la barre du bas le 8 novembre.
+   */
+  await page.goto('/atlas?historique=fils', { waitUntil: 'domcontentloaded' })
+  await expect(panneau(page)).toBeVisible({ timeout: 20_000 })
+  await expect(
+    page.locator('[data-onglet][aria-current="page"]'),
+    'aucun onglet allumé sur la liste brute',
+  ).toHaveCount(1)
+  await expect(page.locator('[data-onglet="Sujets"]')).toHaveAttribute('aria-current', 'page')
+})
+
+test('les jours : du plus récent, jamais vides, et le compte s’accorde', async ({ page }) => {
+  await page.goto('/atlas?historique=jours', { waitUntil: 'domcontentloaded' })
+  await expect(panneau(page)).toBeVisible({ timeout: 20_000 })
+
+  const jours = page.locator('[data-jour]')
+  const n = await jours.count()
+  console.log(`  ${n} jours`)
+  if (n === 0) {
+    await expect(panneau(page)).toContainText('Chaque jour où tu parleras')
+    return
+  }
+
+  const lus = await jours.evaluateAll((liste) =>
+    liste.map((b) => ({
+      cle: b.getAttribute('data-jour'),
+      ligne: b.querySelectorAll('p')[1].textContent.trim(),
+    })),
+  )
+
+  // 🔴 DU PLUS RÉCENT AU PLUS ANCIEN. Les clés sont des dates ISO, donc
+  // l'ordre du texte est l'ordre du temps — et c'est pour ça qu'on les écrit
+  // ainsi plutôt qu'en « 10/11 ».
+  const cles = lus.map((l) => l.cle)
+  expect(cles, 'les jours ne sont pas du plus récent au plus ancien').toEqual(
+    [...cles].sort().reverse(),
+  )
+
+  // ⚠️ AUCUN JOUR VIDE. On ne liste que ce qui a quelque chose : 40 jours sur
+  // 135 en portent, et un calendrier aux deux tiers vide dirait surtout
+  // « on n'a pas parlé ».
+  const vides = lus.filter((l) => !/\d/.test(l.ligne))
+  expect(vides.map((l) => l.cle), 'un jour est listé sans rien à dire').toEqual([])
+
+  /**
+   * 🔴 LE SINGULIER COMPTE. « 1 échanges » sent la machine, et c'est le genre
+   * de détail que personne ne signale mais que tout le monde voit.
+   */
+  const fautes = lus.filter((l) => /\b1 (échanges|retenus|revenus)\b/.test(l.ligne))
+  expect(fautes.map((l) => l.ligne), 'un pluriel sur un seul élément').toEqual([])
+  // ⚠️ ET LE DÉTECTEUR SE PROUVE : il doit voir la faute s'il la rencontre.
+  expect(/\b1 (échanges|retenus|revenus)\b/.test('1 échanges · 2 retenus')).toBe(true)
+
+  console.log(`  le plus récent : ${lus[0].cle} — ${lus[0].ligne}`)
+})
