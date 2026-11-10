@@ -19,6 +19,7 @@ test.use({ viewport: { width: 390, height: 844 } })
 
 const lien = (page) => page.locator('[data-historique-lien]')
 const panneau = (page) => page.locator('[data-historique]')
+const sujets = (page) => page.locator('[data-sujet]')
 
 test('le coin haut-gauche ouvre, et l’adresse change avec lui', async ({ page, pageErrors }) => {
   await page.goto('/atlas', { waitUntil: 'domcontentloaded' })
@@ -37,7 +38,7 @@ test('le coin haut-gauche ouvre, et l’adresse change avec lui', async ({ page,
   await expect(panneau(page)).toBeVisible()
   await expect(lien(page)).toHaveAttribute('aria-expanded', 'true')
   // Le titre change, l'icône du lieu non : on est toujours DANS Atlas.
-  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Tes conversations')
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Ton historique')
 
   expect(pageErrors, `exception client : ${pageErrors.join(' · ')}`).toEqual([])
 })
@@ -168,7 +169,10 @@ test('le balayage vers le haut referme — et SEULEMENT depuis le haut', async (
 })
 
 test('la liste dit QUAND, et ouvre une conversation en PAGE', async ({ page }) => {
-  await page.goto('/atlas?historique=1', { waitUntil: 'domcontentloaded' })
+  // ⚠️ `=fils` ET NON `=1` : la liste brute a quitté la porte principale le
+  // 10 novembre 2026. Elle n'est ni un sujet ni un jour — ce n'est pas un
+  // axe, c'est la plomberie —, donc elle descend d'un cran.
+  await page.goto('/atlas?historique=fils', { waitUntil: 'domcontentloaded' })
   await expect(panneau(page)).toBeVisible({ timeout: 20_000 })
 
   const lignes = page.locator('[data-conversation]')
@@ -209,4 +213,124 @@ test('un fil qui n’est pas à soi ne révèle rien', async ({ page, pageErrors
   await expect(page.locator('[data-composeur]')).toBeVisible({ timeout: 20_000 })
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Atlas')
   expect(pageErrors, `exception client : ${pageErrors.join(' · ')}`).toEqual([])
+})
+
+// ── LES SUJETS ────────────────────────────────────────────────────────────
+
+test('la porte principale montre des SUJETS, triés par vivacité', async ({ page }) => {
+  /**
+   * 🔴 CE QUE ÇA GARDE. La première version montrait la liste des
+   * conversations : **100 lignes pour 53 ouvertures distinctes**, une ligne
+   * par CONNEXION et pas une ligne par pensée. Patrice l'a refusée en la
+   * voyant. Si la porte principale y revenait, on aurait refait le chemin à
+   * l'envers sans que rien ne crie.
+   */
+  await page.goto('/atlas?historique=1', { waitUntil: 'domcontentloaded' })
+  await expect(panneau(page)).toBeVisible({ timeout: 20_000 })
+
+  const n = await sujets(page).count()
+  console.log(`  ${n} sujets`)
+  if (n === 0) {
+    await expect(panneau(page)).toContainText('Parle au coach')
+    return
+  }
+  await expect(
+    page.locator('[data-conversation]'),
+    'la porte principale montre encore des conversations',
+  ).toHaveCount(0)
+
+  /**
+   * LE TRI EST LA VIVACITÉ : `vu / (1 + jours/15)`. On ne refait pas le
+   * calcul ici — on vérifie qu'il DÉCROÎT, ce qui suffit à attraper un tri
+   * remis sur la date ou sur le nombre seul.
+   *
+   * ⚠️ Et on lit ce que l'écran AFFICHE, pas ce que le serveur a calculé :
+   * un tri juste rendu dans le désordre serait vert sur la mauvaise moitié.
+   */
+  const lus = await sujets(page).evaluateAll((liste) =>
+    liste.slice(0, 12).map((b) => {
+      const ligne = b.querySelector('p').textContent
+      const m = ligne.match(/^(\d+) fois/)
+      return { vu: m ? Number(m[1]) : 1, quand: ligne }
+    }),
+  )
+  const recent = (t) => /Aujourd.hui|Hier/.test(t)
+  // Le premier est forcément vif : beaucoup vu ET récent.
+  console.log(`  le plus vif : ${lus[0].vu} fois · ${recent(lus[0].quand) ? 'récent' : 'ancien'}`)
+  expect(lus[0].vu, 'le premier sujet n’est vu qu’une fois : le tri est faux').toBeGreaterThan(1)
+
+  // 🔴 ET AUCUNE HEURE SUR UN SUJET. `lastSeenAt` est bougé par la
+  // consolidation nocturne : « Aujourd'hui, 04:15 » se lit « tu en as parlé
+  // à 4h du matin », ce qui est faux. Le jour reste vrai, la minute non.
+  const heures = lus.filter((l) => /\d{1,2}:\d{2}/.test(l.quand))
+  expect(
+    heures.map((l) => l.quand),
+    'un sujet affiche une heure : elle vient du travail nocturne, pas d’une conversation',
+  ).toEqual([])
+})
+
+test('« a changé » ne compte pas des orthographes', async ({ page }) => {
+  /**
+   * 🔴 LE DÉFAUT, UNE HEURE APRÈS LA LIVRAISON. « relance post-refus »
+   * annonçait **« a changé 3 fois »**, et le dépli montrait :
+   *
+   *     relance de mélanie · relance de melanie · relance mélanie
+   *
+   * **Ça n'a pas changé trois fois, ça a été réécrit trois fois.** Un
+   * historique qui compte des orthographes comme des changements raconte une
+   * histoire qui n'a pas eu lieu.
+   *
+   * 🧭 La maison connaît cette faute : « Mes activités MLM » contre
+   * « Activité MLM » dans `menu.spec.cjs`. Même remède, et **la même
+   * discipline** — on prouve d'abord que le détecteur détecte, sur le VRAI
+   * couple qui était passé.
+   */
+  const normaliser = (t) =>
+    t
+      .toLowerCase()
+      .normalize('NFD')
+      .split('')
+      .filter((c) => c.charCodeAt(0) < 768 || c.charCodeAt(0) > 879)
+      .join('')
+      .replace(/\b(de|du|des|la|le|les|l|d|un|une|en|a|au|aux|sur|pour)\b/g, ' ')
+      .replace(/[^a-z0-9]+/g, ' ')
+      .trim()
+
+  expect(
+    normaliser('relance de mélanie'),
+    'le détecteur ne verrait pas le doublon qu’il surveille',
+  ).toBe(normaliser('relance melanie'))
+  expect(normaliser('objection pyramide')).not.toBe(normaliser('objection prix'))
+
+  await page.goto('/atlas?historique=1', { waitUntil: 'domcontentloaded' })
+  await expect(panneau(page)).toBeVisible({ timeout: 20_000 })
+
+  const depliables = page.locator('[data-sujet]:not([disabled])')
+  const combien = await depliables.count()
+  if (combien === 0) {
+    console.log('  aucun sujet n’a d’histoire : le cas n’a pas été éprouvé')
+    return
+  }
+
+  // On déplie les trois premiers qui ont une histoire : c'est là que les
+  // réécritures s'empilaient.
+  const fautifs = []
+  for (let i = 0; i < Math.min(3, combien); i++) {
+    const b = depliables.nth(i)
+    await b.click()
+    await page.waitForTimeout(150)
+    const avant = await b.locator('li').evaluateAll((n) => n.map((e) => e.textContent))
+    const vus = new Set()
+    for (const ligne of avant) {
+      const quoi = normaliser(ligne.split('—')[0])
+      if (vus.has(quoi)) fautifs.push(ligne.trim())
+      vus.add(quoi)
+    }
+    await b.click()
+  }
+  console.log(`  ${Math.min(3, combien)} sujets dépliés · ${fautifs.length} redite(s)`)
+  expect(
+    fautifs,
+    'deux formulations du même sujet comptent comme deux changements',
+  ).toEqual([])
 })
