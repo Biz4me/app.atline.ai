@@ -2,7 +2,7 @@
 const { test, expect } = require('../fixtures.cjs')
 test.use({ viewport: { width: 390, height: 844 } })
 
-test('plus aucune entrée « Simulation » dans la barre', async ({ page, pageErrors }) => {
+test('l’entraînement n’a pas de case dans la barre', async ({ page, pageErrors }) => {
   /**
    * ⚠️ CETTE SONDE A COMPTÉ 4 PENDANT UNE JOURNÉE, et c'était juste : la case
    * libérée par le simulateur est restée vide tant que le fil d'Atlas n'avait
@@ -18,7 +18,11 @@ test('plus aucune entrée « Simulation » dans la barre', async ({ page, pageEr
   await expect(cases).toHaveCount(4, { timeout: 20_000 })
   const mots = await cases.evaluateAll((n) => n.map((e) => e.textContent.trim()))
   console.log(`  barre : ${mots.join(' · ')}`)
-  expect(mots.join(' ')).not.toMatch(/Simulation/)
+  // ⚠️ LES DEUX MOTS, et c'est le point. L'écran s'est appelé « Répéter »,
+  // puis « Simulation », puis « Entraînement » le 10 novembre 2026. Une sonde
+  // qui ne surveillerait que l'ancien nom se tairait le jour où le NOUVEAU
+  // reviendrait dans la barre — elle surveillerait un mot, pas une règle.
+  expect(mots.join(' ')).not.toMatch(/Simulation|Entraîn|Répéter/i)
   expect(pageErrors).toEqual([])
 })
 

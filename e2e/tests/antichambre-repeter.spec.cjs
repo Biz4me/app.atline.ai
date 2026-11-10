@@ -41,7 +41,7 @@ test('le menu : des titres, et le geste reste allumé', async ({ page, pageError
   await page.goto('/coach/repeter', { waitUntil: 'domcontentloaded' })
 
   // ── 1. c'est un LIEU, pas une porte à sens unique ──────────────────────
-  await expect(page.getByRole('heading', { level: 1, name: 'Simulation' })).toBeVisible({
+  await expect(page.getByRole('heading', { level: 1, name: 'Entraînement' })).toBeVisible({
     timeout: 20_000,
   })
   const barre = page.getByRole('navigation', { name: BARRE })
@@ -65,7 +65,9 @@ test('le menu : des titres, et le geste reste allumé', async ({ page, pageError
   await expect(rangee.getByRole('link')).toHaveCount(1)
   const bouton = rangee.getByRole('button')
   await expect(bouton).toHaveCount(1)
-  await expect(bouton).toHaveAccessibleName(/^Menu Simulation$/)
+  // ⚠️ « Entraînement » depuis le 10 novembre 2026 : une seule racine pour
+  // cet écran, son geste sur une fiche et sa porte sur le hub.
+  await expect(bouton).toHaveAccessibleName(/^Menu Entraînement$/)
 
   // 🔴 `toBeVisible` NE DÉTECTE PAS L'OCCLUSION : un bouton recouvert reste
   // « visible ». Seul un clic à blanc le dit.
@@ -129,7 +131,7 @@ test('le menu : des titres, et le geste reste allumé', async ({ page, pageError
   await expect(page).toHaveURL(/\/coach\/repeter\/appels/, { timeout: 20_000 })
   await expect(page.getByRole('heading', { level: 1, name: /Sur quoi t['’]entraîner/ })).toBeVisible()
   await expect(page.getByRole('navigation', { name: BARRE })).toHaveCount(0)
-  await expect(page.getByRole('link', { name: 'Retour à la simulation' })).toBeVisible()
+  await expect(page.getByRole('link', { name: 'Retour à l’entraînement' })).toBeVisible()
   // ⚠️ Et pas de geste dominant : il se placerait au-dessus d'une barre du
   // bas qui n'existe plus ici, et flotterait à 64 px du vide.
   await expect(page.getByRole('link', { name: 'Commencer', exact: true })).toHaveCount(0)
@@ -150,7 +152,7 @@ test('le menu : des titres, et le geste reste allumé', async ({ page, pageError
   expect(texteApres, `« ${titreChoisi} » choisi mais pas annoncé`).toContain(titreChoisi)
 
   // ── 7. le retour d'un détour ne perd PAS le choix ──────────────────────
-  await page.getByRole('button', { name: /^Menu Simulation$/ }).click()
+  await page.getByRole('button', { name: /^Menu Entraînement$/ }).click()
   await page.getByRole('link', { name: /Où tu en es/ }).click()
   await expect(page.getByRole('heading', { level: 1, name: /Où tu en es/ })).toBeVisible({
     timeout: 20_000,
@@ -159,7 +161,7 @@ test('le menu : des titres, et le geste reste allumé', async ({ page, pageError
   await poser(page)
   await page.screenshot({ path: 'capture-resultats.png', animations: 'disabled' })
 
-  await page.getByRole('link', { name: 'Retour à la simulation' }).click()
+  await page.getByRole('link', { name: 'Retour à l’entraînement' }).click()
   // 🔴 AVEC LE PARAMÈTRE. Quatre endroits construisaient cette adresse : un
   // `encodeURIComponent` oublié quelque part ferait retomber sur le briefing
   // par défaut, et l'écran s'afficherait très bien — personne ne le verrait.
@@ -243,7 +245,7 @@ test('l’antichambre et l’appel ne peuvent pas se contredire', async ({ page,
   // travailler objections » et Aria jouant l'invitation. Rien, côté build,
   // ne l'aurait dit.
   await page.goto('/coach/repeter', { waitUntil: 'domcontentloaded' })
-  await expect(page.getByRole('heading', { level: 1, name: 'Simulation' })).toBeVisible({
+  await expect(page.getByRole('heading', { level: 1, name: 'Entraînement' })).toBeVisible({
     timeout: 20_000,
   })
 
@@ -279,7 +281,7 @@ test('l’antichambre et l’appel ne peuvent pas se contredire', async ({ page,
   // ── Fermer remonte à l'ANTICHAMBRE, pas à l'accueil ───────────────────
   await sortie.click()
   await expect(page).toHaveURL(/\/coach\/repeter(\?|$)/, { timeout: 20_000 })
-  await expect(page.getByRole('heading', { level: 1, name: 'Simulation' })).toBeVisible()
+  await expect(page.getByRole('heading', { level: 1, name: 'Entraînement' })).toBeVisible()
 
   expect(pageErrors, `exceptions JS : ${pageErrors.join(' | ')}`).toHaveLength(0)
 })

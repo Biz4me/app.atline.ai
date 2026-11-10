@@ -17,7 +17,12 @@ const geste = (page, nom) => page.locator(`[data-geste="${nom}"]`)
 /** 🔴 CE QU'ON ATTEND, DÉCLARÉ. Une sonde qui ne dit pas combien d'éléments
  *  elle doit trouver passe au vert quand elle n'en trouve aucun — c'est ce
  *  qui a laissé deux sondes de hauteur mentir en même temps le 8 novembre. */
-const ATTENDUS = ['Appeler', 'Simuler', 'SMS', 'E-mail']
+// ⚠️ « S'entraîner » depuis le 10 novembre 2026, et non « Simuler » : à côté
+// d'« Appeler », sur la fiche d'une VRAIE personne, *simuler* se lit d'abord
+// **feindre**. L'apostrophe est la TYPOGRAPHIQUE (’), comme partout ailleurs
+// dans l'app — une droite ne correspondrait à rien.
+const ENTRAINER = 'S’entraîner'
+const ATTENDUS = ['Appeler', ENTRAINER, 'SMS', 'E-mail']
 
 /**
  * SE COMPORTER COMME UN TÉLÉPHONE.
@@ -75,7 +80,7 @@ test('les quatre gestes, dans l’ordre, et éteints sans coordonnée', async ({
 
   // 🔴 SIMULER EST TOUJOURS ALLUMÉ : `preparerRepetition` accepte un contact
   // sans recommandation et retombe sur l'exercice du point faible.
-  await expect(geste(page, 'Simuler')).toHaveAttribute(
+  await expect(geste(page, ENTRAINER)).toHaveAttribute(
     'href',
     `/coach/repeter?contact=${seed.cid}`,
   )
@@ -297,13 +302,13 @@ test('« Pas fait » n’écrit rien, et c’est le point', async ({ page, seed 
   expect(etat.interactions).toHaveLength(0)
 })
 
-test('Simuler ne compte JAMAIS comme une exposition', async ({ page, seed }) => {
+test('s’entraîner ne compte JAMAIS comme une exposition', async ({ page, seed }) => {
   // 🔴 S'entraîner n'est pas joindre quelqu'un. Sans ce contrôle, un canal
   // ajouté par distraction sur « Simuler » gonflerait le compteur qui décide
   // du prochain pas — on croirait avoir parlé à quelqu'un à qui l'on s'est
   // contenté de penser.
   await page.goto(`/gens/${seed.cid}`, { waitUntil: 'domcontentloaded' })
-  const simuler = page.locator('[data-geste="Simuler"]')
+  const simuler = page.locator(`[data-geste="${ENTRAINER}"]`)
   await expect(simuler).toBeVisible({ timeout: 20_000 })
   await simuler.click()
   await expect(page).toHaveURL(/\/coach\/repeter/, { timeout: 20_000 })
@@ -324,7 +329,7 @@ test('la croix referme sur la liste', async ({ page, seed }) => {
   await expect(page).toHaveURL(/\/gens$/, { timeout: 20_000 })
 })
 
-test('Simuler depuis une fiche joue l’appel que SON étape impose', async ({ page, seed }) => {
+test('s’entraîner depuis une fiche joue l’appel que SON étape impose', async ({ page, seed }) => {
   // 🔴 LE DÉFAUT QUE CE CONTRÔLE GARDE : `preparerRepetition` écartait le
   // point faible dès qu'un contact était passé, si bien qu'un CLIENT — qui
   // n'a aucune étape, donc aucun appel imposé, six en production le 10
@@ -335,15 +340,18 @@ test('Simuler depuis une fiche joue l’appel que SON étape impose', async ({ p
 
   // Le contact jetable est PROSPECT / NOUVEAU : la fiche annonce donc l'appel
   // que cette étape impose. On lit ce qu'elle promet…
-  const promis = (await page.locator('section', { hasText: 'À simuler' }).first().innerText())
+  // ⚠️ `hasText` LIT LA SOURCE, pas le rendu : la bande est mise en capitales
+  // par le CSS, et c'est bien « Ton entraînement » qu'il faut écrire ici.
+  // Elle disait « À simuler » jusqu'au 10 novembre 2026.
+  const promis = (await page.locator('section', { hasText: 'Ton entraînement' }).first().innerText())
     .split('\n')
     .map((l) => l.trim())
     .filter(Boolean)
-  expect(promis.length, 'la bande « À simuler » est absente ou vide').toBeGreaterThan(1)
+  expect(promis.length, 'la bande « Ton entraînement » est absente ou vide').toBeGreaterThan(1)
   const titreAppel = promis[1]
 
   // …puis on suit le geste, et les deux écrans doivent dire la MÊME chose.
-  await page.locator('[data-geste="Simuler"]').click()
+  await page.locator(`[data-geste="${ENTRAINER}"]`).click()
   await expect(page).toHaveURL(/\/coach\/repeter/, { timeout: 20_000 })
   await expect(page.getByRole('heading', { level: 1 })).toBeVisible({ timeout: 20_000 })
 
