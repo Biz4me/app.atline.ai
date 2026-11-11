@@ -99,10 +99,19 @@ const EN_ATTENTE = {
   // ✅ `Placement` et `SupportTicket` sont sortis d'ici le 11 novembre 2026 :
   // leurs deux tuiles de l'admin ne portent plus de chiffre, elles disent ce
   // qu'elles attendent. Les tables restent, les fonctions sont prévues.
-  // ✅ `Lead` et `AtlineCommission` sont sortis d'ici le 11 novembre 2026 :
-  // l'accueil n'annonce plus « 0 lead », les trois KPI de Nova et les deux
-  // montants du parrainage rendent `null` et s'affichent « — ». Zéro est un
-  // résultat, `null` dit qu'il n'y a pas de mécanisme.
+  // ✅ `Lead` est sorti d'ici le 11 novembre 2026 : plus aucune route ne
+  // l'interroge, l'accueil n'annonce plus « 0 lead » et les trois KPI de Nova
+  // rendent `null`. Zéro est un résultat, `null` dit qu'il n'y a pas de
+  // mécanisme.
+  //
+  // ⚠️ `AtlineCommission` EST RESTÉE, et c'est le garde qui me l'a appris en
+  // refusant le déploiement : j'avais corrigé l'ÉCRAN sans retirer la
+  // LECTURE. La route doit la garder — le jour où le calcul existera, elle
+  // marchera sans qu'on y retouche. Ce qui a changé, c'est qu'elle ne rend
+  // plus « 0 € » mais « — ».
+  AtlineCommission:
+    "V1 page affiliation. L'écran ne ment plus (« — » au lieu de « 0 € »), mais la route lit toujours : le parrainage mononiveau est un vrai produit et son calcul de commissions n'existe pas encore.",
+
   MlmBook:
     "plan du jour → la branche « lecture » ne peut jamais proposer un livre. La bibliothèque MLM n'a jamais été chargée (MlmProduct en a 19 121, MlmBook zéro). ⚠️ Dans un try/catch : muette à jamais.",
   UserBookInteraction: "plan du jour → suit MlmBook : sans livre, aucun livre lu.",
