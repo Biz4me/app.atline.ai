@@ -17,29 +17,24 @@ export async function GET() {
   const campaigns = await db.campaign.findMany({
     where: { userId: c.userId, ...(c.mlmBusinessId ? { mlmBusinessId: c.mlmBusinessId } : {}) },
     orderBy: { createdAt: 'desc' },
-    include: { _count: { select: { leads: true, posts: true } } },
+    include: { _count: { select: { posts: true } } },
   })
 
-  // KPI de résultats par campagne : inscrits (à une réunion) et convertis.
-  const ids = campaigns.map((c) => c.id)
-  const inscrits: Record<string, number> = {}
-  const convertis: Record<string, number> = {}
-  if (ids.length) {
-    const [insc, conv] = await Promise.all([
-      db.lead.groupBy({ by: ['campaignId'], where: { campaignId: { in: ids }, meetingStatus: { not: null } }, _count: { _all: true } }),
-      db.lead.groupBy({ by: ['campaignId'], where: { campaignId: { in: ids }, outcome: 'CONVERTI' }, _count: { _all: true } }),
-    ])
-    insc.forEach((r) => (inscrits[r.campaignId] = r._count._all))
-    conv.forEach((r) => (convertis[r.campaignId] = r._count._all))
-  }
+  // 🔴 INSCRITS ET CONVERTIS NE SONT PLUS CALCULÉS (11 novembre 2026).
+  // Les deux sortaient de `Lead`, une table que **rien n'écrit dans les
+  // quatre dépôts** : les deux regroupements rendaient toujours un tableau
+  // vide, et l'écran affichait trois zéros sur quatre comme des résultats.
+  // 🧭 Le moteur de campagnes — n8n — n'a jamais été codé ; ce n'est pas un
+  // compteur à zéro, c'est un compteur sans source. On rend `null`, et
+  // l'écran dit « — » au lieu de prétendre mesurer.
 
   const out = campaigns.map((c) => ({
     ...c,
     stats: {
       posts: c._count.posts,
-      leads: c._count.leads,
-      inscrits: inscrits[c.id] ?? 0,
-      convertis: convertis[c.id] ?? 0,
+      leads: null,
+      inscrits: null,
+      convertis: null,
     },
   }))
   return NextResponse.json({ campaigns: out })

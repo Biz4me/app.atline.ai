@@ -13,9 +13,10 @@ type Referral = { name: string; initials: string; photoUrl: string | null; plan:
 type Data = {
   code: string
   directCount: number
-  commissionsMonth: number
-  commissionsPending: number
-  commissionsPaid: number
+  // ⚠️ `null` = aucun mécanisme ne calcule les commissions, à distinguer de 0 €.
+  commissionsMonth: number | null
+  commissionsPending: number | null
+  commissionsPaid: number | null
   referrals: Referral[]
 }
 
@@ -110,8 +111,8 @@ export default function ParrainagePage() {
           <div className="grid grid-cols-3 gap-2.5">
             {[
               { value: String(data.directCount), label: 'Filleuls' },
-              { value: euro(data.commissionsMonth), label: 'Ce mois' },
-              { value: euro(data.commissionsPending), label: 'En attente' },
+              { value: data.commissionsMonth === null ? '—' : euro(data.commissionsMonth), label: 'Ce mois' },
+              { value: data.commissionsPending === null ? '—' : euro(data.commissionsPending), label: 'En attente' },
             ].map((s) => (
               <div key={s.label} className="flex flex-col items-center gap-1 rounded-2xl border border-border bg-surface px-2 py-3.5 text-center shadow-card">
                 <span className="text-xl font-bold tabular-nums text-foreground">{s.value}</span>
@@ -156,10 +157,10 @@ export default function ParrainagePage() {
           </div>
 
           {/* Total perçu */}
-          {data.commissionsPaid > 0 && (
+          {(data.commissionsPaid ?? 0) > 0 && (
             <div className="flex items-center justify-between rounded-2xl border border-border bg-surface px-4 py-3.5 shadow-card">
               <span className="text-lg lg:text-sm text-muted-foreground">Total perçu</span>
-              <span className="text-base font-bold text-foreground">{euro(data.commissionsPaid)}</span>
+              <span className="text-base font-bold text-foreground">{euro(data.commissionsPaid ?? 0)}</span>
             </div>
           )}
         </div>

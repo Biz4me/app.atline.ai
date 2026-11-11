@@ -37,6 +37,13 @@
  *   ③ **écrite quelque part, mais encore vide** (6) — une fonction construite
  *      et jamais exercée. C'est de l'attente, pas une faute.
  *
+ * ⚠️ SON ANGLE MORT, DIT EN TOUTES LETTRES : il ne voit que `prisma.x.verbe`.
+ * Un comptage par RELATION — `include: { _count: { select: { leads: true } } }`
+ * — lui échappe complètement, et c'est exactement sous cette forme que la page
+ * Nova lisait `Lead`. Le jour où un écran n'affiche QUE des comptes de
+ * relation sur une table vide, ce garde ne dira rien. Le savoir vaut mieux que
+ * de le croire complet.
+ *
  * ⚠️ IL CHERCHE L'ACCÈS PRISMA, PAS LE NOM DU MODÈLE. Première version :
  * `\bNomDuModele\b` dans tout le code. Elle a rendu « Session citée dans 60
  * fichiers » et « Conversation dans 33 » — des mots courants, pas des accès.
@@ -92,11 +99,10 @@ const EN_ATTENTE = {
   // ✅ `Placement` et `SupportTicket` sont sortis d'ici le 11 novembre 2026 :
   // leurs deux tuiles de l'admin ne portent plus de chiffre, elles disent ce
   // qu'elles attendent. Les tables restent, les fonctions sont prévues.
-  Lead:
-    "V1 accueil + page Nova → « N campagnes · 0 leads ». Les campagnes existent (4 lignes), le moteur qui produirait des leads n'a jamais été codé.",
-  AtlineCommission:
-    "V1 page affiliation → commissions toujours vides. Le parrainage mononiveau est un vrai produit, son calcul n'existe pas.",
-
+  // ✅ `Lead` et `AtlineCommission` sont sortis d'ici le 11 novembre 2026 :
+  // l'accueil n'annonce plus « 0 lead », les trois KPI de Nova et les deux
+  // montants du parrainage rendent `null` et s'affichent « — ». Zéro est un
+  // résultat, `null` dit qu'il n'y a pas de mécanisme.
   MlmBook:
     "plan du jour → la branche « lecture » ne peut jamais proposer un livre. La bibliothèque MLM n'a jamais été chargée (MlmProduct en a 19 121, MlmBook zéro). ⚠️ Dans un try/catch : muette à jamais.",
   UserBookInteraction: "plan du jour → suit MlmBook : sans livre, aucun livre lu.",

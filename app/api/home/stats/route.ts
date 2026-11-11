@@ -17,7 +17,7 @@ export async function GET() {
   // **il n'était affiché nulle part** — un calcul mort qui coûtait une
   // requête à chaque chargement du tableau de bord.
   const [contactCount, simSessions, referrals, rdvCount, simCount,
-    relancesDues, rdvWeek, tunnel, contactsWeek, lessonsTotal, lessonsDone, campaignCount, leadCount] = await Promise.all([
+    relancesDues, rdvWeek, tunnel, contactsWeek, lessonsTotal, lessonsDone, campaignCount] = await Promise.all([
     db.contact.count({ where: { userId } }),
     db.simSession.findMany({
       where: { userId, score: { not: null }, startedAt: { gte: thirtyDaysAgo } },
@@ -37,7 +37,6 @@ export async function GET() {
     db.lmsLesson.count({ where: { published: true } }),   // le dénominateur doit être atteignable
     db.userLessonProgress.count({ where: { userId, done: true } }),
     db.campaign.count({ where: { userId } }),
-    db.lead.count({ where: { campaign: { userId } } }),
   ])
 
   // Score ARIA : moyenne sur 30 jours
@@ -75,6 +74,9 @@ export async function GET() {
       closing: stageCount(['CLOSING']),
     },
     formationPct: lessonsTotal > 0 ? Math.round((lessonsDone / lessonsTotal) * 100) : 0,
-    nova: { campaigns: campaignCount, leads: leadCount },
+    // 🔴 `leads` EST PARTI LE 11 NOVEMBRE 2026. `Lead` n'a aucun écrivain :
+    // l'accueil annonçait « N campagnes · 0 lead » à quelqu'un dont le moteur
+    // de campagnes n'existe pas. Le zéro n'était pas un résultat.
+    nova: { campaigns: campaignCount },
   })
 }

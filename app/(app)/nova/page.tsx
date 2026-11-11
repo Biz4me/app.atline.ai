@@ -17,7 +17,7 @@ type Campaign = {
   channels: string[]
   cadence: number
   createdAt: string
-  stats?: { posts: number; leads: number; inscrits: number; convertis: number }
+  stats?: { posts: number; leads: number | null; inscrits: number | null; convertis: number | null }
 }
 
 const STATUS: Record<Campaign['status'], { label: string; color: string }> = {
@@ -155,7 +155,7 @@ function CampaignCard({
   const [menu, setMenu] = useState(false)
   const [open, setOpen] = useState(false)
   const s = STATUS[campaign.status]
-  const st = campaign.stats ?? { posts: 0, leads: 0, inscrits: 0, convertis: 0 }
+  const st = campaign.stats ?? { posts: 0, leads: null, inscrits: null, convertis: null }
 
   // Contenus de la campagne (chargés à la première ouverture) → on affiche les vidéos
   const [posts, setPosts] = useState<{ id: string; format: string; mediaUrl: string | null }[] | null>(null)
@@ -247,6 +247,8 @@ function CampaignCard({
           <p className="eyebrow mb-2">Résultats</p>
           <div className="grid grid-cols-4 gap-2">
             <Kpi value={st.posts} label="Publications" />
+            {/* ⚠️ Ces trois-là viennent de `Lead`, que rien n'écrit : elles
+                rendent `null` et s'affichent « — ». Voir la route. */}
             <Kpi value={st.leads} label="Leads" />
             <Kpi value={st.inscrits} label="Inscrits" />
             <Kpi value={st.convertis} label="Convertis" />
@@ -277,11 +279,17 @@ function CampaignCard({
   )
 }
 
-function Kpi({ value, label }: { value: number; label: string }) {
+/**
+ * 🔴 `value` PEUT ÊTRE `null`, ET CE N'EST PAS LA MÊME CHOSE QUE ZÉRO.
+ * Zéro est un résultat : « tu n'as pas encore de lead ». `null` dit qu'il n'y
+ * a **pas de mécanisme** pour en produire. Les afficher pareil, c'était faire
+ * passer une absence de fonction pour une absence de performance.
+ */
+function Kpi({ value, label }: { value: number | null; label: string }) {
   return (
     <div className="flex flex-col items-center gap-0.5 rounded-xl bg-muted/60 py-3">
-      <span className="text-lg font-bold" style={{ color: NOVA }}>
-        {value}
+      <span className="text-lg font-bold" style={{ color: value === null ? 'var(--muted-foreground)' : NOVA }}>
+        {value ?? '—'}
       </span>
       <span className="text-center text-2xs font-semibold text-muted-foreground">{label}</span>
     </div>
