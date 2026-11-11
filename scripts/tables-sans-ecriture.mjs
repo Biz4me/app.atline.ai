@@ -52,13 +52,23 @@ const DEPOTS_PAR_DEFAUT = [
   '/opt/atline/atline-admin',
   '/opt/atline/apps/atline-ai-service',
 ]
-// ⚠️ `venv` SANS POINT AUSSI. Le service IA porte son environnement Python
-// dans `venv/`, et l'oublier faisait lire **36 000 fichiers au lieu de 1 600**
-// — tout sympy compris. Le garde y perdait l'essentiel de son temps.
+/**
+ * ── ⚠️ CE QU'ON NE LIT PAS, ET POURQUOI CHAQUE LIGNE A ÉTÉ PAYÉE ─────────
+ *
+ * · `venv` SANS POINT : le service IA porte son environnement Python là, et
+ *   l'oublier faisait lire **36 000 fichiers au lieu de 1 600**, sympy
+ *   compris — le garde y perdait l'essentiel de son temps ;
+ * · 🔴 `.next-old` ET `.next-new`, pas seulement `.next`. L'échange atomique
+ *   du déploiement LAISSE le build précédent sur le disque, et le script y
+ *   lisait du code compilé : il a signalé `Certificate` comme encore lue
+ *   **une heure après qu'on l'ait retirée de la source**. 🧭 Un outil qui
+ *   lit le passé rend un verdict sur le passé.
+ */
 const EXCLURE = new Set([
-  'node_modules', '.next', '.git', 'worktrees', 'dist',
+  'node_modules', '.git', 'worktrees', 'dist',
   'venv', '.venv', '__pycache__', 'migrations', '.claude', 'site-packages',
 ])
+const ignorer = (nom) => EXCLURE.has(nom) || nom.startsWith('.next')
 const EXT = new Set(['.ts', '.tsx', '.js', '.cjs', '.mjs', '.py'])
 const ECRITURES = ['create', 'createMany', 'upsert', 'update', 'updateMany', 'delete', 'deleteMany']
 
@@ -119,7 +129,7 @@ const parcourir = (d) => {
     return
   }
   for (const e of entrees) {
-    if (EXCLURE.has(e)) continue
+    if (ignorer(e)) continue
     const p = join(d, e)
     let s
     try {
