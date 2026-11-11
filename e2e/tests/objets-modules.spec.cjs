@@ -59,12 +59,40 @@ test('chacun des onze modules porte SON objet, et l’image arrive vraiment', as
         img.onload = () => r(true)
         img.onerror = () => r(false)
       })
+      // La marge morte, lue dans le canal alpha : deux pixels de tolérance
+      // pour le pixel de garde du découpage et le ré-encodage.
+      let marges = null
+      if (ok && img.naturalWidth) {
+        const c = document.createElement('canvas')
+        c.width = img.naturalWidth
+        c.height = img.naturalHeight
+        const ctx = c.getContext('2d')
+        ctx.drawImage(img, 0, 0)
+        const d = ctx.getImageData(0, 0, c.width, c.height).data
+        let x0 = 1e9, y0 = 1e9, x1 = -1, y1 = -1
+        for (let y = 0; y < c.height; y++)
+          for (let x = 0; x < c.width; x++)
+            if (d[(y * c.width + x) * 4 + 3] > 8) {
+              if (x < x0) x0 = x
+              if (x > x1) x1 = x
+              if (y < y0) y0 = y
+              if (y > y1) y1 = y
+            }
+        const zero = (v) => (v <= 2 ? 0 : v)
+        marges = {
+          g: zero(x0),
+          d: zero(c.width - 1 - x1),
+          h: zero(y0),
+          b: zero(c.height - 1 - y1),
+        }
+      }
       return {
         numero: e.getAttribute('data-decor-objet'),
         url: url.replace(/^https?:\/\/[^/]+/, ''),
         charge: ok,
         largeur: img.naturalWidth,
         hauteur: img.naturalHeight,
+        marges,
         taille: s.backgroundSize,
         opacite: Number(s.opacity),
       }
@@ -73,8 +101,23 @@ test('chacun des onze modules porte SON objet, et l’image arrive vraiment', as
     expect(etat.url, `${adresse} : aucun fond sur la couture du décor`).toBeTruthy()
     expect(etat.charge, `${adresse} : ${etat.url} n'a pas chargé (404 ?)`).toBe(true)
     expect(etat.largeur, `${adresse} : ${etat.url} est vide`).toBeGreaterThan(0)
-    // Carrées, toutes : c'est ce qui fait tenir la famille.
-    expect(etat.largeur).toBe(etat.hauteur)
+    /**
+     * 🔴 ELLES NE SONT PLUS CARRÉES, ET C'EST LE CORRECTIF. Ce contrôle
+     * exigeait `largeur === hauteur` : les `.v1` étaient onze carrés de 224,
+     * **chacun avec sa propre marge morte**, et c'est précisément ce qui
+     * rendait les objets incomparables à l'écran — le sablier décalé de 31 px
+     * dans son cadre, la boussole rognée par les bords. Les `.v2` sont
+     * découpés sur l'encre : leur forme EST celle de l'objet.
+     *
+     * 🧭 Ce qui le remplace est plus fort : **aucune marge morte**. L'objet
+     * doit toucher les quatre bords de son fichier, à deux pixels près — le
+     * pixel de garde du découpage. Un fichier qui reviendrait avec du vide
+     * autour casserait de nouveau la famille, et ce contrôle le dirait.
+     */
+    expect(
+      etat.marges,
+      `${etat.url} : marge morte autour de l'objet (${JSON.stringify(etat.marges)})`,
+    ).toEqual({ g: 0, d: 0, h: 0, b: 0 })
     // ⚠️ ET IL SE VOIT. Une opacité tombée à zéro laisserait tout le reste au
     // vert pour un écran sans décor — la faute exacte commise ce jour-là par
     // la sonde du contraste.
