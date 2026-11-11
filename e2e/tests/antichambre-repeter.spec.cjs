@@ -201,13 +201,33 @@ test('la couleur dit qui parle : teal sur la simulation, orange au hall', async 
   const atlas = await jeton(page, '--color-atlas')
   expect(aria, 'les deux jetons doivent différer, sinon ce test ne prouve rien').not.toBe(atlas)
 
-  // Le geste dominant.
+  /**
+   * ── 🔴 DEUX JETONS PAR COULEUR DEPUIS LE 11 NOVEMBRE 2026 ──────────────
+   *
+   * Cette sonde est passée au rouge ce jour-là, et **elle avait raison de le
+   * faire** : l'audit de contraste a donné aux sept couleurs une variante
+   * pour le TEXTE, parce qu'elles valaient 2,0 à 3,8 en lettres sur fond
+   * clair. Un aplat garde la charte, un caractère prend la variante.
+   *
+   * 🧭 CE QUE LA SONDE PROUVE EN EST RENFORCÉ, pas affaibli. Elle vérifiait
+   * « la couleur dit qui parle » ; elle vérifie maintenant **ça, plus le fait
+   * que les deux rôles ne se confondent pas** — le bouton plein en teal de
+   * charte, le mot de la barre en teal de texte, sur le même écran.
+   */
+  const ariaTexte = await jeton(page, '--color-aria-texte')
+  const atlasTexte = await jeton(page, '--color-atlas-texte')
+  expect(ariaTexte, 'la variante texte du teal doit exister').toMatch(/^rgb/)
+  expect(ariaTexte, 'teal et orange en variante doivent différer').not.toBe(atlasTexte)
+
+  // Le geste dominant : un APLAT, donc la charte.
   expect(await commencer.evaluate((el) => getComputedStyle(el).backgroundColor)).toBe(aria)
 
-  // L'entrée allumée de la barre du bas — le mot ET le glyphe.
+  // L'entrée allumée de la barre du bas — le mot ET le glyphe, donc la
+  // variante texte. ⚠️ Le glyphe la prend aussi : il accompagne le mot, et
+  // deux teals voisins sur une même case se verraient.
   const allumee = page.locator('nav[aria-label="Navigation principale"] [aria-current="page"]')
-  expect(await allumee.locator('span').evaluate((el) => getComputedStyle(el).color)).toBe(aria)
-  expect(await allumee.locator('svg').evaluate((el) => getComputedStyle(el).stroke)).toBe(aria)
+  expect(await allumee.locator('span').evaluate((el) => getComputedStyle(el).color)).toBe(ariaTexte)
+  expect(await allumee.locator('svg').evaluate((el) => getComputedStyle(el).stroke)).toBe(ariaTexte)
 
   // L'icône de la barre du haut, à côté du titre.
   //
@@ -217,7 +237,7 @@ test('la couleur dit qui parle : teal sur la simulation, orange au hall', async 
   // raison : si la marque avait eu un contour, la sonde serait passée en
   // mesurant le mauvais élément.
   const icone = page.locator('header > div svg').first()
-  expect(await icone.evaluate((el) => getComputedStyle(el).stroke)).toBe(aria)
+  expect(await icone.evaluate((el) => getComputedStyle(el).stroke)).toBe(ariaTexte)
 
   // ── ET L'ACCUEIL RESTE ORANGE ──
   // Sans ce contre-contrôle, un teal passé en dur quelque part passerait pour
@@ -232,7 +252,7 @@ test('la couleur dit qui parle : teal sur la simulation, orange au hall', async 
   await page.goto('/accueil', { waitUntil: 'domcontentloaded' })
   const ici = page.locator('nav[aria-label="Navigation principale"] [aria-current="page"]')
   await expect(ici).toBeVisible({ timeout: 20_000 })
-  expect(await ici.locator('span').evaluate((el) => getComputedStyle(el).color)).toBe(atlas)
+  expect(await ici.locator('span').evaluate((el) => getComputedStyle(el).color)).toBe(atlasTexte)
 
   expect(pageErrors, `exceptions JS : ${pageErrors.join(' | ')}`).toHaveLength(0)
 })

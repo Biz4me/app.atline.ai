@@ -40,29 +40,23 @@ test.use({ viewport: { width: 390, height: 844 } })
 const seuilDe = (px, graisse) => (px >= 24 || (px >= 18.66 && graisse >= 700) ? 3 : 4.5)
 
 /**
- * ── ⏳ LA DETTE CONNUE, NOMMÉE ET DATÉE (11 novembre 2026) ────────────────
+ * ── 🟢 LA DETTE EST SOLDÉE (11 novembre 2026, le soir) ───────────────────
  *
- * L'audit a sorti vingt-trois couples sous le seuil. Vingt et un sont
- * corrigés le jour même — le gris du texte assombri, et le blanc écrit en dur
- * sur trois pastilles de couleur. **Il reste UNE famille**, et elle ne se
- * corrige pas d'un jeton : ce sont **les couleurs de la charte employées
- * COMME TEXTE**, sur fond clair.
+ * L'audit avait sorti **23 couples sous le seuil**. Tous sont corrigés :
  *
- *   orange #F97316  2,42 → 2,79    teal #14B8A6  2,28 → 2,48
- *   vert   #22C55E  2,03           rouge #EF4444 3,61 → 3,76
+ *   · `--color-secondaire` assombri — il valait 4,83 sur une carte blanche
+ *     mais 4,43 sur `--color-fond` ;
+ *   · trois `#fff` écrits en dur sur une couleur de la charte, alors que
+ *     `--color-sur-accent` existait pour ça depuis les boutons ;
+ *   · **les sept couleurs de la charte ont désormais une variante pour le
+ *     texte**, une par thème.
  *
- * 🔴 CE N'EST PAS UN OUBLI, C'EST UNE DÉCISION QUI APPARTIENT À PATRICE : la
- * charte dit **sept couleurs, aucune autre**. Les assombrir pour le texte
- * reviendrait à en créer des variantes — défendable (c'est exactement ce
- * qu'on a fait avec `--color-sur-accent` pour l'autre sens), mais ça se
- * décide, ça ne se glisse pas dans un correctif.
- *
- * 🧭 ET UNE SONDE QUI ÉCHOUE POUR TOUJOURS EST UNE SONDE QU'ON CESSE DE LIRE.
- * D'où cette liste : elle ne masque rien — le détail reste imprimé à chaque
- * passage — mais elle laisse la sonde faire son vrai travail, qui est
- * d'attraper le PROCHAIN défaut. ⚠️ Elle n'a le droit que de rétrécir.
+ * ⚠️ CETTE SONDE A PORTÉ UNE LISTE DE DETTE PENDANT QUELQUES HEURES, et elle
+ * ne la porte plus. 🧭 Une tolérance qu'on garde « au cas où » redevient un
+ * plafond : la prochaine faute s'y rangerait toute seule. Le jour où une
+ * exception est vraiment nécessaire, elle se réécrit en trois lignes — et il
+ * faudra la justifier, ce qui est exactement le but.
  */
-const DETTE = ['rgb(249, 115, 22)', 'rgb(20, 184, 166)', 'rgb(34, 197, 94)', 'rgb(239, 68, 68)']
 
 /** Les écrans où l'app écrit vraiment. */
 const ECRANS = [
@@ -220,40 +214,9 @@ test('aucun texte de l’app sous son seuil de contraste', async ({ page }) => {
     )
   if (liste.length) console.log('\n' + liste.join('\n') + '\n')
 
-  const neuf = [...fautes.values()]
-    .filter((d) => !DETTE.includes(d.couleur))
-    .sort((a, b) => a.ratio - b.ratio)
-    .map(
-      (d) =>
-        `${d.theme.padEnd(5)} ${String(d.ratio).padStart(5)} < ${d.seuil}  ` +
-        `${d.px}px/${d.graisse}  ${d.couleur} sur ${d.fond}  ` +
-        `×${d.combien} [${[...d.ou].join(', ')}]  « ${d.mot} »`,
-    )
-  expect(neuf, `${neuf.length} couple(s) sous le seuil, HORS dette connue :\n${neuf.join('\n')}`).toEqual(
-    [],
-  )
-
-  /**
-   * ⚠️ ET LA DETTE N'A PAS LE DROIT DE GROSSIR. Sans ce second contrôle, on
-   * pourrait répandre l'orange sur dix écrans de plus sans qu'un seul test
-   * bronche : la liste des couleurs tolérées couvrirait tout. On surveille
-   * donc le NOMBRE de couples, pas seulement leur couleur.
-   */
-  const dus = [...fautes.values()].filter((d) => DETTE.includes(d.couleur)).length
-  expect(dus, `la dette de contraste a grossi : ${dus} couples au lieu de 14 au plus`).toBeLessThanOrEqual(
-    14,
-  )
+  expect(liste, `${liste.length} couple(s) sous le seuil :\n` + liste.join('\n')).toEqual([])
 })
 
-/**
- * ── 🔴 LA SONDE SAIT-ELLE ÉCHOUER ? ───────────────────────────────────────
- *
- * Sa première version lisait les couleurs à la regex et annonçait des fonds
- * `rgb(1,1,1)` **en thème clair** : elle a produit vingt-trois résultats dont
- * trois étaient des hallucinations. Un vert de sa part ne se croit pas sur
- * parole. On pose donc un texte volontairement illisible — et dans une
- * couleur qui n'est PAS dans la dette, sinon le contrôle se tairait tout seul.
- */
 test('la-sonde-du-contraste-texte-sait-echouer', async ({ page }) => {
   await page.goto('/accueil', { waitUntil: 'domcontentloaded' })
   await page.locator('main').first().waitFor({ timeout: 20_000 })
