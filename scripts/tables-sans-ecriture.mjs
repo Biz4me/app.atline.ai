@@ -62,6 +62,38 @@ const ECRITURES = ['create', 'createMany', 'upsert', 'update', 'updateMany', 'de
 /** Celles que NextAuth écrit lui-même : les signaler serait un faux positif. */
 const STRUCTURELLES = new Set(['Session', 'VerificationToken', 'PasswordResetToken', 'Account'])
 
+/**
+ * ── CE QUE CHAQUE LECTURE SANS ÉCRIVAIN ATTEND ───────────────────────────
+ *
+ * 🔴 UNE LIGNE ICI N'EST PAS UNE EXCUSE, C'EST UNE DETTE SIGNÉE. Le garde
+ * plus bas exige que la famille ② soit EXACTEMENT cette liste : une table de
+ * plus arrête le déploiement, une ligne qui ne correspond plus à rien aussi.
+ * 🧭 On ne paie donc pas l'oubli, on paie l'explication — et c'est tout ce
+ * qu'on veut.
+ *
+ * ⚠️ Les quatre du haut affichent leur zéro À L'ÉCRAN, les cinq du bas sont
+ * des branches qui ne se déclenchent simplement jamais. Ce n'est pas la même
+ * gravité : un zéro affiché se lit comme une mesure.
+ */
+const EN_ATTENTE = {
+  Placement:
+    "admin → tuile « placements en attente ». La règle des 30 jours existe comme produit, le code ne la pose jamais.",
+  SupportTicket:
+    "admin → tuile « tickets ouverts ». Aucun canal de support n'écrit dedans.",
+  Lead:
+    "V1 accueil + page Nova → « N campagnes · 0 leads ». Les campagnes existent (4 lignes), le moteur qui produirait des leads n'a jamais été codé.",
+  AtlineCommission:
+    "V1 page affiliation → commissions toujours vides. Le parrainage mononiveau est un vrai produit, son calcul n'existe pas.",
+
+  MlmBook:
+    "plan du jour → la branche « lecture » ne peut jamais proposer un livre. La bibliothèque MLM n'a jamais été chargée (MlmProduct en a 19 121, MlmBook zéro). ⚠️ Dans un try/catch : muette à jamais.",
+  UserBookInteraction: "plan du jour → suit MlmBook : sans livre, aucun livre lu.",
+  PostAnalytics:
+    "journal des agents → la branche « cliqué » ne peut jamais se déclencher. Rien ne remonte les statistiques d'un post.",
+  ContentIdea: "fils proactifs → une proposition de contenu qui ne survient jamais.",
+  ForumPost: "fils proactifs → un extrait de forum qui ne survient jamais ; le forum n'est pas ouvert.",
+}
+
 const depots = process.argv.slice(2).length ? process.argv.slice(2) : DEPOTS_PAR_DEFAUT
 
 // ── 1. les modèles déclarés ──
@@ -137,18 +169,33 @@ const lignes = new Map(
 )
 
 // ── 4. le tri ──
+/**
+ * ⚠️ UNE SEULE PASSE SUR LE CORPUS, PAS UNE PAR MODÈLE. La première version
+ * lançait les 60 expressions sur chacun des 36 000 fichiers : **2,1 millions
+ * d'exécutions, 30 secondes**. Beaucoup trop pour un garde qui s'exécute à
+ * chaque déploiement — et 🧭 **un garde trop lent finit par être contourné**,
+ * ce qui est la seule façon certaine de le rendre inutile. Ici on relève tous
+ * les accès d'un coup, puis on interroge la table obtenue.
+ */
+const ACCES = /(?:prisma|db|tx|client)\.([a-z]\w*)\.(\w+)/g
+const parAccesseur = new Map()
+for (const t of corpus) {
+  for (const [, acc, verbe] of t.matchAll(ACCES)) {
+    let v = parAccesseur.get(acc)
+    if (!v) parAccesseur.set(acc, (v = new Set()))
+    v.add(verbe)
+  }
+}
+
 const jamais = []
 const lue = []
 const ecrite = []
 for (const m of modeles) {
   if (lignes.get(m) !== 0) continue
-  const acc = m[0].toLowerCase() + m.slice(1)
-  const re = new RegExp(`(?:prisma|db|tx|client)\\.${acc}\\.(\\w+)`, 'g')
-  const verbes = new Set()
-  for (const t of corpus) for (const v of t.matchAll(re)) verbes.add(v[1])
+  const verbes = parAccesseur.get(m[0].toLowerCase() + m.slice(1)) ?? new Set()
   if (!verbes.size) jamais.push(m)
   else if (ECRITURES.some((v) => verbes.has(v))) ecrite.push(m)
-  else lue.push(`${m} (${[...verbes].join(', ')})`)
+  else lue.push({ m, verbes: [...verbes].join(', ') })
 }
 
 const vides = modeles.filter((m) => lignes.get(m) === 0).length
@@ -164,8 +211,41 @@ console.log(
 console.log(`③ écrite quelque part, encore vide (${ecrite.length})`)
 console.log('   ' + ecrite.join(' ') + '\n')
 console.log(`② 🔴 LUE MAIS JAMAIS ÉCRITE (${lue.length}) — un zéro qui a l'air mesuré`)
-for (const l of lue) console.log('   ' + l)
+for (const l of lue) console.log(`   ${l.m} (${l.verbes})${EN_ATTENTE[l.m] ? '' : '   ⟵ NON DÉCLARÉE'}`)
 
-// 🧭 Seule la famille ② fait échouer : les deux autres sont des constats, pas
-// des défauts, et un script qui crie pour tout ne se relit plus.
-process.exit(lue.length ? 1 : 0)
+/**
+ * ── 🔴 LE GARDE : LA FAMILLE ② DOIT ÊTRE EXACTEMENT CELLE QU'ON A DÉCLARÉE ──
+ *
+ * 🧭 Pas « zéro », et c'est le point. Cinq de ces lectures sont du code JUSTE
+ * qui attend sa donnée : les supprimer effacerait une fonction. Exiger zéro
+ * rendrait donc le garde intenable, et un garde intenable se contourne.
+ *
+ * On exige l'ÉGALITÉ, dans les deux sens :
+ *
+ *   · une table apparaît sans être déclarée → le déploiement s'arrête, et il
+ *     faut écrire ce qu'elle attend. **La justification est le prix d'entrée.**
+ *   · une ligne déclarée ne correspond plus à rien → le déploiement s'arrête
+ *     aussi. ⚠️ Sans ce second sens, la liste ne ferait que grossir et
+ *     redeviendrait ce qu'une tolérance devient toujours : un plafond.
+ */
+const declarees = new Set(Object.keys(EN_ATTENTE))
+const vues = new Set(lue.map((l) => l.m))
+const nouvelles = [...vues].filter((m) => !declarees.has(m))
+const perimees = [...declarees].filter((m) => !vues.has(m))
+
+if (nouvelles.length || perimees.length) {
+  console.log('')
+  if (nouvelles.length)
+    console.log(
+      `🔴 ${nouvelles.length} table(s) lue(s) sans écrivain et NON DÉCLARÉE(S) : ${nouvelles.join(', ')}\n` +
+        `   Ajouter chacune à EN_ATTENTE dans ce fichier, avec CE QU'ELLE ATTEND.\n` +
+        `   Si l'écran affiche son zéro comme une mesure, c'est l'écran qu'il faut corriger.`,
+    )
+  if (perimees.length)
+    console.log(
+      `🔴 ${perimees.length} ligne(s) de EN_ATTENTE ne correspondent plus à rien : ${perimees.join(', ')}\n` +
+        `   Les retirer : la table est remplie, ou plus personne ne la lit.`,
+    )
+  process.exit(1)
+}
+console.log('\n✓ la famille ② est exactement celle qui est déclarée.')
