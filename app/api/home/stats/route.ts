@@ -12,7 +12,11 @@ export async function GET() {
   const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000)
   const inSevenDays = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000)
 
-  const [contactCount, simSessions, referrals, rdvCount, simCount, certCount,
+  // 🔴 `certCount` EST PARTI LE 11 NOVEMBRE 2026. `Certificate` n'a aucun
+  // écrivain dans les quatre dépôts : ce compte ne pouvait rendre que 0, et
+  // **il n'était affiché nulle part** — un calcul mort qui coûtait une
+  // requête à chaque chargement du tableau de bord.
+  const [contactCount, simSessions, referrals, rdvCount, simCount,
     relancesDues, rdvWeek, tunnel, contactsWeek, lessonsTotal, lessonsDone, campaignCount, leadCount] = await Promise.all([
     db.contact.count({ where: { userId } }),
     db.simSession.findMany({
@@ -25,7 +29,6 @@ export async function GET() {
     }),
     db.appointment.count({ where: { userId } }),
     db.simSession.count({ where: { userId } }),
-    db.certificate.count({ where: { userId } }),
     // Tableau de bord : le reste du réel
     db.relance.count({ where: { userId, status: 'PENDING', dueAt: { lte: now } } }),
     db.appointment.count({ where: { userId, done: false, startAt: { gte: now, lte: inSevenDays } } }),
@@ -62,7 +65,6 @@ export async function GET() {
     totalPartners: referredIds.length,
     rdv: rdvCount,
     simCount,
-    certificates: certCount,
     relancesDues,
     rdvWeek,
     contactsWeek,
