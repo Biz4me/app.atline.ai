@@ -89,10 +89,9 @@ const STRUCTURELLES = new Set(['Session', 'VerificationToken', 'PasswordResetTok
  * gravité : un zéro affiché se lit comme une mesure.
  */
 const EN_ATTENTE = {
-  Placement:
-    "admin → tuile « placements en attente ». La règle des 30 jours existe comme produit, le code ne la pose jamais.",
-  SupportTicket:
-    "admin → tuile « tickets ouverts ». Aucun canal de support n'écrit dedans.",
+  // ✅ `Placement` et `SupportTicket` sont sortis d'ici le 11 novembre 2026 :
+  // leurs deux tuiles de l'admin ne portent plus de chiffre, elles disent ce
+  // qu'elles attendent. Les tables restent, les fonctions sont prévues.
   Lead:
     "V1 accueil + page Nova → « N campagnes · 0 leads ». Les campagnes existent (4 lignes), le moteur qui produirait des leads n'a jamais été codé.",
   AtlineCommission:
@@ -235,30 +234,42 @@ for (const l of lue) console.log(`   ${l.m} (${l.verbes})${EN_ATTENTE[l.m] ? '' 
  *
  * On exige l'ÉGALITÉ, dans les deux sens :
  *
- *   · une table apparaît sans être déclarée → le déploiement s'arrête, et il
- *     faut écrire ce qu'elle attend. **La justification est le prix d'entrée.**
- *   · une ligne déclarée ne correspond plus à rien → le déploiement s'arrête
- *     aussi. ⚠️ Sans ce second sens, la liste ne ferait que grossir et
- *     redeviendrait ce qu'une tolérance devient toujours : un plafond.
+ *   · une table apparaît sans être déclarée → **le déploiement s'arrête**, et
+ *     il faut écrire ce qu'elle attend. La justification est le prix d'entrée.
+ *   · une ligne déclarée ne correspond plus à rien → **on crie, sans
+ *     bloquer**.
+ *
+ * ⚠️ LES DEUX SENS NE PÈSENT PAS PAREIL, ET J'AI DÛ LE CORRIGER le jour même.
+ * Première version : les deux arrêtaient le déploiement. 🔴 Le piège s'est
+ * montré à la première utilisation — ce garde lit LA BASE et LES QUATRE
+ * DÉPÔTS d'un coup, donc corriger un écran de l'admin retire sa table de la
+ * famille ② et rend sa ligne périmée **dans le dépôt de l'app**. Entre les
+ * deux `git pull`, il existe toujours un instant où le garde refuse, pour un
+ * travail en train de se faire correctement.
+ *
+ * 🧭 Et un garde qui bloque pour un NON-DÉFAUT apprend à être contourné, ce
+ * qui est la seule façon certaine de le perdre. Même leçon que le détecteur
+ * de dérive rendu rouge par ses propres sauvegardes, le même jour. Une ligne
+ * périmée n'est pas un défaut, c'est du ménage — mais un ménage qu'on voit à
+ * chaque déploiement finit par se faire.
  */
 const declarees = new Set(Object.keys(EN_ATTENTE))
 const vues = new Set(lue.map((l) => l.m))
 const nouvelles = [...vues].filter((m) => !declarees.has(m))
 const perimees = [...declarees].filter((m) => !vues.has(m))
 
-if (nouvelles.length || perimees.length) {
-  console.log('')
-  if (nouvelles.length)
-    console.log(
-      `🔴 ${nouvelles.length} table(s) lue(s) sans écrivain et NON DÉCLARÉE(S) : ${nouvelles.join(', ')}\n` +
-        `   Ajouter chacune à EN_ATTENTE dans ce fichier, avec CE QU'ELLE ATTEND.\n` +
-        `   Si l'écran affiche son zéro comme une mesure, c'est l'écran qu'il faut corriger.`,
-    )
-  if (perimees.length)
-    console.log(
-      `🔴 ${perimees.length} ligne(s) de EN_ATTENTE ne correspondent plus à rien : ${perimees.join(', ')}\n` +
-        `   Les retirer : la table est remplie, ou plus personne ne la lit.`,
-    )
+if (perimees.length)
+  console.log(
+    `\n⚠️ ${perimees.length} ligne(s) de EN_ATTENTE ne correspondent plus à rien : ${perimees.join(', ')}\n` +
+      `   À retirer de ce fichier : la table est remplie, ou plus personne ne la lit.`,
+  )
+
+if (nouvelles.length) {
+  console.log(
+    `\n🔴 ${nouvelles.length} table(s) lue(s) sans écrivain et NON DÉCLARÉE(S) : ${nouvelles.join(', ')}\n` +
+      `   Ajouter chacune à EN_ATTENTE dans ce fichier, avec CE QU'ELLE ATTEND.\n` +
+      `   Si l'écran affiche son zéro comme une mesure, c'est l'écran qu'il faut corriger.`,
+  )
   process.exit(1)
 }
-console.log('\n✓ la famille ② est exactement celle qui est déclarée.')
+if (!perimees.length) console.log('\n✓ la famille ② est exactement celle qui est déclarée.')
