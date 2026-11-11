@@ -52,9 +52,12 @@ const DEPOTS_PAR_DEFAUT = [
   '/opt/atline/atline-admin',
   '/opt/atline/apps/atline-ai-service',
 ]
+// ⚠️ `venv` SANS POINT AUSSI. Le service IA porte son environnement Python
+// dans `venv/`, et l'oublier faisait lire **36 000 fichiers au lieu de 1 600**
+// — tout sympy compris. Le garde y perdait l'essentiel de son temps.
 const EXCLURE = new Set([
   'node_modules', '.next', '.git', 'worktrees', 'dist',
-  '.venv', '__pycache__', 'migrations', '.claude',
+  'venv', '.venv', '__pycache__', 'migrations', '.claude', 'site-packages',
 ])
 const EXT = new Set(['.ts', '.tsx', '.js', '.cjs', '.mjs', '.py'])
 const ECRITURES = ['create', 'createMany', 'upsert', 'update', 'updateMany', 'delete', 'deleteMany']
