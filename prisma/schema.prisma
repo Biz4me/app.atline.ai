@@ -918,6 +918,17 @@ enum AtlasRole {
   ASSISTANT
 }
 
+/// LE RÉSUMÉ — « tu en étais là ».
+///
+/// Déclarée en juillet 2026, cette table n'a **jamais porté une ligne** : un
+/// audit du 11 novembre l'a trouvée parmi 60 tables vides. Patrice l'a gardée
+/// et lui a donné son emploi — le résumé de nuit.
+///
+/// 🔴 CE N'EST PAS UNE PAGE DE JOURNAL DATÉE. `periodStart`/`periodEnd` sont
+/// les bornes d'une TRANCHE DE TRAVAIL, pas d'une journée : si la personne ne
+/// revient pas pendant six jours, aucune ligne n'est écrite et c'est toujours
+/// la dernière qui l'accueille. C'est ce qui donne enfin son sens à
+/// `read`/`readAt` : le résumé reste LE COURANT jusqu'à ce qu'il soit vu.
 model AtlasReport {
   id            String          @id @default(cuid())
   userId        String
@@ -927,14 +938,45 @@ model AtlasReport {
   type          ReportType
   periodStart   DateTime
   periodEnd     DateTime
+  /// Le corps, figé : ce qui s'est passé et ce qui est resté ouvert.
   content       String
+  /// LES CROCHETS, et c'est ce qui rend l'écran possible : le contact
+  /// concerné, la compétence en suspens, l'entraînement inachevé.
+  /// ⚠️ Ce que la nuit écrit est figé ; ce qui dépend du temps — le
+  /// rendez-vous de demain, l'écart avec l'agenda — **se recalcule à la
+  /// lecture**, à partir d'ici. Même règle que les jours de l'historique.
   highlights    Json?
   read          Boolean         @default(false)
   readAt        DateTime?
+
+  /// ── LA VOIX, FABRIQUÉE À LA DEMANDE ───────────────────────────────────
+  /// 🔴 Mesuré le 11 novembre 2026 : le cerveau coûte ~0,002 $ par résumé,
+  /// **l'audio ~0,035 $, soit vingt fois plus**. Fabriquer chaque nuit une
+  /// voix que personne ne lance, ce serait produire quelque chose qui
+  /// n'existe que pour exister. Ces champs restent donc vides jusqu'au
+  /// premier appui sur « écouter ».
+  ///
+  /// ⚠️ PAS D'EMPREINTE, contrairement à `LeconAudio`, et ce n'est pas un
+  /// oubli : une leçon se réécrit et se réécoute, un résumé est figé dès sa
+  /// naissance et lu une fois. L'identifiant du rapport suffit à nommer un
+  /// fichier qui ne changera jamais.
+  audioFichier  String?
+  audioSecondes Int?
+  audioOctets   Int?
+  /// « dorian » ou « solene », comme les leçons.
+  audioVoix     String?
+  audioAt       DateTime?
+
   createdAt     DateTime        @default(now())
+
+  /// ⚠️ On lit presque toujours « le dernier de quelqu'un ».
+  @@index([userId, createdAt])
 }
 
 enum ReportType {
+  /// Une TRANCHE DE TRAVAIL — le plus souvent une journée, mais ce sont
+  /// `periodStart`/`periodEnd` qui disent la vérité, jamais ce mot.
+  DAILY
   WEEKLY
   MONTHLY
 }
