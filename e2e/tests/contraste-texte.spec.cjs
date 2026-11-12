@@ -62,6 +62,13 @@ const seuilDe = (px, graisse) => (px >= 24 || (px >= 18.66 && graisse >= 700) ? 
 const ECRANS = [
   ['accueil', '/accueil'],
   ['contacts', '/gens'],
+  /* 🔴 AJOUTÉ LE 12 NOVEMBRE 2026, et avec un filtre DÉJÀ POSÉ. L'écran nu
+     ne prouvait rien : une pastille éteinte n'est qu'un trait, et c'est la
+     pastille ALLUMÉE — un aplat violet qui porte son libellé — qui porte le
+     risque. Le même jour, le bouton dominant des contacts est tombé à 4,16
+     parce que le violet ne supporte aucune des deux encres ; la pastille
+     faisait la même faute, sur un écran que cette liste ne visitait pas. */
+  ['filtres', '/gens/filtrer?marche=CHAUD'],
   ['apprendre', '/parcours'],
   ['cours', '/parcours/cours'],
   ['competences', '/parcours/competences'],
