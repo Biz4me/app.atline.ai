@@ -35,20 +35,33 @@ test('la troisième tuile est à cheval sur le bord de l’écran', async ({ pag
   const n = await tuiles.count()
   expect(n, 'un rail de moins de trois tuiles ne peut rien couper').toBeGreaterThanOrEqual(3)
 
-  const largeur = page.viewportSize().width
+  /**
+   * 🔴 ON MESURE CONTRE LE BORD DU RAIL, PAS CONTRE CELUI DE L'ÉCRAN.
+   *
+   * Depuis le 13 novembre 2026 le rail reste dans les gouttières de la page
+   * (Patrice : *« je veux aussi une marge à droite qui est la même que celle
+   * de gauche »*), donc la coupure se fait à 374, pas à 390.
+   *
+   * ⚠️ ET SURTOUT : `getBoundingClientRect` rend la boîte de MISE EN PAGE,
+   * que `overflow: hidden` ne rogne pas. Une tuile entièrement cachée par le
+   * débordement garde une boîte qui « chevauche l'écran » — mesurer contre
+   * la fenêtre dirait donc oui sans rien prouver du tout.
+   */
+  const bord = (await page.locator('ul:has([data-tuile])').first().boundingBox()).x +
+    (await page.locator('ul:has([data-tuile])').first().boundingBox()).width
 
   const boites = []
   for (let i = 0; i < n; i++) boites.push(await tuiles.nth(i).boundingBox())
 
-  // ── CE QUI EST ENTIÈREMENT DANS L'ÉCRAN ──
-  const entieres = boites.filter((b) => b.x >= 0 && b.x + b.width <= largeur).length
+  // ── CE QUI EST ENTIÈREMENT DANS LE RAIL ──
+  const entieres = boites.filter((b) => b.x >= 0 && b.x + b.width <= bord).length
   expect(entieres, 'au moins deux tuiles doivent être entièrement lisibles').toBeGreaterThanOrEqual(2)
-  expect(entieres, 'si tout tient dans l’écran, ce n’est plus un rail').toBeLessThan(n)
+  expect(entieres, 'si tout tient dans le rail, ce n’est plus un rail').toBeLessThan(n)
 
   // ── CELLE QUI EST À CHEVAL : commencée dedans, finie dehors ──
-  const acheval = boites.find((b) => b.x < largeur && b.x + b.width > largeur)
+  const acheval = boites.find((b) => b.x < bord && b.x + b.width > bord)
   expect(acheval, 'aucune tuile ne chevauche le bord : rien ne dit qu’il y en a d’autres').toBeTruthy()
-  const visible = largeur - acheval.x
+  const visible = bord - acheval.x
   expect(
     visible,
     `seulement ${Math.round(visible)} px de la tuile suivante sont visibles : le doigt ne partira pas`,
@@ -78,6 +91,20 @@ test('la troisième tuile est à cheval sur le bord de l’écran', async ({ pag
     Math.round(boites[0].x),
     'la première tuile n’est pas alignée sur les cartes de la page',
   ).toBe(Math.round(refs.carte))
+
+  /**
+   * 🔴 ET LA MÊME MARGE À DROITE — demandé par Patrice le 13 novembre 2026.
+   * Mesurée des deux côtés dans la même assertion : une gouttière gauche
+   * juste et une droite fausse donnent un écran qui PENCHE, et c'est le genre
+   * de défaut qu'on sent sans savoir le nommer.
+   */
+  const gouttieres = await page.evaluate(() => {
+    const ul = document.querySelector('ul:has([data-tuile])').getBoundingClientRect()
+    return { gauche: Math.round(ul.x), droite: Math.round(window.innerWidth - ul.right) }
+  })
+  expect(gouttieres.droite, 'la gouttière droite du rail ne vaut pas la gauche').toBe(
+    gouttieres.gauche,
+  )
 
   expect(pageErrors).toEqual([])
 })
