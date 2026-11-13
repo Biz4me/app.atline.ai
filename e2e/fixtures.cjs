@@ -264,4 +264,31 @@ async function remplir(champ, valeur, estFait, options) {
  */
 const compter = (cid) => JSON.parse(ssh(`node e2e/server-helper.cjs compter ${cid}`).trim().split('\n').pop())
 
-module.exports = { test, expect: base.expect, BASE, toucher, remplir, suivre, insister, compter }
+/**
+ * SEMER UN RENDEZ-VOUS FUTUR SUR LE CONTACT JETABLE, et le retirer.
+ *
+ * 🔴 AJOUTÉ LE 13 NOVEMBRE 2026. La famille « Ce qui t'attend » lit les
+ * rendez-vous à venir, et le compte de travail n'en a aucun : sans de quoi
+ * la nourrir, la surface serait invérifiable — du code qui a l'air juste
+ * parce qu'il ne tourne jamais.
+ *
+ * ⚠️ ELLES PASSENT PAR `ssh` COMME TOUT LE RESTE. Recopier la commande dans
+ * un test l'aurait figée ailleurs : le jour où la clé, l'hôte ou le chemin
+ * changent, un seul endroit doit suivre.
+ */
+const poserRdv = (cid, heures = 26) =>
+  JSON.parse(ssh(`node e2e/server-helper.cjs rdv ${cid} ${heures}`).trim().split(/\r?\n/).pop())
+const retirerRdv = (rid) => ssh(`node e2e/server-helper.cjs rdv-delete ${rid}`)
+
+module.exports = {
+  test,
+  expect: base.expect,
+  BASE,
+  toucher,
+  remplir,
+  suivre,
+  insister,
+  compter,
+  poserRdv,
+  retirerRdv,
+}

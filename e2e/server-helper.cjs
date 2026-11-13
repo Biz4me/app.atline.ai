@@ -82,11 +82,48 @@ const { encode } = require('next-auth/jwt')
         select: { type: true, outcome: true, direction: true, isExposure: true },
       })
       console.log(JSON.stringify({ exposures: c.exposures, lastContact: c.lastContact, interactions }))
+    } else if (cmd === 'rdv') {
+      /**
+       * UN RENDEZ-VOUS FUTUR SUR LE CONTACT JETABLE.
+       *
+       * 🔴 AJOUTÉ LE 13 NOVEMBRE 2026 POUR UNE RAISON PRÉCISE. La famille
+       * « Ce qui t'attend » lit les rendez-vous à venir, et le compte de
+       * travail n'en a **aucun** — mesuré, zéro. Sans de quoi la nourrir, on
+       * livrerait une surface que personne ne peut voir et qu'aucune sonde ne
+       * peut exercer : exactement les tables vides qu'on a passé la semaine à
+       * retirer d'ailleurs.
+       *
+       * ⚠️ IL EST RATTACHÉ AU CONTACT JETABLE, comme tout ce que les tests
+       * écrivent, et la sonde le supprime elle-même. Aucun rendez-vous réel
+       * n'est touché, et il ne reste rien après le passage.
+       */
+      const h = Number(process.argv[4] ?? 26)
+      const c = await prisma.contact.findUnique({
+        where: { id: cid },
+        select: { userId: true, mlmBusinessId: true },
+      })
+      if (!c) throw new Error(`aucun contact ${cid}`)
+      const quand = new Date(Date.now() + h * 3600 * 1000)
+      const r = await prisma.appointment.create({
+        data: {
+          userId: c.userId,
+          mlmBusinessId: c.mlmBusinessId,
+          contactId: cid,
+          title: 'E2E Rendez-vous',
+          startAt: quand,
+          endAt: new Date(quand.getTime() + 30 * 60 * 1000),
+        },
+        select: { id: true },
+      })
+      console.log(JSON.stringify({ rid: r.id, startAt: quand.toISOString() }))
+    } else if (cmd === 'rdv-delete') {
+      await prisma.appointment.delete({ where: { id: cid } })
+      console.log('rdv-delete ok')
     } else if (cmd === 'delete') {
       await prisma.contact.delete({ where: { id: cid } })
       console.log('delete ok')
     } else {
-      throw new Error('commande ? create | reset <cid> | compter <cid> | delete <cid>')
+      throw new Error('commande ? create | reset <cid> | compter <cid> | rdv <cid> [heures] | rdv-delete <rid> | delete <cid>')
     }
   } finally {
     await prisma.$disconnect()
