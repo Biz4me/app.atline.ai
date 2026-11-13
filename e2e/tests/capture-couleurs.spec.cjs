@@ -4,6 +4,8 @@ const { test, expect } = require('../fixtures.cjs')
 const ECRANS = [
   ['couleur-accueil', '/accueil'],
   ['rail-accueil', '/accueil'],
+  ['rail-haut', '/accueil'],
+  ['a-faire', '/a-faire'],
   ['couleur-contacts', '/gens'],
   ['couleur-filtres', '/gens/filtrer?marche=CHAUD'],
   ['couleur-apprendre', '/parcours'],
@@ -17,6 +19,7 @@ for (const [nom, url] of ECRANS) {
     // On attend donc le geste dominant, qui est là sur les quatre écrans.
     await expect(page.locator('main, [data-action]').first()).toBeVisible({ timeout: 20_000 })
     await expect(page.getByRole('heading', { level: 1 })).toBeVisible({ timeout: 20_000 })
+    if (nom === 'rail-haut' || nom === 'a-faire') await page.waitForTimeout(300)
     await page.evaluate(() =>
       document.getAnimations().forEach((a) => {
         try {

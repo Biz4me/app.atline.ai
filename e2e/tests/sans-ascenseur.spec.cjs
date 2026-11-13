@@ -26,7 +26,7 @@ const { test, expect } = require('../fixtures.cjs')
 
 test.use({ viewport: { width: 390, height: 844 } })
 
-const ECRANS = ['/accueil', '/parcours', '/coach/repeter', '/agenda', '/gens', '/compte']
+const ECRANS = ['/accueil', '/parcours', '/coach/repeter', '/agenda', '/gens', '/compte', '/a-faire']
 
 test('aucun ascenseur sur les écrans de l’app, et ça défile quand même', async ({
   page,

@@ -38,6 +38,9 @@ const FIXES = [
   '/parcours/competences',
   '/coach/repeter',
   '/agenda',
+  // La sortie du rail « Ce qui revient » (13 nov 2026) : un ecran neuf
+  // doit entrer dans les filets generaux le jour ou il nait, pas plus tard.
+  '/a-faire',
   '/gens',
   '/compte',
 ]

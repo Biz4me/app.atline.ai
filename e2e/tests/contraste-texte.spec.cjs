@@ -73,6 +73,7 @@ const ECRANS = [
   ['cours', '/parcours/cours'],
   ['competences', '/parcours/competences'],
   ['agenda', '/agenda'],
+  ['a-faire', '/a-faire'],
   ['atlas', '/atlas'],
   ['compte', '/compte'],
   ['entrainement', '/coach/repeter'],
