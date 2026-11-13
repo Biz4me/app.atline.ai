@@ -98,7 +98,12 @@ test("le filet d'une carte dit où elle mène", async ({ page, pageErrors }) => 
    * Une sonde qui cherche « plus d'orange ici » et qui, par erreur de
    * sélecteur, ne lit rien du tout, annonce exactement le même vert que la
    * réussite. Le résumé de nuit est le coach qui parle : son filet reste
-   * orange, et c'est la seule carte de l'accueil dont c'est le cas.
+   * orange, et c'est le seul FILET orange de l'accueil.
+   *
+   * ⚠️ « Seul filet », et plus « seule carte » : depuis le 13 novembre 2026 le
+   * plateau des mantras est lui aussi orange — mais en APLAT, pas en filet.
+   * Même voix (le coach), deux registres. La distinction compte ici, parce que
+   * cette sonde ne lit que des `border-left`.
    */
   const resume = page.locator('section[aria-labelledby="resume-titre"]')
   await expect(resume, 'le résumé de nuit doit être là, sinon ce test ne prouve rien').toBeVisible()
