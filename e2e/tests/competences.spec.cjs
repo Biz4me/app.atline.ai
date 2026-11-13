@@ -35,8 +35,18 @@ test('l’accueil mène ici, et ne refait pas la liste', async ({ page, pageErro
    * endroits pour la même liste, c'est la faute qu'on poursuit depuis deux
    * jours — et elle serait née le jour même de la création de cet écran.
    */
+  /**
+   * ⚠️ LA PORTE A CHANGÉ DE FORME LE 13 NOVEMBRE 2026, pas de rôle. La carte
+   * « Où tu en es » a cédé la place à la tuile « compétences » du rail
+   * « Ton apprentissage » — même destination, même fait, moins de hauteur.
+   *
+   * 🧭 Ce test est passé au rouge pour un RENOMMAGE, pas pour un défaut :
+   * son intention, écrite juste au-dessus, tenait toujours. On la réancre
+   * sur `data-tuile`, qui ne bouge pas quand un libellé bouge — ce que le
+   * `getByRole({ name })` ne pouvait pas promettre.
+   */
   await page.goto('/accueil', { waitUntil: 'domcontentloaded' })
-  const carte = page.getByRole('link', { name: /Où tu en es/ })
+  const carte = page.locator('[data-tuile="competences"]')
   await expect(carte).toBeVisible({ timeout: 20_000 })
   expect(await carte.getAttribute('href')).toBe('/parcours/competences')
 

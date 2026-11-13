@@ -3,6 +3,7 @@ const { test, expect } = require('../fixtures.cjs')
 
 const ECRANS = [
   ['couleur-accueil', '/accueil'],
+  ['rail-accueil', '/accueil'],
   ['couleur-contacts', '/gens'],
   ['couleur-filtres', '/gens/filtrer?marche=CHAUD'],
   ['couleur-apprendre', '/parcours'],
@@ -23,6 +24,11 @@ for (const [nom, url] of ECRANS) {
         } catch {}
       }),
     )
+    // La capture du rail descend jusqu'a lui : il vit sous le pli.
+    if (nom === 'rail-accueil') {
+      await page.locator('[data-tuile]').first().scrollIntoViewIfNeeded()
+      await page.waitForTimeout(250)
+    }
     await page.screenshot({ path: `${nom}.png` })
   })
 }
