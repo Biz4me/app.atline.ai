@@ -60,7 +60,7 @@ test('les leçons, sur les trois modules aux titres les plus longs', async ({ pa
     // d'une leçon. Les mesurer ensemble ferait crier la sonde sur un écran
     // correct — exactement le défaut qu'elle vient de nous coûter.
     const combien = await page.locator('ol li a[data-lecon]').count()
-    await controler(page, `module ${i + 1}`, 'ol li a[data-lecon]', 'ol li a[data-lecon] > span:nth-child(2) > span:nth-child(2)', combien)
+    await controler(page, `module ${i + 1}`, 'ol li a[data-lecon]', 'ol li a[data-lecon] [data-titre]', combien)
   }
   expect(pageErrors).toEqual([])
 })

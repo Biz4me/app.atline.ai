@@ -274,7 +274,7 @@ test('decor-module-ne-mange-pas-le-texte', async ({ page }) => {
  * Elle a déjà menti deux fois ce jour-là — une fois en annonçant 0 % parce
  * qu'elle cachait le décor, une fois en annonçant 86 % parce qu'elle mesurait
  * la barre du bas. **Un vert de sa part ne se croit pas sur parole.** On
- * remonte donc l'opacité à 0,30 et on exige qu'elle crie.
+ * remonte donc l'opacité à 0,55 et on exige qu'elle crie.
  */
 test('la-sonde-du-contraste-sait-echouer', async ({ page }) => {
   await page.goto('/parcours/cours', { waitUntil: 'domcontentloaded' })
@@ -295,7 +295,13 @@ test('la-sonde-du-contraste-sait-echouer', async ({ page }) => {
   await page.emulateMedia({ colorScheme: 'light' })
   await page.evaluate(() => {
     document.documentElement.dataset.theme = 'light'
-    document.documentElement.style.setProperty('--decor-objet', '0.3')
+    // ⚠️ 0,55 ET PLUS 0,30 depuis le 14 novembre 2026. Le gris secondaire a
+    // ete assombri ce jour-la (#656C7A vers #545A66) pour que le decor puisse
+    // monter a 0,18 : a 0,30 il tient desormais a 3,79, donc le piege ne
+    // piegeait plus rien et ce test passait vert en ayant prouve l'inverse.
+    // 🧭 Un piege se regle sur la valeur du jour, sinon il se perime en
+    // silence le jour ou l'app s'ameliore.
+    document.documentElement.style.setProperty('--decor-objet', '0.55')
   })
   await page.locator('h2').first().waitFor({ timeout: 20_000 })
 
@@ -308,7 +314,7 @@ test('la-sonde-du-contraste-sait-echouer', async ({ page }) => {
   await page.waitForTimeout(250)
   const sol = await solSousLeTexte(page, 'light', cadres)
   const c = contraste(pale, sol)
-  expect(c, `à 0,30 le gris devrait tomber sous ${PLANCHER.pale}, il vaut ${c.toFixed(2)}`).toBeLessThan(
+  expect(c, `à 0,55 le gris devrait tomber sous ${PLANCHER.pale}, il vaut ${c.toFixed(2)}`).toBeLessThan(
     PLANCHER.pale,
   )
 })
