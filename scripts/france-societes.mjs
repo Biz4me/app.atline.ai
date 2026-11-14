@@ -30,7 +30,7 @@
 
 import { writeFileSync } from 'node:fs'
 import { PrismaClient } from '@prisma/client'
-import { decoder, tester, meilleur, lots } from './lib/tester-lien.mjs'
+import { decoder, tester, meilleur, lots, viaSitemap } from './lib/tester-lien.mjs'
 
 const db = new PrismaClient()
 const args = process.argv.slice(2)
@@ -158,7 +158,63 @@ const main = async () => {
       essais.push(r)
       if (r.etat === 'ok') break // trouvé : on arrête de frapper aux portes
     }
-    const best = meilleur(essais)
+    let best = meilleur(essais)
+
+    /**
+     * ── 🎯 LE SITEMAP EN DERNIER RECOURS, ET C'EST LUI QUI SAUVE ──────────
+     *
+     * Les motifs devinés tombent sur des domaines parqués ; suivre le site
+     * mondial dépend de l'IP d'où l'on mesure. Le sitemap est un fichier
+     * statique qui liste toutes les langues, sans négociation. On ne le
+     * demande QUE si rien d'autre n'a marché : il coûte deux ou trois
+     * requêtes de plus, et il serait gaspillé sur une société déjà trouvée.
+     */
+    if (best?.etat !== 'ok' && c.officialUrl) {
+      for (const u of await viaSitemap(c.officialUrl)) {
+        const r = await tester(u)
+        essais.push(r)
+        /**
+         * 🔴 ICI LA PREUVE CHANGE DE NATURE, ET C'EST VOULU.
+         *
+         * Pour une adresse DEVINÉE, exiger du français rendu est vital : c'est
+         * ce qui écarte `youngliving.fr`, qui est une page de vente de nom de
+         * domaine. Pour une adresse que la marque PUBLIE ELLE-MÊME dans son
+         * sitemap sous `/fr/`, la déclaration EST la preuve.
+         *
+         * 🧭 Sans cette distinction, les deux défauts se cumulaient : le
+         * sitemap trouvait `nikken.com/fr`, et le serveur — qui est en
+         * Allemagne — se faisait servir de l'allemand à cette adresse, donc
+         * on jetait la bonne réponse. Un domaine parqué reste refusé dans les
+         * deux cas : `tester` le range en `parque` avant toute autre chose.
+         */
+        /**
+         * ⚠️ LE CHEMIN DEMANDÉ, PAS CELUI D'ARRIVÉE — et c'est le défaut que
+         * ma propre correction avait introduit. `nikken.com/fr` est déclaré
+         * dans leur sitemap ; vu d'Allemagne il redirige vers `/countries`,
+         * dont le chemin n'a plus rien de français. Je jetais donc la bonne
+         * réponse en regardant la mauvaise extrémité du voyage.
+         *
+         * 🧭 Ce qu'on garde est l'adresse DÉCLARÉE : c'est elle qui est
+         * stable, et c'est elle qui sert du français depuis la France.
+         */
+        const cheminFr = /\/(fr|fr[-_]fr)(\/|$)/i.test(new URL(u).pathname)
+        if (r.etat === 'ok' || (r.etat === 'autreLangue' && cheminFr)) {
+          return {
+            ...c,
+            france: {
+              ...r,
+              etat: 'ok',
+              finale: r.etat === 'ok' ? r.finale : u,
+              preuve: r.etat === 'ok' ? 'français rendu' : 'déclaré au sitemap',
+            },
+            franceVia: 'sitemap',
+            essaisFrance: essais.length,
+          }
+        }
+      }
+      best = meilleur(essais)
+    }
+
     return { ...c, france: best, franceVia: best?.etat === 'ok' ? 'motif' : null, essaisFrance: essais.length }
   })
 

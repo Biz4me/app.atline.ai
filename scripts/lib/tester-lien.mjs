@@ -147,6 +147,75 @@ export async function tester(url, deja = false) {
   }
 }
 
+/**
+ * ── 🎯 LE SITEMAP : LA SEULE VOIE QUI IGNORE LES TROIS PIÈGES ─────────────
+ *
+ * Deviner `<marque>.fr` tombe sur des squatteurs. Suivre le site mondial
+ * dépend de l'adresse IP d'où l'on mesure. Cliquer dans un sélecteur de pays
+ * demande un navigateur, et `amway.fr` refuse même un vrai navigateur.
+ *
+ * 🧭 Le sitemap, lui, est un fichier XML **statique** que le site publie pour
+ * les moteurs : il liste TOUTES ses adresses, toutes langues confondues, sans
+ * négocier quoi que ce soit. Pas de JavaScript, pas de géolocalisation, et
+ * souvent hors du pare-feu anti-robots qui protège les pages.
+ *
+ * ⚠️ IL FAUT LIRE `robots.txt` D'ABORD, et pas taper `/sitemap.xml` au
+ * hasard : Forever Living cache le sien dans `/RobotsAndSitemap/PROD/`. On
+ * le savait depuis le 1ᵉʳ novembre — `scripts/lib/sitemap-produits.mjs` le
+ * dit — et c'est exactement le genre de détail qu'on redécouvre en le
+ * redevinant.
+ */
+const EST_FR = /\/(fr|fr[-_]fr|fr[-_]FR|france)(\/|$)|\.fr(\/|$)/i
+
+async function texte(url, max = 3_000_000) {
+  const r = await fetch(url, {
+    signal: AbortSignal.timeout(20000),
+    headers: { 'User-Agent': UA },
+  })
+  if (!r.ok) return null
+  return (await r.text()).slice(0, max)
+}
+
+export async function viaSitemap(siteUrl) {
+  let base
+  try {
+    base = new URL(siteUrl).origin
+  } catch {
+    return []
+  }
+
+  const sitemaps = []
+  const rob = await texte(`${base}/robots.txt`, 200000).catch(() => null)
+  if (rob) for (const m of rob.matchAll(/^\s*sitemap:\s*(\S+)/gim)) sitemaps.push(m[1])
+  if (!sitemaps.length) sitemaps.push(`${base}/sitemap.xml`)
+
+  const trouves = new Set()
+  for (const s of sitemaps.slice(0, 3)) {
+    const x = await texte(s).catch(() => null)
+    if (!x) continue
+    const locs = [...x.matchAll(/<loc>\s*([^<\s]+)\s*<\/loc>/gi)].map((m) => m[1])
+    // Un index pointe vers d'autres sitemaps : on descend d'un cran.
+    if (/<sitemapindex/i.test(x)) {
+      // ⚠️ On ne descend QUE dans les enfants qui sentent le français, sinon
+      // on télécharge le catalogue mondial pour trouver une page d'accueil.
+      const enfants = locs.filter((u) => EST_FR.test(u)).slice(0, 6)
+      for (const e of enfants.length ? enfants : locs.slice(0, 4)) {
+        const y = await texte(e).catch(() => null)
+        if (!y) continue
+        for (const m of y.matchAll(/<loc>\s*([^<\s]+)\s*<\/loc>/gi))
+          if (EST_FR.test(m[1])) trouves.add(m[1])
+        if (trouves.size > 40) break
+      }
+    }
+    for (const u of locs) if (EST_FR.test(u)) trouves.add(u)
+    if (trouves.size) break
+  }
+
+  // ⚠️ LA PLUS COURTE EST LA PAGE D'ACCUEIL. Un sitemap liste des milliers de
+  // pages profondes ; celle qu'on veut est la racine de la section française.
+  return [...trouves].sort((a, b) => a.length - b.length).slice(0, 4)
+}
+
 /** Le meilleur essai d'abord : français > autre langue > refusé > mort. */
 export const RANG = { ok: 0, autreLangue: 1, refuse: 2, parque: 3, mort: 4 }
 export const meilleur = (essais) =>
