@@ -144,19 +144,34 @@ test('ce que le rail annonce, le « Tout voir » le montre', async ({ page, page
    * 🧭 Il est le seul qui traverse deux écrans, et c'est normal : la promesse
    * aussi.
    */
+  /**
+   * ── 🔴 CE QU'ON CONFRONTE A CHANGÉ LE 14 NOVEMBRE 2026 ─────────────────
+   *
+   * Le rail portait trois statistiques et ce test en faisait la somme. Depuis
+   * qu'il porte **une carte par personne**, il n'en montre que huit sur
+   * trente-huit : la somme de ce qui est à l'écran ne vaut plus rien.
+   *
+   * 🧭 LA PROMESSE, ELLE, N'A PAS BOUGÉ — elle a juste déménagé. C'est
+   * maintenant **le compte à côté du titre** qui dit combien il y en a en
+   * tout, et c'est lui qui doit correspondre à l'écran de sortie. Sans ce
+   * chiffre, les trente cartes hors rail n'existeraient nulle part.
+   */
   await page.goto('/accueil', { waitUntil: 'domcontentloaded' })
   await expect(page.locator('[data-tuile]').first()).toBeVisible({ timeout: 20_000 })
 
-  const annonce = await page.evaluate(() =>
-    Object.fromEntries(
-      ['jamais', 'solder', 'silence']
-        .map((k) => [k, document.querySelector(`[data-tuile="${k}"] span`)?.textContent])
-        .filter(([, v]) => v)
-        .map(([k, v]) => [k, parseInt(v, 10)]),
-    ),
-  )
-  const cles = Object.keys(annonce)
-  expect(cles.length, 'aucune tuile de « Ce qui revient » : rien à confronter').toBeGreaterThan(0)
+  const rail = page.locator('[data-rail="rattraper"]')
+  await expect(rail, 'le rail « À rattraper » a disparu : rien à confronter').toBeVisible()
+  const vues = await rail.locator('[data-tuile]').count()
+  const annonce = parseInt(await rail.locator('[data-rail-combien]').innerText(), 10)
+
+  // ⚠️ CONTRÔLES POSITIFS. Un compte absent rendrait `NaN`, et `NaN !== NaN`
+  // ferait échouer la comparaison finale pour une raison illisible.
+  expect(annonce, 'le compte du rail est illisible').toBeGreaterThan(0)
+  expect(vues, 'le rail ne montre aucune carte').toBeGreaterThan(0)
+  expect(
+    annonce,
+    `le rail montre ${vues} cartes et annonce ${annonce} : le compte ne devrait s’afficher que s’il dépasse`,
+  ).toBeGreaterThan(vues)
 
   await page.goto('/a-faire', { waitUntil: 'domcontentloaded' })
   await expect(page.getByRole('heading', { level: 1 })).toBeVisible({ timeout: 20_000 })
@@ -168,13 +183,13 @@ test('ce que le rail annonce, le « Tout voir » le montre', async ({ page, page
     })),
   )
   const total = montre.reduce((n, g) => n + g.lignes, 0)
-  const somme = cles.reduce((n, k) => n + annonce[k], 0)
 
   expect(
     total,
-    `le rail annonce ${somme} (${cles.map((k) => `${k}=${annonce[k]}`).join(' ')}) et ` +
-      `l'écran en montre ${total} : la promesse du « Tout voir » est rompue`,
-  ).toBe(somme)
+    `le rail annonce ${annonce} et l'écran en montre ${total} ` +
+      `(${montre.map((g) => `${g.titre}=${g.lignes}`).join(' · ')}) : ` +
+      `la promesse du « Tout voir » est rompue`,
+  ).toBe(annonce)
 
   expect(pageErrors).toEqual([])
 })
