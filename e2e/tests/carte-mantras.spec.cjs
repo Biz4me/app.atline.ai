@@ -1,7 +1,7 @@
-// LE PLATEAU DES MANTRAS — l'aplat de l'accueil, et sa capacité réelle.
+// LA CARTE DES MANTRAS — sa capacité réelle, et ce qu'elle n'est plus.
 //
 //   E2E_BASE=https://v2.atline.ai E2E_COMME=humanstring@gmail.com \
-//     npx playwright test tests/plateau-mantras.spec.cjs
+//     npx playwright test tests/carte-mantras.spec.cjs
 //
 // ── 🔴 CE QUE CE COMPTE NE PEUT PAS MONTRER ───────────────────────────────
 //
@@ -44,14 +44,14 @@ const PIRES = [
 /** Mesure la place disponible et la place demandée, pour un texte donné. */
 const essayer = (page, textes) =>
   page.evaluate((liste) => {
-    const bq = document.querySelector('[data-plateau="mantras"] blockquote')
+    const bq = document.querySelector('[data-mantras] blockquote')
     const p = bq.querySelector('p')
     const s = getComputedStyle(bq)
     // 🔴 LA PLACE DISPONIBLE SE CALCULE, elle ne se suppose pas : c'est la
     // hauteur du bloc MOINS ses deux rembourrages, ceux-là mêmes qui
     // réservent l'étiquette en haut et les points en bas.
     const dispo = bq.clientHeight - parseFloat(s.paddingTop) - parseFloat(s.paddingBottom)
-    const garde = p.textContent
+    const garde = p.innerHTML
     const out = liste.map((t) => {
       p.textContent = '« ' + t + ' »'
       return {
@@ -60,17 +60,17 @@ const essayer = (page, textes) =>
         texte: t.slice(0, 32),
       }
     })
-    p.textContent = garde
+    p.innerHTML = garde
     return { dispo: Math.round(dispo), largeur: Math.round(p.getBoundingClientRect().width), out }
   }, textes)
 
-test('le pire mantra du fonds tient dans le plateau', async ({ page, pageErrors }) => {
+test('le pire mantra du fonds tient dans la carte', async ({ page, pageErrors }) => {
   await page.goto('/accueil', { waitUntil: 'domcontentloaded' })
-  const plateau = page.locator('[data-plateau="mantras"]')
-  await expect(plateau, 'pas de plateau : la sonde ne mesure rien').toBeVisible({ timeout: 20_000 })
+  const carte = page.locator('[data-mantras]')
+  await expect(carte, 'pas de carte : la sonde ne mesure rien').toBeVisible({ timeout: 20_000 })
 
   const m = await essayer(page, PIRES)
-  // ⚠️ CONTRÔLE POSITIF. Une boîte à zéro — sélecteur devenu faux, plateau
+  // ⚠️ CONTRÔLE POSITIF. Une boîte à zéro — sélecteur devenu faux, carte
   // vide — ferait passer toutes les comparaisons ci-dessous sans rien prouver.
   expect(m.dispo, 'la place disponible mesurée est absurde').toBeGreaterThan(40)
   expect(m.largeur, 'la boîte de texte mesurée est absurde').toBeGreaterThan(200)
@@ -84,16 +84,16 @@ test('le pire mantra du fonds tient dans le plateau', async ({ page, pageErrors 
 
   // Ce qu'il reste, pour qu'un futur réglage sache de combien il dispose.
   console.log(
-    `plateau : ${m.dispo} px pour ${m.largeur} de large · ` +
+    `carte des mantras : ${m.dispo} px pour ${m.largeur} de large · ` +
       m.out.map((x) => `${x.n}→${x.besoin}`).join(' · '),
   )
 
   expect(pageErrors).toEqual([])
 })
 
-test('la-sonde-du-plateau-sait-echouer', async ({ page }) => {
+test('la-sonde-de-la-carte-sait-echouer', async ({ page }) => {
   await page.goto('/accueil', { waitUntil: 'domcontentloaded' })
-  await expect(page.locator('[data-plateau="mantras"]')).toBeVisible({ timeout: 20_000 })
+  await expect(page.locator('[data-mantras]')).toBeVisible({ timeout: 20_000 })
   // Un texte qui demande cinq lignes DOIT être vu comme débordant.
   const m = await essayer(page, [
     'Un mantra beaucoup trop long pour cette boite, ecrit expres pour que la sonde ' +
@@ -106,18 +106,29 @@ test('la-sonde-du-plateau-sait-echouer', async ({ page }) => {
   ).toBeGreaterThan(m.dispo)
 })
 
-test('le plateau est un aplat orange, et ses points se voient dessus', async ({
-  page,
-  pageErrors,
-}) => {
+test('la carte est une surface, pas un aplat orange', async ({ page, pageErrors }) => {
+  /**
+   * ── 🔴 L'APLAT A VÉCU UNE JOURNÉE (13 → 14 novembre 2026) ───────────────
+   *
+   * La carte est devenue un plateau orange plein ; Patrice a tranché le
+   * lendemain : *« enlève le fond orange, j'aime pas »*. Ce test est ce qui
+   * reste de l'épisode, et il n'est pas décoratif : **deux pièces de cette
+   * carte ont des couleurs qui ne survivent pas à un fond coloré**, et elles
+   * ont repris leur valeur d'origine.
+   *
+   *   · les guillemets sont en `--color-secondaire` : **1,89 sur l'orange** ;
+   *   · le point actif est en `--color-atlas` : invisible sur de l'orange.
+   *
+   * 🧭 Une couleur n'est jamais lisible « en soi ». Si quelqu'un reteinte
+   * cette carte un jour, ce test tombe — et c'est exactement ce qu'on veut :
+   * il force à rouvrir les deux couleurs en même temps que le fond.
+   */
   await page.goto('/accueil', { waitUntil: 'domcontentloaded' })
-  const plateau = page.locator('[data-plateau="mantras"]')
-  await expect(plateau).toBeVisible({ timeout: 20_000 })
+  const carte = page.locator('[data-mantras]')
+  await expect(carte).toBeVisible({ timeout: 20_000 })
 
-  const vu = await plateau.evaluate((el) => {
+  const vu = await carte.evaluate((el) => {
     const s = getComputedStyle(el)
-    const jeton = (nom) =>
-      getComputedStyle(document.documentElement).getPropertyValue(nom).trim()
     const peindre = (css) => {
       const c = document.createElement('canvas')
       c.width = c.height = 1
@@ -126,47 +137,47 @@ test('le plateau est un aplat orange, et ses points se voient dessus', async ({
       x.fillRect(0, 0, 1, 1)
       return [...x.getImageData(0, 0, 1, 1).data].slice(0, 3).join(',')
     }
-    const points = [...el.querySelectorAll('[aria-hidden="true"] span')].map(
-      (p) => peindre(getComputedStyle(p).backgroundColor),
-    )
+    const jeton = (n) => getComputedStyle(document.documentElement).getPropertyValue(n).trim()
+    const points = [...el.querySelectorAll('[aria-hidden="true"] span')]
+      .filter((p) => p.getBoundingClientRect().width < 10)
+      .map((p) => peindre(getComputedStyle(p).backgroundColor))
     return {
       fond: peindre(s.backgroundColor),
       orange: peindre(jeton('--color-atlas')),
-      surface: peindre(jeton('--color-surface')),
       image: s.backgroundImage,
-      bordure: s.borderLeftWidth,
+      bordure: parseFloat(s.borderLeftWidth),
       hauteur: Math.round(el.getBoundingClientRect().height),
       points,
     }
   })
 
-  /**
-   * 🔴 L'APLAT EST DANS `background-color`, PAS SEULEMENT DANS LE DÉGRADÉ, et
-   * c'est ce que ce test protège. La sonde de contraste ignore les images de
-   * fond : si le plateau n'était peint qu'en dégradé, elle mesurerait l'encre
-   * contre le fond de la PAGE et annoncerait un vert qui ne regarde rien.
-   */
-  expect(vu.fond, 'le plateau n’est pas peint en orange plein').toBe(vu.orange)
-  expect(vu.fond, 'le plateau est resté une surface blanche').not.toBe(vu.surface)
-  expect(vu.image, 'le plateau a perdu son dégradé').toContain('gradient')
-  expect(vu.bordure, 'un liseré gris autour d’un aplat orange').toBe('0px')
-  expect(vu.hauteur, 'le plateau doit dominer les cartes de 139').toBeGreaterThan(139)
+  expect(vu.fond, 'la carte est repeinte en orange plein').not.toBe(vu.orange)
+  expect(vu.image, 'la carte a repris un dégradé de fond').toBe('none')
+  expect(vu.bordure, 'la carte a perdu sa bordure de surface').toBeGreaterThan(0)
 
   /**
-   * 🔴 LE POINT ACTIF AURAIT DISPARU DANS SON PROPRE FOND. Il était orange sur
-   * une carte blanche ; sur un plateau orange, personne n'aurait plus su où il
-   * en est dans la série — sans erreur, sans rien de cassé.
+   * ⚠️ 157 EST IMPOSÉ PAR LE CONTENU, pas par l'envie de dominer le damier :
+   * 139 couperait la citation la plus longue du fonds. On vérifie donc que
+   * l'exception survit au retrait de l'aplat — c'est précisément le genre de
+   * mesure qu'un retour en arrière emporte par habitude.
+   *
+   * 🔴 157 ET NON 155, et c'est le premier test ci-dessus qui l'a dit : la
+   * somme du contenu fait 155, la BORDURE en ajoute deux. En reprenant son
+   * liseré de surface, la carte ne laissait plus que 76 px à un texte qui en
+   * demande 78 — dernière ligne rognée, sans erreur, sans débordement.
    */
+  expect(vu.hauteur, 'la carte est retombée à la hauteur du damier, elle coupera').toBe(157)
+
   expect(vu.points.length, 'aucun point : la série n’a qu’un mantra ?').toBeGreaterThan(1)
-  for (const p of vu.points) {
-    expect(p, 'un point de série est de la couleur du plateau : il est invisible').not.toBe(vu.fond)
-  }
   expect(new Set(vu.points).size, 'tous les points sont identiques : lequel est l’actif ?').toBe(2)
+  for (const p of vu.points) {
+    expect(p, 'un point de série est de la couleur du fond : il est invisible').not.toBe(vu.fond)
+  }
 
   expect(pageErrors).toEqual([])
 })
 
-test('le plateau nomme la famille du mantra', async ({ page, pageErrors }) => {
+test('la carte nomme la famille du mantra', async ({ page, pageErrors }) => {
   /**
    * 🔴 C'EST L'INFORMATION QUE LA CARTE CACHAIT. Les mantras sont tirés dans la
    * catégorie de la compétence travaillée — tout l'intérêt de la carte tenait
@@ -177,7 +188,7 @@ test('le plateau nomme la famille du mantra', async ({ page, pageErrors }) => {
    * donc qu'elle dit un VRAI mot quand elle est là, pas qu'elle est là.
    */
   await page.goto('/accueil', { waitUntil: 'domcontentloaded' })
-  await expect(page.locator('[data-plateau="mantras"]')).toBeVisible({ timeout: 20_000 })
+  await expect(page.locator('[data-mantras]')).toBeVisible({ timeout: 20_000 })
 
   const etiquette = page.locator('[data-mantra-famille]')
   if ((await etiquette.count()) === 0) {
@@ -194,7 +205,7 @@ test('le plateau nomme la famille du mantra', async ({ page, pageErrors }) => {
   // sur une capture.
   const [eb, pb] = await Promise.all([
     etiquette.boundingBox(),
-    page.locator('[data-plateau="mantras"] blockquote p').first().boundingBox(),
+    page.locator('[data-mantras] blockquote p').first().boundingBox(),
   ])
   expect(eb.y + eb.height, 'l’étiquette mord sur la citation').toBeLessThanOrEqual(pb.y + 1)
 
