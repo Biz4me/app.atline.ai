@@ -112,29 +112,69 @@ test("le filet d'une carte dit où elle mène", async ({ page, pageErrors }) => 
     "le filet du résumé doit être ORANGE — c'est le coach qui parle, pas un lieu",
   ).toBe(orange)
 
-  // ── LES CARTES DU PLAN DU JOUR : elles mènent à « Apprendre », donc teal.
-  const lignes = page.locator('[data-plan-ligne]')
-  const n = await lignes.count()
-  expect(n, 'aucune carte de plan : la sonde n’a rien à mesurer').toBeGreaterThan(0)
-  for (let i = 0; i < n; i++) {
-    const genre = await lignes.nth(i).getAttribute('data-plan-ligne')
-    expect(
-      await lignes.nth(i).evaluate((el) => getComputedStyle(el).borderLeftColor),
-      `la carte « ${genre} » mène à Apprendre : son filet doit être teal, pas orange`,
-    ).toBe(teal)
-  }
-
-  // ── LES DEUX CARTES DE FAMILLE : chacune prend la couleur de son lieu.
-  // ⚠️ Elles n'apparaissent que s'il y a quelque chose à dire — une liste
-  // vide fait disparaître la carte, et c'est voulu. On ne les exige donc pas,
-  // mais si elles sont là, leur couleur n'est pas négociable.
-  const paires = [
-    ['[data-carte="a-solder"]', bleu, 'À solder → Agenda, donc bleu'],
-    ['[data-carte="jamais-contactes"]', violet, 'Personne ne les a contactés → Contacts, donc violet'],
+  /**
+   * ── 🔴 LA RÈGLE GÉNÉRALE, ET PLUS DEUX CAS PARTICULIERS (14 nov 2026) ──
+   *
+   * Ce test listait les cartes du plan du jour (`[data-plan-ligne]`) et deux
+   * cartes de famille (`[data-carte="a-solder"]`, `"jamais-contactes"`). Le
+   * plan du jour est entré dans le rail « Apprendre », et les deux cartes
+   * étaient devenues des rails la veille : **deux des trois branches ne
+   * mesuraient donc plus rien**, et elles ne s'en plaignaient pas — leur
+   * sélecteur rendait zéro élément et la boucle ne tournait pas.
+   *
+   * 🧭 On ne remplace pas une liste d'endroits par une autre liste
+   * d'endroits : on écrit LA RÈGLE. **Le filet d'une tuile vaut la teinte du
+   * lieu vers lequel elle mène**, quelle que soit la famille qui la porte.
+   * Une tuile nouvelle est couverte le jour où elle naît, sans que personne
+   * n'ait à se souvenir d'allonger ce fichier.
+   */
+  const LIEUX = [
+    { prefixes: ['/parcours', '/coach/repeter'], teinte: teal, nom: 'Apprendre' },
+    { prefixes: ['/agenda'], teinte: bleu, nom: 'Agenda' },
+    { prefixes: ['/gens'], teinte: violet, nom: 'Contacts' },
   ]
-  for (const [sel, attendu, quoi] of paires) {
-    if ((await page.locator(sel).count()) === 0) continue
-    expect(await filet(sel), quoi).toBe(attendu)
+
+  const tuiles = page.locator('[data-tuile]')
+  const n = await tuiles.count()
+  // ⚠️ CONTRÔLE POSITIF : un sélecteur devenu faux rendrait zéro et ce test
+  // annoncerait le même vert que la réussite. C'est exactement ce qui vient
+  // d'arriver aux deux branches qu'on remplace.
+  expect(n, 'aucune tuile de rail : la sonde ne mesure rien').toBeGreaterThanOrEqual(3)
+
+  const fautes = []
+  for (let i = 0; i < n; i++) {
+    const t = tuiles.nth(i)
+    const [cle, href, bord] = await Promise.all([
+      t.getAttribute('data-tuile'),
+      t.getAttribute('href'),
+      t.evaluate((el) => getComputedStyle(el).borderLeftColor),
+    ])
+    const lieu = LIEUX.find((l) => l.prefixes.some((p) => href.startsWith(p)))
+    // Une tuile qui ne mène à aucun lieu prend l'orange par défaut : c'est le
+    // même repli que `teinteDe`, et il doit rester explicite ici.
+    const attendu = lieu ? lieu.teinte : orange
+    if (bord !== attendu) {
+      fautes.push(`« ${cle} » → ${href} (${lieu ? lieu.nom : 'aucun lieu'}) : ${bord} au lieu de ${attendu}`)
+    }
+  }
+  expect(fautes, `le filet ne dit pas où la tuile mène :\n${fautes.join('\n')}`).toEqual([])
+
+  /**
+   * 🔴 ET LES CARTES DE « BIENTÔT DANS L'APP » N'ONT DROIT À AUCUNE TEINTE DE
+   * LIEU. Elles désignent des écrans qui n'existent pas : leur donner une
+   * couleur reviendrait à l'attribuer d'avance, puis à devoir la reprendre.
+   * Leur filet est gris, et c'est l'un des quatre signaux qui disent « pas
+   * encore » avant même qu'on ait lu le titre de la section.
+   */
+  const aVenir = page.locator('[data-avenir]')
+  const m = await aVenir.count()
+  expect(m, 'les cartes « bientôt » ont disparu').toBeGreaterThan(0)
+  const bordure = await jeton(page, 'var(--color-bordure)')
+  for (let i = 0; i < m; i++) {
+    expect(
+      await aVenir.nth(i).evaluate((el) => getComputedStyle(el).borderLeftColor),
+      `« ${await aVenir.nth(i).getAttribute('data-avenir')} » porte une teinte de lieu alors que son écran n’existe pas`,
+    ).toBe(bordure)
   }
 
   expect(pageErrors).toEqual([])

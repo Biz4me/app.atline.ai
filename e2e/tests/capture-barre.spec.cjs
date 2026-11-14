@@ -80,8 +80,24 @@ test('cinq lieux, un seul nom chacun, et l’identité sur l’accueil seul', as
   await page.goto('/accueil', { waitUntil: 'domcontentloaded' })
   await expect(barre).toBeVisible({ timeout: 20_000 })
 
-  // …et que chaque ligne du plan ait bien retrouvé la sienne.
-  await expect(page.getByRole('link', { name: /Ouvrir le module/ })).toHaveCount(1)
+  /**
+   * …et que la RECOMMANDATION du jour n'existe qu'une fois sur l'écran.
+   *
+   * ⚠️ ELLE A CHANGÉ DE FORME LE 14 NOVEMBRE 2026, pas de rôle. C'était un
+   * lien « Ouvrir le module 8 → » dans une carte pleine largeur ; le plan du
+   * jour est entré dans le rail « Apprendre » et c'est devenu la première
+   * tuile, dont le geste nomme le module.
+   *
+   * 🧭 CE QUE CE COMPTE PROTÈGE RESTE LE MÊME : **le conseil du jour ne doit
+   * pas être redoublé.** Il l'a déjà été — la seconde carte du plan menait à
+   * `/coach/repeter` exactement comme une tuile voisine, et le format
+   * différent le cachait.
+   */
+  const conseil = page.locator('[data-tuile="point-faible"], [data-tuile="commencer"]')
+  await expect(conseil, 'la recommandation du jour a disparu ou se redouble').toHaveCount(1)
+  await expect(conseil, 'le geste de la recommandation ne nomme plus son module').toContainText(
+    /Module|Commencer/,
+  )
 
   // ── 3. chaque lieu : son nom, sa hauteur, son centrage ─────────────────
   async function lieuConforme(nom) {
