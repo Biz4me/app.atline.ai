@@ -156,33 +156,13 @@ const main = async () => {
     }
   }
 
-  // ── ② LA FVD : elle DÉCLARE le lien et les secteurs. Sa parole gagne.
-  const fvdRes = fvd?.resultat ?? []
-  const apparies = []
-  const orphelins = []
-  for (const m of fvdRes) {
-    const k = cle(m.nom)
-    const cand = societes.filter((c) => {
-      const ck = cle(c.name)
-      return ck === k || (k.length >= 5 && (ck.includes(k) || k.includes(ck)))
-    })
-    if (cand.length !== 1) {
-      orphelins.push({ nom: m.nom, n: cand.length, qui: cand.map((c) => c.name).slice(0, 3) })
-      continue
-    }
-    const c = cand[0]
-    apparies.push([m.nom, c.name, c.slug])
-    const quoi = { fvdMembre: true, liensVerifiesLe: MAINTENANT }
-    if (m.secteurs?.length) quoi.secteurs = m.secteurs
-    if (m.retenu?.etat === 'ok') {
-      quoi.siteFrance = (m.retenu.finale || m.retenu.url).replace(/\/$/, '')
-      quoi.siteFranceSource = 'FVD'
-      quoi.franceOperee = true
-    }
-    poser(c.id, quoi, 'FVD')
-  }
-
-  // ── ③ LES DOUBLONS
+  // ── ② LES DOUBLONS, TRANCHÉS AVANT TOUT LE RESTE
+  //
+  // 🧭 L'ORDRE EST LA CORRECTION. Mon premier jet appariait la FVD d'abord :
+  // « Pampered Chef » ressortait en deux candidates, « LR Health et Beauty »
+  // en trois, et je renonçais à les apparier — alors que deux des trois
+  // partaient justement à l'archive. Archiver d'abord résout l'ambiguïté au
+  // lieu de la contourner.
   const archiver = []
   for (const [slugSurvivant, perdants, opts = {}] of DOUBLONS) {
     const s = parSlug.get(slugSurvivant)
@@ -199,12 +179,51 @@ const main = async () => {
         console.log(`  ⚠️ doublon introuvable : ${p}`)
         continue
       }
-      archiver.push({ id: l.id, nom: decoder(l.name), slug: p, vers: s.id, versNom: decoder(s.name) })
+      archiver.push({ id: l.id, nom: decoder(l.name), slug: p, vers: s.id, versNom: opts.renommer || decoder(s.name) })
     }
+  }
+  const partantes = new Set(archiver.map((a) => a.id))
+  const vivantes = societes.filter((c) => !partantes.has(c.id))
+
+  // ── ③ LA FVD : elle DÉCLARE le lien et les secteurs. Sa parole gagne.
+  const fvdRes = fvd?.resultat ?? []
+  const apparies = []
+  const orphelins = []
+  for (const m of fvdRes) {
+    const k = cle(m.nom)
+    /**
+     * ⚠️ LES DEUX CLÉS DOIVENT ÊTRE LONGUES, PAS SEULEMENT CELLE DE LA FVD.
+     *
+     * Je ne bornais que `k`. `Max International` se réduit à « max », trois
+     * lettres, et « solutionmaxhome » les contient : la FVD « Solution Max
+     * Home » s'appariait donc à **Max International**, une autre société.
+     * Pareil pour `Reliv International` contre `Reliv Europe Limited`.
+     */
+    const exactes = vivantes.filter((c) => cle(c.name) === k)
+    const cand = exactes.length
+      ? exactes
+      : vivantes.filter((c) => {
+          const ck = cle(c.name)
+          return ck.length >= 5 && k.length >= 5 && (ck.includes(k) || k.includes(ck))
+        })
+    if (cand.length !== 1) {
+      orphelins.push({ nom: m.nom, n: cand.length, qui: cand.map((c) => decoder(c.name)).slice(0, 3) })
+      continue
+    }
+    const c = cand[0]
+    apparies.push([m.nom, c.name, c.slug])
+    const quoi = { fvdMembre: true, liensVerifiesLe: MAINTENANT }
+    if (m.secteurs?.length) quoi.secteurs = m.secteurs
+    if (m.retenu?.etat === 'ok') {
+      quoi.siteFrance = (m.retenu.finale || m.retenu.url).replace(/\/$/, '')
+      quoi.siteFranceSource = 'FVD'
+      quoi.franceOperee = true
+    }
+    poser(c.id, quoi, 'FVD')
   }
 
   // ── ④ LES ENTITÉS HTML DANS LES NOMS — un défaut d'affichage, mécanique
-  const aDecoder = societes.filter((c) => /&#?\w+;/.test(c.name) && !archiver.some((a) => a.id === c.id))
+  const aDecoder = vivantes.filter((c) => /&#?\w+;/.test(c.name))
   for (const c of aDecoder) {
     const p = plan.get(c.id)
     if (p?.quoi.name) continue // déjà renommé par la table des doublons
