@@ -122,6 +122,21 @@ export async function tester(url, deja = false) {
     if (estParque(html, r.url))
       return { etat: 'parque', code: r.status, url, finale: r.url.replace(/\/$/, '') }
 
+    /**
+     * 🔴 ET UN SITE RÉPLIQUÉ N'EST PAS LE SITE DE LA SOCIÉTÉ. Je le MARQUAIS
+     * sans jamais le refuser, et le balayage des 866 l'a montré : Magnetix
+     * Wellness ressortait sur `vitalixworld.com/fr?ref=www`, Cerule sur
+     * `vitalite.cerule.com/?country=FR`. Un drapeau que personne ne lit ne
+     * protège de rien.
+     *
+     * ⚠️ Et le cas le plus parlant ne porte aucun identifiant : notre base
+     * donne `hlfshop.fr` comme site officiel d'Herbalife depuis juillet —
+     * c'est la BOUTIQUE d'un distributeur. Le domaine ne ressemble pas au
+     * nom de la marque, et c'est ce contrôle-là qui l'attrape, pas celui-ci.
+     */
+    if (REPLIQUE.test(r.url))
+      return { etat: 'replique', code: r.status, url, finale: r.url.replace(/\/$/, '') }
+
     const fr = MARQUEURS_FR.some((re) => re.test(html))
 
     if (!fr && !deja) {
@@ -217,7 +232,7 @@ export async function viaSitemap(siteUrl) {
 }
 
 /** Le meilleur essai d'abord : français > autre langue > refusé > mort. */
-export const RANG = { ok: 0, autreLangue: 1, refuse: 2, parque: 3, mort: 4 }
+export const RANG = { ok: 0, autreLangue: 1, refuse: 2, replique: 3, parque: 4, mort: 5 }
 export const meilleur = (essais) =>
   [...essais].sort((a, b) => RANG[a.etat] - RANG[b.etat])[0] ?? null
 
