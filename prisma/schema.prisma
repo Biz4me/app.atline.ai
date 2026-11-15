@@ -436,6 +436,19 @@ model UserMlmBusiness {
   companyId String?
   company   MlmCompany? @relation(fields: [companyId], references: [id])
 
+  // ── LES DEUX LIENS DU DISTRIBUTEUR (15 novembre 2026) ─────────────────
+  //
+  // 🧭 Le catalogue sème, le distributeur tranche. Les produits et les prix
+  // viennent de SA boutique, parce qu'ils sont personnels : la base portait
+  // 24 produits Forever Living en **dollars** (Aloe Vera Gel à 22,80 USD)
+  // pendant que la fiche de la même société annonçait 37,29 € — et c'est le
+  // premier chiffre qu'Atlas injectait sous « TA SOCIÉTÉ » comme prix officiel.
+  //
+  // Les deux sont facultatifs et le restent : à l'inscription on ne demande
+  // que la SOCIÉTÉ. Les liens se renseignent quand le distributeur les a.
+  boutiqueUrl   String? // là où SES clients achètent, et d'où viennent SES prix
+  parrainageUrl String? // là où SES partenaires s'inscrivent
+
   @@unique([userId, mlmSlug])
   @@index([companyId])
 }
@@ -2393,6 +2406,36 @@ model MlmCompany {
   currency      String  @default("EUR")
   category      String?
   officialUrl   String?
+  // ── LES DEUX LIENS OFFICIELS, ET LA PREUVE (15 novembre 2026) ────────
+  //
+  // 🧭 DOCTRINE : les liens OFFICIELS viennent de nous, les liens de VENTE
+  // viennent du distributeur. `officialUrl` est le site monde, `siteFrance`
+  // le site français ; aucun des deux ne vend quoi que ce soit pour le compte
+  // de qui que ce soit. La boutique et le lien de parrainage vivent sur
+  // `UserMlmBusiness`, parce qu'ils sont PERSONNELS.
+  //
+  // 🔴 ET ON GARDE COMMENT ON L'A PROUVÉ. Les 779 liens importés en juillet
+  // n'avaient jamais été testés : au premier balayage, **145 étaient morts et
+  // 4 étaient des domaines parqués** — des marques qui avaient lâché leur
+  // domaine, racheté depuis par des revendeurs de noms. Un lien sans date de
+  // vérification est une affirmation, pas une donnée.
+  siteFrance       String?
+  siteFranceSource String? // « FVD » · « lien monde » · « motif » · « sitemap » · « à la main »
+  liensVerifiesLe  DateTime?
+  // LES SECTEURS, DANS LA LISTE FERMÉE DE LA FVD.
+  //
+  // ⚠️ `category` reste, et reste libre : il porte **265 valeurs distinctes**
+  // en deux vocabulaires qui cohabitent. On ne le réécrit pas, on le TRADUIT
+  // ici, et on garde l'original pour pouvoir refaire la traduction autrement.
+  secteurs         String[]
+  // MULTINIVEAU, OU VENTE DIRECTE À UN SEUL NIVEAU ? `null` = pas tranché.
+  // La distinction compte pour un distributeur : chez Secrets de Miel ou
+  // Captain Tortue, il n'y a pas de réseau à bâtir, donc pas de filleuls.
+  multiniveau      Boolean?
+  // 🧭 CE QUI REMPLACE CETTE LIGNE, quand elle est un doublon archivé.
+  // Archiver sans dire par quoi perd l'information : un distributeur rattaché
+  // à `LR Health &#038; Beauty` doit pouvoir être ramené vers le survivant.
+  doublonDe        String?
   // ── PRÉSENCE FRANCE (29 juillet 2026) ────────────────────────────────
   // Le champ qui manquait : notre base était riche en sociétés américaines
   // et vide là où un distributeur français cherche. Sourcé de la FVD
