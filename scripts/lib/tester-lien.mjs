@@ -294,6 +294,46 @@ export function identite(nom, url) {
   return { colle: true }
 }
 
+/**
+ * ── 🧭 « EN FRANÇAIS » N'EST PAS « EN FRANCE » (15 novembre 2026) ─────────
+ *
+ * La sonde a été bâtie contre le piège de la LANGUE : elle exige du français
+ * rendu, et elle remplace une locale allemande par la française. Elle n'a
+ * jamais eu de garde contre le piège du PAYS, et sur les 186 sites retenus il
+ * en est sorti quatre :
+ *
+ *   unicity.com/can/fr/…            → le Canada, en français
+ *   zinzino.com/site/fr/de-de       → l'Allemagne (DEUX locales, et
+ *                                     `enFrancais` n'avait remplacé que la 1ʳᵉ)
+ *   victoria-benelux.com/fr-be      → la Belgique
+ *   vabon.com/fr-de                 → l'Allemagne
+ *
+ * Tous servent du français parfait. Aucun ne sert la France. Et un
+ * distributeur français envoyé sur le tarif belge y verra des prix faux.
+ *
+ * On refuse aussi les pages qui ne sont pas un site : une page de connexion
+ * n'ouvre rien à qui n'a pas de compte.
+ */
+const AUTRE_PAYS = [
+  // une locale de langue-pays dont le PAYS n'est pas la France
+  /[/_-](?:[a-z]{2})[-_](?:be|ch|ca|lu|mc|de|at|us|uk|gb|es|it|nl|pt|pl|ru|tr|br|mx|jp|cn|kr|dk|se|no|fi|cz|hu|ro|gr|in|au|nz|za|ma|tn|dz)(?:[/?#]|$)/i,
+  // un segment de pays en clair dans le chemin
+  /\/(?:can|canada|belgique|belgium|suisse|swiss|schweiz|usa|deutschland|espana|italia|nederland|osterreich|luxembourg|quebec)(?:[/?#]|$)/i,
+  // ou dans l'hôte
+  /^[^/]*\/\/[^/]*(?:benelux|-be\.|-ch\.|-ca\.|canada|suisse|belgique)/i,
+]
+const PAS_UN_SITE = /\/(?:login|signin|sign-in|connexion|se-connecter|account|mon-compte|logout|cart|panier)(?:[/?#]|$)/i
+
+export function enFrance(url) {
+  // ⚠️ `fr-fr` et `/fr/fr` contiennent « fr-fr » : on protège d'abord ce qui
+  // est explicitement français, sinon le garde se mord la queue.
+  const sansFr = String(url).replace(/[/_-]fr[-_]fr(?=[/?#]|$)/gi, '/fr')
+  for (const re of AUTRE_PAYS)
+    if (re.test(sansFr)) return { ok: false, pourquoi: `adresse d'un autre pays : ${url}` }
+  if (PAS_UN_SITE.test(url)) return { ok: false, pourquoi: `ce n'est pas un site, c'est une page de compte : ${url}` }
+  return { ok: true }
+}
+
 /** Le meilleur essai d'abord : français > autre langue > refusé > mort. */
 export const RANG = { ok: 0, autreLangue: 1, refuse: 2, replique: 3, parque: 4, mort: 5 }
 export const meilleur = (essais) =>

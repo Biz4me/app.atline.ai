@@ -21,7 +21,7 @@
 
 import { readFileSync } from 'node:fs'
 import { PrismaClient } from '@prisma/client'
-import { decoder } from './lib/tester-lien.mjs'
+import { decoder, enFrance, identite } from './lib/tester-lien.mjs'
 
 const db = new PrismaClient()
 const pourDeVrai = process.argv.includes('--pour-de-vrai')
@@ -114,6 +114,28 @@ const LIENS_MONDE = [
   ['herbalife-fr', 'https://www.herbalife.com', 'hlfshop.fr est la boutique d un distributeur, pas le site de la marque'],
   ['yes-global-marketing-sdn-bhd-my', 'https://yes.global', 'schéma doublé : https://HTTPS://YES.GLOBAL'],
   ['groupe-horizon-conseil-horizon-renov', 'https://www.horizonrenov.fr', 'seule adresse en http simple du référentiel'],
+]
+
+/**
+ * ── LES DOMAINES QU'UN HUMAIN A CONFIRMÉS ─────────────────────────────────
+ *
+ * `identite()` se trompe une fois sur cinq, et c'est assumé : il trie. Mais
+ * ce qui a été relu une fois ne doit pas repasser devant lui à chaque
+ * exécution. Ces domaines ne portent pas le nom de la marque et sont pourtant
+ * bien les siens : un acronyme, un nom de produit, une maison mère.
+ */
+const IDENTITE_CONFIRMEE = [
+  'lrworld.com', // LR Health & Beauty
+  'smhtoiture.fr', // Solution Max Home
+  'rainbowsystem.com', // Rexair fabrique les aspirateurs Rainbow
+  'rtpr.com', // Real Time Pain Relief
+  'uw.co.uk', // Utility Warehouse
+  'website.ws', // Global Domains International vend justement des .ws
+  'thegoodinside.com', // Touchstone Essentials
+  'naturalhealthtrendscorp.com', // la maison mère de NHT Global
+  'crowd1.com', // notre fiche s'appelle « C1 »
+  'nvisionu.com', // NVU
+  'xrvap.com', // SD Distribution, adhérente FVD hébergée chez XrVap
 ]
 
 /** Ce qu'on ramène d'un doublon archivé vers son survivant, s'il ne l'a pas. */
@@ -325,14 +347,79 @@ const main = async () => {
     const quoi = { fvdMembre: true, liensVerifiesLe: MAINTENANT }
     if (m.secteurs?.length) quoi.secteurs = m.secteurs
     if (m.retenu?.etat === 'ok') {
-      quoi.siteFrance = (m.retenu.finale || m.retenu.url).replace(/\/$/, '')
+      const declare = (m.retenu.finale || m.retenu.url).replace(/\/$/, '')
+      /**
+       * ── 🧭 LA FVD PROUVE DE QUI EST LE SITE, PAS QUELLE PAGE OUVRIR ──────
+       *
+       * Sa fiche adhérent pointe parfois une page profonde. `Reliv
+       * International` portait un propre `reliv.fr`, trouvé par motif, et la
+       * déclaration FVD l'a écrasé par
+       * `reliv.fr/reliv-international-world-wide-offices`.
+       *
+       * Même domaine, adresse plus courte : on garde la nôtre, et on garde la
+       * FVD comme **source de la preuve**. Les deux informations sont vraies
+       * et ne portent pas sur la même chose.
+       */
+      const deja = plan.get(c.id)?.quoi?.siteFrance ?? c.siteFrance
+      const memeDomaine = (a, b) => {
+        try {
+          return new URL(a).hostname.replace(/^www\./, '') === new URL(b).hostname.replace(/^www\./, '')
+        } catch {
+          return false
+        }
+      }
+      quoi.siteFrance = deja && memeDomaine(deja, declare) && deja.length < declare.length ? deja : declare
       quoi.siteFranceSource = 'FVD'
       quoi.franceOperee = true
     }
     poser(c.id, quoi, 'FVD')
   }
 
-  // ── ④ LES ENTITÉS HTML DANS LES NOMS — un défaut d'affichage, mécanique
+  /**
+   * ── ④ LE CONTRÔLE FINAL DU LIEN FRANCE, et le retrait des mauvais ───────
+   *
+   * 🔴 Il passe sur ce qui est DÉJÀ EN BASE autant que sur ce qu'on s'apprête
+   * à écrire. Sans ça, une correction ne corrige que l'avenir : les sept
+   * mauvais liens écrits à la première passe y seraient restés.
+   *
+   * 🧭 Et un lien retiré vaut mieux qu'un lien faux. Un distributeur envoyé
+   * sur le tarif belge y lira des prix qui ne sont pas les siens ; envoyé sur
+   * une annonce d'emploi, il se demandera ce qu'on lui vend.
+   */
+  const retiresFrance = []
+  for (const c of vivantes) {
+    const p = plan.get(c.id)
+    const propose = p?.quoi?.siteFrance !== undefined ? p.quoi.siteFrance : c.siteFrance
+    if (!propose) continue
+    const nom = p?.quoi?.name ?? decoder(c.name)
+    const pays = enFrance(propose)
+    const marque = identite(nom, propose)
+    const refus = !pays.ok
+      ? pays.pourquoi
+      : !marque.colle && !IDENTITE_CONFIRMEE.some((d) => propose.includes(d))
+        ? marque.pourquoi
+        : null
+    if (!refus) continue
+    const src = typeof c.sources === 'object' && c.sources ? c.sources : {}
+    poser(
+      c.id,
+      {
+        siteFrance: null,
+        siteFranceSource: null,
+        sources: {
+          ...src,
+          liensRetires: [
+            ...(Array.isArray(src.liensRetires) ? src.liensRetires : []),
+            { champ: 'siteFrance', valeur: propose, pourquoi: refus, quand: MAINTENANT.toISOString() },
+          ],
+        },
+      },
+      `🔴 France retiré`,
+    )
+    retiresFrance.push({ nom, url: propose, pourquoi: refus })
+  }
+
+  // ── ⑤ LES ENTITÉS HTML DANS LES NOMS — un défaut d'affichage, mécanique
   const aDecoder = vivantes.filter((c) => /&#?\w+;/.test(c.name))
   for (const c of aDecoder) {
     const p = plan.get(c.id)
@@ -352,6 +439,8 @@ const main = async () => {
   console.log(`  noms décodés               : ${aDecoder.length}`)
   console.log(`  noms corrigés à la main    : ${n((p) => p.pourquoi.some((x) => x.startsWith('renommé')))}`)
   console.log(`  doublons à archiver        : ${archiver.length}`)
+  console.log(`  🔴 lien France RETIRÉ       : ${retiresFrance.length}`)
+  for (const r of retiresFrance) console.log(`       ${r.nom.slice(0, 24).padEnd(26)}${r.pourquoi}`)
 
   console.log('\n── LES DOUBLONS')
   for (const a of archiver)
