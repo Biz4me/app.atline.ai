@@ -30,12 +30,18 @@
 
 import { writeFileSync } from 'node:fs'
 import { PrismaClient } from '@prisma/client'
-import { decoder, tester, meilleur, lots, viaSitemap } from './lib/tester-lien.mjs'
+import { decoder, tester, meilleur, lots, viaSitemap, identite } from './lib/tester-lien.mjs'
 
 const db = new PrismaClient()
 const args = process.argv.slice(2)
 const toutes = args.includes('--toutes')
 const limite = args.includes('--limite') ? Number(args[args.indexOf('--limite') + 1]) : Infinity
+/**
+ * 🧭 `--classer-seulement` ne touche pas au réseau. Le classement est la
+ * partie qu'on corrige le plus souvent, et c'est la seule qui soit
+ * instantanée : la relire sur les 866 fiches ne doit pas coûter un balayage.
+ */
+const classerSeulement = args.includes('--classer-seulement')
 
 /**
  * LES NON-ADHÉRENTES DE LA LISTE QAREI, relevée le 17 septembre 2026.
@@ -73,39 +79,96 @@ const SECTEURS = [
 ]
 
 /**
- * ⚠️ UNE TABLE, PAS UN MODÈLE. Le classement se déduit de mots présents dans
- * la catégorie actuelle et dans le pitch — **697 fiches sur 866 en ont un**,
- * écrit en juillet. Zéro requête, zéro crédit, et surtout un résultat qu'on
- * peut relire ligne par ligne, ce qu'une réponse de modèle ne permet pas.
- * Ce qui ne tombe dans aucun seau sort en `null` et se traite à la main.
+ * ⚠️ UNE TABLE, PAS UN MODÈLE. Zéro requête, zéro crédit, et surtout un
+ * résultat qu'on peut relire ligne par ligne, ce qu'une réponse de modèle ne
+ * permet pas. Ce qui ne tombe dans aucun seau sort vide et se traite à la main.
+ *
+ * ── 🧭 LA RÈGLE QUI A TOUT RÉORGANISÉ (15 novembre 2026) ──────────────────
+ *
+ * **La catégorie est une liste d'ÉTIQUETTES, le pitch est de la PROSE. Le même
+ * mot porte un secteur dans une étiquette et ne porte rien du tout dans de la
+ * prose.** « mode » seul est un secteur ; « un mode de vie sain » n'en est pas.
+ * « formation » dans une catégorie veut dire qu'on vend de la formation ; dans
+ * un pitch de MLM, ça veut dire qu'on forme ses distributeurs — c'est-à-dire
+ * tout le monde.
+ *
+ * D'où la troisième colonne : `proseInterdite` = ce seau ne se remplit QUE
+ * depuis une étiquette. La mesure du 15 novembre le confirme : le pitch
+ * ajoutait 13 « Formation » (via « éducation ») et 7 « Fournisseur d'énergie »
+ * (via « retrouvez votre énergie »), contre 18 « Parfums » et 4
+ * « Décorations » parfaitement justes.
  */
 const SEAUX = [
-  [/habitat|r[ée]novation|isolation|toiture|photovolta|menuiserie|ravalement/i, "Amélioration de l'habitat"],
-  [/bijou|joaill/i, 'Bijoux'],
-  [/nutrition|compl[ée]ment|bien-[êe]tre|sant[ée]|aloe|vitamin|minceur|dietet/i, 'Compléments alimentaires'],
-  [/cosm[ée]tique|beaut[ée]|soin de la peau|soins|maquillage|skincare/i, 'Cosmétiques'],
-  [/d[ée]coration|loisirs cr[ée]atifs|scrapbook|bougie|jeux|jouet/i, 'Décorations - Loisirs créatifs'],
-  [/[ée]dition|livre/i, 'Edition'],
-  [/formation|coaching|[ée]ducation/i, 'Formation'],
-  [/[ée]nergie|solaire|gaz|[ée]lectricit/i, "Fournisseur d'énergie"],
-  [/culinaire|cuisine|gastronom|alimentaire|surgel|vin|th[ée]\b|caf[ée]/i, 'Gastronomie - Univers Culinaire'],
-  [/entretien|m[ée]nager?\b|hygi[èe]ne|nettoyage|lessive/i, 'Hygiène de la maison'],
-  [/immobilier/i, 'Immobilier'],
-  [/lingerie/i, 'Lingerie'],
-  [/mode|v[êe]tement|pr[êe]t-[àa]-porter|accessoire|chaussure/i, 'Mode & Accessoires'],
-  [/[ée]lectrom[ée]nager|aspirat|robot|appareil/i, 'Ménager - Electroménager'],
-  [/optique|lunette/i, 'Opticien'],
-  [/parfum/i, 'Parfums'],
-  [/presse|magazine|m[ée]dia/i, 'Presse'],
-  [/s[ée]curit|alarme|t[ée]l[ée]surveillance/i, 'Sécurité'],
-  [/traitement de l'eau|filtration|adoucisseur|purificat/i, "Traitement de l'eau"],
-  [/t[ée]l[ée]com|mobile|forfait/i, 'Télécommunication'],
+  [/\b(habitat|r[ée]novation|isolation|toiture|photovolta|menuiserie|ravalement)/i, "Amélioration de l'habitat"],
+  [/\b(bijou|joaill)/i, 'Bijoux'],
+  [/\b(nutrition|compl[ée]ment|bien-[êe]tre|sant[ée]|aloe|vitamin|minceur|di[ée]t[ée]t)/i, 'Compléments alimentaires'],
+  [/\b(cosm[ée]tique|beaut[ée]|soin|maquillage|skincare)/i, 'Cosmétiques'],
+  [/\b(d[ée]coration|loisirs cr[ée]atifs|scrapbook|bougie|jouet)/i, 'Décorations - Loisirs créatifs'],
+  [/\b([ée]dition|livre)\b/i, 'Edition', true],
+  [/\b(formation|coaching|[ée]ducation)/i, 'Formation', true],
+  [/\b([ée]nergie|solaire|gaz|[ée]lectricit)/i, "Fournisseur d'énergie", true],
+  [/\b(culinaire|cuisine|gastronom|alimentaire|surgel|vin|th[ée]|caf[ée])\b/i, 'Gastronomie - Univers Culinaire', true],
+  [/\b(entretien|m[ée]nager?|hygi[èe]ne|nettoyage|lessive)\b/i, 'Hygiène de la maison'],
+  [/\bimmobilier/i, 'Immobilier'],
+  [/\blingerie/i, 'Lingerie'],
+  [/\b(mode|v[êe]tement|pr[êe]t-[àa]-porter|accessoire|chaussure|textile)\b/i, 'Mode & Accessoires', true],
+  [/\b([ée]lectrom[ée]nager|aspirat|robot|appareil)/i, 'Ménager - Electroménager', true],
+  [/\b(optique|lunette)/i, 'Opticien'],
+  [/\bparfum/i, 'Parfums'],
+  [/\b(presse|magazine|m[ée]dia)\b/i, 'Presse', true],
+  [/\b(s[ée]curit|alarme|t[ée]l[ée]surveillance)/i, 'Sécurité'],
+  [/\b(traitement de l.eau|filtration|adoucisseur|purificat)/i, "Traitement de l'eau"],
+  [/\b(t[ée]l[ée]com|mobile|forfait)\b/i, 'Télécommunication', true],
 ]
 
-const classer = (texte) => {
-  const t = decoder(texte || '')
-  const trouves = SEAUX.filter(([re]) => re.test(t)).map(([, s]) => s)
-  return [...new Set(trouves)]
+const nu = (s) =>
+  decoder(s)
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .trim()
+
+/**
+ * 🔴 LE DÉFAUT QUE CETTE TABLE CORRIGE, ET QUI TOUCHAIT LES MEILLEURES FICHES.
+ *
+ * `LR Health et Beauty` porte la catégorie « Compléments alimentaires,
+ * Cosmétiques » — déjà écrite dans le vocabulaire exact de la FVD. Le
+ * classement en sortait pourtant **trois** secteurs, dont « Gastronomie » :
+ * le mot « alimentaires », à l'intérieur du nom officiel d'un secteur, tombait
+ * dans le seau d'un autre.
+ *
+ * 🧭 On reconnaît donc le vocabulaire AVANT de chercher des mots dedans. Une
+ * étiquette qui EST un secteur n'a pas à être devinée.
+ */
+const PAR_NOM = new Map(SECTEURS.map((s) => [nu(s), s]))
+
+/** On coupe sur les virgules et les « et », jamais sur « & » : « Mode & Accessoires » est UN nom. */
+const fragments = (categorie) =>
+  nu(categorie)
+    .split(/[,;/]|\bet\b|\bund\b/)
+    .map((f) => f.trim())
+    .filter(Boolean)
+
+function classer(categorie, pitch) {
+  const trouves = new Map()
+  const pose = (s, source) => trouves.has(s) || trouves.set(s, source)
+
+  // ① l'étiquette qui EST un secteur, reconnue telle quelle
+  // ② sinon, les mots de l'étiquette
+  for (const frag of fragments(categorie)) {
+    const exact = PAR_NOM.get(frag)
+    if (exact) {
+      pose(exact, 'vocabulaire')
+      continue
+    }
+    for (const [re, s] of SEAUX) if (re.test(frag)) pose(s, 'catégorie')
+  }
+
+  // ③ le pitch, en secours, et interdit aux seaux que la prose ne peut pas prouver
+  const p = nu(pitch)
+  if (p) for (const [re, s, proseInterdite] of SEAUX) if (!proseInterdite && re.test(p)) pose(s, 'pitch')
+
+  return [...trouves].map(([nom, source]) => ({ nom, source }))
 }
 
 /** Les quatre motifs classiques d'un site France, depuis le domaine mondial. */
@@ -141,6 +204,32 @@ const main = async () => {
     })
   ).slice(0, limite)
   console.log(`── ${societes.length} sociétés`)
+
+  if (classerSeulement) {
+    const par = {}
+    const srcs = {}
+    for (const c of societes) {
+      const d = classer(c.category, c.fiche?.recit?.pitch ?? '')
+      par[d.length] = (par[d.length] || 0) + 1
+      for (const x of d) srcs[x.source] = (srcs[x.source] || 0) + 1
+    }
+    console.log('\n── COMBIEN DE SECTEURS PAR SOCIÉTÉ')
+    for (const [k, v] of Object.entries(par).sort((a, b) => a[0] - b[0]))
+      console.log(`  ${k} secteur(s) : ${v}`)
+    console.log('\n── D\'OÙ VIENNENT LES SECTEURS')
+    for (const [k, v] of Object.entries(srcs).sort((a, b) => b[1] - a[1]))
+      console.log(`  ${k.padEnd(12)} ${v}`)
+    console.log('\n── LES CAS QUI ONT SERVI À RÉGLER LA TABLE')
+    for (const n of ['LR Health', 'AKEO', 'Pierre Lang', 'Alia Nature', 'PartyLite', 'Forever Living', 'Activz', 'Bouygues']) {
+      for (const c of societes.filter((x) => decoder(x.name).toLowerCase().includes(n.toLowerCase()))) {
+        const d = classer(c.category, c.fiche?.recit?.pitch ?? '')
+        console.log(`  ${decoder(c.name).padEnd(26)} ${d.map((x) => `${x.nom} (${x.source})`).join(' · ') || '— rien —'}`)
+        console.log(`  ${''.padEnd(26)} cat: ${JSON.stringify(c.category || '')}`)
+      }
+    }
+    await db.$disconnect()
+    return
+  }
 
   console.log('── ① le lien monde, revérifié')
   const avecMonde = await lots(societes, 6, async (c) => ({
@@ -218,33 +307,46 @@ const main = async () => {
     return { ...c, france: best, franceVia: best?.etat === 'ok' ? 'motif' : null, essaisFrance: essais.length }
   })
 
-  console.log('── ③ le secteur, proposé dans la liste de la FVD')
+  console.log('── ③ le secteur, et le contrôle d\'identité du domaine')
   const fini = avecFrance.map((c) => {
-    const pitch = c.fiche?.recit?.pitch ?? ''
-    const secteurs = classer(`${c.category || ''} ${pitch}`)
+    const detail = classer(c.category, c.fiche?.recit?.pitch ?? '')
+    const nom = decoder(c.name)
+    // Le contrôle d'identité ne vaut que sur un lien qu'on allait retenir.
+    const id = c.france?.etat === 'ok' ? identite(nom, c.france.finale || c.france.url) : null
     return {
-      nom: decoder(c.name),
+      id: c.id,
+      nom,
       nomBrut: c.name,
       slug: c.slug,
       categorieActuelle: c.category || null,
-      secteursProposes: secteurs,
+      secteursProposes: detail.map((d) => d.nom),
+      secteursDetail: detail,
       monde: c.monde,
       france: c.france,
       franceVia: c.franceVia,
+      // 🧭 Un drapeau à relire, pas un refus : ce contrôle a des faux positifs connus.
+      suspect: id && !id.colle ? id.pourquoi : null,
+      remarque: id?.colle && id.pourquoi ? id.pourquoi : null,
     }
   })
 
   const n = (f) => fini.filter(f).length
+  const prouve = (c) => c.france?.etat === 'ok' && !c.suspect
   console.log('\n── BILAN')
   console.log(`  lien monde absent          : ${n((c) => !c.monde)}`)
   console.log(`  lien monde ok              : ${n((c) => c.monde?.etat === 'ok')}`)
   console.log(`  lien monde refuse/mort     : ${n((c) => ['refuse', 'mort'].includes(c.monde?.etat))}`)
-  console.log(`  🇫🇷 site FRANÇAIS prouvé    : ${n((c) => c.france?.etat === 'ok')}`)
+  console.log(`  🇫🇷 site FRANÇAIS prouvé    : ${n(prouve)}`)
+  console.log(`  ⚠️  retenu mais SUSPECT     : ${n((c) => c.suspect)}`)
+  console.log(`  ⚠️  autre région            : ${n((c) => c.remarque)}`)
+  console.log(`  site RÉPLIQUÉ, refusé      : ${n((c) => c.france?.etat === 'replique')}`)
   console.log(`  France refuse les robots   : ${n((c) => c.france?.etat === 'refuse')}`)
   console.log(`  domaine PARQUÉ (à vendre)  : ${n((c) => c.france?.etat === 'parque')}`)
-  console.log(`  aucune France trouvée      : ${n((c) => !c.france || ['mort', 'autreLangue', 'parque'].includes(c.france?.etat))}`)
+  console.log(`  aucune France trouvée      : ${n((c) => !c.france || ['mort', 'autreLangue', 'parque', 'replique'].includes(c.france?.etat))}`)
   console.log(`  secteur proposé            : ${n((c) => c.secteursProposes.length > 0)}`)
   console.log(`  secteur introuvable        : ${n((c) => c.secteursProposes.length === 0)}`)
+  console.log(`  dont depuis le VOCABULAIRE : ${n((c) => c.secteursDetail.some((d) => d.source === 'vocabulaire'))}`)
+  console.log(`  dont depuis le PITCH seul  : ${n((c) => c.secteursDetail.length && c.secteursDetail.every((d) => d.source === 'pitch'))}`)
 
   const chemin = '/tmp/france-societes.json'
   writeFileSync(chemin, JSON.stringify({ quand: new Date().toISOString(), secteurs: SECTEURS, fini }, null, 1))

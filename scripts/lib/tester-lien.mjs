@@ -231,6 +231,69 @@ export async function viaSitemap(siteUrl) {
   return [...trouves].sort((a, b) => a.length - b.length).slice(0, 4)
 }
 
+/**
+ * ── 🔴 LE DOMAINE RESSEMBLE-T-IL AU NOM ? (15 novembre 2026) ───────────────
+ *
+ * `REPLIQUE` attrape les adresses qui PORTENT un identifiant. Mais le cas le
+ * plus grave n'en porte aucun : notre base donne `hlfshop.fr` comme site
+ * officiel d'**Herbalife** depuis juillet, et c'est la boutique d'un
+ * distributeur. Rien dans l'URL ne le dit — seul le fait que le domaine ne
+ * ressemble pas à la marque le trahit. Pareil pour `Make Wellness → meet.fr`
+ * et, le plus beau, `USANA → connaitredieu.com`.
+ *
+ * ⚠️ MA PREMIÈRE VERSION DE CE CONTRÔLE PRENAIT LA PREMIÈRE ÉTIQUETTE DE
+ * L'HÔTE. Sur `fr.amc.info` elle comparait « amc » à « fr », et déclarait
+ * suspects cinq sites parfaitement officiels (`fr.coral.club`,
+ * `fr.sunrider.com`, `ww1.lifeplus.com`…). On compare donc l'hôte ENTIER,
+ * étiquettes de langue et `www`/`ww1`/`boutique` retirées.
+ *
+ * 🧭 Ce contrôle ne tranche pas, il TRIE : il a des faux positifs connus
+ * (`LR Health & Beauty → lrworld.com`), donc il pose un drapeau à relire, pas
+ * un refus. Un contrôle qui se trompe une fois sur cinq doit produire une
+ * pile, jamais un verdict.
+ */
+const BRUIT = /^(www\d?|ww\d|fr|france|boutique|shop|store|my|go|new|m)$/i
+const ailleurs =
+  /^(africa|america|asia|canada|ca|be|belgium|ch|suisse|swiss|quebec|qc|uk|us|de|es|it|nl|pl|ru|br|mx|in|cn|jp)\./i
+
+export function identite(nom, url) {
+  let hote
+  try {
+    hote = new URL(url).hostname.toLowerCase()
+  } catch {
+    return { colle: false, pourquoi: 'adresse illisible' }
+  }
+  const nu = (s) =>
+    String(s ?? '')
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[̀-ͯ]/g, '')
+      .replace(/[^a-z0-9]/g, '')
+
+  // Toutes les étiquettes sauf le bruit et le suffixe public approximé.
+  const etiquettes = hote.split('.').filter((e) => !BRUIT.test(e))
+  const corps = nu(etiquettes.slice(0, -1).join('')) || nu(etiquettes.join(''))
+
+  const marque = nu(nom)
+  const mots = decoder(nom)
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .split(/[^a-z0-9]+/)
+    .filter((w) => w.length > 2)
+    // ⚠️ Les mots passe-partout d'un nom de société ne prouvent rien : un
+    // domaine qui contient « international » n'est pas pour autant la marque.
+    .filter((w) => !/^(international|group|groupe|global|world|company|corp|products?|france|health|beauty|wellness|life|nature|naturel)$/.test(w))
+
+  const colle =
+    (marque.length > 3 && (corps.includes(marque) || marque.includes(corps))) ||
+    mots.some((w) => corps.includes(w) || (w.length > 5 && w.includes(corps)))
+
+  if (!colle) return { colle: false, pourquoi: `le domaine « ${hote} » ne porte pas la marque` }
+  if (ailleurs.test(hote)) return { colle: true, pourquoi: `hôte d'une autre région : ${hote}` }
+  return { colle: true }
+}
+
 /** Le meilleur essai d'abord : français > autre langue > refusé > mort. */
 export const RANG = { ok: 0, autreLangue: 1, refuse: 2, replique: 3, parque: 4, mort: 5 }
 export const meilleur = (essais) =>
