@@ -166,9 +166,9 @@ const IDENTITE_CONFIRMEE = [
  * France aussi** : sur ce cas-là le serveur ne mentait pas.
  */
 const LIENS_FRANCE = [
-  ['amway', 'https://www.amway.fr', 'FVD + .fr, confirmé au navigateur depuis la France'],
-  ['young-living-us', 'https://www.youngliving.com/fr_FR', 'confirmé au navigateur depuis la France'],
-  ['pm-international-de', 'https://www.pm-international.com/fr-fr', 'confirmé au navigateur depuis la France'],
+  ['amway-us', 'https://www.amway.fr', 'FVD + .fr, confirmé au navigateur depuis la France'],
+  ['young-living-review-us', 'https://www.youngliving.com/fr_FR', 'confirmé au navigateur depuis la France'],
+  ['pm-international-lu', 'https://www.pm-international.com/fr-fr', 'confirmé au navigateur depuis la France'],
   ['zinzino-se', 'https://www.zinzino.com/site/fr/fr-fr', 'confirmé au navigateur depuis la France'],
   ['bell-anesse-en-provence', 'https://bell-anesse-en-provence.fr', 'FVD + .fr ; refuse les robots, donc l hôte existe'],
 ]
@@ -218,6 +218,9 @@ const main = async () => {
   })
   const parId = new Map(societes.map((c) => [c.id, c]))
   const parSlug = new Map(societes.map((c) => [c.slug, c]))
+  const dejaArchives = new Set(
+    (await db.mlmCompany.findMany({ where: { status: 'ARCHIVED' }, select: { slug: true } })).map((c) => c.slug),
+  )
 
   /** Ce qu'on va écrire, ligne par ligne, avant d'écrire quoi que ce soit. */
   const plan = new Map() // id → { quoi: {}, pourquoi: [] }
@@ -298,7 +301,9 @@ const main = async () => {
     for (const p of perdants) {
       const l = parSlug.get(p)
       if (!l) {
-        console.log(`  ⚠️ doublon introuvable : ${p}`)
+        // 🧭 Un avertissement qui crie à chaque passage sur un travail déjà
+        // fait finit par cacher le vrai. Déjà archivé n'est pas introuvable.
+        if (!dejaArchives.has(p)) console.log(`  ⚠️ doublon introuvable : ${p}`)
         continue
       }
       /**
