@@ -68,13 +68,33 @@ const DOUBLONS = [
    * 🧭 Le signal le plus sûr est celui qui a coûté le plus cher à produire —
    * il a fallu prouver 191 sites français pour pouvoir s'en servir.
    */
-  ['vabo-n-review-de', ['vabon-gmbh']],
-  ['reliv-europe-limited', ['reliv-international']], // l'entité FVD, qui porte la déclaration
+  ['vabo-n-at', ['vabon-at']], // deux lignes, 179 produits chacune : le même import deux fois
+  /**
+   * ⚠️ ICI J'AVAIS CHOISI LE MAUVAIS SURVIVANT, et pour une mauvaise raison :
+   * « l'entité FVD porte la déclaration ». Mais son lien MONDE est
+   * `reliv.fr/reliv-international-world-wide-offices`, une page profonde du
+   * site français. L'autre ligne porte `reliv.com`, le vrai site monde.
+   * 🧭 Le survivant se choisit sur la donnée, pas sur l'autorité de la source :
+   * l'adhésion FVD, elle, se donne — c'est à ça que sert la donation.
+   */
+  ['reliv-international-review-us', ['reliv-europe-limited']],
   ['engie-acteur-mondial-de-l-energie', ['engie'], { renommer: 'Engie' }], // un pitch tenait lieu de nom
   ['pink-au-moulin-rose', ['au-moulin-rose']],
   ['groupe-horizon-conseil-horizon-renov', ['horizon-renov']],
-  ['welltures-global', ['welltures-global-medikal-kozmetik']],
+  ['welltures-global-tr', ['welltures-global-medikal-kozmetik-tr']],
 ]
+
+/**
+ * ⚠️ CE QUI N'EST **PAS** UN DOUBLON, ET QUE J'ALLAIS ARCHIVER SUR SON NOM.
+ *
+ * `SD Distribution` porte comme lien `xrvap.com/sd-distribution/`, une page du
+ * site de `XrVap`. Un nom en « Distribution » plus l'hébergement chez un autre :
+ * tout disait « façade de distributeur ». **Les deux sont adhérentes de la
+ * FVD**, chacune sous son nom. La fédération tranche, pas la forme de l'URL.
+ *
+ * `HPH` et `Nafis Network` partagent `hph.co.ir` et restent séparées aussi :
+ * deux noms sur un hôte, ce n'est pas une preuve d'identité.
+ */
 
 /**
  * ── 🔴 LE LIEN MONDE N'AVAIT JAMAIS ÉTÉ CONTRÔLÉ, LUI ─────────────────────
@@ -88,8 +108,12 @@ const DOUBLONS = [
  * website.ws`, tous légitimes). Quatre sont vrais, et deux se corrigent ici.
  */
 const LIENS_MONDE = [
-  ['herbalife', 'https://www.herbalife.com', 'hlfshop.fr est la boutique d un distributeur, pas le site de la marque'],
-  ['yes-global', 'https://yes.global', 'schéma doublé : https://HTTPS://YES.GLOBAL'],
+  // ⚠️ `herbalife-fr`, pas `herbalife` : ma première correction visait un slug
+  // inexistant, et le script l'a dit — dans un avertissement que j'avais
+  // coupé de l'affichage. Cette ligne porte 47 produits et 4 activités.
+  ['herbalife-fr', 'https://www.herbalife.com', 'hlfshop.fr est la boutique d un distributeur, pas le site de la marque'],
+  ['yes-global-marketing-sdn-bhd-my', 'https://yes.global', 'schéma doublé : https://HTTPS://YES.GLOBAL'],
+  ['groupe-horizon-conseil-horizon-renov', 'https://www.horizonrenov.fr', 'seule adresse en http simple du référentiel'],
 ]
 
 /** Ce qu'on ramène d'un doublon archivé vers son survivant, s'il ne l'a pas. */
