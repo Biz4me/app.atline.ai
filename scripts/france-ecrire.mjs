@@ -211,7 +211,10 @@ const main = async () => {
       continue
     }
     const c = cand[0]
-    apparies.push([m.nom, c.name, c.slug])
+    // 🧭 On distingue l'appariement EXACT de celui qui ne tient qu'à une
+    // ressemblance : le second doit se relire, pas se croire. C'est là que
+    // « Solution Max Home » était parti chez « Max International ».
+    apparies.push({ fvd: m.nom, nous: decoder(c.name), slug: c.slug, exact: exactes.length > 0 })
     const quoi = { fvdMembre: true, liensVerifiesLe: MAINTENANT }
     if (m.secteurs?.length) quoi.secteurs = m.secteurs
     if (m.retenu?.etat === 'ok') {
@@ -246,7 +249,11 @@ const main = async () => {
   console.log('\n── LES DOUBLONS')
   for (const a of archiver) console.log(`  « ${a.nom} »  →  archivé, doublonDe « ${a.versNom} »`)
 
-  console.log(`\n── LA FVD : ${apparies.length} adhérents appariés, ${orphelins.length} sans correspondance unique`)
+  const parRessemblance = apparies.filter((a) => !a.exact)
+  console.log(`\n── LA FVD : ${apparies.length} adhérents appariés (${apparies.length - parRessemblance.length} à l'identique), ${orphelins.length} sans correspondance`)
+  console.log(`\n  ⚠️ ${parRessemblance.length} appariés par RESSEMBLANCE — à relire :`)
+  for (const a of parRessemblance) console.log(`     FVD « ${a.fvd.slice(0, 34)} »${' '.repeat(Math.max(1, 36 - a.fvd.slice(0, 34).length))}→  nous « ${a.nous} »`)
+  console.log()
   for (const o of orphelins.slice(0, 18))
     console.log(`  ${o.nom.slice(0, 32).padEnd(34)} ${o.n === 0 ? 'ABSENTE de notre base' : `${o.n} candidates : ${o.qui.join(' / ')}`}`)
   if (orphelins.length > 18) console.log(`  … et ${orphelins.length - 18} autres`)
