@@ -138,6 +138,41 @@ const IDENTITE_CONFIRMEE = [
   'xrvap.com', // SD Distribution, adhérente FVD hébergée chez XrVap
 ]
 
+/**
+ * ── 🎯 CE QUE LE SERVEUR NE POUVAIT PAS JUGER (15 novembre 2026) ──────────
+ *
+ * Le serveur est chez Hetzner, en Allemagne. Ces sites géolocalisent par
+ * adresse IP et ignorent `Accept-Language` : vu de Francfort, Amway renvoie
+ * 403 et Ringana sert une page d'erreur **en allemand**. Le navigateur de
+ * l'app, lui, est en France. C'est le seul instrument qui pouvait trancher,
+ * et il l'a fait :
+ *
+ *   amway.fr                     → « Amway France | Démarrer votre activité »
+ *   youngliving.com/fr_FR        → « Les huiles essentielles et l'aromathérapie »
+ *   pm-international.com/fr-fr   → répond 200
+ *   zinzino.com/site/fr/fr-fr    → répond 200
+ *
+ * 🧭 ET LA BARRE DE PREUVE SUIT L'ENJEU. `bell-anesse-en-provence.fr` refuse
+ * les robots (426) et n'a jamais pu être lu. Mais c'est un `.fr` DÉCLARÉ par
+ * la fédération française de la vente directe : exiger en plus du français
+ * rendu depuis l'Allemagne, c'est jeter une preuve plus forte que celle qu'on
+ * réclame.
+ *
+ * ⚠️ ET LES NÉGATIFS COMPTENT AUTANT. Vérifiés depuis la France et faux :
+ * `partylite.fr`, `captaintortue.com` et `fr.atomy.com` ne résolvent pas ;
+ * `ringana.com/fr`, `atomy.com/fr` et `unicity.com/fr-fr` répondent 404 ;
+ * `doterra.com/FR/fr_FR` refuse même un vrai navigateur. Et
+ * `primarenovaconcept.fr`, le lien que la FVD déclare, **est mort depuis la
+ * France aussi** : sur ce cas-là le serveur ne mentait pas.
+ */
+const LIENS_FRANCE = [
+  ['amway', 'https://www.amway.fr', 'FVD + .fr, confirmé au navigateur depuis la France'],
+  ['young-living-us', 'https://www.youngliving.com/fr_FR', 'confirmé au navigateur depuis la France'],
+  ['pm-international-de', 'https://www.pm-international.com/fr-fr', 'confirmé au navigateur depuis la France'],
+  ['zinzino-se', 'https://www.zinzino.com/site/fr/fr-fr', 'confirmé au navigateur depuis la France'],
+  ['bell-anesse-en-provence', 'https://bell-anesse-en-provence.fr', 'FVD + .fr ; refuse les robots, donc l hôte existe'],
+]
+
 /** Ce qu'on ramène d'un doublon archivé vers son survivant, s'il ne l'a pas. */
 const A_DONNER = [
   'officialUrl', 'siteFrance', 'siteFranceSource', 'fvdMembre', 'fvdDepuis',
@@ -373,6 +408,16 @@ const main = async () => {
       quoi.franceOperee = true
     }
     poser(c.id, quoi, 'FVD')
+  }
+
+  // ── ③bis LES LIENS FRANCE TRANCHÉS AU NAVIGATEUR, DEPUIS LA FRANCE
+  for (const [slug, url, pourquoi] of LIENS_FRANCE) {
+    const c = parSlug.get(slug)
+    if (!c) {
+      console.log(`  ⚠️ slug introuvable pour un lien France : ${slug}`)
+      continue
+    }
+    poser(c.id, { siteFrance: url, siteFranceSource: 'à la main', franceOperee: true }, `France à la main (${pourquoi})`)
   }
 
   /**
