@@ -40,7 +40,7 @@ const MAINTENANT = new Date()
  * réseau. On ne fusionne pas sur une ressemblance d'URL seule.
  */
 const DOUBLONS = [
-  // [survivant, [à archiver…], { renommer?, siteFranceDonne? }]
+  // [survivant, [à archiver…], { renommer? }]
   ['energetix-review-de', ['energetix-gmbh-co-kg']],
   ['top-balance-es', ['top-bal-es']],
   ['lr-health-et-beauty', ['lr-health-and-beauty-de', 'lr-health-beauty'], { renommer: 'LR Health & Beauty' }],
@@ -53,13 +53,51 @@ const DOUBLONS = [
   // 🎯 CELUI-LÀ N'ÉTAIT PAS UN DOUBLON, C'ÉTAIT LA PAIRE QU'ON CHERCHE.
   // « Stampin' Up! » porte le site monde, « Stampin'up ! France » le site
   // français. Deux lignes pour une société, alors que le nouveau modèle sait
-  // justement porter les deux liens sur une seule.
-  [
-    'stampin-up-review-us',
-    ['stampin-up-france'],
-    { renommer: "Stampin' Up!", siteFranceDonne: 'https://www.stampinup.fr' },
-  ],
+  // justement porter les deux liens sur une seule. C'est la DONATION qui
+  // ramène le lien français sur le survivant.
+  ['stampin-up-review-us', ['stampin-up-france'], { renommer: "Stampin' Up!" }],
+
+  /**
+   * ── 🎯 LA DEUXIÈME FOURNÉE, TROUVÉE PAR UN SIGNAL QUI N'EXISTAIT PAS ─────
+   *
+   * Grouper sur le lien MONDE ne donnait que 4 grappes. Grouper sur le site
+   * **FRANÇAIS** en donne 5 de plus, et **les 5 sont vraies** : deux lignes ne
+   * peuvent atterrir sur le même domaine français que si c'est la même
+   * opération française.
+   *
+   * 🧭 Le signal le plus sûr est celui qui a coûté le plus cher à produire —
+   * il a fallu prouver 191 sites français pour pouvoir s'en servir.
+   */
+  ['vabo-n-review-de', ['vabon-gmbh']],
+  ['reliv-europe-limited', ['reliv-international']], // l'entité FVD, qui porte la déclaration
+  ['engie-acteur-mondial-de-l-energie', ['engie'], { renommer: 'Engie' }], // un pitch tenait lieu de nom
+  ['pink-au-moulin-rose', ['au-moulin-rose']],
+  ['groupe-horizon-conseil-horizon-renov', ['horizon-renov']],
+  ['welltures-global', ['welltures-global-medikal-kozmetik']],
 ]
+
+/**
+ * ── 🔴 LE LIEN MONDE N'AVAIT JAMAIS ÉTÉ CONTRÔLÉ, LUI ─────────────────────
+ *
+ * `identite()` ne tournait que sur le lien France. Résultat : Herbalife a
+ * récupéré son vrai site français grâce à la FVD, et **gardait `hlfshop.fr`
+ * comme lien MONDE** — la boutique du distributeur venait juste de changer de
+ * colonne. Passé sur les 771 liens monde, le contrôle en sort 33, dont la
+ * grande majorité sont des faux positifs assumés (`Rexair → rainbowsystem`,
+ * `Utility Warehouse → uw.co.uk`, `Global Domains International →
+ * website.ws`, tous légitimes). Quatre sont vrais, et deux se corrigent ici.
+ */
+const LIENS_MONDE = [
+  ['herbalife', 'https://www.herbalife.com', 'hlfshop.fr est la boutique d un distributeur, pas le site de la marque'],
+  ['yes-global', 'https://yes.global', 'schéma doublé : https://HTTPS://YES.GLOBAL'],
+]
+
+/** Ce qu'on ramène d'un doublon archivé vers son survivant, s'il ne l'a pas. */
+const A_DONNER = [
+  'officialUrl', 'siteFrance', 'siteFranceSource', 'fvdMembre', 'fvdDepuis',
+  'siret', 'anneeCreation', 'caMondialM', 'category', 'secteurs', 'multiniveau',
+]
+const vide = (v) => v == null || v === '' || v === false || (Array.isArray(v) && !v.length)
 
 /** Les mots qui ne distinguent pas deux sociétés. */
 const BRUIT =
@@ -90,7 +128,12 @@ const main = async () => {
 
   const societes = await db.mlmCompany.findMany({
     where: { status: { not: 'ARCHIVED' } },
-    select: { id: true, name: true, slug: true, officialUrl: true, secteurs: true, siteFrance: true, franceOperee: true, fvdMembre: true, sources: true },
+    select: {
+      id: true, name: true, slug: true, sources: true, franceOperee: true,
+      officialUrl: true, siteFrance: true, siteFranceSource: true, secteurs: true,
+      fvdMembre: true, fvdDepuis: true, siret: true, anneeCreation: true,
+      caMondialM: true, category: true, multiniveau: true,
+    },
   })
   const parId = new Map(societes.map((c) => [c.id, c]))
   const parSlug = new Map(societes.map((c) => [c.slug, c]))
@@ -171,16 +214,56 @@ const main = async () => {
       continue
     }
     if (opts.renommer) poser(s.id, { name: opts.renommer }, `renommé « ${opts.renommer} »`)
-    if (opts.siteFranceDonne)
-      poser(s.id, { siteFrance: opts.siteFranceDonne, siteFranceSource: 'autre ligne', franceOperee: true }, 'France donnée par le doublon')
     for (const p of perdants) {
       const l = parSlug.get(p)
       if (!l) {
         console.log(`  ⚠️ doublon introuvable : ${p}`)
         continue
       }
-      archiver.push({ id: l.id, nom: decoder(l.name), slug: p, vers: s.id, versNom: opts.renommer || decoder(s.name) })
+      /**
+       * 🧭 ARCHIVER NE DOIT PAS PERDRE CE QUE LE SURVIVANT N'A PAS.
+       *
+       * `Stampin'up ! France` portait le seul lien français du couple ; `Reliv
+       * Europe Limited` porte l'adhésion FVD. Les ramener à la main, cas par
+       * cas, aurait oublié le troisième. Une donation générique ne peut pas
+       * oublier : elle passe sur chaque champ.
+       */
+      const dons = {}
+      for (const champ of A_DONNER)
+        if (vide(s[champ]) && !vide(l[champ]) && vide(plan.get(s.id)?.quoi?.[champ])) dons[champ] = l[champ]
+      if (Object.keys(dons).length) {
+        if (dons.siteFrance) dons.franceOperee = true
+        poser(s.id, dons, `reçoit de « ${decoder(l.name)} » : ${Object.keys(dons).join(', ')}`)
+      }
+      archiver.push({
+        id: l.id, nom: decoder(l.name), slug: p, vers: s.id,
+        versNom: opts.renommer || decoder(s.name), dons: Object.keys(dons),
+      })
     }
+  }
+
+  // ── ②bis LES LIENS MONDE CORRIGÉS À LA MAIN
+  for (const [slug, bon, pourquoi] of LIENS_MONDE) {
+    const c = parSlug.get(slug)
+    if (!c) {
+      console.log(`  ⚠️ slug introuvable pour un lien monde : ${slug}`)
+      continue
+    }
+    const src = typeof c.sources === 'object' && c.sources ? c.sources : {}
+    poser(
+      c.id,
+      {
+        officialUrl: bon,
+        sources: {
+          ...src,
+          liensRetires: [
+            ...(Array.isArray(src.liensRetires) ? src.liensRetires : []),
+            { champ: 'officialUrl', valeur: c.officialUrl, pourquoi, quand: MAINTENANT.toISOString() },
+          ],
+        },
+      },
+      `lien monde corrigé → ${bon}`,
+    )
   }
   const partantes = new Set(archiver.map((a) => a.id))
   const vivantes = societes.filter((c) => !partantes.has(c.id))
@@ -247,7 +330,8 @@ const main = async () => {
   console.log(`  doublons à archiver        : ${archiver.length}`)
 
   console.log('\n── LES DOUBLONS')
-  for (const a of archiver) console.log(`  « ${a.nom} »  →  archivé, doublonDe « ${a.versNom} »`)
+  for (const a of archiver)
+    console.log(`  « ${a.nom} »  →  « ${a.versNom} »${a.dons.length ? `  ⟵ donne : ${a.dons.join(', ')}` : ''}`)
 
   const parRessemblance = apparies.filter((a) => !a.exact)
   console.log(`\n── LA FVD : ${apparies.length} adhérents appariés (${apparies.length - parRessemblance.length} à l'identique), ${orphelins.length} sans correspondance`)
