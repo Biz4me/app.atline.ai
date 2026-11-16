@@ -701,6 +701,27 @@ model Appointment {
   atlasDebrief     AtlasConversation?  @relation(fields: [atlasDebriefId], references: [id])
   calComEventId    String?             @unique
   calComBookingUrl String?
+
+  /// OÙ A LIEU LE RENDEZ-VOUS, quand ce n'est pas chez le contact.
+  ///
+  /// 🔴 CE CHAMP N'EXISTAIT PAS, et l'itinéraire n'avait donc aucune
+  /// destination pour un café, un hôtel ou un salon. Relevé le 16 novembre
+  /// 2026 : **9 rendez-vous sur 11 sont rattachés à un contact**, donc la
+  /// plupart tirent déjà leur adresse de la fiche. Les deux autres n'avaient
+  /// rien, et rien ne le disait.
+  ///
+  /// 🧭 LA FICHE DU CONTACT RESTE LA SOURCE PAR DÉFAUT : ce champ ne la
+  /// remplace pas, il la REMPLACE SEULEMENT quand il est rempli. Dupliquer
+  /// l'adresse d'un contact ici garantirait deux vérités qui divergent au
+  /// premier déménagement.
+  ///
+  /// ⚠️ TEXTE LIBRE, et volontairement : « chez Paul », « le Starbucks de la
+  /// gare » sont des lieux réels qu'aucune base d'adresses ne connaît. Les
+  /// coordonnées, quand elles existent, vivent dans `lieuLat`/`lieuLng` ;
+  /// sans elles, l'itinéraire part sur le texte, ce que Maps sait faire.
+  lieu             String?
+  lieuLat          Float?
+  lieuLng          Float?
   /// L'identifiant de l'événement dans l'agenda Google du distributeur.
   ///
   /// 🔴 SANS LUI, ON NE PEUT NI DÉPLACER NI SUPPRIMER CE QU'ON A CRÉÉ. C'est
