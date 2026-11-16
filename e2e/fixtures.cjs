@@ -265,6 +265,16 @@ async function remplir(champ, valeur, estFait, options) {
 const compter = (cid) => JSON.parse(ssh(`node e2e/server-helper.cjs compter ${cid}`).trim().split('\n').pop())
 
 /**
+ * L'ADRESSE ET LA POSITION GARDÉES EN BASE pour ce contact.
+ *
+ * 🔴 `lat` ET `lng` NE S'AFFICHENT NULLE PART. La fiche montre la rue, le
+ * code postal, la ville et le pays ; la position, jamais. Un test de
+ * navigateur ne peut donc pas prouver qu'elle est écrite — et c'est la seule
+ * chose dont la carte des contacts dépendra. Lecture seule.
+ */
+const adresseDe = (cid) => JSON.parse(ssh(`node e2e/server-helper.cjs adresse ${cid}`).trim().split(/\r?\n/).pop())
+
+/**
  * SEMER UN RENDEZ-VOUS FUTUR SUR LE CONTACT JETABLE, et le retirer.
  *
  * 🔴 AJOUTÉ LE 13 NOVEMBRE 2026. La famille « Ce qui t'attend » lit les
@@ -289,6 +299,7 @@ module.exports = {
   suivre,
   insister,
   compter,
+  adresseDe,
   poserRdv,
   retirerRdv,
 }

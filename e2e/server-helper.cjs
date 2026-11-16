@@ -82,6 +82,32 @@ const { encode } = require('next-auth/jwt')
         select: { type: true, outcome: true, direction: true, isExposure: true },
       })
       console.log(JSON.stringify({ exposures: c.exposures, lastContact: c.lastContact, interactions }))
+    } else if (cmd === 'adresse') {
+      /**
+       * L'ADRESSE ET LA POSITION QUE LE SERVEUR A GARDÉES, pour un contact.
+       *
+       * 🔴 AJOUTÉ LE 16 NOVEMBRE 2026 POUR LA RECHERCHE D'ADRESSE. Elle est
+       * la première chose qui écrive `lat` et `lng` — mesuré avant de coder :
+       * **0 contact sur 44 en portait**. Or ces deux nombres ne s'affichent
+       * NULLE PART : la fiche montre la rue, le code postal, la ville, le
+       * pays, et rien de la position. Un test de navigateur ne peut donc pas
+       * les voir, et c'est précisément eux dont dépend la carte à venir.
+       *
+       * 🧭 Un écran qui a l'air juste avec des coordonnées manquantes, c'est
+       * la panne silencieuse parfaite : on ne la découvrirait qu'au moment de
+       * dessiner la carte, trois chantiers plus loin.
+       *
+       * ⚠️ LECTURE SEULE.
+       */
+      const c = await prisma.contact.findUnique({
+        where: { id: cid },
+        select: {
+          address: true, address2: true, postal: true, city: true,
+          country: true, lat: true, lng: true,
+        },
+      })
+      if (!c) throw new Error(`aucun contact ${cid}`)
+      console.log(JSON.stringify(c))
     } else if (cmd === 'rdv') {
       /**
        * UN RENDEZ-VOUS FUTUR SUR LE CONTACT JETABLE.
@@ -123,7 +149,7 @@ const { encode } = require('next-auth/jwt')
       await prisma.contact.delete({ where: { id: cid } })
       console.log('delete ok')
     } else {
-      throw new Error('commande ? create | reset <cid> | compter <cid> | rdv <cid> [heures] | rdv-delete <rid> | delete <cid>')
+      throw new Error('commande ? create | reset <cid> | compter <cid> | adresse <cid> | rdv <cid> [heures] | rdv-delete <rid> | delete <cid>')
     }
   } finally {
     await prisma.$disconnect()
