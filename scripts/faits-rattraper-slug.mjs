@@ -114,6 +114,91 @@ if (!url) {
 const { PrismaClient } = require(join(racine, 'node_modules/@prisma/client'))
 const db = new PrismaClient({ datasources: { db: { url: url.replace(/^["']|["']$/g, '') } } })
 
+/**
+ * ── 🔴 LA SECONDE SOURCE D'HÉRITAGE : LE RÉFÉRENTIEL LUI-MÊME ─────────────
+ *
+ * Le premier essai ne cherchait un parent que parmi les blocages voisins. Sur
+ * les 12 orphelins, il a rendu **0 rattrapage** : le meilleur candidat plafonne
+ * à 0,67, et « objection pyramide » n'a aucun voisin — son compte ne porte que
+ * deux blocages slugués, sans un mot commun.
+ *
+ * 🧭 Or il existe une source plus autoritaire qu'un fait voisin : **la
+ * DÉFINITION de la compétence**, celle qu'on donne au modèle. « objection
+ * pyramide » contient « objection », qui est le mot même de la définition
+ * d'`objections`. Ce n'est pas deviner, c'est lire le référentiel.
+ *
+ * ⚠️ ET IL FAUT UNE LISTE DE MOTS CREUX, sinon ça rate. Sans elle,
+ * « gestion pression prospect en appel » tombait sur `etat-esprit` parce que sa
+ * définition dit « gestion du refus » : un verbe générique suffisait à classer
+ * un blocage qui n'a rien à voir. La liste est écrite à la main, courte, et
+ * relisible — c'est un jugement, mais UN seul, transparent, au lieu de douze.
+ */
+const DEFINITIONS = {
+  'etat-esprit': "état d'esprit, motivation, confiance, gestion du refus",
+  pourquoi: 'clarté du pourquoi et du projet, capacité à le raconter',
+  demarrage: 'les 72 premières heures, poser ses fondations',
+  'liste-noms': 'construire et prioriser sa liste de contacts',
+  invitation: 'créer la curiosité sans vendre, décrocher le rendez-vous',
+  presentation: 'présenter avec impact et simplicité',
+  suivi: 'relancer sans harceler, tenir la relation dans la durée',
+  objections: 'accueillir et traiter une objection sans se braquer',
+  conclusion: 'conclure, demander la décision, accueillir un partenaire',
+  duplication: 'former un filleul, transmettre plutôt que faire à sa place',
+  leadership: 'animer une équipe, faire grandir les autres',
+  adaptation: "s'adapter au profil de l'interlocuteur (Big Al : rouge, bleu, jaune, vert)",
+  organisation: 'tenir son agenda, noter, prioriser, ne rien laisser tomber',
+}
+const TRANSVERSALES = new Set(['adaptation', 'organisation'])
+/** Des mots qui ne désignent rien du métier : ils ne doivent jamais classer. */
+const CREUX = new Set([
+  'gestion', 'tenir', 'faire', 'creer', 'demander', 'accueillir', 'construire',
+  'poser', 'animer', 'prioriser', 'noter', 'transmettre', 'capacite', 'premieres',
+  'heures', 'plutot', 'place', 'sans', 'avec', 'autres', 'presenter', 'raconter',
+  'adapter', 'relancer', 'traiter', 'former', 'grandir', 'decrocher', 'laisser',
+  'rien', 'duree', 'impact', 'simplicite', 'precise', 'nature',
+])
+/**
+ * Les mots de chaque définition qui ont le droit de classer : ni creux, ni
+ * partagés par deux définitions — un mot qui désigne deux compétences ne
+ * désigne aucune.
+ */
+const motsDiscriminants = (() => {
+  const brut = new Map()
+  for (const [id, def] of Object.entries(DEFINITIONS))
+    for (const m of motsPleins(def)) if (!CREUX.has(m)) {
+      const lot = brut.get(m) ?? []
+      lot.push(id)
+      brut.set(m, lot)
+    }
+  const parCompetence = new Map(Object.keys(DEFINITIONS).map((id) => [id, new Set()]))
+  for (const [m, ids] of brut) if (ids.length === 1) parCompetence.get(ids[0]).add(m)
+  return parCompetence
+})()
+// 🔴 Contrôles positifs sur les trois cas que cette règle doit attraper, et sur
+// celui qu'elle doit REFUSER. Sans eux, une liste de mots creux trop large
+// rendrait « 0 rattrapage » et passerait pour de la prudence.
+const classeParDefinition = (texte) => {
+  const mots = motsPleins(texte)
+  const scores = [...motsDiscriminants.entries()]
+    .map(([id, discr]) => [id, [...mots].filter((m) => discr.has(m)).length])
+    .filter(([, n]) => n > 0)
+    .sort((a, b) => b[1] - a[1])
+  if (!scores.length) return null
+  if (scores.length > 1 && scores[1][1] === scores[0][1]) return null // ex æquo : on ne tranche pas
+  return scores[0][0]
+}
+for (const [texte, attendu] of [
+  ['objection pyramide', 'objections'],
+  ['interprétation du refus', 'etat-esprit'],
+  ['ton et energie prospect bleu', 'adaptation'],
+  ['gestion pression prospect en appel', null],
+  ['rue', null],
+]) {
+  const got = classeParDefinition(texte)
+  if (got !== attendu)
+    throw new Error(`classeParDefinition(« ${texte} ») = ${got}, attendu ${attendu}`)
+}
+
 const blocages = await db.atlasFact.findMany({
   where: { predicate: 'bloque_sur', status: 'active', contactId: null },
   select: {
@@ -137,8 +222,29 @@ for (const o of orphelins) {
   const premier = classe[0]
   const second = classe[1]
   console.log(`« ${o.object} »  vu ${o.supportCount}×`)
+
+  // ① D'ABORD LE RÉFÉRENTIEL : c'est la source la plus autoritaire, et elle ne
+  //    dépend pas de ce que le compte contient déjà.
+  const parDefinition = classeParDefinition(o.object)
+  if (parDefinition) {
+    const transversale = TRANSVERSALES.has(parDefinition)
+    plan.push({
+      orphelin: o,
+      parent: {
+        competenceId: transversale ? null : parDefinition,
+        transversaleId: transversale ? parDefinition : null,
+        object: `définition de « ${parDefinition} »`,
+      },
+      score: 1,
+      via: 'définition',
+    })
+    console.log(`   → ${parDefinition}${transversale ? ' (transversale)' : ''}, par le MOT de sa définition\n`)
+    continue
+  }
+
+  // ② À DÉFAUT, un blocage voisin déjà slugué.
   if (!premier || premier.s === 0) {
-    console.log('   aucun parent : la case reste vide\n')
+    console.log('   aucun parent, et aucun mot du référentiel : la case reste vide\n')
     continue
   }
   for (const { p, s } of classe.slice(0, 3))
