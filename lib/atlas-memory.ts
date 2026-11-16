@@ -49,7 +49,35 @@ export type ExtractedFact = {
  * en mémoire, on coupe. La fenêtre est large devant la coupe, donc elle ne
  * peut pas exclure un fait lourd.
  */
-const FENETRE = 80
+/**
+ * ── 🔴 LA FENÊTRE COUPAIT AVANT D'AVOIR PESÉ (16 novembre 2026) ───────────
+ *
+ * Elle valait **80**, et le commentaire au-dessus affirmait qu'« elle est large
+ * devant la coupe, donc elle ne peut pas exclure un fait lourd ». C'était vrai
+ * quand il y avait 200 faits. Mesuré ce jour-là sur un compte à **712 faits
+ * actifs** : **deux des douze faits les plus lourds étaient coupés avant d'être
+ * pesés.**
+ *
+ *     langage vert marche froide              vu 96×   (hors fenêtre)
+ *     a_peur_de : mauvaise réputation …       vu 49×   (hors fenêtre)
+ *
+ * 🔴 ET LA CAUSE N'EST PAS LA TAILLE, C'EST L'ORDRE. `orderBy` plaçait
+ * `importance` AVANT `supportCount` : un fait d'importance 0,95 vu **une fois**
+ * passait donc devant un fait d'importance 0,85 vu **96 fois**. Dans la fenêtre,
+ * l'importance allait de 0,85 à 0,95 ; dehors, le maximum était 0,85. Le tri
+ * tranchait au milieu d'une bande d'importance, et la ré-observation ne comptait
+ * plus.
+ *
+ * 🧭 C'EST LA MÊME FAMILLE QUE LE DÉFAUT DU 23 OCTOBRE. Là-bas, « on ne montrait
+ * jamais le bon candidat à l'arbitre » ; ici, **on ne pesait jamais le bon
+ * fait**. Dans les deux cas le calcul était juste et la présélection fausse.
+ *
+ * ⚠️ LE PLAFOND RESTE, mais il devient un garde-fou et non un filtre : 2 000
+ * lignes étroites tiennent sans effort, et l'ordre est désormais
+ * `supportCount` d'abord — si le plafond coupe un jour, il coupe le moins
+ * observé, c'est-à-dire ce qui pèse le moins.
+ */
+const FENETRE = 2000
 
 export function poids(f: { importance: number; supportCount: number; lastSeenAt: Date }): number {
   const jours = (Date.now() - f.lastSeenAt.getTime()) / 86_400_000
@@ -59,7 +87,9 @@ export function poids(f: { importance: number; supportCount: number; lastSeenAt:
 
 /** La fenêtre dans laquelle on pèse : jamais couper avant d'avoir pesé. */
 const CADRE = {
-  orderBy: [{ importance: 'desc' as const }, { supportCount: 'desc' as const }],
+  // 🔴 `supportCount` D'ABORD. Voir `FENETRE` au-dessus : l'importance en tête
+  // faisait passer un fait vu une fois devant un fait vu 96 fois.
+  orderBy: [{ supportCount: 'desc' as const }, { importance: 'desc' as const }],
   take: FENETRE,
   select: {
     predicate: true, object: true, category: true,
@@ -86,7 +116,46 @@ export async function faitsSaillants(
   return fenetre
     .sort((a, b) => poids(b) - poids(a))
     .slice(0, combien)
-    .map((f) => `- ${f.predicate.replace(/_/g, ' ')} : ${f.object} (${f.category})`)
+    .map(
+      (f) =>
+        `- ${f.predicate.replace(/_/g, ' ')} : ${f.object} (${f.category}, vu ${f.supportCount}×, ${depuisQuand(f.lastSeenAt)})`,
+    )
+}
+
+/**
+ * ── 🔴 CHAQUE FAIT PART AVEC SA DATE (16 novembre 2026) ────────────────────
+ *
+ * C'est la vraie péremption, et elle ne supprime rien.
+ *
+ * Le fait servi s'écrivait `- situation : rendez-vous jean demain (projet)`.
+ * **« Demain » était vrai le jour où on l'a dit.** Observé pour la dernière
+ * fois il y a neuf jours, il annonce à Atlas un rendez-vous pour demain qui a
+ * eu lieu la semaine dernière — et Atlas n'avait **aucun moyen** de le savoir.
+ * Relevé : **19 faits actifs sur 712 portent un mot de temps relatif**
+ * (« demain », « hier », « ce soir », une heure), dont un vieux de 126 jours.
+ *
+ * 🧭 ON N'A PAS BESOIN DE LES PÉRIMER, IL FAUT LES DATER. Amortir leur poids
+ * ou les effacer jetterait une information vraie ; la date, elle, rend le fait
+ * lisible pour ce qu'il est. **« rendez-vous jean demain (il y a 9 jours) » se
+ * comprend tout seul**, et le modèle tranche mieux que n'importe quel seuil
+ * qu'on choisirait à sa place.
+ *
+ * ⚠️ MESURÉ AVANT DE TOUCHER AU POIDS : les douze faits servis ont 0 à 26
+ * jours, et **aucun** n'est à la fois périssable et vieux de plus d'un mois.
+ * L'amortissement existant (moitié en 30 jours, plancher 0,4) fait donc son
+ * travail. J'étais venu baisser le plancher des périssables ; la mesure dit que
+ * le défaut était ailleurs. On ne règle pas un seuil qui marche.
+ *
+ * Et le coût est nul à l'échelle qui compte : douze lignes, quelques dizaines
+ * de jetons.
+ */
+function depuisQuand(quand: Date): string {
+  const jours = Math.floor((Date.now() - quand.getTime()) / 86_400_000)
+  if (jours <= 0) return 'aujourd’hui'
+  if (jours === 1) return 'hier'
+  if (jours < 7) return `il y a ${jours} jours`
+  if (jours < 60) return `il y a ${Math.round(jours / 7)} semaines`
+  return `il y a ${Math.round(jours / 30)} mois`
 }
 
 // Bloc « mémoire vivante » injecté dans le chat : profil + faits saillants.
