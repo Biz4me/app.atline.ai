@@ -134,8 +134,34 @@ const juge = (f) => {
   const jamaisRevu = f.supportCount === 1
   const orphelin = [...pleins].every((m) => (emplois.get(f.userId + '|' + m) ?? 0) <= 1)
   return { bruts: bruts.length, horsFormat, sansDomaine, jamaisRevu, orphelin,
-           suspect: sansDomaine && jamaisRevu }
+           suspect: orphelin && jamaisRevu }
 }
+
+/**
+ * ── 🔴 MON PREMIER PROXY ÉTAIT FAUX, ET DE VINGT FOIS (16 novembre 2026) ───
+ *
+ * J'avais retenu « ② sans mot du domaine ET ③ jamais ré-observé ». Il a flagué
+ * **868 faits sur 1 951, soit 44 %**. L'échantillon l'a démenti en une lecture :
+ *
+ *     « mélanie inactive depuis 4 mois »      « boulanger à lyon »
+ *     « kinésithérapeute depuis huit ans »    « pratique la plongée »
+ *     « joue aux échecs depuis l'enfance »    « module 8 leçons non ouvertes »
+ *
+ * Tous parfaitement clairs, et plusieurs précieux — ce sont exactement les
+ * faits avec lesquels on crée du lien. La cause de l'erreur est évidente après
+ * coup : **le vocabulaire du référentiel décrit des COMPÉTENCES, pas la vie
+ * d'une personne.** Qu'un boulanger de Lyon ne partage aucun mot avec
+ * « accueillir et traiter une objection » ne dit rien du tout.
+ *
+ * 🧭 LE PROXY RETENU EST DONC ④ ET ③ : tous ses mots orphelins dans le compte,
+ * et jamais ré-observé. Un vocabulaire que personne ne reprend ET un constat
+ * qui ne revient pas. Il flague **32 faits sur 1 951, soit 2 %** — et c'est
+ * l'ordre de grandeur réel du phénomène, pas 44 %.
+ *
+ * ⚠️ ② RESTE AFFICHÉ COMME SIGNAL, parce qu'il a son usage : croisé avec
+ * `bloque_sur`, il dit qu'un blocage ne parle pas du métier. Mais il ne juge
+ * plus rien tout seul.
+ */
 
 const tous = faits.map((f) => ({ f, j: juge(f) }))
 const part = (n) => `${String(n).padStart(4)} (${String(Math.round((n / tous.length) * 100)).padStart(2)} %)`
@@ -144,7 +170,8 @@ console.log(`   ① hors format (1 mot, ou 7 et plus) ... ${part(tous.filter((x)
 console.log(`   ② sans un mot du domaine .............. ${part(tous.filter((x) => x.j.sansDomaine).length)}`)
 console.log(`   ③ jamais ré-observé ................... ${part(tous.filter((x) => x.j.jamaisRevu).length)}`)
 console.log(`   ④ tous ses mots orphelins ............. ${part(tous.filter((x) => x.j.orphelin).length)}`)
-console.log(`   ② ET ③ — le proxy « suspect » ......... ${part(tous.filter((x) => x.j.suspect).length)}`)
+console.log(`   ④ ET ③ — le proxy retenu .............. ${part(tous.filter((x) => x.j.suspect).length)}`)
+console.log(`   ② ET ③ — le proxy REFUSÉ, voir le code .. ${part(tous.filter((x) => x.j.sansDomaine && x.j.jamaisRevu).length)}`)
 
 // ── LA TENDANCE : le taux de suspects par mois de création ────────────────
 console.log('\nLA TENDANCE — part de suspects parmi les faits créés chaque mois')
