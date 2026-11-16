@@ -136,6 +136,11 @@ for (const a of anciens) {
   e.t++
   if (ressemblance(motsPleins(a.object), motsPleins(n.object)) >= CERTITUDE) e.d++
 }
+// ⚠️ LA TRANCHE SE LIT SUR LE `createdAt` DU FAIT QUI RESTE, et une fusion
+// faite à la main par `faits-fusionner.mjs` garde le createdAt le PLUS ANCIEN
+// du groupe. Les 13 fusions du 16 novembre comptent donc dans « avant le
+// 23 oct » : c'est la date des FAITS, pas celle du rattrapage. Sans cette
+// note, on croirait que la production a créé ces doublons ce jour-là.
 console.log('① SUPERSESSIONS — combien étaient des doublons')
 for (const [nom, e] of Object.entries(tranches))
   console.log(
