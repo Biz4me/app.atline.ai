@@ -436,18 +436,25 @@ model UserMlmBusiness {
   companyId String?
   company   MlmCompany? @relation(fields: [companyId], references: [id])
 
-  // ── LES DEUX LIENS DU DISTRIBUTEUR (15 novembre 2026) ─────────────────
+  // ── LES DEUX LIENS DU DISTRIBUTEUR VIVENT DANS `ToolboxLink` ──────────
   //
-  // 🧭 Le catalogue sème, le distributeur tranche. Les produits et les prix
-  // viennent de SA boutique, parce qu'ils sont personnels : la base portait
-  // 24 produits Forever Living en **dollars** (Aloe Vera Gel à 22,80 USD)
-  // pendant que la fiche de la même société annonçait 37,29 € — et c'est le
-  // premier chiffre qu'Atlas injectait sous « TA SOCIÉTÉ » comme prix officiel.
+  // 🔴 J'avais posé ici `boutiqueUrl` et `parrainageUrl` le 15 novembre 2026,
+  // SANS REGARDER. `ToolboxLink` portait déjà les deux, et SEPT endroits la
+  // lisent : l'inscription, le contexte d'Atlas, les liens de prospection, la
+  // moisson de la boutique, le vérificateur, l'écran Activité, le décompte
+  // des manques. Mes colonnes n'avaient aucun de ces branchements — ni,
+  // surtout, `verifieAt` / `statutVerif` / `detailVerif`, sans lesquels un
+  // lien mort a l'air d'un lien vivant.
   //
-  // Les deux sont facultatifs et le restent : à l'inscription on ne demande
-  // que la SOCIÉTÉ. Les liens se renseignent quand le distributeur les a.
-  boutiqueUrl   String? // là où SES clients achètent, et d'où viennent SES prix
-  parrainageUrl String? // là où SES partenaires s'inscrivent
+  // Retirées le 16 novembre 2026, vides sur les 9 activités, lues par
+  // personne. 🧭 Deux maisons pour un même fait, c'est la garantie qu'un jour
+  // les deux ne diront pas la même chose.
+  //
+  // ⚠️ Le fait que ces liens portent reste vrai, lui : le catalogue sème, le
+  // distributeur tranche. La base annonçait 24 produits Forever Living en
+  // **dollars** (Aloe Vera Gel à 22,80 USD) pendant que la fiche de la même
+  // société affichait 37,29 € — et c'est le premier chiffre qu'Atlas
+  // injectait sous « TA SOCIÉTÉ » comme prix officiel.
 
   @@unique([userId, mlmSlug])
   @@index([companyId])
