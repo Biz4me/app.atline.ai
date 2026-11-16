@@ -90,9 +90,14 @@ const { penalite, fraicheur } = eval(
     coupe('function fraicheur', '/ 90\n}').replace('(jours: number): number', '(jours)') +
     '\n return { penalite, fraicheur } })()',
 )
-// 🔴 Contrôles positifs : un blocage vu une fois doit pénaliser plus qu'un vu
-// vingt fois, et un blocage de six mois ne doit plus rien peser.
-if (!(penalite(1) < penalite(20))) throw new Error('penalite découpée défaillante')
+/**
+ * 🔴 CONTRÔLES POSITIFS, et le premier m'a attrapé : j'avais écrit
+ * `penalite(1) < penalite(20)`. C'est l'inverse. `penalite` rend le NIVEAU, pas
+ * une pénalité : vu 1 fois → 45, vu 20 fois → 8. **Plus un blocage revient,
+ * plus le niveau descend.** Le nom m'a trompé ; le contrôle, non.
+ */
+if (!(penalite(1) > penalite(20))) throw new Error('penalite découpée défaillante')
+if (penalite(1) !== 45) throw new Error('penalite(1) devrait valoir 45, pas ' + penalite(1))
 if (fraicheur(0) !== 1 || fraicheur(200) !== 0) throw new Error('fraicheur découpée défaillante')
 const niveauObserve = (vu, jours) => Math.round(NEUTRE - (NEUTRE - penalite(vu)) * fraicheur(jours))
 if (!(niveauObserve(1, 0) < NEUTRE)) throw new Error('niveauObserve découpé défaillant')
