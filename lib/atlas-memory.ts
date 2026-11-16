@@ -154,8 +154,14 @@ function depuisQuand(quand: Date): string {
   if (jours <= 0) return 'aujourd’hui'
   if (jours === 1) return 'hier'
   if (jours < 7) return `il y a ${jours} jours`
+  // ⚠️ LE SINGULIER COMPTE, et il compte DOUBLE ici : « il y a 1 semaines »
+  // partait dans le prompte d'Atlas. La règle est déjà écrite dans la maison
+  // (« 1 échanges sent la machine ») ; du mauvais français dans le prompt du
+  // coach est pire que sur un écran, parce qu'il l'imite.
+  if (jours < 14) return 'il y a une semaine'
   if (jours < 60) return `il y a ${Math.round(jours / 7)} semaines`
-  return `il y a ${Math.round(jours / 30)} mois`
+  const mois = Math.round(jours / 30)
+  return mois <= 1 ? 'il y a un mois' : `il y a ${mois} mois`
 }
 
 // Bloc « mémoire vivante » injecté dans le chat : profil + faits saillants.
