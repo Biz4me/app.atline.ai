@@ -917,7 +917,27 @@ model AtlasFact {
   // c'est CE champ qui permet de compter : « perte de foi » et « manque de
   // motivation » deviennent enfin la même chose.
   competenceId String?
-  competence   Competence? @relation(fields: [competenceId], references: [id])
+  competence   Competence? @relation("FaitMoment", fields: [competenceId], references: [id])
+
+  // ── 🔴 DEUX AXES, DEUX CHAMPS (16 novembre 2026) ────────────────────────
+  //
+  // `competenceId` portait les treize compétences dans un seul champ. Or onze
+  // sont des MOMENTS du cycle (invitation → présentation → suivi → conclure)
+  // et deux sont TRANSVERSALES : s'adapter au profil, s'organiser. Elles
+  // s'exercent PENDANT chaque moment, et c'est pour ça qu'elles n'ont aucun
+  // module de formation.
+  //
+  // Un seul champ forçait donc à choisir entre deux vérités. Mesuré en
+  // production : « maîtriser le langage vert en marche froide » a été rangé
+  // 12 fois sous `adaptation` ET sous `invitation` — le langage vert EST de
+  // l'adaptation, la marche froide EST de l'invitation. Les deux définitions
+  // correspondent, mot pour mot.
+  //
+  // 🧭 La maison connaît déjà ce motif : sur la fiche contact, proximité,
+  // funnel et DISC sont trois axes qu'on ne mélange pas. Même faute, autre
+  // endroit.
+  transversaleId String?
+  transversale   Competence? @relation("FaitTransversale", fields: [transversaleId], references: [id])
 
   @@index([userId, contactId, status])
   @@index([userId, status, importance])
@@ -1336,7 +1356,8 @@ model Competence {
   scenarios SimScenario[]
   scores    SimScore[]
   niveaux   UserCompetence[]
-  faits     AtlasFact[]
+  faits              AtlasFact[] @relation("FaitMoment")
+  faitsTransversaux  AtlasFact[] @relation("FaitTransversale")
   createdAt DateTime         @default(now())
 }
 

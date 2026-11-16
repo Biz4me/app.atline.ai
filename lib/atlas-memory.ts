@@ -21,7 +21,14 @@ export type ExtractedFact = {
   // Slug de compétence (table Competence) quand le fait en désigne une.
   // `object` garde la formulation libre — la nuance est utile — mais c'est
   // CE champ qui permet d'apparier et de compter.
+  //
+  // 🔴 DEUX AXES DEPUIS LE 16 NOVEMBRE 2026. `competence` ne porte plus que
+  // les onze MOMENTS du cycle ; `transversale` porte `adaptation` et
+  // `organisation`, qui s'exercent PENDANT chaque moment. Un seul champ
+  // forçait à choisir entre deux vérités, et « langage vert en marche froide »
+  // a été rangé 12 fois des deux côtés.
   competence?: string | null
+  transversale?: string | null
 }
 
 /**
@@ -402,6 +409,14 @@ export async function reconcileFacts(
       // Quand le slug est connu, c'est LUI la clé : deux observations de la
       // même compétence se trouvent, quelle que soit la formulation.
       const competenceId = f.competence || null
+      /**
+       * ⚠️ LE SECOND AXE N'APPARIE PAS, IL QUALIFIE. C'est `competenceId` qui
+       * reste la clé forte de la recherche : deux faits sur le même moment du
+       * cycle sont le même sujet. Deux faits « adaptation » peuvent porter sur
+       * deux moments très différents — apparier là-dessus collapserait
+       * « ton bleu à l'invitation » et « ton bleu au closing ».
+       */
+      const transversaleId = f.transversale || null
       // 🔴 Le candidat est choisi par RESSEMBLANCE, plus par date. Voir
       // `meilleurCandidat` au-dessus pour ce que cela corrige.
       const trouve = await meilleurCandidat(
@@ -409,7 +424,17 @@ export async function reconcileFacts(
       )
       const existing = trouve?.fait ?? null
 
-      const confirm = async (id: string, cur: { confidence: number; importance: number }) =>
+      /**
+       * ⚠️ UNE CONFIRMATION PEUT COMPLÉTER, JAMAIS ÉCRASER. Si le fait existant
+       * n'a pas de transversale et que l'extraction en propose une, on la pose :
+       * c'est une information de plus sur le même sujet. S'il en a déjà une, on
+       * n'y touche pas — sinon la dernière extraction gagnerait toujours, et la
+       * classification oscillerait d'un échange à l'autre.
+       */
+      const confirm = async (
+        id: string,
+        cur: { confidence: number; importance: number; transversaleId: string | null },
+      ) =>
         db.atlasFact.update({
           where: { id },
           data: {
@@ -417,6 +442,7 @@ export async function reconcileFacts(
             supportCount: { increment: 1 },
             lastSeenAt: new Date(),
             importance: Math.max(cur.importance, f.importance ?? 0),
+            ...(transversaleId && !cur.transversaleId ? { transversaleId } : {}),
           },
         })
       const create = () =>
@@ -425,6 +451,7 @@ export async function reconcileFacts(
             userId, contactId, predicate: f.predicate, object, category: f.category, source,
             importance: f.importance ?? 0.5, confidence: f.confidence ?? 0.75,
             ...(competenceId ? { competenceId } : {}),
+            ...(transversaleId ? { transversaleId } : {}),
           },
         })
 

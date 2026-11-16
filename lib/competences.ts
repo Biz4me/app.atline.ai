@@ -69,7 +69,7 @@ export type EtatCompetence = {
 }
 
 export async function etatDesCompetences(userId: string): Promise<EtatCompetence[]> {
-  const [competences, niveaux, blocages] = await Promise.all([
+  const [competences, niveaux, blocages, blocagesTransversaux] = await Promise.all([
     db.competence.findMany({
       orderBy: { position: 'asc' },
       select: {
@@ -97,21 +97,52 @@ export async function etatDesCompetences(userId: string): Promise<EtatCompetence
       // juillet décide encore de la leçon d'aujourd'hui.
       _max: { supportCount: true, lastSeenAt: true },
     }).catch(() => [] as { competenceId: string | null; _max: { supportCount: number | null; lastSeenAt: Date | null } }[]),
+    /**
+     * ── 🔴 LE SECOND AXE COMPTE AUTANT (16 novembre 2026) ─────────────────
+     *
+     * `adaptation` et `organisation` ont quitté `competenceId` pour
+     * `transversaleId` : elles s'exercent PENDANT chaque moment du cycle, elles
+     * n'en sont pas un. Sans cette seconde requête, elles perdraient d'un coup
+     * leur niveau observé — **46 et 27 faits**, soit le 2ᵉ et le 5ᵉ slug les
+     * plus fréquents de la base. Un écran annoncerait « pas encore mesuré » sur
+     * ce qui est la chose la plus observée après l'invitation.
+     *
+     * ⚠️ Deux requêtes et non une condition `OR` : `groupBy` ne sait pas
+     * regrouper sur deux colonnes différentes vers la même clé. On fusionne
+     * les deux cartes en mémoire, juste en dessous.
+     */
+    db.atlasFact.groupBy({
+      by: ['transversaleId'],
+      where: {
+        userId, contactId: null, predicate: 'bloque_sur',
+        status: 'active', transversaleId: { not: null },
+      },
+      _max: { supportCount: true, lastSeenAt: true },
+    }).catch(() => [] as { transversaleId: string | null; _max: { supportCount: number | null; lastSeenAt: Date | null } }[]),
   ])
 
   const mesure = new Map(niveaux.map((n) => [n.competenceId, n]))
   const maintenant = Date.now()
-  const observe = new Map(
-    blocages.filter((b) => b.competenceId).map((b) => {
-      const vu = b._max.supportCount ?? 1
-      const jours = b._max.lastSeenAt
-        ? Math.floor((maintenant - new Date(b._max.lastSeenAt).getTime()) / 86_400_000)
-        : 999
-      // Une observation périmée remonte vers le neutre au lieu de disparaître
-      // d'un coup : la bascule serait arbitraire.
-      return [b.competenceId as string, NEUTRE - (NEUTRE - penalite(vu)) * fraicheur(jours)] as const
-    }),
-  )
+  /** Le niveau qu'une observation dicte, quel que soit l'axe qui la porte. */
+  const depuisBlocage = (
+    id: string,
+    max: { supportCount: number | null; lastSeenAt: Date | null },
+  ) => {
+    const vu = max.supportCount ?? 1
+    const jours = max.lastSeenAt
+      ? Math.floor((maintenant - new Date(max.lastSeenAt).getTime()) / 86_400_000)
+      : 999
+    // Une observation périmée remonte vers le neutre au lieu de disparaître
+    // d'un coup : la bascule serait arbitraire.
+    return [id, NEUTRE - (NEUTRE - penalite(vu)) * fraicheur(jours)] as const
+  }
+
+  const observe = new Map([
+    ...blocages.filter((b) => b.competenceId).map((b) => depuisBlocage(b.competenceId as string, b._max)),
+    ...blocagesTransversaux
+      .filter((b) => b.transversaleId)
+      .map((b) => depuisBlocage(b.transversaleId as string, b._max)),
+  ])
 
   const etat = competences.map((c): EtatCompetence => {
     const m = mesure.get(c.id)
