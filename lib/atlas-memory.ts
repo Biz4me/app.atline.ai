@@ -227,10 +227,42 @@ async function meilleurCandidat(
   category: string,
   object: string,
 ): Promise<{ fait: Candidat; score: number } | null> {
+  /**
+   * ── 🔴 LA CATÉGORIE NE BORNE PLUS LA RECHERCHE (16 novembre 2026) ────────
+   *
+   * Elle le faisait : `...(competenceId ? { competenceId } : { category })`.
+   * **Deux faits au texte IDENTIQUE rangés dans deux catégories différentes ne
+   * se rencontraient donc JAMAIS** — ni pour le match exact, ni devant
+   * l'arbitre. Mesuré en production sur 725 faits actifs :
+   *
+   *     relancer mélanie            [projet]            vu 2×
+   *     relancer mélanie            [decision/suivi]    vu 1×   ← ressemblance 1,00
+   *     rendez-vous avec jean demain 14h  [projet]      vu 1×
+   *     rendez-vous avec jean demain      [decision]    vu 1×   ← 0,80
+   *     adaptation profil big al bleu [projet/adaptation] vu 92×
+   *     adaptation ton profil bleu    [competence]        vu 1×  ← 0,60
+   *
+   * 68 paires de faits actifs au-dessus de 0,50 que la recherche ne POUVAIT pas
+   * rapprocher. Et le dernier exemple est le plus coûteux : une observation
+   * isolée à côté d'une ligne vue 92 fois, qui se disputent les douze places du
+   * contexte d'Atlas.
+   *
+   * 🧭 CE N'ÉTAIT PAS LA NORMALISATION. J'avais annoncé qu'il fallait
+   * normaliser avant de dédupliquer — `motsPleins` le fait déjà très bien
+   * (« relance de mélanie » et « relance melanie » donnent 1,00). Et la
+   * supersession en double est MORTE depuis le correctif du 23 octobre :
+   * **1 230 supersessions avant, dont 51 % de doublons ; 50 après, dont 0.**
+   * Le défaut qui restait n'était pas le nettoyage du texte, c'était le
+   * PÉRIMÈTRE de la recherche.
+   *
+   * ⚠️ LE PRÉDICAT RESTE LA BORNE, et il suffit : « bloque sur X » et
+   * « travaille sur X » doivent rester deux faits. C'est la ressemblance qui
+   * ordonne ensuite, et l'arbitre qui tranche — rien de ce garde-fou ne bouge.
+   */
   const candidats = await db.atlasFact.findMany({
     where: {
       userId, contactId, predicate, status: 'active',
-      ...(competenceId ? { competenceId } : { category }),
+      ...(competenceId ? { competenceId } : {}),
     },
     // Les faits les mieux établis d'abord : si le plafond coupe, il ne doit
     // jamais couper la ligne canonique au profit d'une variante récente.
@@ -256,8 +288,18 @@ async function meilleurCandidat(
   // lieu. Sans ce rattrapage, le plancher aurait créé des objectifs qui
   // coexistent — une régression que le plancher seul introduisait.
   if (!competenceId && STABLE_CATEGORIES.has(category)) {
-    const recent = candidats.reduce((a, b) => (a.lastSeenAt > b.lastSeenAt ? a : b))
-    return { fait: recent, score: 0 }
+    /**
+     * ⚠️ ICI LA CATÉGORIE REVIENT, ET C'EST VOLONTAIRE. Ce rattrapage SUPERSÈDE
+     * sans ressemblance : « on ne vise pas 2 000 € ET 5 000 € par mois ». Avec
+     * la recherche élargie, il irait remplacer le fait le plus récent du même
+     * prédicat **quelle que soit sa catégorie** — un objectif effacerait une
+     * décision. On ne le laisse donc agir que là où l'unicité est vraie.
+     */
+    const memeCategorie = candidats.filter((c) => c.category === category)
+    if (memeCategorie.length) {
+      const recent = memeCategorie.reduce((a, b) => (a.lastSeenAt > b.lastSeenAt ? a : b))
+      return { fait: recent, score: 0 }
+    }
   }
   return null
 }
