@@ -9,7 +9,7 @@
 // Ce qui a changé, c'est le CHEMIN jusqu'au formulaire — c'est donc lui qu'on
 // mesure. `ajouterRendezVous` n'a pas été touché.
 
-const { test, expect } = require('../fixtures.cjs')
+const { test, expect, demain } = require('../fixtures.cjs')
 
 test.use({ viewport: { width: 390, height: 844 } })
 
@@ -58,7 +58,10 @@ test('le créneau choisi arrive sur un formulaire déjà rempli du bon nom', asy
   page,
   seed,
 }) => {
-  await page.goto(`/agenda/nouveau?contact=${seed.cid}`, { waitUntil: 'domcontentloaded' })
+  // DEMAIN : apres 21 h 30, la journee en cours n'a plus un seul creneau.
+  await page.goto(`/agenda/nouveau?contact=${seed.cid}&jour=${demain()}`, {
+    waitUntil: 'domcontentloaded',
+  })
   const creneaux = page.locator('a[href^="/agenda/nouveau/quoi?"]')
   await expect(creneaux.first()).toBeVisible({ timeout: 20_000 })
   await creneaux.first().click()
@@ -92,6 +95,9 @@ test('un identifiant qui n’est pas à soi tombe, en silence', async ({ page, s
   // ⚠️ ET LA SONDE SAIT VOIR LA CHOSE : avec un VRAI identifiant, au même
   // endroit, le surtitre est là. Sans ce contrôle, « pas de surtitre » serait
   // vert même si le surtitre n'existait plus du tout.
-  await page.goto(`/agenda/nouveau?contact=${seed.cid}`, { waitUntil: 'domcontentloaded' })
+  // DEMAIN : apres 21 h 30, la journee en cours n'a plus un seul creneau.
+  await page.goto(`/agenda/nouveau?contact=${seed.cid}&jour=${demain()}`, {
+    waitUntil: 'domcontentloaded',
+  })
   await expect(page.locator('header')).toContainText('Avec E2E', { timeout: 20_000 })
 })

@@ -272,6 +272,32 @@ const compter = (cid) => JSON.parse(ssh(`node e2e/server-helper.cjs compter ${ci
  * navigateur ne peut donc pas prouver qu'elle est écrite — et c'est la seule
  * chose dont la carte des contacts dépendra. Lecture seule.
  */
+/**
+ * DEMAIN, DANS LE FUSEAU DE PARIS.
+ *
+ * 🔴 TROIS SONDES DE L'AGENDA TOMBAIENT TOUS LES SOIRS, et pas a cause de
+ * l'app. Le selecteur de creneau propose 8 h -> 21 h 30 et **ne rend pas du
+ * tout les creneaux passes** -- c'est documente et voulu. Apres 21 h 30, la
+ * journee en cours n'a donc plus une seule ligne, et une sonde qui cherche
+ * « le premier creneau libre » ne trouve rien.
+ *
+ * La suite complete du 17 novembre 2026 a tourne a cheval sur minuit : trois
+ * rouges, zero defaut. Un filet qui ne tient qu'aux heures de bureau envoie
+ * chercher une regression fantome la nuit.
+ *
+ * 🧭 Les sondes visent donc DEMAIN, qui porte toujours ses creneaux. Et le
+ * fuseau est celui de PARIS, comme `jourDuFuseau` cote app : a 23 h a Paris,
+ * la machine qui lance les tests peut etre deja au lendemain en UTC, et on
+ * demanderait un jour que le selecteur n'affiche pas.
+ */
+const demain = () =>
+  new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Europe/Paris',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(new Date(Date.now() + 24 * 3600 * 1000))
+
 const adresseDe = (cid) => JSON.parse(ssh(`node e2e/server-helper.cjs adresse ${cid}`).trim().split(/\r?\n/).pop())
 
 /**
@@ -305,6 +331,7 @@ module.exports = {
   insister,
   compter,
   adresseDe,
+  demain,
   poserRdv,
   retirerRdv,
 }

@@ -9,7 +9,7 @@
 // CONVERSION, pas l'insertion — et la conversion est justement la seule partie
 // qui pouvait se tromper en silence.
 
-const { test, expect } = require('../fixtures.cjs')
+const { test, expect, demain } = require('../fixtures.cjs')
 
 test.use({ viewport: { width: 390, height: 844 } })
 
@@ -60,7 +60,11 @@ test('l’agenda mène au sélecteur de créneau, qui est une pleine page', asyn
 
   await page.screenshot({ path: 'capture-creneaux.png', animations: 'disabled' })
 
-  // ── Un créneau libre mène au formulaire, créneau porté ──
+  /* ── Un creneau libre mene au formulaire, creneau porte ──
+     DEMAIN, et pas aujourd'hui : le selecteur ne rend PAS les creneaux
+     passes, donc apres 21 h 30 la journee en cours est vide. Cette sonde
+     tombait tous les soirs sans qu'aucun defaut existe. */
+  await page.goto(`/agenda/nouveau?jour=${demain()}`, { waitUntil: 'domcontentloaded' })
   const libre = page.locator('a[href^="/agenda/nouveau/quoi"]').first()
   await expect(libre).toBeVisible()
   const heure = (await libre.innerText()).split(/\s+/)[0].trim()
@@ -125,7 +129,8 @@ test('l’agenda mène au sélecteur de créneau, qui est une pleine page', asyn
 })
 
 test('le déroulant s’ouvre sous le champ, et reste dans l’écran', async ({ page, pageErrors }) => {
-  await page.goto('/agenda/nouveau', { waitUntil: 'domcontentloaded' })
+  // DEMAIN : apres 21 h 30 la journee en cours n'a plus un seul creneau.
+  await page.goto(`/agenda/nouveau?jour=${demain()}`, { waitUntil: 'domcontentloaded' })
   await page.locator('a[href^="/agenda/nouveau/quoi"]').first().click()
   await expect(page.getByRole('heading', { level: 1, name: 'Le rendez-vous' })).toBeVisible({
     timeout: 20_000,
