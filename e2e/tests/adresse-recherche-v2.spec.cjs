@@ -25,15 +25,31 @@
 //   champ rempli ne s'affiche pas, et 39 fiches sur 44 n'ont aucune adresse :
 //   la règle commune aurait rendu l'outil invisible exactement là où il sert.
 //
-// ── 🔴 POURQUOI `remplir` EST RALENTI ICI ─────────────────────────────────
+// ── 🔴 NI `remplir` NI `toucher` ICI, ET C'EST MESURÉ ─────────────────────
 //
-// `remplir` rejoue la saisie toutes les 50 ms par défaut. La recherche, elle,
-// attend 300 ms de repos avant de demander quoi que ce soit : au rythme par
-// défaut, **chaque réécriture relancerait l'attente et aucune requête ne
-// partirait jamais**. Le rattrapage empêcherait la chose qu'il attend — la
-// faute que le harnais documente déjà pour `suivre`. Six essais de 2,5 s.
+// Le premier jet les utilisait tous les deux. Il a échoué en 60 s — alors que
+// la capture d'échec montrait l'adresse PARFAITEMENT ÉCRITE à l'écran. Les
+// deux aides du harnais sont construites pour un écran qui ne bouge pas tout
+// seul, et une liste de suggestions fait exactement le contraire :
+//
+// ① `remplir` revide puis réécrit le champ à chaque essai. Vider la saisie
+//   efface la liste, la réécrire la reconstruit 300 ms plus tard : le
+//   rattrapage FABRIQUE une fenêtre où la cible n'existe pas. La page est
+//   vivante avant qu'on tape — la disposition pose `data-vivant` après
+//   hydratation et le harnais l'attend pour tous les tests — donc une seule
+//   frappe suffit, et c'est la seule qui ne crée pas de churn.
+//
+// ② `toucher` reclique tant que la conséquence est absente, pour un bouton
+//   QUI RESTE. Celui-ci se retire au succès : Playwright a cliqué, la liste
+//   a disparu, et son propre réessai a attendu le retour d'un élément que le
+//   clic venait de supprimer. Un clic, une fois, puis on juge sur la
+//   conséquence — c'est elle qui dira si le geste s'est perdu.
+//
+// 🧭 Une aide qui frappe plus vite que la chose qu'elle attend finit par la
+// provoquer, le défaut qu'elle devait corriger. Le harnais l'écrit déjà pour
+// `suivre` ; ça vaut aussi pour une cible qui s'efface.
 
-const { test, expect, remplir, toucher, adresseDe } = require('../fixtures.cjs')
+const { test, expect, adresseDe } = require('../fixtures.cjs')
 
 test.use({ viewport: { width: 390, height: 844 } })
 
@@ -73,16 +89,10 @@ test('une adresse choisie écrit les cinq champs ET la position', async ({
     'plus de chemin pour saisir une adresse à la main',
   ).toBeVisible()
 
-  /* ── LA FRAPPE, puis les suggestions ── */
+  /* ── LA FRAPPE, puis les suggestions. UNE SEULE FOIS : voir l'en-tête. ── */
   const premiere = page.locator('[data-suggestion]').first()
-  await remplir(
-    champ,
-    CHERCHE,
-    () => premiere.isVisible().catch(() => false),
-    // Voir l'en-tête : plus lent que le repos de 300 ms de la recherche.
-    { essais: 6, pas: 2500 },
-  )
-  await expect(premiere, 'aucune suggestion n’est revenue').toBeVisible({ timeout: 10_000 })
+  await champ.fill(CHERCHE)
+  await expect(premiere, 'aucune suggestion n’est revenue').toBeVisible({ timeout: 20_000 })
   await expect(premiere).toContainText(VILLE)
 
   /* ── ② LE CLIC. La conséquence attendue est une rangée RENDUE PAR LE
@@ -94,8 +104,15 @@ test('une adresse choisie écrit les cinq champs ET la position', async ({
         que remplie. Son APPARITION est donc le garde — un contrôle que
         l'ancien état peut satisfaire ne garde rien. ── */
   const rangeeVille = page.locator('[data-champ="city"]')
-  await toucher(premiere, rangeeVille)
-  await expect(rangeeVille, 'la ville n’est pas arrivée sur la fiche').toContainText(VILLE)
+  // ⚠️ LE CLIC PEUT LEVER EN RÉUSSISSANT. La liste se retire au succès, et
+  // Playwright peut alors juger l'élément détaché. On avale donc l'échec du
+  // GESTE — jamais celui de la CONSÉQUENCE : si le clic s'est vraiment perdu,
+  // la rangée n'apparaît pas et l'assertion suivante le dit.
+  await premiere.click({ timeout: 10_000 }).catch(() => {})
+  await expect(rangeeVille, 'la ville n’est pas arrivée sur la fiche').toBeVisible({
+    timeout: 20_000,
+  })
+  await expect(rangeeVille).toContainText(VILLE)
 
   /* ── ① CE QUE LE SERVEUR A VRAIMENT GARDÉ ── */
   const apres = adresseDe(seed.cid)
@@ -121,6 +138,37 @@ test('une adresse choisie écrit les cinq champs ET la position', async ({
    * jamais la différence à l'usage.
    */
   expect(apres.address2, 'le complément a été écrasé par la recherche').toBeNull()
+
+  expect(pageErrors, `exception client : ${pageErrors.join(' · ')}`).toEqual([])
+})
+
+/**
+ * LE PROFIL — la même recherche, l'autre écriture.
+ *
+ * 🔴 CELLE-CI N'ÉCRIT RIEN, ET C'EST VOLONTAIRE. Le chemin du succès du
+ * profil écrit sur le VRAI compte de Patrice : il poserait une adresse chez
+ * quelqu'un, et aucune sonde n'a le droit de faire ça. Le harnais n'écrit que
+ * sur le contact jetable, qu'il supprime ensuite. On éprouve donc ce qui ne
+ * grave rien — et on le DIT, plutôt que de laisser croire que tout est
+ * couvert.
+ *
+ * 🧭 Ce qu'elle garde quand même est réel : la recherche suit les champs
+ * qu'elle remplit, pas le nom de l'écran. Si l'adresse déménageait dans un
+ * autre domaine du profil, elle resterait ici sans rien écrire — et personne
+ * ne le verrait, puisqu'un champ de recherche qui ne sert à rien ressemble à
+ * un champ de recherche.
+ */
+test('la recherche d’adresse est aussi sur le profil', async ({ page, pageErrors }) => {
+  await page.goto('/profil/joindre', { waitUntil: 'domcontentloaded' })
+  await expect(page.locator('main')).toBeVisible({ timeout: 20_000 })
+
+  const champ = page.locator('[data-adresse-auto] input')
+  await expect(champ, 'la recherche d’adresse est absente du profil').toBeVisible({
+    timeout: 15_000,
+  })
+  // Elle dit de QUI est l'adresse : sur une fiche c'est « l'adresse de X »,
+  // ici c'est la sienne. Le même composant, deux phrases différentes.
+  await expect(champ).toHaveAttribute('placeholder', /ton adresse/i)
 
   expect(pageErrors, `exception client : ${pageErrors.join(' · ')}`).toEqual([])
 })

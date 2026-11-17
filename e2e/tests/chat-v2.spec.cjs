@@ -74,8 +74,30 @@ const ECART = `(() => {
   }
 })()`
 
+/**
+ * OUVRIR UN FIL QUI A DU TEXTE DEDANS.
+ *
+ * 🔴 `/atlas` TOUT NU NE MARCHE PLUS DEPUIS LE 16 NOVEMBRE 2026. Patrice :
+ * *« chaque matin je veux que Atlas s'ouvre sur une nouvelle conversation
+ * avec un mantra différent »*. La porte d'entrée est donc un fil VIDE, et
+ * ces deux sondes — qui mesurent l'interligne des bulles et le contraste de
+ * la bulle « moi » — n'avaient plus rien à mesurer.
+ *
+ * ⚠️ ELLES NE SE TAISAIENT PAS, elles criaient « la sonde ne mesure rien ».
+ * C'est la seule raison pour laquelle on a su quoi réparer : un contrôle qui
+ * trouve zéro élément et se déclare content est un contrôle qui ment.
+ *
+ * 🧭 On prend donc le premier JOUR de l'historique plutôt qu'un identifiant
+ * figé : il suit le compte, il ne se périme pas, et il porte forcément des
+ * échanges — c'est ce qui en fait un jour.
+ */
 const ouvrir = async (page, theme) => {
-  await page.goto('/atlas', { waitUntil: 'domcontentloaded' })
+  await page.goto('/atlas?historique=jours', { waitUntil: 'domcontentloaded' })
+  const premierJour = page.locator('a[href^="/atlas?jour="]').first()
+  await expect(premierJour, 'aucun jour dans l’historique : rien à lire').toBeVisible({
+    timeout: 20_000,
+  })
+  await page.goto(await premierJour.getAttribute('href'), { waitUntil: 'domcontentloaded' })
   await expect(page.locator('[data-composeur]')).toBeVisible({ timeout: 20_000 })
   if (theme) {
     await page.evaluate((t) => (document.documentElement.dataset.theme = t), theme)

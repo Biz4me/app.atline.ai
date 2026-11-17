@@ -19,7 +19,6 @@ test.use({ viewport: { width: 390, height: 844 } })
 
 const lien = (page) => page.locator('[data-historique-lien]')
 const panneau = (page) => page.locator('[data-historique]')
-const sujets = (page) => page.locator('[data-sujet]')
 
 test('le coin haut-gauche ouvre, et l’adresse change avec lui', async ({ page, pageErrors }) => {
   await page.goto('/atlas', { waitUntil: 'domcontentloaded' })
@@ -215,134 +214,69 @@ test('un fil qui n’est pas à soi ne révèle rien', async ({ page, pageErrors
   expect(pageErrors, `exception client : ${pageErrors.join(' · ')}`).toEqual([])
 })
 
-// ── LES SUJETS ────────────────────────────────────────────────────────────
+// ── LA PORTE PRINCIPALE ───────────────────────────────────────────────────
 
-test('la porte principale montre des SUJETS, triés par vivacité', async ({ page }) => {
-  /**
-   * 🔴 CE QUE ÇA GARDE. La première version montrait la liste des
-   * conversations : **100 lignes pour 53 ouvertures distinctes**, une ligne
-   * par CONNEXION et pas une ligne par pensée. Patrice l'a refusée en la
-   * voyant. Si la porte principale y revenait, on aurait refait le chemin à
-   * l'envers sans que rien ne crie.
-   */
+/**
+ * 🔴 CETTE SONDE PARLAIT DES SUJETS JUSQU'AU 16 NOVEMBRE 2026, et ils
+ * n'existent plus. Patrice : *« inutile que ce soit une liste accessible à
+ * l'utilisateur, cela me paraît indigeste »* — la matière des sujets sert
+ * toujours au coach, elle n'est simplement plus un onglet.
+ *
+ * 🧭 CE QU'ELLE GARDAIT RESTE VRAI, ET C'EST POUR ÇA QU'ELLE N'EST PAS
+ * SUPPRIMÉE. Le défaut d'origine n'était pas « pas de sujets », c'était **la
+ * liste brute des conversations en porte d'entrée** : 100 lignes pour 53
+ * ouvertures distinctes, une ligne par CONNEXION et pas une par pensée.
+ * Patrice l'a refusée en la voyant. La porte montre maintenant des JOURS ;
+ * si elle revenait à la plomberie, plus rien ne crierait.
+ */
+test('la porte principale montre des JOURS, jamais la liste brute', async ({ page }) => {
   await page.goto('/atlas?historique=1', { waitUntil: 'domcontentloaded' })
   await expect(panneau(page)).toBeVisible({ timeout: 20_000 })
 
-  const n = await sujets(page).count()
-  console.log(`  ${n} sujets`)
+  const n = await page.locator('a[href^="/atlas?jour="]').count()
+  console.log(`  ${n} jours`)
   if (n === 0) {
     await expect(panneau(page)).toContainText('Parle au coach')
     return
   }
   await expect(
     page.locator('[data-conversation]'),
-    'la porte principale montre encore des conversations',
+    'la porte principale montre encore la liste brute des conversations',
   ).toHaveCount(0)
-
-  /**
-   * LE TRI EST LA VIVACITÉ : `vu / (1 + jours/15)`. On ne refait pas le
-   * calcul ici — on vérifie qu'il DÉCROÎT, ce qui suffit à attraper un tri
-   * remis sur la date ou sur le nombre seul.
-   *
-   * ⚠️ Et on lit ce que l'écran AFFICHE, pas ce que le serveur a calculé :
-   * un tri juste rendu dans le désordre serait vert sur la mauvaise moitié.
-   */
-  const lus = await sujets(page).evaluateAll((liste) =>
-    liste.slice(0, 12).map((b) => {
-      const ligne = b.querySelector('p').textContent
-      const m = ligne.match(/^(\d+) fois/)
-      return { vu: m ? Number(m[1]) : 1, quand: ligne }
-    }),
-  )
-  const recent = (t) => /Aujourd.hui|Hier/.test(t)
-  // Le premier est forcément vif : beaucoup vu ET récent.
-  console.log(`  le plus vif : ${lus[0].vu} fois · ${recent(lus[0].quand) ? 'récent' : 'ancien'}`)
-  expect(lus[0].vu, 'le premier sujet n’est vu qu’une fois : le tri est faux').toBeGreaterThan(1)
-
-  // 🔴 ET AUCUNE HEURE SUR UN SUJET. `lastSeenAt` est bougé par la
-  // consolidation nocturne : « Aujourd'hui, 04:15 » se lit « tu en as parlé
-  // à 4h du matin », ce qui est faux. Le jour reste vrai, la minute non.
-  const heures = lus.filter((l) => /\d{1,2}:\d{2}/.test(l.quand))
-  expect(
-    heures.map((l) => l.quand),
-    'un sujet affiche une heure : elle vient du travail nocturne, pas d’une conversation',
-  ).toEqual([])
 })
 
-test('« a changé » ne compte pas des orthographes', async ({ page }) => {
-  /**
-   * 🔴 LE DÉFAUT, UNE HEURE APRÈS LA LIVRAISON. « relance post-refus »
-   * annonçait **« a changé 3 fois »**, et le dépli montrait :
-   *
-   *     relance de mélanie · relance de melanie · relance mélanie
-   *
-   * **Ça n'a pas changé trois fois, ça a été réécrit trois fois.** Un
-   * historique qui compte des orthographes comme des changements raconte une
-   * histoire qui n'a pas eu lieu.
-   *
-   * 🧭 La maison connaît cette faute : « Mes activités MLM » contre
-   * « Activité MLM » dans `menu.spec.cjs`. Même remède, et **la même
-   * discipline** — on prouve d'abord que le détecteur détecte, sur le VRAI
-   * couple qui était passé.
-   */
-  const normaliser = (t) =>
-    t
-      .toLowerCase()
-      .normalize('NFD')
-      .split('')
-      .filter((c) => c.charCodeAt(0) < 768 || c.charCodeAt(0) > 879)
-      .join('')
-      .replace(/\b(de|du|des|la|le|les|l|d|un|une|en|a|au|aux|sur|pour)\b/g, ' ')
-      .replace(/[^a-z0-9]+/g, ' ')
-      .trim()
-
-  expect(
-    normaliser('relance de mélanie'),
-    'le détecteur ne verrait pas le doublon qu’il surveille',
-  ).toBe(normaliser('relance melanie'))
-  expect(normaliser('objection pyramide')).not.toBe(normaliser('objection prix'))
-
-  await page.goto('/atlas?historique=1', { waitUntil: 'domcontentloaded' })
-  await expect(panneau(page)).toBeVisible({ timeout: 20_000 })
-
-  const depliables = page.locator('[data-sujet]:not([disabled])')
-  const combien = await depliables.count()
-  if (combien === 0) {
-    console.log('  aucun sujet n’a d’histoire : le cas n’a pas été éprouvé')
-    return
-  }
-
-  // On déplie les trois premiers qui ont une histoire : c'est là que les
-  // réécritures s'empilaient.
-  const fautifs = []
-  for (let i = 0; i < Math.min(3, combien); i++) {
-    const b = depliables.nth(i)
-    await b.click()
-    await page.waitForTimeout(150)
-    const avant = await b.locator('li').evaluateAll((n) => n.map((e) => e.textContent))
-    const vus = new Set()
-    for (const ligne of avant) {
-      const quoi = normaliser(ligne.split('—')[0])
-      if (vus.has(quoi)) fautifs.push(ligne.trim())
-      vus.add(quoi)
-    }
-    await b.click()
-  }
-  console.log(`  ${Math.min(3, combien)} sujets dépliés · ${fautifs.length} redite(s)`)
-  expect(
-    fautifs,
-    'deux formulations du même sujet comptent comme deux changements',
-  ).toEqual([])
-})
+/**
+ * DEUX SONDES DES SUJETS ONT ETE RETIREES ICI, le 16 novembre 2026, et il
+ * faut dire pourquoi plutot que de laisser un trou.
+ *
+ * Patrice a fait retirer l'onglet : « inutile que ce soit une liste
+ * accessible a l'utilisateur, cela me parait indigeste ». La matiere des
+ * sujets sert toujours au coach - elle n'est simplement plus une surface, et
+ * `data-sujet` n'existe plus dans V2.
+ *
+ * ELLES NE TOMBAIENT PAS : ELLES PASSAIENT A VIDE. Les deux commencaient par
+ * « s'il n'y a aucun sujet, on s'arrete », et il n'y en a plus jamais. Un
+ * vert qui ne peut plus devenir rouge n'est pas un filet, c'est une
+ * decoration - et c'est pire qu'une absence, parce qu'on le compte.
+ *
+ * Ce qu'elles gardaient de vrai est passe juste au-dessus : la porte
+ * principale ne doit pas montrer la liste brute des conversations.
+ */
 
 // ── LES JOURS, ET LES ONGLETS ────────────────────────────────────────────
 
 test('deux onglets, et la liste brute n’en est pas un', async ({ page }) => {
   /**
-   * 🧭 DEUX, ET DEUX SEULEMENT, parce que c'est le socle : un SUJET traverse
-   * le temps, un JOUR le coupe. Un troisième onglet serait le signe qu'on ne
-   * sait pas où ranger — et la liste brute n'est NI un sujet NI un jour :
+   * 🧭 DEUX, ET DEUX SEULEMENT, parce que c'est le socle : un JOUR coupe le
+   * temps, une COMPÉTENCE traverse tout. Un troisième onglet serait le signe
+   * qu'on ne sait pas où ranger — et la liste brute n'est NI l'un NI l'autre :
    * ce n'est pas un axe, c'est la plomberie.
+   *
+   * ⚠️ LE PREMIER ONGLET S'APPELAIT « SUJETS » JUSQU'AU 16 NOVEMBRE 2026.
+   * Patrice l'a fait retirer — *« indigeste »* — et c'est « Jours » qui
+   * occupe la porte d'entrée. Ce que cette sonde garde n'a pas bougé d'un
+   * mot : deux axes, chacun son chiffre, l'allumé qui suit l'adresse, et la
+   * liste brute qui vit SOUS un onglet au lieu d'en être un.
    */
   await page.goto('/atlas?historique=1', { waitUntil: 'domcontentloaded' })
   await expect(panneau(page)).toBeVisible({ timeout: 20_000 })
@@ -358,7 +292,7 @@ test('deux onglets, et la liste brute n’en est pas un', async ({ page }) => {
   const mots = await onglets.evaluateAll((n) =>
     n.map((e) => e.querySelector('span:last-child').textContent.trim()),
   )
-  expect(mots).toEqual(['Sujets', 'Jours'])
+  expect(mots).toEqual(['Jours', 'Compétences'])
 
   // 🔴 ET CHAQUE CASE PORTE SON CHIFFRE. Une case sans nombre casserait la
   // grammaire de la maison ; un nombre faux serait pire que pas de nombre.
@@ -371,14 +305,15 @@ test('deux onglets, et la liste brute n’en est pas un', async ({ page }) => {
   // L'onglet allumé suit l'adresse, dans les deux sens.
   await expect(onglets.first()).toHaveAttribute('aria-current', 'true')
   await onglets.last().click()
-  await expect(page).toHaveURL(/historique=jours$/, { timeout: 20_000 })
+  await expect(page).toHaveURL(/historique=competences$/, { timeout: 20_000 })
   const apres = panneau(page).getByRole('navigation').getByRole('link')
   await expect(apres.last()).toHaveAttribute('aria-current', 'true')
   await expect(apres.first()).not.toHaveAttribute('aria-current', 'true')
 
   /**
-   * 🔴 ET LA LISTE BRUTE GARDE « SUJETS » ALLUMÉ. Elle vit SOUS eux. Sans
-   * ça, aucun onglet ne serait allumé et on ne saurait plus où l'on est —
+   * 🔴 ET LA LISTE BRUTE GARDE « JOURS » ALLUMÉ. Elle vit SOUS lui — on y
+   * arrive par « Toutes les conversations », au bas des jours. Sans ça,
+   * aucun onglet ne serait allumé et on ne saurait plus où l'on est :
    * exactement le défaut corrigé sur la barre du bas le 8 novembre.
    */
   await page.goto('/atlas?historique=fils', { waitUntil: 'domcontentloaded' })
@@ -388,7 +323,7 @@ test('deux onglets, et la liste brute n’en est pas un', async ({ page }) => {
     surLaBrute.filter({ has: page.locator('[aria-current]') }).or(surLaBrute),
     'la bande a disparu sur la liste brute',
   ).toHaveCount(2)
-  await expect(surLaBrute.first(), 'la liste brute n’allume pas « Sujets »').toHaveAttribute(
+  await expect(surLaBrute.first(), 'la liste brute n’allume pas « Jours »').toHaveAttribute(
     'aria-current',
     'true',
   )

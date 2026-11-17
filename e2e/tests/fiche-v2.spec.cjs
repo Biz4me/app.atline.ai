@@ -67,10 +67,10 @@ test('un champ se corrige sur place, et ça TIENT au rechargement', async ({ pag
   await expect(puce).toBeVisible()
   // ⚠️ `toucher` et non `click` : voir fixtures.cjs — un clic peut arriver
   // avant que React n'ait attaché son écouteur, et il est perdu en silence.
-  await toucher(puce, page.getByRole('textbox').last())
+  await toucher(puce, page.locator('[data-saisie="profession"]'))
 
   const valeur = `Boulanger ${Date.now() % 100000}`
-  await page.getByRole('textbox').last().fill(valeur)
+  await page.locator('[data-saisie="profession"]').fill(valeur)
   await page.getByRole('button', { name: 'Enregistrer' }).click()
 
   // La rangée reprend sa place, fermée, avec la valeur.
@@ -120,8 +120,8 @@ test('le geste dominant apparaît avec le numéro, et ne se dédouble pas', asyn
   // part occupe la place où l'œil a appris à trouver le vrai.
   await expect(page.locator('a[href^="tel:"]')).toHaveCount(0)
 
-  await toucher(page.locator('[data-manque="phone"]'), page.getByRole('textbox').last())
-  await page.getByRole('textbox').last().fill('0612345678')
+  await toucher(page.locator('[data-manque="phone"]'), page.locator('[data-saisie="phone"]'))
+  await page.locator('[data-saisie="phone"]').fill('0612345678')
   await page.getByRole('button', { name: 'Enregistrer' }).click()
 
   const appel = page.locator('a[href^="tel:"]')

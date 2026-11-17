@@ -137,8 +137,8 @@ test('un numéro allume Appeler et SMS, et fait apparaître WhatsApp', async ({ 
   // et il prouve au passage que « Ce qui manque » mène bien quelque part.
   const puce = page.locator('[data-manque="phone"]')
   await expect(puce).toBeVisible()
-  await toucher(puce, page.getByRole('textbox').last())
-  await page.getByRole('textbox').last().fill('+33 6 12 34 56 78')
+  await toucher(puce, page.locator('[data-saisie="phone"]'))
+  await page.locator('[data-saisie="phone"]').fill('+33 6 12 34 56 78')
   await page.getByRole('button', { name: 'Enregistrer' }).click()
   // 🔴 ATTENDRE QUE LA RANGÉE SE REFERME SUR SA VALEUR AVANT DE RECHARGER.
   // Sans ça, le rechargement court contre l'action serveur : la fiche revient
@@ -243,8 +243,8 @@ test('un appel journalisé monte le compteur d’expositions EN BASE', async ({ 
   await page.goto(`/gens/${seed.cid}`, { waitUntil: 'domcontentloaded' })
   const puce = page.locator('[data-manque="phone"]')
   await expect(puce).toBeVisible({ timeout: 20_000 })
-  await toucher(puce, page.getByRole('textbox').last())
-  await page.getByRole('textbox').last().fill('+33 6 12 34 56 78')
+  await toucher(puce, page.locator('[data-saisie="phone"]'))
+  await page.locator('[data-saisie="phone"]').fill('+33 6 12 34 56 78')
   await page.getByRole('button', { name: 'Enregistrer' }).click()
   // Attendre la rangee refermee sur sa valeur : recharger tout de suite court
   // contre l'action serveur, et « Appeler » revient parfois eteint.
@@ -283,8 +283,8 @@ test('« Pas fait » n’écrit rien, et c’est le point', async ({ page, seed 
   await page.goto(`/gens/${seed.cid}`, { waitUntil: 'domcontentloaded' })
   const puce = page.locator('[data-manque="phone"]')
   await expect(puce).toBeVisible({ timeout: 20_000 })
-  await toucher(puce, page.getByRole('textbox').last())
-  await page.getByRole('textbox').last().fill('+33 6 12 34 56 78')
+  await toucher(puce, page.locator('[data-saisie="phone"]'))
+  await page.locator('[data-saisie="phone"]').fill('+33 6 12 34 56 78')
   await page.getByRole('button', { name: 'Enregistrer' }).click()
   // Attendre la rangee refermee sur sa valeur : recharger tout de suite court
   // contre l'action serveur, et « Appeler » revient parfois eteint.

@@ -24,9 +24,23 @@
 // donc rendue AVANT — cette assertion échouerait sur l'ancien état, ce qui est
 // la seule chose qui fait d'elle un garde.
 
-const { test, expect } = require('../fixtures.cjs')
+const { test, expect, toucher } = require('../fixtures.cjs')
 
 test.use({ viewport: { width: 390, height: 844 } })
+
+// ── 🔴 CE TEST A ÉTÉ RÉPARÉ LE 16 NOVEMBRE 2026, LE SOIR MÊME ─────────────
+//
+// La recherche d'adresse a retiré les cinq pastilles « + Rue », « + Ville »…
+// de « Ajouter autre chose » : le bloc Adresse s'affiche maintenant toujours,
+// avec sa recherche et son « Saisir à la main », et deux chemins vers la même
+// chose à vingt centimètres d'écart, c'est la faute que la maison retire
+// partout. Les cinq mots ont donc disparu de la page d'un contact neuf, et
+// cette sonde est tombée.
+//
+// 🧭 C'est exactement pour ça qu'on rejoue la suite ENTIÈRE après un
+// changement, et pas seulement la sonde du jour : un filet qu'on ne retend
+// pas est une décoration. Elle tire maintenant la porte « Saisir à la main »
+// avant de mesurer — et son garde, lui, n'a pas bougé d'un mot.
 
 test('les cinq champs d’adresse se suivent dans l’ordre d’une enveloppe', async ({
   page,
@@ -35,6 +49,22 @@ test('les cinq champs d’adresse se suivent dans l’ordre d’une enveloppe', 
 }) => {
   await page.goto(`/gens/${seed.cid}`, { waitUntil: 'domcontentloaded' })
   await expect(page.locator('main')).toBeVisible({ timeout: 20_000 })
+
+  // Sur un contact neuf les cinq rangées sont repliées derrière cette porte :
+  // le bloc n'affiche que la recherche. On la pousse pour les faire paraître.
+  const aLaMain = page.locator('[data-adresse-main]')
+  await expect(aLaMain, 'plus de chemin pour saisir une adresse à la main').toBeVisible({
+    timeout: 15_000,
+  })
+  /**
+   * ⚠️ LA CONSÉQUENCE N'EST PAS `[data-champ="address"]`, et c'est une faute
+   * que j'ai faite avant de la corriger : `data-champ` vit sur la rangée
+   * FERMÉE, et un champ révélé alors qu'il est vide s'ouvre directement en
+   * saisie — il n'a donc pas d'attribut à attendre. On attend son libellé,
+   * qui n'existe nulle part ailleurs sur la page.
+   */
+  await toucher(aLaMain, page.getByText('Complément', { exact: true }))
+
   const corps = await page.locator('main').innerText()
 
   const ou = (mot) => {
