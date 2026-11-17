@@ -27,9 +27,25 @@
 // V1 ne la pose pas, donc l'attente va au bout de son délai puis renonce
 // proprement. Les pages, elles, répondent en moins d'une seconde.
 
-const { test, expect } = require('../fixtures.cjs')
+const { test, expect, BASE } = require('../fixtures.cjs')
 
 test.use({ viewport: { width: 1280, height: 900 } })
+
+/**
+ * CETTE SONDE NE PARLE QUE DE V1, ET ELLE LE DIT.
+ *
+ * Ses dix chemins -- /home, /contacts, /profile... -- n'existent pas dans
+ * V2, qui a sa propre nomenclature. Lancee dans la suite complete contre
+ * v2.atline.ai, elle tombait dix fois en accusant une app parfaitement
+ * saine : dix rouges qui ne designent aucun defaut, c'est pire qu'une sonde
+ * absente, parce qu'on finit par ne plus lire les rouges.
+ *
+ * Elle se saute donc d'elle-meme, en DISANT pourquoi.
+ */
+test.skip(
+  () => !/app\.atline\.ai/.test(BASE),
+  'sonde de V1 : lancer avec E2E_BASE=https://app.atline.ai',
+)
 
 const ECRANS = [
   '/home',

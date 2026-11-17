@@ -195,3 +195,44 @@ test('toucher un point ouvre un résumé, avec Voir et Itinéraire', async ({ pa
 
   expect(pageErrors, `exception client : ${pageErrors.join(' · ')}`).toEqual([])
 })
+
+test('Entrée ouvre la personne quand il n’en reste qu’une', async ({ page, pageErrors }) => {
+  await page.goto('/gens', { waitUntil: 'domcontentloaded' })
+  const champ = page.locator('[data-recherche] input')
+  await expect(champ).toBeVisible({ timeout: 20_000 })
+
+  /**
+   * ON CHERCHE JUSQU'A N'EN AVOIR QU'UNE. « emi » ne rend qu'Emilie
+   * Fontaine sur ce compte -- verifie au moment d'ecrire. Si un homonyme
+   * arrivait un jour, la sonde le DIRAIT au lieu de passer a cote.
+   */
+  await champ.fill('emi')
+  await expect(page.locator('[data-compte-recherche]')).toContainText(/^1 sur /, { timeout: 10_000 })
+
+  await champ.press('Enter')
+  await expect(page, 'Entrée n’a pas ouvert la fiche').toHaveURL(/\/gens\/[a-z0-9]+$/, {
+    timeout: 20_000,
+  })
+  await expect(page.getByRole('heading', { level: 1 })).toContainText(/Émilie|Emilie/)
+  expect(pageErrors, `exception client : ${pageErrors.join(' · ')}`).toEqual([])
+})
+
+test('Entrée range le clavier quand il en reste plusieurs', async ({ page }) => {
+  await page.goto('/gens', { waitUntil: 'domcontentloaded' })
+  const champ = page.locator('[data-recherche] input')
+  await expect(champ).toBeVisible({ timeout: 20_000 })
+  await champ.fill('so')
+  await expect(page.locator('[data-compte-recherche]')).toBeVisible({ timeout: 10_000 })
+  const combien = await page.locator('[data-contact]').count()
+  expect(combien, 'il faut plusieurs résultats pour éprouver ce cas').toBeGreaterThan(1)
+
+  await champ.press('Enter')
+  // On reste sur la liste -- Entrée ne choisit pas a la place de quelqu'un
+  // quand il y a plusieurs reponses possibles.
+  await expect(page).toHaveURL(/\/gens(\?|$)/)
+  // Et le champ a rendu le focus : c'est ce qui range le clavier.
+  expect(await champ.evaluate((e) => e === document.activeElement), 'le clavier reste ouvert').toBe(
+    false,
+  )
+  expect(await page.locator('[data-contact]').count(), 'la recherche a été perdue').toBe(combien)
+})
