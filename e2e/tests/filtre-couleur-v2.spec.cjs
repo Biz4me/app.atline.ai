@@ -7,46 +7,69 @@ const { test, expect, suivre } = require('../fixtures.cjs')
 
 test.use({ viewport: { width: 390, height: 844 } })
 
-test('aucun encadré, nulle part', async ({ page, pageErrors }) => {
+test('aucun trait sur un fond coloré', async ({ page, pageErrors }) => {
   /**
-   * 🔴 C'EST UNE CONSIGNE, PAS UN GOÛT. Patrice, le 17 novembre 2026 :
-   * *« ne jamais mettre d'encadré ni sur filtres ni sur listes ou cartes et
-   * de même sur chaque élément des filtres. Je trouve que cela crée du
-   * bruit ; les changements de couleur sont suffisamment clairs. »*
+   * 🔴 LA RÈGLE A ÉTÉ PRÉCISÉE, ET CETTE SONDE GARDAIT LA MAUVAISE.
    *
-   * 🧭 Une consigne sans sonde se perd au premier composant recopié d'un
-   * autre écran — et un trait qui revient ne casse rien, ne lève rien, et
-   * ne se voit que si quelqu'un regarde. C'est exactement ce qu'une sonde
-   * doit garder.
+   * Premier jet de Patrice : « ne jamais mettre d'encadré… cela crée du
+   * bruit ». J'ai compris « aucune bordure, jamais », et la sonde exigeait
+   * zéro pixel de trait partout.
+   *
+   * Sa précision, capture a l'appui : « quand je disais pas de bordures je
+   * parlais quand elle passe en couleur ». Ce n'est pas le trait qui fait du
+   * bruit, c'est **un trait coloré autour d'un fond coloré** : deux fois la
+   * même information. Éteinte, la pastille a besoin de son trait fin — le
+   * fond de l'app et la surface n'ont que deux pour cent d'écart.
+   *
+   * 🧭 LA SONDE NE REGARDE DONC PLUS LE MARKUP, elle regarde le RENDU : pour
+   * chaque pastille, si le fond n'est pas la surface ordinaire, le trait
+   * doit être invisible. Formulée comme ça, elle tient quel que soit l'état
+   * qu'on ajoutera demain — allumé, survolé, sélectionné — alors qu'une
+   * sonde branchée sur `aria-current` ne garderait que les cas prévus.
    */
-  const sansTrait = async (ou, quoi) => {
-    const traits = await page.locator(quoi).evaluateAll((n) =>
+  const traitsSurCouleur = async (ou, quoi) => {
+    const fautifs = await page.locator(quoi).evaluateAll((n) =>
       n
         .map((e) => {
           const s = getComputedStyle(e)
-          const px = Math.max(
-            parseFloat(s.borderTopWidth) || 0,
-            parseFloat(s.borderLeftWidth) || 0,
-          )
-          return px > 0 ? `${(e.textContent || '').trim().slice(0, 18)} (${px}px)` : null
+          const fond = s.backgroundColor
+          const trait = s.borderTopColor
+          const epais = parseFloat(s.borderTopWidth) || 0
+          const transparent = (c) => /rgba?\([^)]*,\s*0\s*\)$/.test(c) || c === 'transparent'
+          // Un fond « ordinaire » : transparent, ou la surface/le fond de
+          // l'app. Tout le reste est une COULEUR, et n'a droit à aucun trait.
+          const ordinaire =
+            transparent(fond) ||
+            ['rgb(255, 255, 255)', 'rgb(245, 245, 246)', 'rgb(23, 24, 27)', 'rgb(15, 16, 18)'].includes(fond)
+          if (ordinaire || epais === 0 || transparent(trait)) return null
+          return `${(e.textContent || '').trim().slice(0, 16)} — fond ${fond}, trait ${trait}`
         })
         .filter(Boolean),
     )
-    expect(traits, `un encadré est revenu sur ${ou}`).toEqual([])
+    expect(fautifs, `un trait coloré est revenu sur ${ou}`).toEqual([])
   }
 
   await page.goto('/gens', { waitUntil: 'domcontentloaded' })
   await expect(page.locator('[data-filtres]')).toBeVisible({ timeout: 20_000 })
-  await sansTrait('le bouton Filtres', '[data-filtres]')
-  await sansTrait('Liste et Carte', '[data-vue]')
-  await sansTrait('le champ de recherche', '[data-champ-cherche]')
+  await traitsSurCouleur('les 4 cartes de population', '[data-bande] a')
+  await traitsSurCouleur('le bouton Filtres', '[data-filtres]')
+  await traitsSurCouleur('Liste et Carte', '[data-vue]')
+  await traitsSurCouleur('le champ de recherche', '[data-champ-cherche]')
 
-  await page.goto('/gens/filtrer', { waitUntil: 'domcontentloaded' })
+  /* ⚠️ ET L'ÉTEINTE GARDE SON TRAIT — sans lui elle disparaît sur un fond à
+     deux pour cent d'écart. C'est l'autre moitié de la règle, et une sonde
+     qui ne garderait que la première laisserait tout repasser en gris. */
+  const eteinte = await page
+    .locator('[data-vue="carte"]')
+    .evaluate((e) => parseFloat(getComputedStyle(e).borderTopWidth) || 0)
+  expect(eteinte, 'la pastille éteinte a perdu son trait : elle disparaît').toBeGreaterThan(0)
+
+  await page.goto('/gens/filtrer?couleur=rouge&marche=CHAUD', { waitUntil: 'domcontentloaded' })
   await expect(page.locator('[data-choix]').first()).toBeVisible({ timeout: 20_000 })
   const combien = await page.locator('[data-choix]').count()
   console.log(`  ${combien} choix relus sur l’écran de filtre`)
   expect(combien, 'aucun choix : la sonde ne mesure rien').toBeGreaterThan(10)
-  await sansTrait('les choix du filtre', '[data-choix]')
+  await traitsSurCouleur('les choix du filtre', '[data-choix]')
 
   expect(pageErrors, `exception client : ${pageErrors.join(' · ')}`).toEqual([])
 })
