@@ -29,6 +29,39 @@ const { test, expect, suivre } = require('../fixtures.cjs')
 test.use({ viewport: { width: 390, height: 844 } })
 
 test('la carte place les gens, et ne les empile pas', async ({ page, pageErrors }) => {
+  /**
+   * ── 🔴 LE GARDE CONTRE LA CARTE GRISE ────────────────────────────────
+   *
+   * Vécu le 17 novembre 2026 : la carte s'affichait ENTIÈREMENT GRISE en
+   * production. L'attribution était là, les marqueurs étaient bien placés,
+   * aucune requête n'échouait, et cette sonde passait au vert — elle ne
+   * vérifiait que les points. MapLibre décode ses tuiles dans un web worker
+   * que le bundler n'arrivait pas à démarrer : **pas de worker, pas de
+   * tuile décodée, et un fond uni qui ressemble à un fond qui charge
+   * encore.**
+   *
+   * 🧭 CE QU'ON MESURE, C'EST LE RÉSEAU. Une carte peinte demande des
+   * morceaux de l'archive ET des polices pour ses étiquettes. Une carte
+   * grise n'en demande presque rien. C'est observable de l'extérieur, et
+   * ça aurait attrapé le défaut du jour exactement.
+   */
+  /**
+   * ON NE VISE PAS UN NOM DE FICHIER. Il porte la date de l'extraction --
+   * parce qu'une archive mise en cache trente jours DOIT changer d'adresse
+   * quand elle change de contenu -- donc un nom ecrit ici se perimerait a la
+   * prochaine extraction. Et il s'est perime : cette sonde a crie « le fond
+   * est gris » alors que la carte allait tres bien, le 17 novembre 2026.
+   */
+  const recu = []
+  page.on('response', (r) => {
+    const u = r.url()
+    if (u.includes('/tuiles/')) recu.push({ code: r.status(), url: u })
+  })
+  const erreursConsole = []
+  page.on('console', (m) => {
+    if (m.type() === 'error') erreursConsole.push(m.text().slice(0, 160))
+  })
+
   await page.goto('/gens?vue=carte', { waitUntil: 'domcontentloaded' })
   await expect(page.locator('[data-carte]'), 'la carte ne s’ouvre pas').toBeVisible({
     timeout: 30_000,
@@ -88,6 +121,33 @@ test('la carte place les gens, et ne les empile pas', async ({ page, pageErrors 
     'sans adresse',
   )
   console.log(`  compte : ${(await compte.innerText()).replace(/\s+/g, ' ')}`)
+
+  /* ── 🔴 LE FOND EST-IL VRAIMENT PEINT ? ── */
+  await expect
+    .poll(() => recu.filter((r) => r.url.endsWith('.pmtiles')).length, {
+      timeout: 20_000,
+      message: 'aucun morceau de l’archive demandé : le fond est gris',
+    })
+    .toBeGreaterThan(2)
+  await expect
+    .poll(() => recu.filter((r) => r.url.includes('/fonts/')).length, {
+      timeout: 20_000,
+      message: 'aucune police demandée : la carte n’a aucune étiquette, donc rien n’est peint',
+    })
+    .toBeGreaterThan(0)
+
+  const ratees = recu.filter((r) => r.code >= 400)
+  expect(ratees.map((r) => `${r.code} ${r.url}`), 'une ressource de carte manque').toEqual([])
+  console.log(
+    `  réseau : ${recu.filter((r) => r.url.endsWith('.pmtiles')).length} plages d’archive · ` +
+      `${recu.filter((r) => r.url.includes('/fonts/')).length} polices · ` +
+      `${recu.filter((r) => r.url.includes('/sprites/')).length} sprites`,
+  )
+
+  // ⚠️ `pageErrors` n'attrape que les exceptions NON capturées. MapLibre,
+  // lui, se plaint dans la console sans lever — c'est par là qu'est passée
+  // l'erreur du worker, et c'est la seule chose qui l'a dite.
+  expect(erreursConsole, 'la carte se plaint dans la console').toEqual([])
 
   await page.screenshot({ path: 'carte-gens.png' })
   expect(pageErrors, `exception client : ${pageErrors.join(' · ')}`).toEqual([])
