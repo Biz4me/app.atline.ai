@@ -286,8 +286,13 @@ const adresseDe = (cid) => JSON.parse(ssh(`node e2e/server-helper.cjs adresse ${
  * un test l'aurait figée ailleurs : le jour où la clé, l'hôte ou le chemin
  * changent, un seul endroit doit suivre.
  */
-const poserRdv = (cid, heures = 26) =>
-  JSON.parse(ssh(`node e2e/server-helper.cjs rdv ${cid} ${heures}`).trim().split(/\r?\n/).pop())
+const poserRdv = (cid, heures = 26, lieu) =>
+  JSON.parse(
+    ssh(`node e2e/server-helper.cjs rdv ${cid} ${heures}${lieu ? ` ${JSON.stringify(lieu)}` : ''}`)
+      .trim()
+      .split(/\r?\n/)
+      .pop(),
+  )
 const retirerRdv = (rid) => ssh(`node e2e/server-helper.cjs rdv-delete ${rid}`)
 
 module.exports = {

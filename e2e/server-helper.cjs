@@ -130,6 +130,21 @@ const { encode } = require('next-auth/jwt')
       })
       if (!c) throw new Error(`aucun contact ${cid}`)
       const quand = new Date(Date.now() + h * 3600 * 1000)
+      /**
+       * UN LIEU FACULTATIF, ajouté le 17 novembre 2026 pour l'itinéraire.
+       *
+       * 🔴 POURQUOI PAS LE FORMULAIRE DE L'APP. Ce serait le chemin réel, et
+       * donc la meilleure preuve — sauf que `creerRendezVous` POUSSE dans
+       * l'agenda Google quand il est raccordé. Une sonde déposerait de vrais
+       * rendez-vous « E2E » dans le calendrier de quelqu'un, à chaque
+       * passage. On écrit donc en base, sur le contact jetable, et la sonde
+       * retire sa ligne elle-même.
+       *
+       * ⚠️ Et le TYPE suit : un itinéraire ne s'affiche qu'en présentiel ou
+       * quand un lieu est écrit. Sans ce paramètre, la sonde ne pourrait
+       * éprouver que le cas où le bouton est ABSENT.
+       */
+      const lieu = process.argv[5] ? String(process.argv[5]) : null
       const r = await prisma.appointment.create({
         data: {
           userId: c.userId,
@@ -138,10 +153,11 @@ const { encode } = require('next-auth/jwt')
           title: 'E2E Rendez-vous',
           startAt: quand,
           endAt: new Date(quand.getTime() + 30 * 60 * 1000),
+          ...(lieu ? { lieu, type: 'PRESENTIEL' } : {}),
         },
         select: { id: true },
       })
-      console.log(JSON.stringify({ rid: r.id, startAt: quand.toISOString() }))
+      console.log(JSON.stringify({ rid: r.id, startAt: quand.toISOString(), lieu }))
     } else if (cmd === 'rdv-delete') {
       await prisma.appointment.delete({ where: { id: cid } })
       console.log('rdv-delete ok')
