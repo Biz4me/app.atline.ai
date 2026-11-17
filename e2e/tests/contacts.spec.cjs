@@ -7,7 +7,7 @@
 // rien dans l'app ne sait en effacer un. On vérifie le formulaire, le filtre
 // et l'écran des manques — pas la création.
 
-const { test, expect, toucher, remplir } = require('../fixtures.cjs')
+const { test, expect, toucher, remplir, suivre } = require('../fixtures.cjs')
 
 test.use({ viewport: { width: 390, height: 844 } })
 
@@ -85,7 +85,26 @@ test('le filtre annonce ce qu’il donnera, et la liste dit qu’elle est filtr�
     page.getByRole('link', { name: 'Ce qui manque' }),
   )
   await expect(page.getByRole('link', { name: 'Ce qui manque' })).toHaveCount(1)
-  await page.getByRole('link', { name: 'Filtrer' }).click()
+
+  /**
+   * « FILTRER » A QUITTÉ CE MENU le 17 novembre 2026 : il a maintenant son
+   * bouton, visible, dans la ligne de contrôle. Le garder aux deux endroits
+   * ferait deux déclencheurs pour un même geste à dix centimètres d'écart.
+   *
+   * ET C'EST UN GARDE, PAS UN RATTRAPAGE : si l'entrée revenait dans le
+   * menu, cette ligne tomberait. C'est elle qui dit que le doublon n'est
+   * pas revenu.
+   */
+  await expect(
+    page.getByRole('link', { name: 'Filtrer', exact: true }),
+    'Filtrer est revenu dans le menu, en plus de son bouton',
+  ).toHaveCount(0)
+  /* ⚠️ ON RECHARGE AU LIEU DE FERMER. Le menu est une feuille qui VOILE la
+     page : tant qu'elle est ouverte, le bouton Filtres est visible mais
+     intouchable, et le clic expire sans rien dire. Chercher le bouton de
+     fermeture, c'est dépendre d'un libellé ; recharger ne dépend de rien. */
+  await page.goto('/gens', { waitUntil: 'domcontentloaded' })
+  await suivre(page.locator('[data-filtres]'), page, /\/gens\/filtrer/)
 
   await expect(page.getByRole('heading', { level: 1, name: 'Filtrer' })).toBeVisible({
     timeout: 20_000,
