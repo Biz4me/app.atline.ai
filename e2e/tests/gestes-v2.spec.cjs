@@ -14,6 +14,29 @@ test.use({ viewport: { width: 390, height: 844 } })
 const gestes = (page) => page.locator('[data-geste]')
 const geste = (page, nom) => page.locator(`[data-geste="${nom}"]`)
 
+/**
+ * APPELER PAR LE TELEPHONE, QUEL QUE SOIT L'ETAT DU GESTE.
+ *
+ * 🔴 DEPUIS LE 18 NOVEMBRE 2026, « Appeler » n'est plus toujours un lien.
+ * Avec un numero international, le telephone ET WhatsApp sont vivants : le
+ * geste ouvre alors un menu, et le lien `tel:` vit dans une entree. Avec un
+ * numero national, un seul canal est vivant et le geste agit directement.
+ *
+ * 🧭 Les sondes du JOURNAL ne parlent pas de cette bascule -- elles parlent
+ * de ce qui s'ecrit au retour d'un appel. Elles passent donc par ce chemin,
+ * qui marche dans les deux cas, au lieu de dependre d'une forme qu'elles ne
+ * surveillent pas.
+ */
+async function appelerParTelephone(page) {
+  const carte = geste(page, 'Appeler')
+  await expect(carte).toBeVisible({ timeout: 20_000 })
+  await carte.click()
+  const menu = page.locator('[data-menu-canaux]')
+  if (await menu.isVisible().catch(() => false)) {
+    await menu.locator('[data-canal="Téléphone"]').click()
+  }
+}
+
 /** 🔴 CE QU'ON ATTEND, DÉCLARÉ. Une sonde qui ne dit pas combien d'éléments
  *  elle doit trouver passe au vert quand elle n'en trouve aucun — c'est ce
  *  qui a laissé deux sondes de hauteur mentir en même temps le 8 novembre. */
@@ -22,7 +45,16 @@ const geste = (page, nom) => page.locator(`[data-geste="${nom}"]`)
 // **feindre**. L'apostrophe est la TYPOGRAPHIQUE (’), comme partout ailleurs
 // dans l'app — une droite ne correspondrait à rien.
 const ENTRAINER = 'S’entraîner'
-const ATTENDUS = ['Appeler', ENTRAINER, 'SMS', 'E-mail']
+/**
+ * LES QUATRE GESTES ONT CHANGE DE NOM ET DE NATURE le 18 novembre 2026.
+ *
+ * « SMS » est devenu « Message » parce que la carte n'ouvre plus un canal
+ * mais le CHOIX entre SMS, WhatsApp et e-mail. L'e-mail est descendu dans ce
+ * menu, ce qui a libere la quatrieme place pour « RDV » -- dont la carte de
+ * 74 px au milieu de la fiche a disparu en meme temps : une action posee au
+ * milieu d'une explication, et deux declencheurs pour un meme geste.
+ */
+const ATTENDUS = ['Appeler', ENTRAINER, 'Message', 'RDV']
 
 /**
  * SE COMPORTER COMME UN TÉLÉPHONE.
@@ -71,7 +103,9 @@ test('les quatre gestes, dans l’ordre, et éteints sans coordonnée', async ({
 
   // Le contact jetable n'a ni numéro ni adresse : trois cartes sur quatre
   // doivent être ÉTEINTES — ni liens morts, ni boutons qui crient au doigt.
-  for (const nom of ['Appeler', 'SMS', 'E-mail']) {
+  // ⚠️ DEUX, PAS TROIS. « RDV » est toujours allume -- poser un rendez-vous
+  // ne demande aucune coordonnee -- et « S'entrainer » aussi.
+  for (const nom of ['Appeler', 'Message']) {
     await expect(geste(page, nom)).toHaveAttribute('data-eteint', '')
     // ⚠️ Un `<span>` n'est pas un lien : c'est ça qu'on vérifie, pas la
     // couleur. Une carte grise qui navigue quand même serait le vrai défaut.
@@ -88,48 +122,76 @@ test('les quatre gestes, dans l’ordre, et éteints sans coordonnée', async ({
   expect(pageErrors, `exception client : ${pageErrors.join(' · ')}`).toHaveLength(0)
 })
 
-test('aucun geste ne porte son propre fond — pas de cadre dans un cadre', async ({ page, seed }) => {
+test('la carte allumée porte sa couleur, l’éteinte reste la surface', async ({ page, seed }) => {
   /**
-   * 🔴 LE DÉFAUT, VU PAR PATRICE LE 10 NOVEMBRE 2026 : *« je vois des carrés
-   * en transparence derrière les icônes »*. Il les voyait parce qu'ils y
-   * étaient. La correction précédente avait retiré la BORDURE et gardé le
-   * REMPLISSAGE : quatre `--color-fond` en rayon 12 dans une barre qui est à
-   * `--color-surface`, donc quatre carrés d'une autre couleur que leur propre
-   * barre, dans les deux thèmes.
+   * CETTE SONDE GARDAIT L'INVERSE JUSQU'AU 18 NOVEMBRE 2026, et elle avait
+   * raison a l'epoque. Patrice, le 10 novembre : « je vois des carres en
+   * transparence derriere les icones » -- quatre `--color-fond` dans une
+   * barre a `--color-surface`, c'est-a-dire un cadre dans un cadre.
    *
-   * 🧭 LA RÈGLE QUE ÇA FIGE : **le mobilier n'a pas de fond.** Les gestes sont
-   * la barre, ils ne sont pas DANS la barre. Ce qui dit « ça se touche », c'est
-   * la pastille colorée autour du glyphe et l'encre du verbe — pas un cadre.
+   * Il a demande l'inverse le 18 : « c'est la carte entiere qui est de
+   * couleur ». Ce n'est pas un retour en arriere : le defaut d'alors etait
+   * un fond PRESQUE identique a celui de la barre, qui ne disait rien et se
+   * voyait quand meme. Une carte franchement coloree, elle, DIT quelque
+   * chose.
    *
-   * ⚠️ ON LIT LA COULEUR CALCULÉE, PAS LA CLASSE. `bg-[var(--color-fond)]`,
-   * une couleur en dur ou un fond hérité donnent le même carré et ne se
-   * ressemblent pas dans le source.
+   * ⚠️ IL PROPOSAIT UNE ICONE BLANCHE. La mesure a tranche autrement, et la
+   * charte le disait deja : blanc sur orange = 2,8, sur teal 2,49, sur bleu
+   * 3,68 -- il en faut 4,5 pour du texte. C'est ce seuil que cette sonde
+   * garde maintenant, parce que c'est lui qu'on oublierait.
    */
   await page.goto(`/gens/${seed.cid}`, { waitUntil: 'domcontentloaded' })
   await expect(page.getByRole('heading', { level: 1 })).toBeVisible({ timeout: 20_000 })
   await expect(gestes(page)).toHaveCount(ATTENDUS.length)
 
-  const opaque = (c) => {
-    const p = (c || '').match(/[\d.]+/g)
-    return !!p && (p.length < 4 || parseFloat(p[3]) > 0)
-  }
-
-  const fonds = await gestes(page).evaluateAll((n) =>
-    n.map((e) => ({ mot: e.getAttribute('data-geste'), fond: getComputedStyle(e).backgroundColor })),
+  const lus = await gestes(page).evaluateAll((n) =>
+    n.map((e) => ({
+      mot: e.getAttribute('data-geste'),
+      eteint: e.hasAttribute('data-eteint'),
+      fond: getComputedStyle(e).backgroundColor,
+      encre: getComputedStyle(e.querySelector('span:last-child') || e).color,
+    })),
   )
-  console.log(`  fonds : ${fonds.map((f) => `${f.mot}=${f.fond}`).join(' · ')}`)
+  console.log(`  ${lus.map((f) => `${f.mot}=${f.fond}`).join(' · ')}`)
 
-  // 🔴 ON PROUVE QUE LE DÉTECTEUR DÉTECTE, avec la VRAIE valeur du défaut.
-  expect(opaque('rgb(245, 245, 246)'), 'le détecteur ne verrait pas le carré').toBe(true)
-  expect(opaque('rgba(0, 0, 0, 0)'), 'le détecteur crierait sur un fond absent').toBe(false)
+  /** Le contraste WCAG entre deux couleurs rendues, sans rien deviner. */
+  const contraste = (a, b) => {
+    const lum = (c) => {
+      const p = (c.match(/[\d.]+/g) || []).slice(0, 3).map((x) => Number(x) / 255)
+      const v = p.map((x) => (x <= 0.03928 ? x / 12.92 : Math.pow((x + 0.055) / 1.055, 2.4)))
+      return 0.2126 * v[0] + 0.7152 * v[1] + 0.0722 * v[2]
+    }
+    const [x, y] = [lum(a), lum(b)].sort((p, q) => q - p)
+    return Math.round(((x + 0.05) / (y + 0.05)) * 100) / 100
+  }
+  // 🔴 ON PROUVE LE DETECTEUR SUR LE VRAI CAS, avant de compter : le blanc
+  // sur l'orange est bien ce qu'il doit refuser.
+  expect(contraste('rgb(249, 115, 22)', 'rgb(255, 255, 255)')).toBeLessThan(4.5)
+  expect(contraste('rgb(249, 115, 22)', 'rgb(24, 25, 26)')).toBeGreaterThan(4.5)
 
-  expect(
-    fonds.filter((f) => opaque(f.fond)).map((f) => `${f.mot} (${f.fond})`),
-    'un geste peint son propre fond : le cadre dans le cadre est revenu',
-  ).toEqual([])
+  for (const g of lus) {
+    const lisible = contraste(g.fond, g.encre)
+    if (g.eteint) {
+      // L'eteinte est la SURFACE, pas un gris invente : l'app n'a qu'un seul
+      // « eteint », celui des pastilles.
+      expect(['rgb(255, 255, 255)', 'rgb(23, 24, 27)'], `${g.mot} éteint : ${g.fond}`).toContain(
+        g.fond,
+      )
+    } else {
+      const neutre =
+        g.fond === 'rgba(0, 0, 0, 0)' ||
+        ['rgb(255, 255, 255)', 'rgb(245, 245, 246)', 'rgb(23, 24, 27)', 'rgb(15, 16, 18)'].includes(
+          g.fond,
+        )
+      expect(neutre, `${g.mot} est allumé mais n’a pas de couleur (${g.fond})`).toBe(false)
+    }
+    expect(lisible, `${g.mot} : encre à ${lisible} sur son fond, il en faut 4,5`).toBeGreaterThan(
+      4.5,
+    )
+  }
 })
 
-test('un numéro allume Appeler et SMS, et fait apparaître WhatsApp', async ({ page, seed }) => {
+test('un numéro international ouvre les menus, et WhatsApp s’y allume', async ({ page, seed }) => {
   await page.goto(`/gens/${seed.cid}`, { waitUntil: 'domcontentloaded' })
   await expect(page.getByRole('heading', { level: 1 })).toBeVisible({ timeout: 20_000 })
 
@@ -149,18 +211,42 @@ test('un numéro allume Appeler et SMS, et fait apparaître WhatsApp', async ({ 
   await page.reload({ waitUntil: 'domcontentloaded' })
   await expect(page.getByRole('heading', { level: 1 })).toBeVisible({ timeout: 20_000 })
 
-  // Les espaces tombent, le « + » reste : `tel:` et `sms:` en ont besoin.
-  await expect(geste(page, 'Appeler')).toHaveAttribute('href', 'tel:+33612345678')
-  await expect(geste(page, 'SMS')).toHaveAttribute('href', 'sms:+33612345678')
-  for (const nom of ['Appeler', 'SMS']) {
+  for (const nom of ['Appeler', 'Message']) {
     await expect(geste(page, nom)).not.toHaveAttribute('data-eteint', '')
   }
 
+  /**
+   * 🔴 AVEC UN INDICATIF, LE GESTE DEVIENT UN MENU -- et c'est la regle, pas
+   * un effet de bord. Un menu ne s'ouvre que si DEUX canaux au moins sont
+   * vivants ; ici le telephone ET WhatsApp le sont, donc « Appeler » cesse
+   * d'etre un lien direct.
+   *
+   * 🧭 C'est ce qui tient les deux verites de la discussion du 18 novembre :
+   * Patrice voulait le choix WhatsApp (« certaines passent des appels par
+   * WhatsApp »), et un menu a une seule entree aurait coute une touche pour
+   * rien. La sonde garde la bascule elle-meme.
+   */
+  expect(await geste(page, 'Appeler').evaluate((e) => e.tagName)).toBe('BUTTON')
+  await geste(page, 'Appeler').click()
+  const menu = page.locator('[data-menu-canaux]')
+  await expect(menu, 'deux canaux vivants et pas de menu').toBeVisible({ timeout: 10_000 })
+
+  // Les espaces tombent, le « + » reste : `tel:` en a besoin.
+  await expect(menu.locator('[data-canal="Téléphone"]')).toHaveAttribute(
+    'href',
+    'tel:+33612345678',
+  )
   // ⚠️ `wa.me` VEUT DES CHIFFRES SEULS. Un « + » ou une espace et WhatsApp
-  // s'ouvre sur une erreur de numéro, ce qui ressemble à un bug de WhatsApp.
-  await expect(
-    page.getByRole('link', { name: /sur WhatsApp$/ }),
-  ).toHaveAttribute('href', 'https://wa.me/33612345678')
+  // s'ouvre sur une erreur de numero, ce qui ressemble a un bug de WhatsApp.
+  await expect(menu.locator('[data-canal="WhatsApp"]')).toHaveAttribute(
+    'href',
+    'https://wa.me/33612345678',
+  )
+  await expect(menu.locator('[data-canal="WhatsApp"]')).not.toHaveAttribute('data-eteint', '')
+
+  // Le menu se referme, sinon la capture qui suit le montrerait.
+  await page.getByRole('button', { name: 'Refermer' }).last().click()
+  await expect(menu).toHaveCount(0, { timeout: 10_000 })
 
   // ── LES CAPTURES, une fois les gestes ALLUMÉS ──
   // ⚠️ Ici et pas dans un test à part : une capture de la fiche vide
@@ -251,12 +337,9 @@ test('un appel journalisé monte le compteur d’expositions EN BASE', async ({ 
   await expect(page.locator('[data-champ="phone"]')).toContainText('+33', { timeout: 20_000 })
   await page.reload({ waitUntil: 'domcontentloaded' })
 
-  const appeler = page.locator('[data-geste="Appeler"]')
-  await expect(appeler).toBeVisible({ timeout: 20_000 })
-
   // ⚠️ RIEN N'EST ÉCRIT AU MOMENT DU GESTE. Ouvrir le téléphone ne prouve
   // pas qu'on a parlé : c'est la règle du journal, et on la vérifie ici.
-  await appeler.click()
+  await appelerParTelephone(page)
   await expect(page.locator('[data-question]')).toBeVisible({ timeout: 10_000 })
   const pendant = compter(seed.cid)
   expect(pendant.exposures, 'une exposition a été comptée AVANT la réponse').toBe(0)
@@ -291,7 +374,7 @@ test('« Pas fait » n’écrit rien, et c’est le point', async ({ page, seed 
   await expect(page.locator('[data-champ="phone"]')).toContainText('+33', { timeout: 20_000 })
   await page.reload({ waitUntil: 'domcontentloaded' })
 
-  await page.locator('[data-geste="Appeler"]').click()
+  await appelerParTelephone(page)
   await expect(page.locator('[data-question]')).toBeVisible({ timeout: 10_000 })
   await page.getByRole('button', { name: 'Pas fait' }).click()
 
