@@ -93,7 +93,10 @@ test('le menu se referme par le voile, et il n’a plus de croix', async ({ page
   await page.getByRole('button', { name: 'Enregistrer' }).click()
   await expect(page.locator('[data-champ="phone"]')).toContainText('+33', { timeout: 20_000 })
 
-  await page.locator('[data-geste="Appeler"]').click()
+  // ⚠️ PAR « MESSAGE » DEPUIS LE 18 NOVEMBRE 2026 : « Appeler » ne porte plus
+  // de menu, il mène à l'écran de préparation. « Message » en garde un — SMS,
+  // WhatsApp, e-mail — et c'est lui qui doit se refermer par le voile.
+  await page.locator('[data-geste="Message"]').click()
   const menu = page.locator('[data-menu-canaux]')
   await expect(menu).toBeVisible({ timeout: 10_000 })
   expect(await menu.locator('button').count(), 'la croix est revenue dans le menu').toBe(0)

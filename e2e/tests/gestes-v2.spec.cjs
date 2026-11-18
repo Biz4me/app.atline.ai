@@ -6,7 +6,7 @@
 // 🔴 ON N'ÉCRIT QUE SUR LE CONTACT JETABLE. La fixture `seed` en crée un par
 // test et le supprime : les contacts de Patrice sont sa matière première.
 
-const { test, expect, toucher, compter, ouvrirInfos } = require('../fixtures.cjs')
+const { test, expect, toucher, compter, ouvrirInfos, suivre } = require('../fixtures.cjs')
 
 test.use({ viewport: { width: 390, height: 844 } })
 
@@ -27,14 +27,30 @@ const geste = (page, nom) => page.locator(`[data-geste="${nom}"]`)
  * qui marche dans les deux cas, au lieu de dependre d'une forme qu'elles ne
  * surveillent pas.
  */
+/**
+ * ── 🔴 « APPELER » PASSE PAR UN ÉCRAN DEPUIS LE 18 NOVEMBRE 2026 ──────────
+ *
+ * La carte ouvrait un menu de canaux ; elle mène maintenant à
+ * `/gens/<id>/appeler`, qui porte le dernier échange, ce que l'appel doit
+ * obtenir et le script de l'étape. Le choix du canal se fait en BAS de cet
+ * écran-là : on décide comment joindre quelqu'un une fois qu'on sait quoi lui
+ * dire.
+ *
+ * 🧭 UN SEUL HELPER À CHANGER, ET LES DEUX SONDES DU JOURNAL SUIVENT. C'est
+ * exactement ce pour quoi il existe — sans lui, le même chemin aurait été
+ * recopié dans chaque test et il aurait fallu le corriger partout.
+ */
 async function appelerParTelephone(page) {
   const carte = geste(page, 'Appeler')
   await expect(carte).toBeVisible({ timeout: 20_000 })
-  await carte.click()
-  const menu = page.locator('[data-menu-canaux]')
-  if (await menu.isVisible().catch(() => false)) {
-    await menu.locator('[data-canal="Téléphone"]').click()
-  }
+  await suivre(carte, page, /\/appeler$/)
+
+  // Le téléphone est le canal choisi par défaut : il est le premier vivant.
+  const bouton = page.locator('[data-appeler]')
+  await expect(bouton, 'le bouton d’appel est absent de l’écran de préparation').toBeVisible({
+    timeout: 20_000,
+  })
+  await bouton.click()
 }
 
 /** 🔴 CE QU'ON ATTEND, DÉCLARÉ. Une sonde qui ne dit pas combien d'éléments
@@ -216,37 +232,50 @@ test('un numéro international ouvre les menus, et WhatsApp s’y allume', async
   }
 
   /**
-   * 🔴 AVEC UN INDICATIF, LE GESTE DEVIENT UN MENU -- et c'est la regle, pas
-   * un effet de bord. Un menu ne s'ouvre que si DEUX canaux au moins sont
-   * vivants ; ici le telephone ET WhatsApp le sont, donc « Appeler » cesse
-   * d'etre un lien direct.
+   * 🔴 LE CHOIX DU CANAL A CHANGÉ DE PLACE le 18 novembre 2026, et pas de
+   * nature. « Message » garde son menu — SMS, WhatsApp, e-mail ; « Appeler »
+   * mène désormais à un écran de préparation, et son canal se choisit en bas
+   * de celui-ci, une fois qu'on sait quoi dire.
    *
-   * 🧭 C'est ce qui tient les deux verites de la discussion du 18 novembre :
-   * Patrice voulait le choix WhatsApp (« certaines passent des appels par
-   * WhatsApp »), et un menu a une seule entree aurait coute une touche pour
-   * rien. La sonde garde la bascule elle-meme.
+   * 🧭 CE QUE LA SONDE PROTÈGE NE BOUGE PAS : Patrice voulait le choix
+   * WhatsApp (« certaines passent des appels par WhatsApp »), et il doit
+   * exister des deux côtés, avec les bons liens. On le vérifie aux deux
+   * endroits plutôt qu'à un seul.
    */
-  expect(await geste(page, 'Appeler').evaluate((e) => e.tagName)).toBe('BUTTON')
-  await geste(page, 'Appeler').click()
+  expect(await geste(page, 'Message').evaluate((e) => e.tagName)).toBe('BUTTON')
+  await geste(page, 'Message').click()
   const menu = page.locator('[data-menu-canaux]')
-  await expect(menu, 'deux canaux vivants et pas de menu').toBeVisible({ timeout: 10_000 })
-
-  // Les espaces tombent, le « + » reste : `tel:` en a besoin.
-  await expect(menu.locator('[data-canal="Téléphone"]')).toHaveAttribute(
-    'href',
-    'tel:+33612345678',
-  )
+  await expect(menu, 'trois canaux vivants et pas de menu').toBeVisible({ timeout: 10_000 })
   // ⚠️ `wa.me` VEUT DES CHIFFRES SEULS. Un « + » ou une espace et WhatsApp
   // s'ouvre sur une erreur de numero, ce qui ressemble a un bug de WhatsApp.
   await expect(menu.locator('[data-canal="WhatsApp"]')).toHaveAttribute(
     'href',
     'https://wa.me/33612345678',
   )
-  await expect(menu.locator('[data-canal="WhatsApp"]')).not.toHaveAttribute('data-eteint', '')
-
-  // Le menu se referme, sinon la capture qui suit le montrerait.
-  await page.getByRole('button', { name: 'Refermer' }).last().click()
+  /**
+   * ⚠️ ON REFERME PAR LE VOILE, PAS PAR ÉCHAP. Le menu n'écoute pas le
+   * clavier — c'est le voile qui ferme, sur toute la surface. Un `Escape` ne
+   * faisait rien, le voile restait, et le clic suivant tombait DESSUS : la
+   * sonde expirait soixante secondes plus tard en désignant la navigation,
+   * c'est-à-dire à dix lignes de la cause.
+   */
+  await page.mouse.click(195, 80)
   await expect(menu).toHaveCount(0, { timeout: 10_000 })
+
+  // ── Et du côté de l'appel, sur son écran ──
+  await suivre(geste(page, 'Appeler'), page, /\/appeler$/)
+  const bouton = page.locator('[data-appeler]')
+  // Les espaces tombent, le « + » reste : `tel:` en a besoin.
+  await expect(bouton).toHaveAttribute('href', 'tel:+33612345678')
+  await page.locator('[data-canal="whatsapp"]').click()
+  await expect(bouton).toHaveAttribute('href', 'https://wa.me/33612345678')
+
+  /**
+   * ⚠️ ON REVIENT SUR LA FICHE POUR LES CAPTURES. Elles montrent les quatre
+   * cartes allumées, et on est parti sur l'écran de préparation.
+   */
+  await page.goBack({ waitUntil: 'domcontentloaded' })
+  await expect(geste(page, 'Appeler')).toBeVisible({ timeout: 20_000 })
 
   // ── LES CAPTURES, une fois les gestes ALLUMÉS ──
   // ⚠️ Ici et pas dans un test à part : une capture de la fiche vide
@@ -393,8 +422,9 @@ test('« Pas fait » n’écrit rien, et c’est le point', async ({ page, seed 
   await expect(page.locator('[data-question]')).toBeVisible({ timeout: 10_000 })
   await page.getByRole('button', { name: 'Pas fait' }).click()
 
-  // La rangée reprend sa forme, et la base n'a pas bougé.
-  await expect(page.locator('[data-geste="Appeler"]')).toBeVisible({ timeout: 10_000 })
+  // ⚠️ ON EST SUR L'ÉCRAN DE PRÉPARATION, pas sur la fiche : c'est le bouton
+  // d'appel qui doit revenir, pas la carte. La rangée reprend sa forme.
+  await expect(page.locator('[data-appeler]')).toBeVisible({ timeout: 10_000 })
   const etat = compter(seed.cid)
   expect(etat.exposures, 'un compteur gonflé par un appel qu’on n’a pas passé').toBe(0)
   expect(etat.interactions).toHaveLength(0)

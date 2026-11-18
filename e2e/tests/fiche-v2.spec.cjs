@@ -7,7 +7,7 @@
 // démarrage et le supprime à la fin : les contacts de Patrice sont sa matière
 // première, et l'app ne sait pas en effacer un.
 
-const { test, expect, toucher, ouvrirInfos } = require('../fixtures.cjs')
+const { test, expect, toucher, ouvrirInfos, suivre } = require('../fixtures.cjs')
 
 test.use({ viewport: { width: 390, height: 844 } })
 
@@ -197,22 +197,28 @@ test('le geste dominant apparaît avec le numéro, et ne se dédouble pas', asyn
   // la rangée du numéro ne la double pas.
   await expect(page.locator('a[href^="tel:"]')).toHaveCount(0)
 
+  /**
+   * ── 🔴 « APPELER » MÈNE À UN ÉCRAN DEPUIS LE 18 NOVEMBRE 2026 ───────────
+   *
+   * Elle ouvrait un menu de canaux ici même. Elle conduit maintenant à
+   * `/gens/<id>/appeler` — le dernier échange, ce que l'appel doit obtenir,
+   * le script de l'étape — et le canal se choisit en bas de CET écran.
+   *
+   * 🧭 CE QUE LA SONDE PROTÉGEAIT NE CHANGE PAS : un seul déclencheur, et
+   * un seul lien par canal. On le vérifie simplement là où ils vivent — et
+   * on exige au passage que le numéro ait bien traversé, ce qui attrape un
+   * écran de préparation branché sur le mauvais contact.
+   */
   const carte = page.locator('[data-geste="Appeler"]')
-  await expect(carte).toHaveAttribute('data-menu-geste', '')
-  await carte.click()
+  await suivre(carte, page, /\/appeler$/)
 
-  const menu = page.locator('[data-menu-canaux]')
-  await expect(menu).toBeVisible({ timeout: 20_000 })
-
-  // UN SEUL de chaque, dans le menu : deux entrées « Téléphone » laisseraient
-  // quelqu'un choisir sans savoir laquelle est la bonne.
-  const appel = menu.locator('a[href^="tel:"]')
+  const appel = page.locator('[data-appeler]')
   await expect(appel).toHaveCount(1)
   await expect(appel).toHaveAttribute('href', 'tel:+33612345678')
 
-  const whatsapp = menu.locator('a[href^="https://wa.me/"]')
-  await expect(whatsapp).toHaveCount(1)
-  await expect(whatsapp).toHaveAttribute('href', 'https://wa.me/33612345678')
+  // WhatsApp est le second canal : on le choisit, et le bouton le suit.
+  await page.locator('[data-canal="whatsapp"]').click()
+  await expect(appel).toHaveAttribute('href', 'https://wa.me/33612345678')
 })
 
 test('un déroulant ne propose que les étapes de SA population', async ({ page, seed }) => {
