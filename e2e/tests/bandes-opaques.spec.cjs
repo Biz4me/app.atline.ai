@@ -178,13 +178,42 @@ const mesurer = async (page, theme) => {
   const tous = [...points, ...temoins]
 
   const avant = await lire(page, tous)
+  const yAvant = await page.evaluate(() => Math.round(window.scrollY))
   await page.mouse.wheel(0, 150)
   await page.waitForTimeout(600)
   await figer(page)
   const apres = await lire(page, tous)
+  const yApres = await page.evaluate(() => Math.round(window.scrollY))
 
   const ecart = (i) => Math.max(...[0, 1, 2].map((c) => Math.abs(avant[i][c] - apres[i][c])))
-  const bouge = Math.max(...temoins.map((_, k) => ecart(points.length + k)))
+
+  /**
+   * ── 🔴 LE CONTRÔLE POSITIF DEMANDE À LA PAGE, IL NE DEVINE PLUS ──────────
+   *
+   * Il valait « au moins un pixel témoin a changé ». Le commentaire des
+   * témoins, juste au-dessus, anticipait déjà le risque — *« un témoin peut
+   * tomber au milieu d'une carte blanche et retomber sur du blanc »* — et
+   * quatre points ne suffisaient pas : le 18 novembre 2026, la fiche en
+   * cartes a mis les champs derrière un second onglet, dont la liste de
+   * rangées est d'une uniformité parfaite. Les quatre témoins sont tombés sur
+   * du blanc, avant ET après.
+   *
+   * La sonde a donc annoncé *« le contenu n'a pas défilé »* alors que
+   * `scrollY` passait bel et bien de 0 à 150 — mesuré. **Elle accusait l'app
+   * d'un défaut qui était dans sa propre façon de regarder.**
+   *
+   * 🧭 On demande maintenant la position de défilement, qui est la chose
+   * qu'on voulait savoir. Deviner une cause observable est toujours un pari ;
+   * ici il n'y en a plus.
+   *
+   * ⚠️ CE QUE ÇA NE RÉPARE PAS, ET QUI SE DIT : sur un écran uniforme, la
+   * comparaison des pixels DANS la bande prouve moins — rien ne passe
+   * dessous. C'est l'écran « contacts », dense et coloré, qui porte la
+   * démonstration ; celui de la fiche vérifie surtout que rien n'a empiré.
+   */
+  const bouge = Math.abs(yApres - yAvant)
+  const temoinsBouges = Math.max(...temoins.map((_, k) => ecart(points.length + k)))
+  console.log(`  défilement : ${yAvant} → ${yApres} px · pixels témoins : ${temoinsBouges}`)
 
   const releve = bandes.map((b) => {
     const fautes = []
@@ -209,7 +238,10 @@ for (const ecran of ecrans) {
       expect(releve.length, `aucune bande trouvée sur ${ecran.nom}`).toBeGreaterThan(0)
       // ⚠️ LE CONTRÔLE POSITIF D'ABORD. Sans défilement réel, tout ce qui suit
       // serait vrai sans rien prouver.
-      expect(bouge, 'le contenu n’a pas défilé : la sonde ne prouverait rien').toBeGreaterThan(4)
+      expect(
+        bouge,
+        'la page n’a pas défilé d’un pixel : la sonde ne prouverait rien',
+      ).toBeGreaterThan(4)
 
       for (const b of releve) {
         expect(
