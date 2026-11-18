@@ -79,7 +79,10 @@ const { encode } = require('next-auth/jwt')
       const interactions = await prisma.interaction.findMany({
         where: { contactId: cid },
         orderBy: { createdAt: 'desc' },
-        select: { type: true, outcome: true, direction: true, isExposure: true },
+        // body : le message PREPARE, depuis l'ecran d'ecriture du
+        // 18 novembre 2026. Sans lui, la sonde ne peut pas prouver que le
+        // texte se range — et c'est lui qui rend l'historique possible.
+        select: { type: true, outcome: true, direction: true, isExposure: true, body: true },
       })
       console.log(JSON.stringify({ exposures: c.exposures, lastContact: c.lastContact, interactions }))
     } else if (cmd === 'adresse') {
