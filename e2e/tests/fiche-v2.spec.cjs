@@ -112,6 +112,23 @@ test('un champ n’est jamais proposé à deux endroits', async ({ page, seed })
   expect(deuxFois, `proposés à deux endroits : ${deuxFois.join(', ')}`).toHaveLength(0)
 })
 
+/**
+ * ── 🔴 CETTE SONDE A ÉTÉ ROUGE, ET ELLE AVAIT TORT ────────────────────────
+ *
+ * Elle exigeait `tel:0612345678` posé à plat sur la fiche. Depuis le
+ * 18 novembre 2026 elle mesurait l'app de la veille, pour deux raisons qui
+ * s'enchaînent :
+ *
+ *   ① la fiche IMPOSE l'indicatif, donc « 0612345678 » s'enregistre
+ *      « +33612345678 » ;
+ *   ② un numéro international rend le canal WhatsApp vivant — et deux canaux
+ *      vivants font un MENU, où le lien `tel:` se range.
+ *
+ * 🧭 Son rouge était donc la PREUVE que le travail avait atterri. Mais on ne
+ * la fait pas passer en baissant ce qu'elle exige : ce qu'elle protégeait —
+ * **un seul déclencheur par geste** — est exactement la faute récurrente de
+ * la maison, et ça se vérifie encore, menu ouvert ET menu fermé.
+ */
 test('le geste dominant apparaît avec le numéro, et ne se dédouble pas', async ({ page, seed }) => {
   await page.goto(`/gens/${seed.cid}`, { waitUntil: 'domcontentloaded' })
   await expect(page.getByRole('heading', { level: 1 })).toBeVisible({ timeout: 20_000 })
@@ -124,14 +141,35 @@ test('le geste dominant apparaît avec le numéro, et ne se dédouble pas', asyn
   await page.locator('[data-saisie="phone"]').fill('0612345678')
   await page.getByRole('button', { name: 'Enregistrer' }).click()
 
-  const appel = page.locator('a[href^="tel:"]')
-  await expect(appel).toHaveCount(1, { timeout: 20_000 })
-  await expect(appel).toHaveAttribute('href', 'tel:0612345678')
+  /**
+   * ⚠️ LA RÈGLE DE L'INDICATIF SE VÉRIFIE ICI, sur ce que l'écran affiche
+   * après l'enregistrement. C'est la seule assertion qui attrape un retour en
+   * arrière silencieux sur `composerNumero` — un numéro réécrit à plat
+   * continuerait d'ouvrir la fiche sans rien casser d'autre.
+   */
+  const rangee = page.locator('[data-champ="phone"]')
+  await expect(rangee).toContainText('+33612345678', { timeout: 20_000 })
 
-  // 🔴 UN SEUL DÉCLENCHEUR. Le numéro principal n'a PAS de lien d'appel dans
-  // sa rangée : le geste du bas le porte déjà. Deux gestes pour une même
-  // action, c'est la faute corrigée sur l'accueil et sur Formation.
+  // 🔴 MENU FERMÉ : AUCUN lien d'appel sur la fiche. Le geste porte l'action,
+  // la rangée du numéro ne la double pas.
+  await expect(page.locator('a[href^="tel:"]')).toHaveCount(0)
+
+  const carte = page.locator('[data-geste="Appeler"]')
+  await expect(carte).toHaveAttribute('data-menu-geste', '')
+  await carte.click()
+
+  const menu = page.locator('[data-menu-canaux]')
+  await expect(menu).toBeVisible({ timeout: 20_000 })
+
+  // UN SEUL de chaque, dans le menu : deux entrées « Téléphone » laisseraient
+  // quelqu'un choisir sans savoir laquelle est la bonne.
+  const appel = menu.locator('a[href^="tel:"]')
   await expect(appel).toHaveCount(1)
+  await expect(appel).toHaveAttribute('href', 'tel:+33612345678')
+
+  const whatsapp = menu.locator('a[href^="https://wa.me/"]')
+  await expect(whatsapp).toHaveCount(1)
+  await expect(whatsapp).toHaveAttribute('href', 'https://wa.me/33612345678')
 })
 
 test('un déroulant ne propose que les étapes de SA population', async ({ page, seed }) => {
