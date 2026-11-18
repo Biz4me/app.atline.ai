@@ -7,7 +7,7 @@
 // démarrage et le supprime à la fin : les contacts de Patrice sont sa matière
 // première, et l'app ne sait pas en effacer un.
 
-const { test, expect, toucher } = require('../fixtures.cjs')
+const { test, expect, toucher, ouvrirInfos } = require('../fixtures.cjs')
 
 test.use({ viewport: { width: 390, height: 844 } })
 
@@ -81,35 +81,78 @@ test('un champ se corrige sur place, et ça TIENT au rechargement', async ({ pag
   // l'air d'avoir enregistré ne prouve rien du serveur — c'est exactement la
   // classe de défaut que ce harnais existe pour attraper.
   await page.reload({ waitUntil: 'domcontentloaded' })
+  /**
+   * ⚠️ ET LE RECHARGEMENT RAMÈNE SUR L'ONGLET « FICHE ».
+   *
+   * L'onglet n'est pas dans l'URL : un rechargement, ou un retour plus tard,
+   * repart de l'onglet d'arrivée. C'est voulu — c'est l'écran qu'on veut
+   * voir quand on ouvre quelqu'un — mais ça se dit, et la sonde le dit en
+   * rouvrant Infos ici plutôt qu'en faisant comme si de rien n'était.
+   */
+  await ouvrirInfos(page)
   await expect(rangee(page, 'profession')).toContainText(valeur, { timeout: 20_000 })
+
+  // Le retour sur Fiche pour la dernière assertion : « Ce qui manque » y vit.
+  await page.locator('[data-onglet="Fiche"]').click()
 
   // Et il n'est plus dans « Ce qui manque » : les deux ne peuvent pas se
   // contredire, puisqu'ils lisent le même calcul.
   await expect(page.locator('[data-manque="profession"]')).toHaveCount(0)
 })
 
-test('un champ n’est jamais proposé à deux endroits', async ({ page, seed }) => {
+/**
+ * ── 🟢 CE QUE CETTE SONDE GARDAIT N'EXISTE PLUS, ET C'EST MIEUX ───────────
+ *
+ * Elle comparait « Ce qui manque » aux pastilles « + Métier », « + Formation »
+ * d'« Ajouter autre chose », parce qu'un champ apparaissait aux DEUX endroits
+ * — vu en production le 6 novembre 2026.
+ *
+ * Le 18 novembre, Patrice, capture à l'appui : *« fais les champs directement
+ * et mets-les au bon endroit le plus cohérent »*. Les pastilles sont parties,
+ * et avec elles la possibilité même du doublon : une rangée affichée à sa
+ * place ne peut pas être proposée ailleurs.
+ *
+ * 🧭 ON NE SUPPRIME PAS LA SONDE POUR AUTANT, ON LA RETOURNE. Deux choses
+ * doivent rester vraies, et aucune ne se vérifie toute seule :
+ *
+ *   ① la mécanique est bien PARTIE — sinon elle reviendrait par mégarde avec
+ *      son doublon ;
+ *   ② chaque champ nommé dans « Ce qui manque » a VRAIMENT une rangée en
+ *      face. Le raccourci promet « touche pour l'ajouter maintenant » : s'il
+ *      nommait un champ sans rangée, il mènerait nulle part — le cul-de-sac
+ *      que la maison retire partout.
+ */
+test('« ce qui manque » nomme des champs qui existent, et rien n’est proposé deux fois', async ({
+  page,
+  seed,
+}) => {
   await page.goto(`/gens/${seed.cid}`, { waitUntil: 'domcontentloaded' })
   await expect(page.getByRole('heading', { level: 1 })).toBeVisible({ timeout: 20_000 })
 
   const enHaut = await page.locator('[data-manque]').evaluateAll((n) =>
     n.map((e) => e.getAttribute('data-manque')),
   )
-  const enBas = await page.locator('[data-ajouter]').evaluateAll((n) =>
-    n.map((e) => e.getAttribute('data-ajouter')),
-  )
-
-  // La sonde doit prouver qu'elle sait TROUVER : sans ça, deux listes vides
-  // passeraient aussi bien qu'une page correcte.
+  // La sonde doit prouver qu'elle sait TROUVER : sans ça, une liste vide
+  // passerait aussi bien qu'une page correcte.
   expect(enHaut.length, '« Ce qui manque » devrait nommer des champs').toBeGreaterThan(0)
-  expect(enBas.length, '« Ajouter autre chose » devrait rester non vide').toBeGreaterThan(0)
 
-  // 🔴 Vu en production le 6 novembre 2026 : « Téléphone », « E-mail »,
-  // « Marché », « Couleur DISC » et « Métier » étaient proposés DEUX FOIS sur
-  // la même page, dans deux styles différents. Deux déclencheurs pour un même
-  // geste, sans qu'on sache lequel est le bon.
-  const deuxFois = enHaut.filter((c) => enBas.includes(c))
-  expect(deuxFois, `proposés à deux endroits : ${deuxFois.join(', ')}`).toHaveLength(0)
+  await ouvrirInfos(page)
+
+  // ① la mécanique des pastilles est partie, des deux côtés.
+  await expect(
+    page.locator('[data-ajouter]'),
+    '« Ajouter autre chose » est revenu : un champ peut de nouveau être proposé deux fois',
+  ).toHaveCount(0)
+
+  // ② et chaque nom mène à une vraie rangée.
+  const rangees = await page
+    .locator('[data-champ]')
+    .evaluateAll((n) => n.map((e) => e.getAttribute('data-champ')))
+  const orphelins = enHaut.filter((c) => !rangees.includes(c))
+  expect(
+    orphelins,
+    `« Ce qui manque » nomme des champs sans rangée : ${orphelins.join(', ')}`,
+  ).toEqual([])
 })
 
 /**
@@ -176,12 +219,30 @@ test('un déroulant ne propose que les étapes de SA population', async ({ page,
   await page.goto(`/gens/${seed.cid}`, { waitUntil: 'domcontentloaded' })
   await expect(page.getByRole('heading', { level: 1 })).toBeVisible({ timeout: 20_000 })
 
+  await ouvrirInfos(page)
+
   // Le contact jetable est un PROSPECT.
   // ⚠️ FERMÉE, une liste est une rangée comme les autres : on la trouve par
   // son repère, pas par le libellé « Étape : Nouveau » du déroulant — qui
   // n'existe plus qu'une fois la rangée ouverte.
   const rangeeEtape = page.locator('[data-champ="etape"]')
   await expect(rangeeEtape).toBeVisible()
+
+  /**
+   * 🔴 ET ELLE SUIT « ELLE EST », immédiatement. C'est ce qui rend ce test
+   * tenable sans garde dans le code : les choix d'Étape DÉPENDENT de la
+   * population, et tant que les deux rangées se touchent, on ne peut pas
+   * ouvrir l'une sans avoir vu l'autre. Rejetée en dernière rangée — ce que
+   * faisait `[...CHAMPS, champEtape]` — elle se trouvait douze lignes plus
+   * bas que ce qui la définit.
+   */
+  const ordre = await page
+    .locator('[data-groupe="evolue"] [data-champ]')
+    .evaluateAll((n) => n.map((e) => e.getAttribute('data-champ')))
+  expect(
+    ordre.indexOf('etape'),
+    `« Étape » ne suit plus « Elle est » : ${ordre.join(' · ')}`,
+  ).toBe(ordre.indexOf('kind') + 1)
   const options = page.getByRole('option')
   await toucher(rangeeEtape, options.first())
   await expect(options.filter({ hasText: 'Invitation' })).toHaveCount(1)

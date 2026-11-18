@@ -6,7 +6,7 @@
 // 🔴 ON N'ÉCRIT QUE SUR LE CONTACT JETABLE. La fixture `seed` en crée un par
 // test et le supprime : les contacts de Patrice sont sa matière première.
 
-const { test, expect, toucher, compter } = require('../fixtures.cjs')
+const { test, expect, toucher, compter, ouvrirInfos } = require('../fixtures.cjs')
 
 test.use({ viewport: { width: 390, height: 844 } })
 
@@ -277,6 +277,21 @@ test('un numéro international ouvre les menus, et WhatsApp s’y allume', async
 test('la rangée est FIXE, en bas, et survit au défilement', async ({ page, seed }) => {
   await page.goto(`/gens/${seed.cid}`, { waitUntil: 'domcontentloaded' })
   await expect(page.locator('[data-gestes]')).toBeVisible({ timeout: 20_000 })
+
+  /**
+   * ⚠️ ON OUVRE « INFOS » POUR AVOIR DE QUOI DÉFILER.
+   *
+   * Depuis le 18 novembre 2026 l'onglet Fiche tient presque sur un écran :
+   * les 23 rangées de champs sont passées derrière le second onglet. Une
+   * sonde qui défile sur une page qui ne défile pas ne prouve rien, et son
+   * assertion plus bas l'exige explicitement.
+   *
+   * 🧭 Et ça vérifie au passage ce qui compte vraiment ici : la rangée de
+   * gestes est HORS des onglets. Appeler quelqu'un doit rester possible
+   * pendant qu'on corrige son métier — une action rangée dans un onglet
+   * devient une action qu'on ne peut plus faire là où on est.
+   */
+  await ouvrirInfos(page)
 
   const mesure = () =>
     page.evaluate(() => {

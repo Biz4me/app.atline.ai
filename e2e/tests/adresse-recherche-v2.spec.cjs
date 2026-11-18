@@ -49,7 +49,7 @@
 // provoquer, le défaut qu'elle devait corriger. Le harnais l'écrit déjà pour
 // `suivre` ; ça vaut aussi pour une cible qui s'efface.
 
-const { test, expect, adresseDe } = require('../fixtures.cjs')
+const { test, expect, adresseDe, ouvrirInfos } = require('../fixtures.cjs')
 
 test.use({ viewport: { width: 390, height: 844 } })
 
@@ -77,17 +77,20 @@ test('une adresse choisie écrit les cinq champs ET la position', async ({
   await page.goto(`/gens/${seed.cid}`, { waitUntil: 'domcontentloaded' })
   await expect(page.locator('main')).toBeVisible({ timeout: 20_000 })
 
+  /* ⚠️ LES CHAMPS VIVENT DERRIÈRE L'ONGLET « INFOS » depuis le 18 novembre
+        2026, et la recherche d'adresse avec eux — elle est devenue une RANGÉE
+        de la liste, posée juste avant « Adresse », là où son effet atterrit. */
+  await ouvrirInfos(page)
+
   /* ── ③ LA RECHERCHE EST LÀ, SUR UN CONTACT SANS AUCUNE ADRESSE ── */
   const champ = page.locator('[data-adresse-auto] input')
   await expect(champ, 'la recherche d’adresse est absente d’une fiche vide').toBeVisible({
     timeout: 15_000,
   })
-  // Et la porte de secours aussi : la Base Adresse Nationale s'arrête aux
-  // frontières, donc une adresse étrangère doit rester saisissable.
-  await expect(
-    page.locator('[data-adresse-main]'),
-    'plus de chemin pour saisir une adresse à la main',
-  ).toBeVisible()
+  // 🟢 ET L'AUTRE CHEMIN N'A PLUS BESOIN D'UNE PORTE : les cinq rangées sont
+  // affichées, vides comprises, donc une adresse belge ou canadienne — que la
+  // Base Adresse Nationale ne connaît pas — se tape directement en dessous.
+  await expect(page.locator('[data-champ="country"]')).toBeVisible()
 
   /* ── LA FRAPPE, puis les suggestions. UNE SEULE FOIS : voir l'en-tête. ── */
   const premiere = page.locator('[data-suggestion]').first()

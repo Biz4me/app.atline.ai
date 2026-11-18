@@ -15,7 +15,7 @@
 // d'après le pays du distributeur — un Français notant un contact belge
 // obtenait un numéro faux sans jamais le voir.
 
-const { test, expect, toucher } = require('../fixtures.cjs')
+const { test, expect, toucher, ouvrirInfos } = require('../fixtures.cjs')
 
 test.use({ viewport: { width: 390, height: 844 } })
 
@@ -50,8 +50,11 @@ test('on tape son numéro comme on le connaît, et il part avec son indicatif', 
     timeout: 20_000,
   })
 
-  /* 🔴 LA SEULE PREUVE QUI COMPTE : le rechargement. */
+  /* 🔴 LA SEULE PREUVE QUI COMPTE : le rechargement.
+        ⚠️ Et il ramène sur l'onglet « Fiche » : l'onglet n'est pas dans l'URL,
+        donc un rechargement repart de l'écran d'arrivée. */
   await page.reload({ waitUntil: 'domcontentloaded' })
+  await ouvrirInfos(page)
   await expect(page.locator('[data-champ="phone"]')).toContainText('+33690557238', {
     timeout: 20_000,
   })

@@ -3,7 +3,7 @@
 // ⚠️ On évite le contact jetable : la fixture `seed` en crée un à chaque
 // test, et comme la liste trie par dernière modification, il arrive EN TÊTE.
 // Une capture prise dessus montrerait une fiche vide et ne prouverait rien.
-const { test, expect } = require('../fixtures.cjs')
+const { test, expect, ouvrirInfos } = require('../fixtures.cjs')
 
 test.use({ viewport: { width: 390, height: 844 } })
 
@@ -28,9 +28,36 @@ test('capture de la fiche', async ({ page }) => {
   // dessine à sa position d'écran, donc au MILIEU de l'image, et recouvre une
   // bande. Ce n'est pas un défaut de l'app : on le vérifie par l'arbre, pas
   // par l'œil.
-  await expect(page.locator('[data-champ="profession"]')).toBeVisible()
-  await expect(page.getByRole('heading', { name: 'Ce que je sais d’elle' })).toBeVisible()
-
   await page.screenshot({ path: 'capture-fiche.png' })
-  await page.screenshot({ path: 'capture-fiche-entiere.png', fullPage: true })
+
+  /**
+   * ── 🔴 CE QU'ELLE EXIGEAIT N'EXISTE PLUS, ET C'ÉTAIT VOULU ──────────────
+   *
+   * Elle attendait le titre « Ce que je sais d'elle ». Les cinq en-têtes de
+   * bloc sont partis le 18 novembre 2026 : *« les champs parlent d'eux-mêmes »*
+   * — cinq titres au-dessus de rangées déjà étiquetées, c'était chaque libellé
+   * écrit deux fois.
+   *
+   * 🧭 On ne baisse donc pas l'exigence, on la RETOURNE : au lieu d'attendre
+   * un titre, on exige que les deux premiers groupes n'en portent AUCUN. Sans
+   * ça, un titre qui revient par mégarde ne serait signalé par rien.
+   */
+  await ouvrirInfos(page)
+  await expect(page.locator('[data-champ="profession"]')).toBeVisible()
+
+  for (const groupe of ['unefois', 'evolue']) {
+    await expect(
+      page.locator(`[data-groupe="${groupe}"] h2`),
+      `le groupe « ${groupe} » a retrouvé un titre : les champs se nomment deux fois`,
+    ).toHaveCount(0)
+  }
+
+  /**
+   * ⚠️ ET LE TROISIÈME EN GARDE UN, exprès : rien dans « Dernier échange » ne
+   * prévient qu'on ne le tape pas. C'est le seul endroit où un en-tête gagne
+   * encore sa place, donc le seul qu'on exige.
+   */
+  await expect(page.locator('[data-groupe="mesure"] h2')).toHaveCount(1)
+
+  await page.screenshot({ path: 'capture-fiche-infos.png', fullPage: true })
 })

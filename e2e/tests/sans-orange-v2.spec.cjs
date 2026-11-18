@@ -87,8 +87,17 @@ test('aucun trait orange, nulle part dans la fiche', async ({ page, seed, pageEr
    * ⚠️ ET L'ORANGE QUI REMPLIT RESTE. Une sonde qui aurait chassé toute
    * trace d'orange aurait aussi éteint la carte « Appeler » — et on l'aurait
    * découvert en la regardant, pas en la mesurant.
+   *
+   * 🔴 ON ROUVRE PAR LA RANGÉE, PAS PAR LA PASTILLE. Elle retouchait
+   * « Ce qui manque » une seconde fois ; depuis les onglets du 18 novembre
+   * 2026, le premier appui bascule sur Infos et la pastille — qui vit sur
+   * l'onglet Fiche — n'est plus dans la page. La rangée, elle, est là.
    */
-  await toucher(page.locator('[data-manque="profession"]'), page.locator('[data-saisie="profession"]'))
+  await page.keyboard.press('Escape')
+  await toucher(
+    page.locator('[data-champ="profession"]'),
+    page.locator('[data-saisie="profession"]'),
+  )
   const bouton = await page
     .getByRole('button', { name: 'Enregistrer' })
     .evaluate((e) => getComputedStyle(e).backgroundColor)

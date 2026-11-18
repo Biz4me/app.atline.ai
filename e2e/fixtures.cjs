@@ -165,6 +165,30 @@ async function toucher(cible, consequence, options) {
 }
 
 /**
+ * OUVRIR L'ONGLET « INFOS » D'UNE FICHE CONTACT.
+ *
+ * ── 🔴 POURQUOI UN HELPER ET PAS UN CLIC RECOPIÉ ──────────────────────────
+ *
+ * Depuis le 18 novembre 2026 les 23 rangées de champs vivent derrière un
+ * second onglet. **Dix sondes** doivent donc l'ouvrir avant de chercher un
+ * champ. Recopié dix fois, le jour où l'onglet change de nom ou de repère on
+ * corrige neuf endroits et on cherche le dixième — c'est la faute que cette
+ * maison retire partout, écrite dans le harnais au lieu de l'app.
+ *
+ * ⚠️ IL PASSE PAR `toucher`, donc il insiste. Un `<button>` de React avale le
+ * clic entre le rendu et l'hydratation, et la bascule d'onglet est
+ * exactement le genre de geste qui tombe dans cette fenêtre.
+ *
+ * 🧭 Et il attend une CONSÉQUENCE, pas un délai : le groupe « une fois » est
+ * le seul élément qui n'existe que sur cet onglet.
+ */
+async function ouvrirInfos(page) {
+  const onglet = page.locator('[data-onglet="Infos"]')
+  await onglet.waitFor({ state: 'visible', timeout: 20_000 })
+  await toucher(onglet, page.locator('[data-groupe="unefois"]'))
+}
+
+/**
  * SUIVRE UN LIEN, et s'assurer qu'on est bien parti.
  *
  * 🔴 UN `<Link>` DE NEXT A UNE FENÊTRE OÙ IL AVALE LE CLIC. Avant
@@ -329,6 +353,7 @@ module.exports = {
   remplir,
   suivre,
   insister,
+  ouvrirInfos,
   compter,
   adresseDe,
   demain,

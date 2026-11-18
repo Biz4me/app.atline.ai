@@ -34,7 +34,7 @@
 // changerait pas non plus, et la sonde passerait au vert en n'ayant rien
 // vérifié. Elle exige donc qu'un point du CONTENU, lui, ait changé.
 
-const { test, expect } = require('../fixtures.cjs')
+const { test, expect, ouvrirInfos } = require('../fixtures.cjs')
 
 test.use({ viewport: { width: 390, height: 844 } })
 
@@ -124,6 +124,19 @@ const ecrans = [
       await page.goto('/gens', { waitUntil: 'domcontentloaded' })
       await page.locator('main ul li a').first().click()
       await page.locator('[data-gestes]').waitFor({ timeout: 20_000 })
+      /**
+       * 🔴 ON OUVRE « INFOS », ET C'EST LE CONTRÔLE POSITIF QUI L'EXIGE.
+       *
+       * Depuis le 18 novembre 2026 l'onglet Fiche tient presque sur un écran :
+       * les 23 rangées de champs sont passées derrière le second onglet. La
+       * page ne défilait donc plus, et la sonde tombait sur *« le contenu n'a
+       * pas défilé : la sonde ne prouverait rien »*.
+       *
+       * 🧭 Son rouge était juste : sans défilement elle ne mesure rien. Mais
+       * ce qu'il fallait corriger n'est pas le seuil, c'est l'ÉCRAN sur lequel
+       * elle mesure — et l'onglet Infos est le plus long de l'app.
+       */
+      await ouvrirInfos(page)
     },
   },
 ]

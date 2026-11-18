@@ -24,7 +24,7 @@
 // donc rendue AVANT — cette assertion échouerait sur l'ancien état, ce qui est
 // la seule chose qui fait d'elle un garde.
 
-const { test, expect, toucher } = require('../fixtures.cjs')
+const { test, expect, toucher, ouvrirInfos } = require('../fixtures.cjs')
 
 test.use({ viewport: { width: 390, height: 844 } })
 
@@ -49,21 +49,22 @@ test('les cinq champs d’adresse se suivent dans l’ordre d’une enveloppe', 
 }) => {
   await page.goto(`/gens/${seed.cid}`, { waitUntil: 'domcontentloaded' })
   await expect(page.locator('main')).toBeVisible({ timeout: 20_000 })
+  await ouvrirInfos(page)
 
-  // Sur un contact neuf les cinq rangées sont repliées derrière cette porte :
-  // le bloc n'affiche que la recherche. On la pousse pour les faire paraître.
-  const aLaMain = page.locator('[data-adresse-main]')
-  await expect(aLaMain, 'plus de chemin pour saisir une adresse à la main').toBeVisible({
-    timeout: 15_000,
-  })
   /**
-   * ⚠️ LA CONSÉQUENCE N'EST PAS `[data-champ="address"]`, et c'est une faute
-   * que j'ai faite avant de la corriger : `data-champ` vit sur la rangée
-   * FERMÉE, et un champ révélé alors qu'il est vide s'ouvre directement en
-   * saisie — il n'a donc pas d'attribut à attendre. On attend son libellé,
-   * qui n'existe nulle part ailleurs sur la page.
+   * 🟢 PLUS DE PORTE À POUSSER. Les cinq rangées étaient repliées derrière un
+   * « Saisir à la main » ; depuis le 18 novembre 2026 toutes les rangées
+   * s'affichent, vides comprises — *« fais les champs directement »*. Le
+   * bouton n'avait plus rien à ouvrir, il est parti.
+   *
+   * ⚠️ Et la sonde y gagne : elle mesure l'ordre sur l'écran tel qu'il arrive,
+   * sans un geste préalable qui pouvait, lui, échouer en silence.
    */
-  await toucher(aLaMain, page.getByText('Complément', { exact: true }))
+  await expect(
+    page.locator('[data-adresse-main]'),
+    'la porte « Saisir à la main » est revenue : les rangées se replient donc à nouveau',
+  ).toHaveCount(0)
+  await expect(page.getByText('Complément', { exact: true })).toBeVisible({ timeout: 15_000 })
 
   const corps = await page.locator('main').innerText()
 
@@ -75,7 +76,12 @@ test('les cinq champs d’adresse se suivent dans l’ordre d’une enveloppe', 
     return i
   }
 
-  const rue = ou('Rue')
+  /**
+   * ⚠️ « RUE » EST DEVENUE « ADRESSE » le 18 novembre 2026, demandé par
+   * Patrice : la rangée accepte aussi un lieu-dit, et la recherche y écrit une
+   * ligne entière, pas un nom de rue. Le mot change, l'ordre non.
+   */
+  const rue = ou('Adresse')
   const complement = ou('Complément')
   const codePostal = ou('Code postal')
   const ville = ou('Ville')
@@ -86,9 +92,9 @@ test('les cinq champs d’adresse se suivent dans l’ordre d’une enveloppe', 
     [rue, complement, codePostal, ville, pays].slice().sort((a, b) => a - b),
   )
 
-  // ⚠️ ET LE GARDE QUI COMPTE : la ville ne doit plus précéder la rue. C'est
+  // ⚠️ ET LE GARDE QUI COMPTE : la ville ne doit plus précéder l'adresse. C'est
   // exactement ce qu'elle faisait quand elle était déclarée dans « savoir ».
-  expect(ville, 'la ville est revenue avant la rue, donc dans l’autre bloc').toBeGreaterThan(rue)
+  expect(ville, 'la ville est revenue avant l’adresse, donc ailleurs dans la liste').toBeGreaterThan(rue)
 
   expect(pageErrors, `exception client : ${pageErrors.join(' · ')}`).toEqual([])
 })
