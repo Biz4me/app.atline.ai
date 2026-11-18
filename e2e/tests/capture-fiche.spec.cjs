@@ -53,11 +53,12 @@ test('capture de la fiche', async ({ page }) => {
   }
 
   /**
-   * ⚠️ ET LE TROISIÈME EN GARDE UN, exprès : rien dans « Dernier échange » ne
-   * prévient qu'on ne le tape pas. C'est le seul endroit où un en-tête gagne
-   * encore sa place, donc le seul qu'on exige.
+   * 🟢 ET IL N'Y A PLUS DE TROISIÈME GROUPE DU TOUT. « Dernier échange » et
+   * « Expositions » sont partis dans le portrait le 18 novembre 2026 — *« c'est
+   * des chiffres vivants, donc dans la fiche »*. Plus aucun titre nulle part
+   * sur cet onglet, et c'est l'état qu'on exige.
    */
-  await expect(page.locator('[data-groupe="mesure"] h2')).toHaveCount(1)
+  await expect(page.locator('[data-groupe="mesure"]')).toHaveCount(0)
 
   await page.screenshot({ path: 'capture-fiche-infos.png', fullPage: true })
 })

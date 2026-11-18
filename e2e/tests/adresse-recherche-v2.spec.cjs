@@ -49,7 +49,7 @@
 // provoquer, le défaut qu'elle devait corriger. Le harnais l'écrit déjà pour
 // `suivre` ; ça vaut aussi pour une cible qui s'efface.
 
-const { test, expect, adresseDe, ouvrirInfos } = require('../fixtures.cjs')
+const { test, expect, adresseDe, ouvrirInfos, toucher } = require('../fixtures.cjs')
 
 test.use({ viewport: { width: 390, height: 844 } })
 
@@ -82,11 +82,31 @@ test('une adresse choisie écrit les cinq champs ET la position', async ({
         de la liste, posée juste avant « Adresse », là où son effet atterrit. */
   await ouvrirInfos(page)
 
-  /* ── ③ LA RECHERCHE EST LÀ, SUR UN CONTACT SANS AUCUNE ADRESSE ── */
+  /**
+   * ── ③ LA RECHERCHE EST DANS LA RANGÉE « ADRESSE » ───────────────────────
+   *
+   * Elle vivait en rangée séparée juste au-dessus. Patrice, le 18 novembre
+   * 2026 : *« la fonction doit être dans le champ adresse tout simplement,
+   * cela fait doublon »* — deux endroits où taper une adresse à deux
+   * centimètres d'écart, la faute que la maison retire partout. On touche
+   * donc la rangée, et la recherche s'ouvre avec elle.
+   */
+  await toucher(
+    page.locator('[data-champ="address"]'),
+    page.locator('[data-adresse-auto] input'),
+  )
   const champ = page.locator('[data-adresse-auto] input')
-  await expect(champ, 'la recherche d’adresse est absente d’une fiche vide').toBeVisible({
+  await expect(champ, 'la recherche d’adresse est absente de la rangée').toBeVisible({
     timeout: 15_000,
   })
+
+  // 🔴 ET LA SAISIE LIBRE EST LÀ AUSSI, dans le même éditeur : la Base Adresse
+  // Nationale s'arrête aux frontières, et une adresse belge doit rester
+  // tapable. La recherche s'ajoute au champ, elle ne le remplace pas.
+  await expect(
+    page.locator('[data-saisie="address"]'),
+    'la recherche a remplacé la saisie libre : une adresse étrangère devient intapable',
+  ).toBeVisible()
   // 🟢 ET L'AUTRE CHEMIN N'A PLUS BESOIN D'UNE PORTE : les cinq rangées sont
   // affichées, vides comprises, donc une adresse belge ou canadienne — que la
   // Base Adresse Nationale ne connaît pas — se tape directement en dessous.

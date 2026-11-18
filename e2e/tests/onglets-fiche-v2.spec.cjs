@@ -38,9 +38,9 @@ const ORDRE = [
   'profession', 'education', 'source', 'birthDate', 'personality',
   // ② ce qui évolue
   'kind', 'etape', 'market', 'tags', 'note',
-  // ③ ce que l'app mesure
-  'lastContact', 'exposures',
 ]
+// ⚠️ `lastContact` et `exposures` n'y sont plus : ce sont des chiffres
+// vivants, ils se lisent dans le portrait et n'ont plus de rangée.
 
 test('les champs ne sont pas sur le premier onglet, et le compteur dit combien', async ({
   page,
@@ -66,12 +66,12 @@ test('les champs ne sont pas sur le premier onglet, et le compteur dit combien',
   ).toHaveCount(0)
 
   /**
-   * ⚠️ LE COMPTEUR NE COMPTE PAS LES DEUX RANGÉES MESURÉES. « 7 sur 23 »
-   * demanderait de remplir deux champs que personne ne remplit : un objectif
-   * inatteignable s'ignore, et ce compteur est la seule raison d'ouvrir
-   * l'onglet.
+   * ⚠️ LE COMPTEUR COMPTE EXACTEMENT LES RANGÉES QU'ON PEUT REMPLIR. Les deux
+   * chiffres vivants n'en sont pas : un objectif inatteignable s'ignore, et ce
+   * compteur est la seule raison d'ouvrir l'onglet. Ils ne sont plus dans
+   * `ORDRE` non plus, donc le dénominateur est sa longueur, telle quelle.
    */
-  const combien = ORDRE.length - 2
+  const combien = ORDRE.length
   await expect(infos, `le compteur devrait dire « … / ${combien} »`).toContainText(
     new RegExp(`\\d+\\s*/\\s*${combien}`),
   )
@@ -103,35 +103,113 @@ test('« ce qui manque » emmène sur l’onglet où vit la rangée', async ({ p
   ).toHaveAttribute('aria-selected', 'true')
 })
 
-test('ce que l’app compte se lit et ne s’ouvre pas', async ({ page, seed }) => {
+/**
+ * ── 🔴 LES CHIFFRES VIVANTS SE LISENT DANS LE PORTRAIT, ET NULLE PART AILLEURS
+ *
+ * Cette sonde vérifiait un groupe « Ce que l'app compte pour toi » au bas de
+ * l'onglet Infos, avec deux rangées non modifiables. Patrice, capture à
+ * l'appui : *« c'est des chiffres vivants, donc dans la fiche »*. Il a raison,
+ * et c'était mal rangé : « Dernier échange » et « Expositions » ne sont pas
+ * des informations qu'on RENSEIGNE, ce sont des faits qui bougent.
+ *
+ * 🧭 Ce qu'elle protégeait reste exigé, et c'est même plus fort : non
+ * seulement ces valeurs ne s'ouvrent pas, mais **elles n'ont plus de rangée du
+ * tout**. Une valeur que `journaliser()` écrit au retour d'un geste ne doit
+ * nulle part donner l'impression qu'on peut la taper — le prochain échange
+ * l'écraserait sans un mot.
+ */
+test('les chiffres vivants sont dans le portrait, et ne se saisissent nulle part', async ({
+  page,
+  seed,
+}) => {
   await page.goto(`/gens/${seed.cid}`, { waitUntil: 'domcontentloaded' })
   await expect(page.getByRole('heading', { level: 1 })).toBeVisible({ timeout: 20_000 })
-  await ouvrirInfos(page)
-
-  const mesure = page.locator('[data-groupe="mesure"]')
-  await expect(mesure, 'le groupe mesuré a disparu').toBeVisible()
 
   /**
-   * ⚠️ LA SONDE DOIT PROUVER QU'ELLE SAIT TROUVER avant de conclure à une
-   * absence. Un groupe vide rendrait tout ce qui suit vrai sans rien dire.
+   * 🔴 ON NE VÉRIFIE PAS LE PORTRAIT ICI, et son absence est VOULUE.
+   *
+   * Première version de cette sonde : elle exigeait le portrait sur le contact
+   * jetable, et elle a rougi. Le défaut n'était pas dans l'app — un contact
+   * sans métier, sans âge, sans ville et sans couleur n'A PAS de portrait, et
+   * afficher « jamais contacté·e » tout seul redirait ce que « ce qui se
+   * passe » dit déjà, deux lignes plus bas.
+   *
+   * 🧭 Le portrait se prouve donc sur un VRAI contact, dans la sonde du bas.
+   * Ici on vérifie l'autre moitié, celle qui vaut sur n'importe quelle fiche :
+   * ces valeurs n'ont de rangée NULLE PART — ni sur Fiche, ni sur Infos.
    */
-  const figees = mesure.locator('[data-figee]')
-  await expect(figees, 'aucune rangée mesurée : la sonde ne prouverait rien').not.toHaveCount(0)
-
-  /* ── 🔴 ON APPUIE VRAIMENT, et rien ne doit s'ouvrir. Un `data-figee` posé
-        sur une rangée qui s'ouvre quand même serait un attribut qui MENT, et
-        c'est la famille de défauts que cette app passe son temps à retirer. ── */
-  const exposition = mesure.locator('[data-champ="exposures"]')
-  await expect(exposition).toBeVisible()
-  await exposition.click({ force: true })
+  for (const cle of ['exposures', 'lastContact']) {
+    await expect(
+      page.locator(`[data-champ="${cle}"]`),
+      `« ${cle} » a retrouvé une rangée sur l’onglet Fiche`,
+    ).toHaveCount(0)
+  }
+  await ouvrirInfos(page)
   await expect(
-    page.locator('[data-saisie="exposures"]'),
-    '« Expositions » s’est ouvert : une valeur tapée là serait écrasée au prochain échange',
-  ).toHaveCount(0)
+    page.locator('[data-onglet="Infos"]'),
+    'l’onglet est retombé sur Fiche juste après la bascule',
+  ).toHaveAttribute('aria-selected', 'true')
 
-  // Et elle n'est pas un bouton : une cible qui répond au doigt sans rien
-  // faire est pire qu'une cible inerte.
-  await expect(exposition).not.toHaveRole('button')
+  for (const cle of ['exposures', 'lastContact']) {
+    await expect(
+      page.locator(`[data-champ="${cle}"]`),
+      `« ${cle} » a retrouvé une rangée : une valeur tapée là serait écrasée au prochain échange`,
+    ).toHaveCount(0)
+  }
+
+  /**
+   * ⚠️ ET LA SONDE PROUVE QU'ELLE SAIT TROUVER une rangée : sans ça, un
+   * onglet vide — ou un sélecteur devenu faux — rendrait les deux absences
+   * ci-dessus vraies sans rien dire du tout.
+   */
+  await expect(
+    page.locator('[data-champ="profession"]'),
+    'aucune rangée trouvée : la sonde ne prouverait rien',
+  ).toBeVisible()
+})
+
+/**
+ * 🔴 LE SURTITRE EST PARTI : *« prénom et nom suffisent »*. Il portait
+ * « DÉMARRAGE · ANCIEN COMMERCIAL » au-dessus du nom, et l'étape s'y redisait
+ * à trois lignes de « ce qui se passe ».
+ */
+test('l’en-tête ne porte que le nom', async ({ page }) => {
+  await page.goto('/gens', { waitUntil: 'domcontentloaded' })
+  const lignes = page.locator('[data-contact]')
+  await expect(lignes.first()).toBeVisible({ timeout: 20_000 })
+  await lignes.filter({ hasNotText: 'E2E' }).first().click()
+  await expect(page).toHaveURL(/\/gens\/[a-z0-9]+$/i, { timeout: 20_000 })
+
+  const titre = page.getByRole('heading', { level: 1 })
+  await expect(titre).toBeVisible()
+
+  /**
+   * ⚠️ ON MESURE CE QUI EST AU-DESSUS DU TITRE, pas le titre lui-même : le
+   * surtitre était un élément à part, et un `toHaveText` sur le h1 serait
+   * resté vert avec lui juste à côté.
+   */
+  const surtitre = await titre.evaluate((h) => {
+    const avant = h.previousElementSibling
+    return avant ? avant.textContent.trim() : ''
+  })
+  expect(surtitre, `un surtitre est revenu au-dessus du nom : « ${surtitre} »`).toBe('')
+
+  /**
+   * ── ET CE QU'IL PORTAIT SE LIT DANS LE PORTRAIT ─────────────────────────
+   *
+   * 🔴 C'est ICI qu'on le prouve, sur un vrai contact : il est bâti de métier,
+   * âge, ville, couleur DISC, marché et chiffres vivants, et un contact
+   * jetable n'a rien de tout ça. Exigé sur une fiche vide, on exigerait que
+   * l'app invente.
+   */
+  const portrait = page.locator('[data-portrait]')
+  await expect(portrait, 'le portrait a disparu de la tête de fiche').toBeVisible({
+    timeout: 15_000,
+  })
+  await expect(
+    portrait,
+    'le portrait ne porte plus les chiffres vivants',
+  ).toContainText(/exposition|jamais contacté|dernier échange/i)
 })
 
 /**
