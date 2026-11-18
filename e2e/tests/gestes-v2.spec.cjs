@@ -441,12 +441,22 @@ test('s’entraîner depuis une fiche joue l’appel que SON étape impose', asy
   // ⚠️ `hasText` LIT LA SOURCE, pas le rendu : la bande est mise en capitales
   // par le CSS, et c'est bien « Ton entraînement » qu'il faut écrire ici.
   // Elle disait « À simuler » jusqu'au 10 novembre 2026.
-  const promis = (await page.locator('section', { hasText: 'Ton entraînement' }).first().innerText())
-    .split('\n')
-    .map((l) => l.trim())
-    .filter(Boolean)
-  expect(promis.length, 'la bande « Ton entraînement » est absente ou vide').toBeGreaterThan(1)
-  const titreAppel = promis[1]
+  /**
+   * 🔴 ELLE PRÉLEVAIT « LA DEUXIÈME LIGNE DE LA CARTE », et ça a cassé.
+   *
+   * Le 18 novembre 2026, « Ton entraînement » et « La leçon qui prépare » ont
+   * fusionné en « Pour te préparer » — deux cartes pour une seule idée. La
+   * carte a gagné un titre, et `promis[1]` désignait désormais autre chose.
+   *
+   * 🧭 UNE POSITION DANS UN BLOC DE TEXTE N'EST PAS UN REPÈRE : elle se
+   * déplace à chaque rangement, et le rouge arrive loin de la cause. Le titre
+   * de l'appel porte maintenant `data-appel-titre`.
+   */
+  const titre = page.locator('[data-appel-titre]')
+  await expect(titre, 'la carte « Pour te préparer » ne nomme aucun appel').toBeVisible({
+    timeout: 15_000,
+  })
+  const titreAppel = (await titre.innerText()).trim()
 
   // …puis on suit le geste, et les deux écrans doivent dire la MÊME chose.
   await page.locator(`[data-geste="${ENTRAINER}"]`).click()
@@ -490,12 +500,25 @@ test('l’en-tête porte l’identité, et la carte « qui c’est » n’est pl
   await expect(titre).toHaveText('E2E Test')
 
   const entete = page.locator('header')
-  // ⚠️ « Nouveau » ET NON « NOUVEAU ». Les capitales viennent d'un
-  // `text-transform: uppercase`, qui ne touche que l'affichage : le texte
-  // comparé ici est celui de la SOURCE. Le piège est déjà écrit dans
-  // `references/pieges.md` du harnais, et je suis tombé dedans quand même.
-  await expect(entete).toContainText('Nouveau')
-  // Les initiales remontent avec le reste : c'est la seule information de
+  /**
+   * 🔴 L'ÉTAPE A QUITTÉ L'EN-TÊTE le 18 novembre 2026 — Patrice : *« prénom
+   * et nom suffisent »*. Elle y était une étiquette grise en capitales ; elle
+   * est maintenant collée à la phrase qu'elle décide, dans « Prochaine
+   * étape ».
+   *
+   * 🧭 ON NE BAISSE PAS L'EXIGENCE, ON LA DÉPLACE : l'étape doit toujours
+   * être lisible quelque part, sinon on l'aurait simplement perdue — et une
+   * sonde qui se contente de constater sa disparition ne l'aurait pas vu.
+   *
+   * ⚠️ « Nouveau » ET NON « NOUVEAU » : les capitales viennent d'un
+   * `text-transform`, et `toContainText` lit la SOURCE.
+   */
+  await expect(entete).not.toContainText('Nouveau')
+  await expect(
+    page.locator('[data-prochaine-etape]'),
+    'l’étape a quitté l’en-tête sans réapparaître nulle part',
+  ).toContainText('Nouveau')
+  // Les initiales restent dans l'en-tête : c'est la seule information de
   // l'ancienne carte qui soit purement visuelle.
   await expect(entete).toContainText('ET')
 

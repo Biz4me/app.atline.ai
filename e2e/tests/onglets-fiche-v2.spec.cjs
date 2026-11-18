@@ -52,8 +52,15 @@ test('les champs ne sont pas sur le premier onglet, et le compteur dit combien',
 
   const fiche = page.locator('[data-onglet="Fiche"]')
   const infos = page.locator('[data-onglet="Infos"]')
-  await expect(fiche).toHaveAttribute('aria-selected', 'true')
-  await expect(infos).toHaveAttribute('aria-selected', 'false')
+  /**
+   * ⚠️ `aria-pressed` ET NON `aria-selected` depuis le 18 novembre 2026.
+   * La bascule est devenue la pastille de l'écran Contacts : un BOUTON à
+   * deux états, pas un onglet. `aria-selected` n'a de sens que dans un
+   * `tablist`, et le laisser aurait fait annoncer n'importe quoi au
+   * lecteur d'écran — sans que rien ne le dise à l'œil.
+   */
+  await expect(fiche).toHaveAttribute('aria-pressed', 'true')
+  await expect(infos).toHaveAttribute('aria-pressed', 'false')
 
   /**
    * 🔴 LE CONTRÔLE QUI COMPTE : aucune rangée de champ sur l'onglet d'arrivée.
@@ -77,7 +84,7 @@ test('les champs ne sont pas sur le premier onglet, et le compteur dit combien',
   )
 
   await ouvrirInfos(page)
-  await expect(infos).toHaveAttribute('aria-selected', 'true')
+  await expect(infos).toHaveAttribute('aria-pressed', 'true')
   await expect(page.locator('[data-champ]').first()).toBeVisible()
 
   expect(pageErrors, `exception client : ${pageErrors.join(' · ')}`).toEqual([])
@@ -100,7 +107,7 @@ test('« ce qui manque » emmène sur l’onglet où vit la rangée', async ({ p
   await expect(
     page.locator('[data-onglet="Infos"]'),
     'la saisie s’est ouverte mais l’onglet n’a pas suivi',
-  ).toHaveAttribute('aria-selected', 'true')
+  ).toHaveAttribute('aria-pressed', 'true')
 })
 
 /**
@@ -148,7 +155,7 @@ test('les chiffres vivants sont dans le portrait, et ne se saisissent nulle part
   await expect(
     page.locator('[data-onglet="Infos"]'),
     'l’onglet est retombé sur Fiche juste après la bascule',
-  ).toHaveAttribute('aria-selected', 'true')
+  ).toHaveAttribute('aria-pressed', 'true')
 
   for (const cle of ['exposures', 'lastContact']) {
     await expect(
