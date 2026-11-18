@@ -475,14 +475,10 @@ function runEngine(R: Refs, name: string, onDone: Done) {
   }
   // Accusé du tempérament du prospect (annonce comment Atlas va adapter le message)
   const ackContact = (c: string) => ({
-    // 🔴 Permutée jusqu'au 18 novembre 2026, comme les cinq autres tables.
-    // C'est `scripts/verifier-disc.mjs` qui a trouvé celle-ci : je l'avais
-    // ratée en corrigeant l'autre table du même fichier, douze lignes plus
-    // bas. Un garde vaut mieux qu'une relecture attentive.
     ROUGE: `Quelqu'un qui fonce : j'irai droit au but, du concret, zéro détour.`,
-    JAUNE: `Quelqu'un qui déborde d'énergie : je garderai un ton vivant et positif.`,
-    VERT: `Quelqu'un tourné vers le lien : je miserai sur l'écoute et la sincérité.`,
-    BLEU: `Quelqu'un qui veut des preuves : je resterai factuel et précis, sans pression.`,
+    VERT: `Quelqu'un qui veut des preuves : je resterai clair et précis, sans pression.`,
+    JAUNE: `Quelqu'un tourné vers le lien : je miserai sur la chaleur et la sincérité.`,
+    BLEU: `Quelqu'un qui déborde d'énergie : je garderai un ton vivant et positif.`,
   }[c] || `Pas de souci — je reste sur un ton naturel, qui passe avec tout le monde.`)
   // F2 — Ton premier prospect : prénom → relation (marché) → couleur → message déposé
   function tonPremierProspect(then: () => void) {
@@ -533,12 +529,10 @@ function runEngine(R: Refs, name: string, onDone: Done) {
         `Débrief : ton émotion, tes points à corriger`,
       ])
       const cc = String(D.contactColor || '')
-      // 🔴 Trois couleurs permutées jusqu'au 18 novembre 2026 : Bleu est
-      // l'analyse, Jaune l'enthousiasme, Vert la stabilité (Schreiter).
       const setup = cc === 'ROUGE' ? `${firstName} fonce : attends-toi à du frontal, du chiffré.`
-        : cc === 'BLEU' ? `${firstName} veut des preuves : du scepticisme, du factuel.`
-        : cc === 'VERT' ? `${firstName} mise sur le lien : du doux, du relationnel.`
-        : cc === 'JAUNE' ? `${firstName} déborde d'énergie : du spontané, ça va vite.`
+        : cc === 'VERT' ? `${firstName} veut des preuves : du scepticisme, du factuel.`
+        : cc === 'JAUNE' ? `${firstName} mise sur le lien : du doux, du relationnel.`
+        : cc === 'BLEU' ? `${firstName} déborde d'énergie : du spontané, ça va vite.`
         : `${firstName} — voici une objection probable :`
       chatAtlas(setup, () => {
         streamCard({
