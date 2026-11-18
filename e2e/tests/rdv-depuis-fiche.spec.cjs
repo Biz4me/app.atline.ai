@@ -19,7 +19,22 @@ test('la fiche propose le rendez-vous, et emmène la personne avec elle', async 
   seed,
 }) => {
   await page.goto(`/gens/${seed.cid}`, { waitUntil: 'domcontentloaded' })
-  const porte = page.getByRole('link', { name: /Prendre un rendez-vous/ })
+  /**
+   * 🔴 LA PORTE A DEMENAGE le 18 novembre 2026. Elle etait une carte de
+   * 74 px au MILIEU de la fiche, coincee entre « ce qui se passe » et « ton
+   * entrainement » : une action posee au milieu d'une explication. Elle est
+   * descendue dans la rangee des gestes, ou vivent les actions.
+   *
+   * ⚠️ ET ELLE N'EST PAS RESTEE EN HAUT EN PLUS -- c'est ce que la ligne
+   * suivante garde : deux declencheurs pour un meme geste, c'est la faute
+   * que cet ecran retire partout.
+   */
+  await expect(
+    page.getByRole('link', { name: /Prendre un rendez-vous/ }),
+    'la carte du milieu est revenue, en plus de la carte RDV',
+  ).toHaveCount(0)
+
+  const porte = page.locator('[data-geste="RDV"]')
   await expect(porte).toBeVisible({ timeout: 20_000 })
   await expect(porte).toHaveAttribute('href', `/agenda/nouveau?contact=${seed.cid}`)
 
