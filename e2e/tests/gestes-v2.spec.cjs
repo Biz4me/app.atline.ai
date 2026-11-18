@@ -242,25 +242,17 @@ test('un numéro international ouvre les menus, et WhatsApp s’y allume', async
    * exister des deux côtés, avec les bons liens. On le vérifie aux deux
    * endroits plutôt qu'à un seul.
    */
-  expect(await geste(page, 'Message').evaluate((e) => e.tagName)).toBe('BUTTON')
-  await geste(page, 'Message').click()
-  const menu = page.locator('[data-menu-canaux]')
-  await expect(menu, 'trois canaux vivants et pas de menu').toBeVisible({ timeout: 10_000 })
-  // ⚠️ `wa.me` VEUT DES CHIFFRES SEULS. Un « + » ou une espace et WhatsApp
-  // s'ouvre sur une erreur de numero, ce qui ressemble a un bug de WhatsApp.
-  await expect(menu.locator('[data-canal="WhatsApp"]')).toHaveAttribute(
-    'href',
-    'https://wa.me/33612345678',
-  )
   /**
-   * ⚠️ ON REFERME PAR LE VOILE, PAS PAR ÉCHAP. Le menu n'écoute pas le
-   * clavier — c'est le voile qui ferme, sur toute la surface. Un `Escape` ne
-   * faisait rien, le voile restait, et le clic suivant tombait DESSUS : la
-   * sonde expirait soixante secondes plus tard en désignant la navigation,
-   * c'est-à-dire à dix lignes de la cause.
+   * ⚠️ LES DEUX GESTES MÈNENT À UN ÉCRAN depuis le 18 novembre 2026, et plus
+   * à un menu. Le canal se choisit en bas de chacun, une fois qu'on sait quoi
+   * dire — c'est la même règle des deux côtés.
    */
-  await page.mouse.click(195, 80)
-  await expect(menu).toHaveCount(0, { timeout: 10_000 })
+  await suivre(geste(page, 'Message'), page, /\/ecrire$/)
+  await expect(page.locator('[data-canal="WHATSAPP"]'), 'WhatsApp absent des canaux du message').toBeVisible({
+    timeout: 60_000,
+  })
+  await page.goBack({ waitUntil: 'domcontentloaded' })
+  await expect(geste(page, 'Appeler')).toBeVisible({ timeout: 20_000 })
 
   // ── Et du côté de l'appel, sur son écran ──
   await suivre(geste(page, 'Appeler'), page, /\/appeler$/)
