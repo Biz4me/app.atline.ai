@@ -17,9 +17,13 @@ import { PersonalityQuiz, describePersonality } from '@/components/personality-q
 /* ── Référentiels ─────────────────────────────────────────────── */
 const PERSO: Record<string, { label: string; hex: string; desc: string; approach: string }> = {
   ROUGE: { label: 'Rouge', hex: '#EF4444', desc: 'Fonceur — résultats, direct, décide vite.', approach: 'Va droit au but, parle chiffres et défi. Évite les détails.' },
-  VERT:  { label: 'Vert',  hex: '#22C55E', desc: 'Analytique — veut des preuves, des faits.', approach: 'Apporte des faits, des preuves, laisse-lui le temps. Zéro hype.' },
-  BLEU:  { label: 'Bleu',  hex: '#3B82F6', desc: 'Social — fun, gens, nouveauté.', approach: "Mise sur l'énergie, l'aventure, les gens. Évite les chiffres." },
-  JAUNE: { label: 'Jaune', hex: '#F4B342', desc: 'Relationnel — aider, harmonie, zéro pression.', approach: "Chaleur, écoute, montre comment ça aide les gens. Aucune pression." },
+  // 🔴 TROIS COULEURS PERMUTÉES jusqu'au 18 novembre 2026 : ce fichier disait
+  // Vert = analytique, Bleu = social, Jaune = relationnel. Atline suit les
+  // quatre couleurs de Schreiter — Jaune influence, Vert stabilité, Bleu
+  // analyse. Les hex ne bougent pas, les descriptions changent de clé.
+  JAUNE: { label: 'Jaune', hex: '#F4B342', desc: 'Social — fun, gens, nouveauté.', approach: "Mise sur l'énergie, l'aventure, les gens. Évite les chiffres." },
+  VERT:  { label: 'Vert',  hex: '#22C55E', desc: 'Relationnel — aider, harmonie, zéro pression.', approach: "Chaleur, écoute, montre comment ça aide les gens. Aucune pression." },
+  BLEU:  { label: 'Bleu',  hex: '#3B82F6', desc: 'Analytique — veut des preuves, des faits.', approach: 'Apporte des faits, des preuves, laisse-lui le temps. Zéro hype.' },
 }
 const PROSPECT_STAGES = [
   { id: 'NOUVEAU', label: 'Nouveau' },

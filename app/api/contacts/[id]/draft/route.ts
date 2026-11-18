@@ -4,11 +4,20 @@ import { authOptions } from '@/lib/auth'
 import { db } from '@/lib/db'
 import { readAtlas } from '@/lib/atlas'
 
+/**
+ * 🔴 TROIS COULEURS ÉTAIENT PERMUTÉES jusqu'au 18 novembre 2026.
+ *
+ * Atline suit les quatre couleurs de Schreiter : Rouge dominance, Jaune
+ * influence, Vert stabilité, Bleu analyse. Ce fichier donnait le ton
+ * « enthousiaste, fun » à un BLEU — c'est-à-dire exactement l'inverse de ce
+ * qu'un analytique attend. **Un message écrit sur le mauvais ton se lit très
+ * bien ; c'est ce qui rend ce défaut impossible à voir.**
+ */
 const COLOR_TONE: Record<string, string> = {
   ROUGE: "Profil ROUGE (fonceur) : va droit au but, parle résultat/concret, zéro blabla, sois assuré.",
-  BLEU: "Profil BLEU (social) : sois enthousiaste, chaleureux, mise sur le fun, l'aventure et les gens. Un emoji ok.",
-  JAUNE: "Profil JAUNE (relationnel) : sois doux, bienveillant, AUCUNE pression, montre que tu penses à lui/elle.",
-  VERT: "Profil VERT (analytique) : sois factuel, précis, calme, sans hype ; propose une info concrète.",
+  JAUNE: "Profil JAUNE (enthousiaste) : sois chaleureux, mise sur le fun, l'aventure et les gens. Un emoji ok.",
+  VERT: "Profil VERT (relationnel) : sois doux, bienveillant, AUCUNE pression, montre que tu penses à lui/elle.",
+  BLEU: "Profil BLEU (analytique) : sois factuel, précis, calme, sans hype ; propose une info concrète.",
 }
 
 const STAGE_INTENT: Record<string, string> = {

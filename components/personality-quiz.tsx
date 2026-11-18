@@ -13,23 +13,46 @@ const PROFILES: Record<Color, Profile> = {
     caracterise: 'Direct, rapide, orienté résultats — tu décides vite et tu avances.',
     adapte: 'Atlas ira droit au but : objectifs, chiffres, actions.',
   },
-  VERT: {
-    name: 'Vert', color: '#22C55E',
-    archetype: { m: "L'Analyste", f: "L'Analyste", n: 'Profil Analyste' },
-    caracterise: "Rigoureux et prudent — tu veux des faits avant d'agir.",
-    adapte: "Atlas te donnera des preuves, du concret, et le temps d'analyser.",
-  },
-  BLEU: {
-    name: 'Bleu', color: '#3B82F6',
+  /**
+   * ── 🔴 LES TROIS COULEURS ÉTAIENT PERMUTÉES (18 novembre 2026) ───────────
+   *
+   * Atline suit les quatre couleurs de Tom « Big Al » Schreiter, décalquées
+   * du DISC : **Rouge** dominance/action, **Jaune** influence/enthousiasme,
+   * **Vert** stabilité/harmonie, **Bleu** conformité/analyse.
+   *
+   * Ce fichier disait : Vert = analytique, Bleu = sociable, Jaune =
+   * relationnel. Soit une rotation à trois — seul Rouge tombait juste. Et ce
+   * n'était pas une faute isolée : les six fichiers de `.ai` la portaient,
+   * tous d'accord entre eux et tous faux. **C'est une erreur cohérente, le
+   * genre que rien ne peut révéler de l'intérieur.**
+   *
+   * ⚠️ C'EST CE QUIZ QUI ATTRIBUE LA COULEUR. Les questions et les réponses,
+   * elles, étaient JUSTES — « montre-moi les chiffres » décrit bien un
+   * analytique. Seule l'étiquette posée dessus était fausse. 43 contacts en
+   * portent une : 21 ont été corrigés en base par
+   * `scripts/disc-rotation.ts`, et la correction d'ici est ce qui empêche
+   * qu'un nouveau quiz en reclasse de travers.
+   *
+   * 🧭 LES HEX NE BOUGENT PAS : bleu reste bleu. Ce sont les DESCRIPTIONS qui
+   * rejoignent la bonne couleur.
+   */
+  JAUNE: {
+    name: 'Jaune', color: '#F4B342',
     archetype: { m: "L'Enthousiaste", f: "L'Enthousiaste", n: 'Profil Enthousiaste' },
     caracterise: "Sociable et spontané — tu carbures à l'énergie et aux gens.",
     adapte: "Atlas misera sur la vision, l'élan et les relations.",
   },
-  JAUNE: {
-    name: 'Jaune', color: '#F4B342',
+  VERT: {
+    name: 'Vert', color: '#22C55E',
     archetype: { m: 'Le Connecteur', f: 'La Connectrice', n: 'Profil Connecteur' },
     caracterise: 'Relationnel et bienveillant — tu veux aider, sans pression.',
     adapte: "Atlas sera chaleureux, à l'écoute, et respectera ton rythme.",
+  },
+  BLEU: {
+    name: 'Bleu', color: '#3B82F6',
+    archetype: { m: "L'Analyste", f: "L'Analyste", n: 'Profil Analyste' },
+    caracterise: "Rigoureux et prudent — tu veux des faits avant d'agir.",
+    adapte: "Atlas te donnera des preuves, du concret, et le temps d'analyser.",
   },
 }
 
@@ -44,105 +67,105 @@ export function describePersonality(color: string, gender: string) {
 // Descriptions 3e personne (pour un contact) — l'IA onboarding est écrite à la 2e personne
 const THIRD: Record<Color, string> = {
   ROUGE: 'Direct et orienté résultats. Va droit au but : chiffres, objectifs, décision rapide.',
-  VERT: "Rigoureux et factuel. Apporte des preuves et laisse-lui le temps d'analyser.",
-  BLEU: "Sociable et énergique. Mise sur la vision, l'élan et les relations.",
-  JAUNE: "Relationnel et sans pression. Reste chaleureux, à l'écoute, respecte son rythme.",
+  JAUNE: "Sociable et énergique. Mise sur la vision, l'élan et les relations.",
+  VERT: "Relationnel et sans pression. Reste chaleureux, à l'écoute, respecte son rythme.",
+  BLEU: "Rigoureux et factuel. Apporte des preuves et laisse-lui le temps d'analyser.",
 }
 
 // Questions d'observation (3e personne) — pour évaluer un contact, pas soi-même
 const QUESTIONS_3P: { prompt: string; options: { text: string; color: Color }[] }[] = [
   { prompt: "Quand on lui parle, qu'est-ce qui compte le plus pour lui/elle ?", options: [
     { text: 'Aller au résultat, gagner', color: 'ROUGE' },
-    { text: "S'amuser, du contact, du fun", color: 'BLEU' },
-    { text: 'Aider, des relations sincères', color: 'JAUNE' },
-    { text: 'Comprendre, avoir des preuves', color: 'VERT' },
+    { text: "S'amuser, du contact, du fun", color: 'JAUNE' },
+    { text: 'Aider, des relations sincères', color: 'VERT' },
+    { text: 'Comprendre, avoir des preuves', color: 'BLEU' },
   ] },
   { prompt: 'Comment prend-il/elle ses décisions ?', options: [
     { text: 'Vite et avec assurance', color: 'ROUGE' },
-    { text: "À l'instinct, à l'émotion", color: 'BLEU' },
-    { text: 'Lentement, sans pression', color: 'JAUNE' },
-    { text: 'Après avoir tout analysé', color: 'VERT' },
+    { text: "À l'instinct, à l'émotion", color: 'JAUNE' },
+    { text: 'Lentement, sans pression', color: 'VERT' },
+    { text: 'Après avoir tout analysé', color: 'BLEU' },
   ] },
   { prompt: "Qu'est-ce qui l'agace le plus ?", options: [
     { text: 'Perdre son temps', color: 'ROUGE' },
-    { text: "La routine, l'ennui", color: 'BLEU' },
-    { text: 'Le conflit, la pression', color: 'JAUNE' },
-    { text: 'Le manque de détails', color: 'VERT' },
+    { text: "La routine, l'ennui", color: 'JAUNE' },
+    { text: 'Le conflit, la pression', color: 'VERT' },
+    { text: 'Le manque de détails', color: 'BLEU' },
   ] },
 ]
 
 const QUESTIONS: { prompt: string; options: { text: string; color: Color }[] }[] = [
   { prompt: "Dans une conversation, tu…", options: [
     { text: "vas droit au but", color: 'ROUGE' },
-    { text: "vérifies les faits", color: 'VERT' },
-    { text: "mets de l'ambiance", color: 'BLEU' },
-    { text: "soignes la relation", color: 'JAUNE' },
+    { text: "vérifies les faits", color: 'BLEU' },
+    { text: "mets de l'ambiance", color: 'JAUNE' },
+    { text: "soignes la relation", color: 'VERT' },
   ] },
   { prompt: "Une décision à prendre…", options: [
     { text: "tu décides vite", color: 'ROUGE' },
-    { text: "tu analyses longuement", color: 'VERT' },
-    { text: "tu suis ton envie", color: 'BLEU' },
-    { text: "tu penses aux autres", color: 'JAUNE' },
+    { text: "tu analyses longuement", color: 'BLEU' },
+    { text: "tu suis ton envie", color: 'JAUNE' },
+    { text: "tu penses aux autres", color: 'VERT' },
   ] },
   { prompt: "Ce qui te motive…", options: [
     { text: "gagner, diriger", color: 'ROUGE' },
-    { text: "comprendre, avoir raison", color: 'VERT' },
-    { text: "t'amuser, rencontrer du monde", color: 'BLEU' },
-    { text: "aider les gens", color: 'JAUNE' },
+    { text: "comprendre, avoir raison", color: 'BLEU' },
+    { text: "t'amuser, rencontrer du monde", color: 'JAUNE' },
+    { text: "aider les gens", color: 'VERT' },
   ] },
   { prompt: "On te décrit comme…", options: [
     { text: "efficace, direct", color: 'ROUGE' },
-    { text: "rigoureux, précis", color: 'VERT' },
-    { text: "enthousiaste, fun", color: 'BLEU' },
-    { text: "attentionné, fiable", color: 'JAUNE' },
+    { text: "rigoureux, précis", color: 'BLEU' },
+    { text: "enthousiaste, fun", color: 'JAUNE' },
+    { text: "attentionné, fiable", color: 'VERT' },
   ] },
   { prompt: "Un nouveau projet : tu dis…", options: [
     { text: "« on fonce »", color: 'ROUGE' },
-    { text: "« montre-moi les chiffres »", color: 'VERT' },
-    { text: "« ça va être génial ! »", color: 'BLEU' },
-    { text: "« qui ça touche ? »", color: 'JAUNE' },
+    { text: "« montre-moi les chiffres »", color: 'BLEU' },
+    { text: "« ça va être génial ! »", color: 'JAUNE' },
+    { text: "« qui ça touche ? »", color: 'VERT' },
   ] },
   { prompt: "Ce qui t'agace le plus…", options: [
     { text: "perdre du temps", color: 'ROUGE' },
-    { text: "l'à-peu-près", color: 'VERT' },
-    { text: "l'ennui, la routine", color: 'BLEU' },
-    { text: "les conflits, la pression", color: 'JAUNE' },
+    { text: "l'à-peu-près", color: 'BLEU' },
+    { text: "l'ennui, la routine", color: 'JAUNE' },
+    { text: "les conflits, la pression", color: 'VERT' },
   ] },
   { prompt: "En réunion, tu…", options: [
     { text: "prends les commandes", color: 'ROUGE' },
-    { text: "poses les vraies questions", color: 'VERT' },
-    { text: "animes, fais rire", color: 'BLEU' },
-    { text: "veilles au confort de chacun", color: 'JAUNE' },
+    { text: "poses les vraies questions", color: 'BLEU' },
+    { text: "animes, fais rire", color: 'JAUNE' },
+    { text: "veilles au confort de chacun", color: 'VERT' },
   ] },
   { prompt: "Ton rêve plutôt…", options: [
     { text: "réussir en grand", color: 'ROUGE' },
-    { text: "maîtriser ton domaine", color: 'VERT' },
-    { text: "vivre des aventures", color: 'BLEU' },
-    { text: "une vie stable avec les tiens", color: 'JAUNE' },
+    { text: "maîtriser ton domaine", color: 'BLEU' },
+    { text: "vivre des aventures", color: 'JAUNE' },
+    { text: "une vie stable avec les tiens", color: 'VERT' },
   ] },
   { prompt: "Quand tu achètes…", options: [
     { text: "vite, le meilleur", color: 'ROUGE' },
-    { text: "tu compares en détail", color: 'VERT' },
-    { text: "au coup de cœur", color: 'BLEU' },
-    { text: "tu demandes l'avis des proches", color: 'JAUNE' },
+    { text: "tu compares en détail", color: 'BLEU' },
+    { text: "au coup de cœur", color: 'JAUNE' },
+    { text: "tu demandes l'avis des proches", color: 'VERT' },
   ] },
   { prompt: "On compte sur toi pour…", options: [
     { text: "les résultats", color: 'ROUGE' },
-    { text: "éviter les erreurs", color: 'VERT' },
-    { text: "motiver le groupe", color: 'BLEU' },
-    { text: "soutenir les autres", color: 'JAUNE' },
+    { text: "éviter les erreurs", color: 'BLEU' },
+    { text: "motiver le groupe", color: 'JAUNE' },
+    { text: "soutenir les autres", color: 'VERT' },
   ] },
   { prompt: "Sous stress, tu deviens…", options: [
     { text: "autoritaire", color: 'ROUGE' },
-    { text: "tatillon", color: 'VERT' },
-    { text: "dispersé", color: 'BLEU' },
-    { text: "effacé", color: 'JAUNE' },
+    { text: "tatillon", color: 'BLEU' },
+    { text: "dispersé", color: 'JAUNE' },
+    { text: "effacé", color: 'VERT' },
   ] },
   { prompt: "Ta phrase…", options: [
     { text: "« le temps c'est de l'argent »", color: 'ROUGE' },
-    { text: "« mesure deux fois, coupe une fois »", color: 'VERT' },
-    { text: "« on n'a qu'une vie ! »", color: 'BLEU' },
-    { text: "« les gens d'abord »", color: 'JAUNE' },
+    { text: "« mesure deux fois, coupe une fois »", color: 'BLEU' },
+    { text: "« on n'a qu'une vie ! »", color: 'JAUNE' },
+    { text: "« les gens d'abord »", color: 'VERT' },
   ] },
 ]
 

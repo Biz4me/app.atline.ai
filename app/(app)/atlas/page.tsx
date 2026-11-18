@@ -631,7 +631,10 @@ TECHNIQUE (invisible pour moi, ne l'explique jamais)${NB}: quand tu as balayé l
   const askField = (item: PlanItem, kind: 'market' | 'disc') => {
     const choices: Choice[] = kind === 'market'
       ? [{ label: 'Un proche', value: 'set:market:CHAUD' }, { label: 'Une connaissance', value: 'set:market:TIEDE' }, { label: 'On se connaît peu', value: 'set:market:FROID' }]
-      : [{ label: '🔴 Fonceur, direct, résultats', value: 'set:personality:ROUGE' }, { label: '🟢 Analytique, prudent, factuel', value: 'set:personality:VERT' }, { label: '🔵 Sociable, spontané, fun', value: 'set:personality:BLEU' }, { label: '🟡 Relationnel, bienveillant', value: 'set:personality:JAUNE' }]
+      // 🔴 Trois couleurs permutées jusqu'au 18 novembre 2026 (Schreiter :
+      // Jaune influence, Vert stabilité, Bleu analyse). La pastille suit la
+      // couleur, la description suit le sens.
+      : [{ label: '🔴 Fonceur, direct, résultats', value: 'set:personality:ROUGE' }, { label: '🟡 Sociable, spontané, fun', value: 'set:personality:JAUNE' }, { label: '🟢 Relationnel, bienveillant', value: 'set:personality:VERT' }, { label: '🔵 Analytique, prudent, factuel', value: 'set:personality:BLEU' }]
     setMsgs((prev) => [...prev, { from: 'atlas', text: kind === 'market' ? `Tu connais ${item.prenom} comment ?` : `Tu le sens plutôt comment, ${item.prenom} ?`, choices, item }])
     setTimeout(scrollToBottom, 60)
   }
