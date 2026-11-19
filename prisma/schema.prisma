@@ -1066,6 +1066,19 @@ model LmsModule {
   position     Int               @default(0)
   title        String
   description  String?
+  /// La carte mentale du module, reprise de la liseuse Bookey : trois
+  /// perspectives clés, chacune avec son titre et ses points.
+  ///   { "perspectives": [ { "titre": "…", "points": ["…", "…"] } ] }
+  ///
+  /// 🔴 EN JSON ET PAS DANS UNE TABLE. C'est une donnée UN POUR UN avec le
+  /// module, lue avec lui et jamais interrogée autrement : une table de plus
+  /// coûterait une jointure sur chaque lecture pour un enregistrement unique.
+  ///
+  /// ⚠️ ET PAS DANS `LmsResource`, qui existait et paraissait convenir. Ce
+  /// modèle porte une ressource à TÉLÉCHARGER — `fileUrl`, `icon`, `color`,
+  /// `locked` — et il est vide depuis toujours. Y loger une structure aurait
+  /// rempli une table avec autre chose que ce qu'elle annonce.
+  carteMentale Json?
   published    Boolean           @default(false)
   aiGenerated  Boolean           @default(false)
   lessons      LmsLesson[]
