@@ -97,6 +97,39 @@ test('l’écouteur et le livre sont une bascule, à la même place', async ({ p
   expect(pageErrors, `exception client : ${pageErrors.join(' · ')}`).toEqual([])
 })
 
+test('les trois points portent Partager et Marquer comme terminé', async ({
+  page,
+  pageErrors,
+}) => {
+  await ouvrirUneLecon(page)
+
+  await toucher(
+    page.locator('[data-menu-lecture]'),
+    page.locator('[data-menu-lecture][aria-expanded="true"]'),
+  )
+
+  await expect(page.getByRole('button', { name: 'Partager' })).toBeVisible({ timeout: 10_000 })
+  /**
+   * ⚠️ LE LIBELLÉ DÉPEND DE L'ÉTAT, et c'est voulu : une leçon déjà lue dit
+   * « Déjà marquée », parce qu'un bouton qui refait ce qui est fait laisse
+   * croire qu'il n'a pas marché la première fois. La sonde accepte les deux —
+   * elle vérifie que l'entrée EXISTE, pas l'avancement du compte de test.
+   */
+  await expect(
+    page.getByRole('button', { name: /Marquer comme terminé|Déjà marquée/ }),
+  ).toBeVisible()
+
+  /**
+   * 🔴 ET AUCUNE ENTRÉE DE BIBLIOTHÈQUE. Bookey en a deux — « Télécharger »
+   * et « Enregistrer dans la bibliothèque » — qui supposent des livres qu'on
+   * collectionne. Les recopier ferait deux rangées incapables d'agir, et
+   * c'est exactement le genre de fidélité qui se paie en boutons morts.
+   */
+  await expect(page.getByRole('button', { name: /bibliothèque/i })).toHaveCount(0)
+
+  expect(pageErrors, `exception client : ${pageErrors.join(' · ')}`).toEqual([])
+})
+
 test('le sommaire et les options s’ouvrent', async ({ page, pageErrors }) => {
   await ouvrirUneLecon(page)
 

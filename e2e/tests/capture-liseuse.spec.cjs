@@ -31,6 +31,16 @@ test('captures de la liseuse et de la page audio', async ({ page, pageErrors }) 
   await figer()
   await page.screenshot({ path: 'capture-liseuse.png' })
 
+  // ── Les trois points ──
+  await toucher(
+    page.locator('[data-menu-lecture]'),
+    page.getByRole('button', { name: 'Partager' }),
+  )
+  await figer()
+  await page.screenshot({ path: 'capture-menu.png' })
+  await page.getByRole('button', { name: 'Fermer' }).click()
+  await expect(page.getByRole('button', { name: 'Partager' })).toHaveCount(0, { timeout: 5000 })
+
   // ── Les options de lecture, et un papier choisi ──
   // ⚠️ `toucher` et non `click` : la fenêtre d'hydratation avale un clic sur
   // un `<button>` de React, et c'est ce qui faisait tomber cette capture.
