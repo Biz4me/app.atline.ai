@@ -9,7 +9,7 @@
 const { test, expect } = require('../fixtures.cjs')
 
 const ECRANS = [
-  '/accueil', '/accueil?menu=1', '/parcours', '/parcours/cours',
+  '/accueil', '/accueil?menu=1', '/parcours',
   '/parcours/competences', '/coach/parler', '/coach/repeter', '/agenda', '/gens', '/compte',
 ]
 

@@ -1,3 +1,16 @@
+// ⏳ CETTE SONDE MESURE UN MÉCANISME SUPPRIMÉ LE 19 NOVEMBRE 2026.
+//
+// Elle est bâtie sur  — l'objet du module posé en DÉCOR
+// plein écran à 18 % d'opacité — et sur le chemin en pointillés de
+// . Les deux ont disparu le même jour : l'objet est devenu
+// la COUVERTURE du module, et la page des cours a été remplacée par l'étagère
+// du hub.
+//
+// 🔴 ELLE NE SE REPOINTE PAS, ELLE SE RÉÉCRIT. Ses adresses ont été corrigées
+// pour qu'on voie ce qui reste, mais ce qu'elle mesure n'existe plus. Le
+// risque équivalent aujourd'hui est AILLEURS, et il est réel : un titre
+// composé en blanc sur une couverture teintée.
+//
 // LE DÉCOR D'UN MODULE MANGE-T-IL LE TEXTE ?
 //
 //   E2E_BASE=https://v2.atline.ai E2E_COMME=humanstring@gmail.com \
@@ -161,7 +174,7 @@ const jeton = (page, nom) =>
   }, nom)
 
 test('decor-module-ne-mange-pas-le-texte', async ({ page }) => {
-  await page.goto('/parcours/cours', { waitUntil: 'domcontentloaded' })
+  await page.goto('/parcours', { waitUntil: 'domcontentloaded' })
   const liens = await page
     .locator('a[href^="/parcours/"]')
     .evaluateAll((as) =>
@@ -277,7 +290,7 @@ test('decor-module-ne-mange-pas-le-texte', async ({ page }) => {
  * remonte donc l'opacité à 0,55 et on exige qu'elle crie.
  */
 test('la-sonde-du-contraste-sait-echouer', async ({ page }) => {
-  await page.goto('/parcours/cours', { waitUntil: 'domcontentloaded' })
+  await page.goto('/parcours', { waitUntil: 'domcontentloaded' })
   const href = await page
     .locator('a[href^="/parcours/"]')
     .evaluateAll(

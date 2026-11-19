@@ -22,7 +22,7 @@ test('Formation : un geste unique, atteignable, qui mène vraiment quelque part'
   // mesure — a déménagé d'un cran. Cette sonde interrogeait donc un écran qui
   // ne porte plus de modules, et elle est restée rouge deux jours sans que
   // personne la relance.
-  await page.goto('/parcours/cours', { waitUntil: 'domcontentloaded' })
+  await page.goto('/parcours', { waitUntil: 'domcontentloaded' })
 
   // ⚠️ ET LE LIBELLÉ A CHANGÉ AVEC. Le geste nomme désormais SA DESTINATION
   // — « Reprendre le module 3 » — au lieu d'un « Leçon suivante » qui ne

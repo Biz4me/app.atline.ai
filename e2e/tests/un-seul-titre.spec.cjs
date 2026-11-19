@@ -34,7 +34,6 @@ const FIXES = [
   '/accueil',
   '/accueil?menu=1',
   '/parcours',
-  '/parcours/cours',
   '/parcours/competences',
   '/coach/repeter',
   '/agenda',
@@ -85,7 +84,7 @@ test('chaque écran porte exactement un h1', async ({ page, pageErrors }) => {
     return ou
   }
 
-  await page.goto('/parcours/cours', { waitUntil: 'domcontentloaded' })
+  await page.goto('/parcours', { waitUntil: 'domcontentloaded' })
   const modules = page.locator('main a[href^="/parcours/"]')
   await expect(modules.first()).toBeVisible({ timeout: 20_000 })
   const module = await suivre(modules.first())

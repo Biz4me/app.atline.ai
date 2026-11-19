@@ -75,7 +75,7 @@ test('cinq lieux, un seul nom chacun, et l’identité sur l’accueil seul', as
   // d'absence sur un sélecteur qui ne marche nulle part est vert pour
   // toujours : c'est la classe de panne qui a laissé deux sondes de hauteur
   // mentir ensemble le 8 novembre. Formation, elle, porte bien un geste fixe.
-  await page.goto('/parcours/cours', { waitUntil: 'domcontentloaded' })
+  await page.goto('/parcours', { waitUntil: 'domcontentloaded' })
   await expect(page.locator('[data-barre-action]')).toHaveCount(1, { timeout: 20_000 })
   await page.goto('/accueil', { waitUntil: 'domcontentloaded' })
   await expect(barre).toBeVisible({ timeout: 20_000 })

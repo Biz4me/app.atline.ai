@@ -26,42 +26,53 @@ test('l’entraînement n’a pas de case dans la barre', async ({ page, pageErr
   expect(pageErrors).toEqual([])
 })
 
-test('la flèche d’un module repose là d’où l’on vient : les cours', async ({ page }) => {
+test('la flèche d’un module repose là d’où l’on vient : Apprendre', async ({ page }) => {
   /**
-   * 🔴 ELLE VISAIT LE HUB, donc un cran trop haut : on choisit un module DANS
-   * « Les cours », et la flèche déposait ailleurs. Corrigé le 10 novembre 2026
-   * sur décision de Patrice. Règle ② de la maison : **le retour ne fait jamais
-   * perdre sa place.**
+   * 🔴 ELLE VISAIT « Les cours », UN ÉCRAN QUI N'EXISTE PLUS. Depuis le
+   * 19 novembre 2026 les onze couvertures défilent sur le hub, et c'est de là
+   * qu'on choisit un module : le PARENT a changé d'adresse, donc la flèche
+   * aussi. Règle ② de la maison : **le retour ne fait jamais perdre sa place.**
    *
-   * ⚠️ On suit le VRAI chemin — la liste, puis un module — au lieu d'ouvrir
+   * ⚠️ On suit le VRAI chemin — l'étagère, puis un module — au lieu d'ouvrir
    * une adresse de module écrite ici. Une sonde qui connaît un identifiant
    * surveille cet identifiant, pas le comportement.
    */
-  await page.goto('/parcours/cours', { waitUntil: 'domcontentloaded' })
-  const modules = page.locator('main a[href^="/parcours/"]')
-  await expect(modules.first()).toBeVisible({ timeout: 20_000 })
-  await modules.first().click()
+  await page.goto('/parcours', { waitUntil: 'domcontentloaded' })
+  const couvertures = page.locator('main a[data-module]')
+  await expect(couvertures.first()).toBeVisible({ timeout: 20_000 })
+  // 🔴 LES ONZE SONT LÀ. Une étagère qui n'en montrerait que trois passerait
+  // toutes les autres assertions de ce fichier.
+  await expect(couvertures).toHaveCount(11)
+  await couvertures.first().click()
   await expect(page).toHaveURL(/\/parcours\/[^/]+$/, { timeout: 20_000 })
   await expect(page.getByRole('heading', { level: 1 })).toContainText(/Module/)
 
   const fleche = page.locator('header a[href]').first()
-  await expect(fleche).toHaveAttribute('href', '/parcours/cours')
+  await expect(fleche).toHaveAttribute('href', '/parcours')
   // ⚠️ ET ELLE OUVRE VRAIMENT : un `href` correct sur un élément occulté par
   // l'en-tête collant serait vert pour rien.
   await fleche.click()
-  await expect(page).toHaveURL(/\/parcours\/cours$/, { timeout: 20_000 })
-  await expect(page.getByRole('heading', { level: 1, name: 'Les cours' })).toBeVisible()
+  await expect(page).toHaveURL(/\/parcours$/, { timeout: 20_000 })
+  await expect(page.getByRole('heading', { level: 1, name: 'Apprendre' })).toBeVisible()
 })
 
 test('les trois portes mènent quelque part, et Apprendre s’allume aussi en simulation', async ({
   page,
 }) => {
   await page.goto('/parcours', { waitUntil: 'domcontentloaded' })
-  const portes = await page.locator('main a[href^="/parcours/"], main a[href^="/coach"]').evaluateAll((n) =>
-    n.map((e) => e.getAttribute('href')),
-  )
+  /**
+   * ⚠️ ON ÉCARTE LES COUVERTURES. Depuis le 19 novembre 2026, `main` porte
+   * aussi les onze liens de l'étagère, qui visent eux aussi `/parcours/<id>`.
+   * Les compter avec les portes ferait une liste qui change à chaque module
+   * publié — une sonde qui tomberait pour une raison qui n'est pas la sienne.
+   */
+  const portes = await page
+    .locator('main a[href^="/parcours/"]:not([data-module]), main a[href^="/coach"]')
+    .evaluateAll((n) => n.map((e) => e.getAttribute('href')))
   console.log(`  portes : ${portes.join(' ')}`)
-  expect(portes).toEqual(['/parcours/cours', '/parcours/competences', '/coach/repeter'])
+  // 🔴 DEUX, ET PLUS TROIS : « Les cours » est devenue l'étagère juste
+  // au-dessus, et sa porte a disparu avec l'écran qu'elle ouvrait.
+  expect(portes).toEqual(['/parcours/competences', '/coach/repeter'])
 
   // 🔴 Le simulateur vit sous /coach/repeter mais appartient a Apprendre :
   // sans `autres` dans destinations.ts, aucune entree ne s'allumerait et
@@ -74,7 +85,7 @@ test('les trois portes mènent quelque part, et Apprendre s’allume aussi en si
 })
 
 test('le nom d’Aria n’est plus écrit nulle part', async ({ page }) => {
-  for (const url of ['/accueil', '/parcours', '/parcours/cours', '/parcours/competences', '/coach/repeter']) {
+  for (const url of ['/accueil', '/parcours', '/parcours/competences', '/coach/repeter']) {
     await page.goto(url, { waitUntil: 'domcontentloaded' })
     await expect(page.locator('main')).toBeVisible({ timeout: 20_000 })
     const texte = await page.locator('body').innerText()

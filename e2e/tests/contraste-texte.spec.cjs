@@ -70,7 +70,6 @@ const ECRANS = [
      faisait la même faute, sur un écran que cette liste ne visitait pas. */
   ['filtres', '/gens/filtrer?marche=CHAUD'],
   ['apprendre', '/parcours'],
-  ['cours', '/parcours/cours'],
   ['competences', '/parcours/competences'],
   ['agenda', '/agenda'],
   ['a-faire', '/a-faire'],

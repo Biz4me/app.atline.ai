@@ -1,3 +1,16 @@
+// ⏳ CETTE SONDE MESURE UN MÉCANISME SUPPRIMÉ LE 19 NOVEMBRE 2026.
+//
+// Elle est bâtie sur  — l'objet du module posé en DÉCOR
+// plein écran à 18 % d'opacité — et sur le chemin en pointillés de
+// . Les deux ont disparu le même jour : l'objet est devenu
+// la COUVERTURE du module, et la page des cours a été remplacée par l'étagère
+// du hub.
+//
+// 🔴 ELLE NE SE REPOINTE PAS, ELLE SE RÉÉCRIT. Ses adresses ont été corrigées
+// pour qu'on voie ce qui reste, mais ce qu'elle mesure n'existe plus. Le
+// risque équivalent aujourd'hui est AILLEURS, et il est réel : un titre
+// composé en blanc sur une couverture teintée.
+//
 // LES CARTES ONT-ELLES TOUTES LA MEME HAUTEUR, ET AUCUN TITRE N'EST-IL ROGNE ?
 //
 // 🔴 Aux QUATRE largeurs, sur les DEUX ecrans. Mesurer a une seule largeur a
@@ -41,20 +54,20 @@ async function controler(page, nom, selecteurCarte, selecteurTitre, combien) {
 }
 
 test('les modules', async ({ page, pageErrors }) => {
-  await page.goto('/parcours/cours', { waitUntil: 'domcontentloaded' })
-  await expect(page.locator('ol li a').first()).toBeVisible({ timeout: 20_000 })
-  await controler(page, 'modules', 'ol li a', 'ol li a > span:nth-child(2)', 11)
+  await page.goto('/parcours', { waitUntil: 'domcontentloaded' })
+  await expect(page.locator('a[data-module]').first()).toBeVisible({ timeout: 20_000 })
+  await controler(page, 'modules', 'a[data-module]', 'ol li a > span:nth-child(2)', 11)
   expect(pageErrors).toEqual([])
 })
 
 test('les leçons, sur les trois modules aux titres les plus longs', async ({ page, pageErrors }) => {
-  await page.goto('/parcours/cours', { waitUntil: 'domcontentloaded' })
-  await expect(page.locator('ol li a').first()).toBeVisible({ timeout: 20_000 })
+  await page.goto('/parcours', { waitUntil: 'domcontentloaded' })
+  await expect(page.locator('a[data-module]').first()).toBeVisible({ timeout: 20_000 })
   // Modules 1, 4 et 11 : ils portent les titres de 76, 70 et 71 caractères.
-  const liens = await page.locator('ol li a').evaluateAll((n) => n.map((e) => e.getAttribute('href')))
+  const liens = await page.locator('a[data-module]').evaluateAll((n) => n.map((e) => e.getAttribute('href')))
   for (const i of [0, 3, 10]) {
     await page.goto(liens[i], { waitUntil: 'domcontentloaded' })
-    await expect(page.locator('ol li a').first()).toBeVisible({ timeout: 20_000 })
+    await expect(page.locator('a[data-module]').first()).toBeVisible({ timeout: 20_000 })
     // ⚠️ `[data-lecon]` et pas `ol li a` : depuis le chemin, le quiz et la
     // simulation sont aussi des nœuds, avec un gabarit qui n'est pas celui
     // d'une leçon. Les mesurer ensemble ferait crier la sonde sur un écran
@@ -75,8 +88,8 @@ test('le tracé passe par le centre des nœuds', async ({ page }) => {
    * Un alignement se vérifie par un nombre, jamais par une capture.
    */
   await page.setViewportSize({ width: 390, height: 844 })
-  await page.goto('/parcours/cours', { waitUntil: 'domcontentloaded' })
-  const href = await page.locator('ol li a').nth(1).getAttribute('href')
+  await page.goto('/parcours', { waitUntil: 'domcontentloaded' })
+  const href = await page.locator('a[data-module]').nth(1).getAttribute('href')
   await page.goto(href, { waitUntil: 'domcontentloaded' })
   await expect(page.locator('ol li a[data-lecon]').first()).toBeVisible({ timeout: 20_000 })
 
