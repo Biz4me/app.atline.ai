@@ -1,6 +1,19 @@
-// JUGER UNE COUVERTURE CANDIDATE SUR LA VRAIE ÉTAGÈRE.
+// JUGER UNE OU PLUSIEURS COUVERTURES CANDIDATES SUR LA VRAIE ÉTAGÈRE.
 //     E2E_BASE=https://v2.atline.ai COUVERTURE=<chemin.png> \
 //       npx playwright test tests/essai-couverture.spec.cjs
+//
+// ── 🔴 ET SURTOUT, PLUSIEURS À LA FOIS ────────────────────────────────────
+//
+//     COUVERTURES="1=m01.png,2=m02.png" npx playwright test …
+//
+// Une couverture seule ne se juge pas : **une collection tient par ce qui ne
+// change pas**, et ça ne se voit qu'en mettant deux voisines côte à côte. Une
+// scène ambrée est toujours flatteuse ; la même grammaire en teal peut tourner
+// au froid clinique. C'est la PAIRE qui dit si la série tient, et les onze
+// ensemble qui disent si c'est une étagère.
+//
+// Chaque candidate est mesurée séparément : une seule qui tombe sous 4,5 fait
+// échouer le lot, en nommant laquelle.
 //
 // ── 🔴 POURQUOI ON NE JUGE PAS SUR UNE PLANCHE ────────────────────────────
 //
@@ -18,10 +31,23 @@ const { test, expect } = require('../fixtures.cjs')
 
 test.use({ viewport: { width: 390, height: 844 } })
 
-test('la couverture candidate, à sa taille réelle, entre les autres', async ({ page }) => {
-  const fichier = process.env.COUVERTURE
-  expect(fichier, 'passer COUVERTURE=<chemin de l’image>').toBeTruthy()
-  const donnee = `data:image/png;base64,${fs.readFileSync(fichier).toString('base64')}`
+/** « 1=a.png,2=b.png » — ou, forme courte d'une seule candidate, le module 1. */
+function lesCandidates() {
+  if (process.env.COUVERTURES) {
+    return process.env.COUVERTURES.split(',').map((paire) => {
+      const [module, ...reste] = paire.split('=')
+      return { module: Number(module.trim()), fichier: reste.join('=').trim() }
+    })
+  }
+  return process.env.COUVERTURE ? [{ module: 1, fichier: process.env.COUVERTURE }] : []
+}
+
+test('les couvertures candidates, à leur taille réelle, entre les autres', async ({ page }) => {
+  const candidates = lesCandidates()
+  expect(candidates.length, 'passer COUVERTURE=<image> ou COUVERTURES="1=a.png,2=b.png"').toBeGreaterThan(0)
+  for (const c of candidates) {
+    c.donnee = `data:image/png;base64,${fs.readFileSync(c.fichier).toString('base64')}`
+  }
 
   await page.goto('/parcours', { waitUntil: 'domcontentloaded' })
   await page.locator('[data-module="1"]').waitFor({ state: 'visible', timeout: 20_000 })
@@ -32,23 +58,28 @@ test('la couverture candidate, à sa taille réelle, entre les autres', async ({
    * jugerait une maquette, et c'est exactement ce que cette sonde existe pour
    * éviter.
    */
-  await page.evaluate((src) => {
-    const carte = document.querySelector('[data-module="1"] > div')
-    if (!carte) throw new Error('la cellule du module 1 est introuvable')
-    // Les deux couches d'image actuelles — le reflet flouté et l'objet —
-    // cèdent la place ; le titre reste par-dessus.
-    for (const n of carte.querySelectorAll('div')) n.style.display = 'none'
-    carte.style.backgroundImage = `url(${src})`
-    carte.style.backgroundSize = 'cover'
-    carte.style.backgroundPosition = 'center'
-  }, donnee)
+  for (const { module, donnee } of candidates) {
+    await page.evaluate(
+      ({ module, src }) => {
+        const carte = document.querySelector(`[data-module="${module}"] > div`)
+        if (!carte) throw new Error(`la cellule du module ${module} est introuvable`)
+        // Les deux couches d'image actuelles — le reflet flouté et l'objet —
+        // cèdent la place ; le titre reste par-dessus.
+        for (const n of carte.querySelectorAll('div')) n.style.display = 'none'
+        carte.style.backgroundImage = `url(${src})`
+        carte.style.backgroundSize = 'cover'
+        carte.style.backgroundPosition = 'center'
+      },
+      { module, src: donnee },
+    )
 
-  // On laisse le navigateur décoder l'image avant de tirer : une capture
-  // prise avant montrerait un cadre vide, ce qui ressemble à un défaut.
-  await page.evaluate(
-    (src) => new Promise((ok) => Object.assign(new Image(), { onload: ok, onerror: ok, src })),
-    donnee,
-  )
+    // On laisse le navigateur décoder l'image avant de tirer : une capture
+    // prise avant montrerait un cadre vide, ce qui ressemble à un défaut.
+    await page.evaluate(
+      (src) => new Promise((ok) => Object.assign(new Image(), { onload: ok, onerror: ok, src })),
+      donnee,
+    )
+  }
 
   /**
    * ── 🔴 LE TITRE DOIT TENIR SUR L'IMAGE, ET ÇA SE MESURE ─────────────────
@@ -61,8 +92,8 @@ test('la couverture candidate, à sa taille réelle, entre les autres', async ({
    * calme et pourtant trop clair : « calme » parle du nombre d'éléments,
    * « clair » parle de la valeur, et seule la seconde décide de la lisibilité.
    */
-  const mesure = await page.evaluate((src) => {
-    const carte = document.querySelector('[data-module="1"] > div')
+  const mesurer = (module, src) => page.evaluate(({ module, src }) => {
+    const carte = document.querySelector(`[data-module="${module}"] > div`)
     const titre = carte.querySelector('p')
     const c = carte.getBoundingClientRect()
     const t = titre.getBoundingClientRect()
@@ -107,18 +138,55 @@ test('la couverture candidate, à sa taille réelle, entre les autres', async ({
       }
       img.src = src
     })
-  }, donnee)
+  }, { module, src })
 
-  console.log(`  titre sur l'image : contraste ${mesure.contraste} (encre ${mesure.encre})`)
-  expect(
-    mesure.contraste,
-    `le titre ne tient pas sur cette couverture : ${mesure.contraste} pour 4,5 exigés`,
-  ).toBeGreaterThanOrEqual(4.5)
-
+  // ⚠️ ON CAPTURE AVANT DE MESURER. Une assertion qui tombe emporte la fin du
+  // test avec elle — et c'est précisément quand une candidate échoue qu'on
+  // veut la voir, pour comprendre POURQUOI elle échoue.
   await page.screenshot({ path: 'essai-etagere.png' })
-  // Et la même, recadrée sur la seule rangée : c'est là qu'on compare la
-  // candidate à ses voisines.
   await page.locator('[data-module="1"]').scrollIntoViewIfNeeded()
   const rangee = page.locator('[data-module="1"]').locator('xpath=ancestor::ul')
   await rangee.screenshot({ path: 'essai-rangee.png' })
+
+  /**
+   * ⚠️ ET LA PLANCHE — UN OUTIL DE JUGEMENT, PAS LA VRAIE ÉTAGÈRE.
+   *
+   * La rangée défile : à l'écran on n'en voit jamais que deux cellules et
+   * demie, ce qui est la vérité de l'usage et une infirmité pour juger une
+   * COLLECTION. On replie donc la même rangée sur plusieurs lignes, sans rien
+   * changer d'autre — même cellule, même surface, mêmes 146 px, même titre.
+   * Ce que cette image ne prouve PAS : ce qu'on voit en arrivant sur l'écran.
+   */
+  await rangee.evaluate((ul) => {
+    ul.style.flexWrap = 'wrap'
+    ul.style.overflowX = 'visible'
+    ul.style.rowGap = '16px'
+    // ⚠️ Et on écarte le chrome collant. Repliée, la rangée passe DERRIÈRE
+    // l'en-tête et la barre du bas : deux couvertures sur onze se retrouvaient
+    // amputées de leur titre, ce qui est exactement ce qu'on vient mesurer.
+    for (const n of document.querySelectorAll('body *')) {
+      const p = getComputedStyle(n).position
+      if ((p === 'fixed' || p === 'sticky') && !n.contains(ul)) n.style.visibility = 'hidden'
+    }
+  })
+  await rangee.screenshot({ path: 'essai-planche.png' })
+
+  /**
+   * 🔴 ON MESURE LES ONZE AVANT D'EN REFUSER UNE. Une assertion dans la boucle
+   * arrête tout à la première qui tombe : on relance, la suivante tombe, on
+   * relance — onze allers-retours pour un verdict qu'un seul passage donnait.
+   * Le lot entier est mesuré, imprimé, puis jugé.
+   */
+  const recalees = []
+  for (const { module, donnee, fichier } of candidates) {
+    const mesure = await mesurer(module, donnee)
+    const verdict = mesure.contraste >= 4.5 ? '✓' : '✗'
+    console.log(`  ${verdict} module ${module} — contraste ${mesure.contraste} · ${fichier}`)
+    if (mesure.contraste < 4.5) recalees.push(`module ${module} : ${mesure.contraste}`)
+  }
+
+  expect(
+    recalees,
+    `le titre ne tient pas sur ${recalees.length} couverture(s) — ${recalees.join(' · ')} — pour 4,5 exigés`,
+  ).toEqual([])
 })
