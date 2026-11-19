@@ -49,6 +49,48 @@ async function premiereLecon(page, { neuve = false } = {}) {
   return page.url()
 }
 
+/**
+ * ── 🔴 LA SONDE FABRIQUE SA PRÉMISSE, ELLE NE L'ESPÈRE PAS ───────────────
+ *
+ * Ces épreuves MARQUENT des leçons — c'est leur sujet — et la session jetée
+ * n'efface pas cette progression. Le deuxième passage trouvait donc une leçon
+ * déjà lue et échouait sur « rien ne doit être marqué avant d'avoir lu » :
+ * **une sonde verte au premier tour et rouge au second, sans qu'une ligne de
+ * code ait bougé.**
+ *
+ * 🧭 C'est la même famille que la prémisse `E2E_COMME`, en pire : là-bas
+ * l'état dépendait du compte, ici il dépend de l'ORDRE DES PASSAGES. On remet
+ * donc la leçon à zéro par le chemin de l'app — le menu `…` — au lieu de
+ * supposer qu'elle l'est.
+ */
+async function rendreNonLue(page) {
+  await page.locator('[data-menu-lecture]').click()
+  const defaire = page.getByRole('button', { name: 'Marquer comme non lue' })
+  if (await defaire.isVisible().catch(() => false)) {
+    await defaire.click()
+    await expect(page.locator('[data-lecon-terminee]')).toHaveCount(0, { timeout: 15_000 })
+    /**
+     * 🔴 ET ON RECHARGE, PARCE QUE DÉMARQUER NE RÉ-ARME PAS LA VISITE EN
+     * COURS — c'est une décision du produit, pas un défaut. Le verrou dit
+     * « cette page a déjà écrit » : quelqu'un qui vient de dire « je veux la
+     * relire » ne doit pas la voir se re-marquer sous ses yeux en restant au
+     * bas du texte. L'automatique se ré-arme à la visite suivante, ce qui est
+     * aussi le moment où l'on relit vraiment.
+     *
+     * 🧭 Sans ce rechargement, la sonde mesurait l'app DANS un état qu'aucun
+     * lecteur ne traverse : démarquer puis relire sans jamais partir.
+     */
+    await page.reload({ waitUntil: 'domcontentloaded' })
+    await page.locator('[data-rang]').waitFor({ state: 'visible', timeout: 20_000 })
+  } else {
+    // Déjà non lue : on referme sans rien toucher.
+    await page.getByLabel('Fermer').first().click()
+    await expect(page.getByRole('button', { name: /^Marquer comme/ })).toHaveCount(0, {
+      timeout: 10_000,
+    })
+  }
+}
+
 test('la barre garde ses trois outils, du haut jusqu’au bas', async ({ page, pageErrors }) => {
   await premiereLecon(page)
 
@@ -99,6 +141,7 @@ test('la barre garde ses trois outils, du haut jusqu’au bas', async ({ page, p
  */
 test('le bas du texte marque la leçon, et le serveur s’en souvient', async ({ page }) => {
   const adresse = await premiereLecon(page, { neuve: true })
+  await rendreNonLue(page)
 
   const dit = page.locator('[data-lecon-terminee]')
   await expect(dit, 'rien ne doit être marqué avant d’avoir lu').toHaveCount(0)
@@ -135,7 +178,61 @@ test('le bas du texte marque la leçon, et le serveur s’en souvient', async ({
   await page.goto(adresse, { waitUntil: 'domcontentloaded' })
   await page.locator('[data-menu-lecture]').click()
   await expect(
-    page.getByRole('button', { name: 'Déjà marquée comme terminée' }),
+    page.getByRole('button', { name: 'Marquer comme non lue' }),
     'rechargée, la leçon doit être lue côté serveur',
+  ).toBeVisible({ timeout: 10_000 })
+})
+
+/**
+ * ── 🔴 LE PIÈGE DE LA BASCULE, ET IL EST SÉRIEUX ─────────────────────────
+ *
+ * On démarque en restant SUR la leçon, au bas de la page — c'est-à-dire au
+ * point exact où l'observateur marque. Sans verrou, le serveur dit « non
+ * lue », l'observateur re-tire trois secondes plus tard, et **le geste est
+ * défait par la page elle-même** : une décision annulée sans rien pour
+ * l'expliquer.
+ *
+ * ⚠️ C'est précisément le genre de défaut qu'un build ne voit pas, qu'un
+ * typecheck ne voit pas, et qu'une capture ne voit pas non plus — il faut
+ * attendre, au bon endroit, et regarder si quelque chose se défait tout seul.
+ */
+test('démarquer tient, même en restant au bas de la page', async ({ page }) => {
+  const adresse = await premiereLecon(page, { neuve: true })
+  await rendreNonLue(page)
+
+  // On lit jusqu'au bout : la leçon se marque.
+  await page.evaluate(() =>
+    window.scrollTo({ top: document.body.scrollHeight, behavior: 'instant' }),
+  )
+  const dit = page.locator('[data-lecon-terminee]')
+  await expect(dit).toBeVisible({ timeout: 15_000 })
+
+  // ── On démarque, sans bouger ──
+  // ⚠️ UN TOUCHER D'ABORD. Descendre déclenche le mode immersif : la barre du
+  // haut s'efface, donc les trois points ne sont pas cliquables. C'est le
+  // geste qu'un lecteur fait de toute façon, et sans lui ce clic expire à
+  // soixante secondes sans rien dire du vrai sujet.
+  await page.locator('[data-fin-de-lecon]').click({ position: { x: 5, y: 0 }, force: true })
+  await expect(page.locator('[data-menu-lecture]')).toBeVisible({ timeout: 10_000 })
+  await page.locator('[data-menu-lecture]').click()
+  await page.getByRole('button', { name: 'Marquer comme non lue' }).click()
+  await expect(dit, 'la confirmation doit tomber avec le démarquage').toHaveCount(0, {
+    timeout: 15_000,
+  })
+
+  // ── Et on attend, là où l'observateur tire ──
+  // Le délai est de 3 s : on laisse largement de quoi le voir re-tirer.
+  await page.evaluate(() =>
+    window.scrollTo({ top: document.body.scrollHeight, behavior: 'instant' }),
+  )
+  await page.waitForTimeout(6_000)
+  await expect(dit, 'la page a re-marqué la leçon toute seule').toHaveCount(0)
+
+  // ── Et le serveur est d'accord ──
+  await page.goto(adresse, { waitUntil: 'domcontentloaded' })
+  await page.locator('[data-menu-lecture]').click()
+  await expect(
+    page.getByRole('button', { name: 'Marquer comme terminée' }),
+    'rechargée, la leçon doit être redevenue non lue',
   ).toBeVisible({ timeout: 10_000 })
 })

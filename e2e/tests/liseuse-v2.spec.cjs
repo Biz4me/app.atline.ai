@@ -97,7 +97,7 @@ test('l’écouteur et le livre sont une bascule, à la même place', async ({ p
   expect(pageErrors, `exception client : ${pageErrors.join(' · ')}`).toEqual([])
 })
 
-test('les trois points portent Partager et Marquer comme terminé', async ({
+test('les trois points portent Partager et la bascule de lecture', async ({
   page,
   pageErrors,
 }) => {
@@ -110,14 +110,17 @@ test('les trois points portent Partager et Marquer comme terminé', async ({
 
   await expect(page.getByRole('button', { name: 'Partager' })).toBeVisible({ timeout: 10_000 })
   /**
-   * ⚠️ LE LIBELLÉ DÉPEND DE L'ÉTAT, et c'est voulu : une leçon déjà lue dit
-   * « Déjà marquée », parce qu'un bouton qui refait ce qui est fait laisse
-   * croire qu'il n'a pas marché la première fois. La sonde accepte les deux —
-   * elle vérifie que l'entrée EXISTE, pas l'avancement du compte de test.
+   * ⚠️ LE LIBELLÉ DÉPEND DE L'ÉTAT, et c'est voulu : la rangée est une
+   * BASCULE depuis le 20 novembre 2026. Elle disait « Déjà marquée comme
+   * terminée », grisée — juste tant qu'il fallait appuyer pour marquer, et
+   * éteinte en permanence depuis que le bas du texte termine la leçon.
+   *
+   * 🧭 La sonde accepte donc les deux sens : elle vérifie que l'entrée EXISTE
+   * et qu'elle est VIVANTE, pas l'avancement du compte de test.
    */
-  await expect(
-    page.getByRole('button', { name: /Marquer comme terminé|Déjà marquée/ }),
-  ).toBeVisible()
+  const bascule = page.getByRole('button', { name: /^Marquer comme (terminée|non lue)$/ })
+  await expect(bascule).toBeVisible()
+  await expect(bascule, 'la bascule ne doit jamais être éteinte').toBeEnabled()
 
   /**
    * 🔴 ET AUCUNE ENTRÉE DE BIBLIOTHÈQUE. Bookey en a deux — « Télécharger »
