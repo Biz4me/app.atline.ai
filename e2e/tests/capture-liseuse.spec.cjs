@@ -128,6 +128,33 @@ test('captures de la liseuse et de la page audio', async ({ page, pageErrors }) 
   await figer()
   await page.screenshot({ path: 'capture-liseuse.png' })
 
+  /**
+   * ── ET LE BAS DE LA LEÇON, qui porte tout ce qui a changé le 20 novembre ──
+   *
+   * Le pied façon Bookey — un carré pour revenir, un pavé pour avancer — la
+   * confirmation « ✓ Leçon terminée » que l'arrivée au bout vient d'écrire, et
+   * la barre qui garde ses trois outils au lieu de les troquer contre un
+   * bouton. ⚠️ On descend par `scrollTo` et non par `scrollIntoViewIfNeeded` :
+   * celui-ci peut amener le repère au milieu de l'écran, une position qu'aucun
+   * pouce ne peut obtenir sur le dernier élément d'une page.
+   */
+  await page.evaluate(() =>
+    window.scrollTo({ top: document.body.scrollHeight, behavior: 'instant' }),
+  )
+  await expect(page.locator('[data-lecon-terminee]')).toBeVisible({ timeout: 15_000 })
+
+  /**
+   * 🔴 ET ON TOUCHE UNE FOIS AVANT DE TIRER. Descendre déclenche le mode
+   * immersif : le chrome s'efface, barres comprises. Une capture prise ici
+   * montrerait une leçon SANS barre et laisserait croire qu'elle a disparu au
+   * bas du texte — c'est-à-dire exactement le défaut qu'on vient de retirer.
+   * Le toucher est aussi ce que ferait la personne.
+   */
+  await page.locator('[data-fin-de-lecon]').click({ position: { x: 5, y: 0 }, force: true })
+  await expect(page.locator('[data-sommaire]')).toBeVisible({ timeout: 10_000 })
+  await figer()
+  await page.screenshot({ path: 'capture-lecon-bas.png' })
+
   // ── Les trois points ──
   await toucher(
     page.locator('[data-menu-lecture]'),
