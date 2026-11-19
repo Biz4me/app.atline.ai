@@ -41,7 +41,21 @@ test('captures de la liseuse et de la page audio', async ({ page, pageErrors }) 
   // ⚠️ Une capture PLEINE PAGE pose les barres fixes au milieu du contenu :
   // c'est un artefact du navigateur, pas un défaut de la page. La rangée des
   // deux cartes se regarde donc dans une vue normale, défilée jusqu'à elle.
-  await page.getByRole('link', { name: /Carte mentale/ }).scrollIntoViewIfNeeded()
+  // ⚠️ `scrollIntoViewIfNeeded` ne bouge PAS ici : le navigateur juge le lien
+  // déjà visible alors qu'il est couvert par la rangée d'action fixe. On
+  // défile donc nous-mêmes.
+  await page.mouse.wheel(0, 460)
+  /**
+   * 🔴 ET ON ATTEND QUE LE DÉFILEMENT SE POSE. Une capture prise pendant un
+   * défilement fluide montre l'en-tête collant au milieu d'un grand vide
+   * noir — ce qui ressemble à une mise en page cassée alors que rien ne l'est.
+   * `figer()` ne suffit pas : un défilement n'est pas une animation au sens du
+   * navigateur, il n'apparaît pas dans `document.getAnimations()`.
+   */
+  await page.waitForFunction(() => {
+    const y = window.scrollY
+    return new Promise((ok) => requestAnimationFrame(() => ok(window.scrollY === y)))
+  })
   await figer()
   await page.screenshot({ path: 'capture-avant-apres.png' })
 
