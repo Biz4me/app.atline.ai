@@ -74,10 +74,20 @@ test('les quatre papiers sont là, et le choix repeint la page', async ({ page, 
    * 🔴 ON MESURE LE FOND CALCULÉ, pas la présence de l'attribut. Un
    * `data-livre` posé sur un élément dont la règle CSS n'existerait pas
    * laisserait la page identique — et l'attribut, lui, serait bien là.
+   *
+   * ⚠️ ET ON LE MESURE SUR LA COUCHE, plus sur la boîte. Depuis le 20 novembre
+   * 2026 le papier est peint par un calque `fixed inset-0` SOUS tout le reste,
+   * pour qu'il aille d'un bord à l'autre pendant que l'en-tête et la barre
+   * gardent, eux, le thème de l'app. La boîte `[data-livre]` ne porte plus que
+   * les jetons et l'encre — son fond est transparent, et cette sonde lisait
+   * donc `rgba(0, 0, 0, 0)`.
    */
   await expect
     .poll(
-      () => page.locator('[data-livre="sepia"]').evaluate((n) => getComputedStyle(n).backgroundColor),
+      () =>
+        page
+          .locator('[data-livre="sepia"] > [data-papier]')
+          .evaluate((n) => getComputedStyle(n).backgroundColor),
       { timeout: 5000 },
     )
     // #F3E0BE — la valeur relevée à la pipette par Patrice le 19 novembre.

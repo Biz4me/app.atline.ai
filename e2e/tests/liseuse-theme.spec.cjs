@@ -45,7 +45,10 @@ test('en thème sombre, la liseuse garde son papier mais pas son chrome', async 
     return {
       entete: fond(document.querySelector('[data-coquille] header, [data-coquille] > div')),
       barre: fond(document.querySelector('[data-barre-action]')),
-      papier: fond(document.querySelector('[data-livre]')),
+      // 🔴 LA COUCHE DE FOND, et pas la boîte qui porte les jetons. Le papier
+      // est peint par un calque `fixed inset-0` sous tout le reste : la boîte
+      // `[data-livre]`, elle, n'a plus de fond du tout.
+      papier: fond(document.querySelector('[data-livre] > [data-papier]')),
     }
   })
   console.log(`  en-tête ${vu.entete} · barre ${vu.barre} · papier ${vu.papier}`)
@@ -59,6 +62,29 @@ test('en thème sombre, la liseuse garde son papier mais pas son chrome', async 
    * passerait au vert.
    */
   expect(clarte(vu.papier), 'le papier blanc reste blanc').toBeGreaterThan(200)
+
+  /**
+   * ── 🔴 ET IL VA D'UN BORD À L'AUTRE ──────────────────────────────────────
+   *
+   * La première correction bornait `Livre` au texte : le chrome a bien suivi
+   * le thème, et **le papier est devenu un rectangle blanc au milieu du
+   * noir**, bordé des gouttières de la page. Deux demandes qui semblaient se
+   * contredire parlaient en fait de deux choses — l'héritage des JETONS se
+   * borne au texte, la PEINTURE couvre l'écran.
+   *
+   * ⚠️ On mesure donc dans la GOUTTIÈRE, à 4 px du bord : c'est exactement là
+   * que le défaut se voyait, et nulle part ailleurs.
+   */
+  const gouttiere = await page.evaluate(() => {
+    const couche = document.querySelector('[data-livre] > [data-papier]')
+    const r = couche.getBoundingClientRect()
+    return { gauche: Math.round(r.left), droite: Math.round(r.right), large: window.innerWidth }
+  })
+  console.log(`  couche du papier : ${gouttiere.gauche} → ${gouttiere.droite} sur ${gouttiere.large}`)
+  expect(gouttiere.gauche, 'le papier doit toucher le bord gauche').toBeLessThanOrEqual(0)
+  expect(gouttiere.droite, 'le papier doit toucher le bord droit').toBeGreaterThanOrEqual(
+    gouttiere.large,
+  )
 })
 
 test('en thème sombre, la page d’écoute est sombre de bout en bout', async ({ page }) => {
