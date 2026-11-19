@@ -23,8 +23,38 @@ test('captures de la liseuse et de la page audio', async ({ page, pageErrors }) 
         } catch {}
       })
     })
+  /**
+   * 🔴 ON ATTEND QUE LA COUVERTURE SOIT VRAIMENT CHARGÉE. Elle est posée en
+   * `background-image` : rien dans le DOM ne dit qu'elle est arrivée, et une
+   * capture prise avant montre un grand rectangle vide — ce qui ressemble
+   * exactement à un défaut d'affichage. On la précharge donc à la main.
+   */
+  await page.evaluate(async () => {
+    const el = document.querySelector('[data-couverture-module]')
+    const url = el && getComputedStyle(el).backgroundImage.match(/url\("?(.+?)"?\)/)?.[1]
+    if (url) await new Promise((ok) => Object.assign(new Image(), { onload: ok, onerror: ok, src: url }))
+  })
   await figer()
   await page.screenshot({ path: 'capture-couverture.png' })
+  await page.screenshot({ path: 'capture-module-entier.png', fullPage: true })
+
+  // ⚠️ Une capture PLEINE PAGE pose les barres fixes au milieu du contenu :
+  // c'est un artefact du navigateur, pas un défaut de la page. La rangée des
+  // deux cartes se regarde donc dans une vue normale, défilée jusqu'à elle.
+  await page.getByRole('link', { name: /Carte mentale/ }).scrollIntoViewIfNeeded()
+  await figer()
+  await page.screenshot({ path: 'capture-avant-apres.png' })
+
+  // ── La carte mentale ──
+  const versCarte = page.getByRole('link', { name: /Carte mentale/ })
+  if (await versCarte.count()) {
+    await suivre(versCarte, page, /\/carte$/)
+    await expect(page.getByText('Perspective clé 1')).toBeVisible({ timeout: 20_000 })
+    await figer()
+    await page.screenshot({ path: 'capture-carte.png', fullPage: true })
+    await page.goBack()
+    await expect(page.getByRole('link', { name: 'Lire' })).toBeVisible({ timeout: 20_000 })
+  }
 
   await suivre(page.getByRole('link', { name: 'Lire' }), page, /\/parcours\/[a-z0-9]+\/[a-z0-9]+$/i)
   await expect(page.locator('[data-sommaire]')).toBeVisible({ timeout: 20_000 })
