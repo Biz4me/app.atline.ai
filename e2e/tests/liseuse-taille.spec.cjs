@@ -11,7 +11,7 @@ const { test, expect, toucher } = require('../fixtures.cjs')
 test.use({ viewport: { width: 390, height: 844 } })
 
 async function ouvrirUneLecon(page) {
-  await page.goto('/parcours/cours', { waitUntil: 'domcontentloaded' })
+  await page.goto('/parcours', { waitUntil: 'domcontentloaded' })
   const liens = await page.locator('a[href^="/parcours/"]').evaluateAll((a) =>
     a.map((x) => x.getAttribute('href')),
   )

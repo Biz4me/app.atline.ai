@@ -20,7 +20,7 @@ test.use({ viewport: { width: 390, height: 844 } })
 
 /** La première leçon atteignable, en passant par où passe un distributeur. */
 async function ouvrirUneLecon(page) {
-  await page.goto('/parcours/cours', { waitUntil: 'domcontentloaded' })
+  await page.goto('/parcours', { waitUntil: 'domcontentloaded' })
 
   /**
    * 🔴 ON NE CODE EN DUR AUCUN IDENTIFIANT. Les onze modules et leurs 71

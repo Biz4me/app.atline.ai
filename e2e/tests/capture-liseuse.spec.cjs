@@ -5,12 +5,32 @@ const { test, expect, suivre, toucher } = require('../fixtures.cjs')
 test.use({ viewport: { width: 390, height: 844 } })
 
 test('captures de la liseuse et de la page audio', async ({ page, pageErrors }) => {
-  await page.goto('/parcours/cours', { waitUntil: 'domcontentloaded' })
+  await page.goto('/parcours', { waitUntil: 'domcontentloaded' })
   const liens = await page.locator('a[href^="/parcours/"]').evaluateAll((a) =>
     a.map((x) => x.getAttribute('href')),
   )
   const versModule = liens.find((h) => /^\/parcours\/[a-z0-9]{10,}$/i.test(h ?? ''))
   expect(versModule).toBeTruthy()
+
+  // ── L'étagère des onze couvertures, sur le hub ──
+  await page.locator('[data-module="1"]').waitFor({ state: 'visible', timeout: 20_000 })
+  await page.evaluate(async () => {
+    // Les couvertures sont des `background-image` : rien dans le DOM ne dit
+    // qu'elles sont arrivées, et une capture prise avant montre des cadres
+    // vides. On précharge les trois premières, celles qu'on voit.
+    const vues = [...document.querySelectorAll('[data-module]')].slice(0, 3)
+    await Promise.all(
+      vues.flatMap((el) =>
+        [...el.querySelectorAll('[style*="url("]')].map((n) => {
+          const url = getComputedStyle(n).backgroundImage.match(/url\("?(.+?)"?\)/)?.[1]
+          return url
+            ? new Promise((ok) => Object.assign(new Image(), { onload: ok, onerror: ok, src: url }))
+            : null
+        }),
+      ),
+    )
+  })
+  await page.screenshot({ path: 'capture-etagere.png' })
 
   await page.goto(versModule, { waitUntil: 'domcontentloaded' })
   await expect(page.getByRole('link', { name: 'Lire' })).toBeVisible({ timeout: 20_000 })
