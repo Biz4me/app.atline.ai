@@ -80,7 +80,8 @@ test('les quatre papiers sont là, et le choix repeint la page', async ({ page, 
       () => page.locator('[data-livre="sepia"]').evaluate((n) => getComputedStyle(n).backgroundColor),
       { timeout: 5000 },
     )
-    .toBe('rgb(243, 234, 218)')
+    // #F3E0BE — la valeur relevée à la pipette par Patrice le 19 novembre.
+    .toBe('rgb(243, 224, 190)')
 
   expect(pageErrors, `exception client : ${pageErrors.join(' · ')}`).toEqual([])
 })

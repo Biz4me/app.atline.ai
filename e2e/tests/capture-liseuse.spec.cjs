@@ -44,7 +44,7 @@ test('captures de la liseuse et de la page audio', async ({ page, pageErrors }) 
 
   // On repose le papier par défaut, puis on referme : la préférence vit dans
   // le navigateur du test et la capture suivante hériterait du sépia.
-  await toucher(page.getByRole('button', { name: 'Blanc' }), page.locator('[data-livre="clair"]'))
+  await toucher(page.getByRole('button', { name: 'Blanc' }), page.locator('[data-livre="blanc"]'))
   // Le voile porte « Fermer » : c'est le seul bouton de ce nom depuis que le
   // panneau est nu.
   await page.getByRole('button', { name: 'Fermer' }).click()
