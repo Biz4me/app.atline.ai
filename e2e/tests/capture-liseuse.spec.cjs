@@ -32,6 +32,39 @@ test('captures de la liseuse et de la page audio', async ({ page, pageErrors }) 
   })
   await page.screenshot({ path: 'capture-etagere.png' })
 
+  /**
+   * ── ET LA PLANCHE : LES ONZE D'UN COUP ───────────────────────────────────
+   *
+   * 🔴 L'ÉCRAN N'EN MONTRE QUE DEUX ET DEMIE, et c'est la vérité de l'usage.
+   * Mais depuis que la rangée met le prochain module en tête, **les modules
+   * terminés partent au bout** : leur bandeau « Terminé » n'est jamais dans le
+   * cadre de la capture d'au-dessus. On ne peut donc plus vérifier sur elle ce
+   * qu'on vient de changer.
+   *
+   * On replie la même rangée sur plusieurs lignes, sans rien changer d'autre —
+   * même cellule, même surface, mêmes 146 px, même bandeau. ⚠️ Ce que cette
+   * image ne prouve PAS : ce qu'on voit en arrivant sur l'écran.
+   */
+  const rangee = page.locator('[data-module="1"]').locator('xpath=ancestor::ul')
+  await rangee.evaluate(async (ul) => {
+    ul.style.flexWrap = 'wrap'
+    ul.style.overflowX = 'visible'
+    ul.style.rowGap = '16px'
+    // Repliée, la rangée passe derrière l'en-tête et la barre du bas.
+    for (const n of document.querySelectorAll('body *')) {
+      const p = getComputedStyle(n).position
+      if ((p === 'fixed' || p === 'sticky') && !n.contains(ul)) n.style.visibility = 'hidden'
+    }
+    // Les onze images sont en `loading="lazy"` : celles du bas ne sont pas
+    // encore demandées, et une capture prise maintenant montrerait des trous.
+    await Promise.all(
+      [...ul.querySelectorAll('img')].map((i) =>
+        i.complete ? null : new Promise((ok) => Object.assign(i, { onload: ok, onerror: ok })),
+      ),
+    )
+  })
+  await rangee.screenshot({ path: 'capture-planche.png' })
+
   await page.goto(versModule, { waitUntil: 'domcontentloaded' })
   await expect(page.getByRole('link', { name: 'Lire' })).toBeVisible({ timeout: 20_000 })
   // 🔴 Une capture prise PENDANT une animation ment autant qu'une mesure.
