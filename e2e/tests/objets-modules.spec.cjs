@@ -1,8 +1,8 @@
 // ⏳ CETTE SONDE MESURE UN MÉCANISME SUPPRIMÉ LE 19 NOVEMBRE 2026.
 //
-// Elle est bâtie sur  — l'objet du module posé en DÉCOR
-// plein écran à 18 % d'opacité — et sur le chemin en pointillés de
-// . Les deux ont disparu le même jour : l'objet est devenu
+// Elle est bâtie sur l'attribut data-decor-objet — l'objet du module posé en
+// DÉCOR plein écran à 18 % d'opacité — et sur le chemin en pointillés de la
+// page /parcours/cours. Les deux ont disparu le même jour : l'objet est devenu
 // la COUVERTURE du module, et la page des cours a été remplacée par l'étagère
 // du hub.
 //
