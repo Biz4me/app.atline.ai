@@ -58,14 +58,48 @@ test('la position se retient, et l’écoute reprend là où on l’a laissée',
   expect(retenue.length, 'aucune position écrite dans le navigateur').toBeGreaterThan(0)
   expect(Number(retenue[0][1]), 'la position retenue ne correspond pas').toBeGreaterThan(100)
 
-  // ── On revient : la tête de lecture doit être replacée ──
+  /**
+   * ── On revient : replacé, RECULÉ DE CINQ SECONDES, et À L'ARRÊT ─────────
+   *
+   * 🔴 LES TROIS ENSEMBLE, parce que c'est leur combinaison qui est la
+   * demande. Vérifier la position sans vérifier la pause laisserait passer un
+   * son qui repart tout seul dans l'oreille de quelqu'un qui rouvrait juste
+   * l'app — exactement le défaut que Patrice a signalé sur la première
+   * version, et que la sonde d'alors ne voyait pas.
+   */
   await page.goto(adresse, { waitUntil: 'domcontentloaded' })
   await page.locator('audio').waitFor({ state: 'attached', timeout: 20_000 })
   await expect
     .poll(async () => page.evaluate(() => Math.round(document.querySelector('audio')?.currentTime ?? 0)), {
       timeout: 20_000,
     })
-    .toBeGreaterThan(100)
+    .toBe(115)
+
+  // ⚠️ On laisse largement le temps à une lecture automatique de partir : une
+  // assertion immédiate passerait au vert avant que le défaut n'ait lieu.
+  await page.waitForTimeout(3_000)
+  expect(
+    await page.evaluate(() => document.querySelector('audio')?.paused),
+    'au retour, le son doit attendre qu’on rappuie sur play',
+  ).toBe(true)
+})
+
+/**
+ * ⚠️ LE VOLUME PAR DÉFAUT, PARCE QU'IL A DÉJÀ ÉTÉ ZÉRO. `Number(null)` vaut 0,
+ * et 0 est un volume valide : sans réglage retenu, le son sortait **muet à la
+ * première ouverture**, pour tout le monde. L'écran affichait un lecteur
+ * parfaitement normal ; seule une mesure prise AVANT d'y toucher l'a vu.
+ */
+test('à la première ouverture, le son n’est pas muet', async ({ page }) => {
+  await page.addInitScript(() => {
+    try {
+      localStorage.removeItem('atline.volume-lecon')
+    } catch {}
+  })
+  await ouvrirEcoute(page)
+  const volume = await page.evaluate(() => document.querySelector('audio')?.volume)
+  console.log(`  volume au premier abord : ${volume}`)
+  expect(volume, 'sans réglage retenu, le son doit être au maximum').toBe(1)
 })
 
 test('la fin du son enchaîne sur la leçon suivante et marque la leçon', async ({ page }) => {
