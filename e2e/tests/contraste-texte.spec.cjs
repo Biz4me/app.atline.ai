@@ -153,7 +153,29 @@ const releve = (page) =>
       return out
     }
 
+    /**
+     * Le texte est-il posé au-dessus d'une image qui le couvre ?
+     *
+     * ⚠️ ON EXIGE UN RECOUVREMENT RÉEL, pas la simple présence d'une image
+     * dans un ancêtre : une carte avec une vignette à gauche et du texte à
+     * droite se verrait sinon dispensée de tout contrôle de contraste.
+     */
+    const surUneImage = (e) => {
+      const r = e.getBoundingClientRect()
+      for (let n = e.parentElement; n && n !== document.body; n = n.parentElement) {
+        const f = getComputedStyle(n).backgroundImage
+        if (f && f !== 'none' && !f.startsWith('linear-gradient')) return true
+        for (const img of n.querySelectorAll(':scope > img')) {
+          const b = img.getBoundingClientRect()
+          if (b.left <= r.left + 1 && b.right >= r.right - 1 && b.top <= r.top + 1 && b.bottom >= r.bottom - 1)
+            return true
+        }
+      }
+      return false
+    }
+
     const res = []
+    const surImage = []
     for (const e of document.querySelectorAll('body *')) {
       const propre = [...e.childNodes].some((n) => n.nodeType === 3 && n.textContent.trim())
       if (!propre) continue
@@ -165,6 +187,32 @@ const releve = (page) =>
       if (r.bottom < 0 || r.top > innerHeight) continue
       const col = nb(s.color)
       if (!col || col[3] < 0.1) continue
+      /**
+       * ── 🔴 UN TEXTE POSÉ SUR UNE IMAGE N'A PAS DE FOND CSS ────────────────
+       *
+       * `fondDe` remonte les ancêtres et compose les couleurs de fond. C'est
+       * juste partout, sauf au-dessus d'une photographie : il n'y a alors
+       * AUCUNE couleur de fond, et la remontée retombe sur le fond de la page.
+       *
+       * 🔴 MESURÉ LE 20 NOVEMBRE 2026 : cette sonde annonçait **« blanc sur
+       * blanc, 1,09 de contraste », onze fois**, pour les titres des onze
+       * couvertures de l'étagère. Les vrais chiffres, lus dans les pixels des
+       * images, vont de **10,5 à 18,5**. Un faux défaut répété onze fois est
+       * le plus sûr moyen de faire désactiver un garde.
+       *
+       * 🧭 ON NE LES IGNORE PAS, ON LES DÉLÈGUE. `contraste-couvertures.spec.cjs`
+       * charge chaque fichier dans une toile et échantillonne exactement le
+       * rectangle du titre, en prenant le pixel le PLUS CLAIR. C'est la seule
+       * façon de répondre, et elle est hors de portée d'une règle CSS.
+       *
+       * ⚠️ ET ON LES COMPTE. Un texte écarté en silence est un texte qu'on a
+       * cessé de surveiller sans le dire : le total est annoncé plus bas, et
+       * il doit rester petit.
+       */
+      if (surUneImage(e)) {
+        surImage.push(e.textContent.trim().slice(0, 40))
+        continue
+      }
       const fond = fondDe(e)
       const texte = col[3] >= 0.999 ? col.slice(0, 3) : sur(col, fond)
       const [a, b] = [lum(texte), lum(fond)].sort((x, y) => y - x)
@@ -177,11 +225,13 @@ const releve = (page) =>
         ratio: +((a + 0.05) / (b + 0.05)).toFixed(2),
       })
     }
-    return res
+    return { res, surImage }
   })
 
 test('aucun texte de l’app sous son seuil de contraste', async ({ page }) => {
   const fautes = new Map()
+  const deleguesImage = []
+  const deleguesTrop = []
 
   for (const theme of ['light', 'dark']) {
     for (const [nom, url] of ECRANS) {
@@ -193,9 +243,20 @@ test('aucun texte de l’app sous son seuil de contraste', async ({ page }) => {
       await page.locator('main').first().waitFor({ timeout: 20_000 })
       await page.waitForTimeout(600)
 
-      const lignes = await releve(page)
+      const { res: lignes, surImage } = await releve(page)
       // 🔴 UN ÉCRAN SANS TEXTE EST UNE SONDE QUI N'A RIEN REGARDÉ.
       expect(lignes.length, `${theme} ${nom} : aucun texte relevé`).toBeGreaterThan(5)
+      /**
+       * ⚠️ CE QU'ON A DÉLÉGUÉ SE COMPTE, SINON ON NE LE SURVEILLE PLUS. Un
+       * texte posé sur une image est mesuré par `contraste-couvertures`, dans
+       * les pixels ; mais si ce nombre enflait, ce serait l'app entière qui
+       * sortirait du garde, un écran à la fois.
+       */
+      if (surImage.length) {
+        deleguesImage.push(`${theme} ${nom} : ${surImage.length}`)
+        if (surImage.length > 15)
+          deleguesTrop.push(`${theme} ${nom} : ${surImage.length} textes sur image — ${surImage.slice(0, 3).join(' · ')}`)
+      }
 
       for (const l of lignes) {
         const seuil = seuilDe(l.px, l.graisse)
@@ -221,7 +282,18 @@ test('aucun texte de l’app sous son seuil de contraste', async ({ page }) => {
     )
   if (liste.length) console.log('\n' + liste.join('\n') + '\n')
 
+  if (deleguesImage.length)
+    console.log('textes posés sur une image, mesurés par contraste-couvertures : ' + deleguesImage.join(' · '))
+
   expect(liste, `${liste.length} couple(s) sous le seuil :\n` + liste.join('\n')).toEqual([])
+  /**
+   * 🔴 ET LA DÉLÉGATION A UN PLAFOND. Écarter le texte posé sur une image est
+   * juste — aucune règle CSS ne peut le juger — mais c'est une dispense, et
+   * une dispense sans plafond finit par couvrir l'app entière, un écran à la
+   * fois. Au-delà de quinze textes sur un même écran, ce n'est plus une
+   * couverture de livre : c'est une mise en page qu'il faut mesurer autrement.
+   */
+  expect(deleguesTrop, 'trop de texte échappe au garde :\n' + deleguesTrop.join('\n')).toEqual([])
 })
 
 test('la-sonde-du-contraste-texte-sait-echouer', async ({ page }) => {
@@ -236,7 +308,7 @@ test('la-sonde-du-contraste-texte-sait-echouer', async ({ page }) => {
     document.body.append(p)
   })
   await page.waitForTimeout(200)
-  const lignes = await releve(page)
+  const { res: lignes } = await releve(page)
   const faute = lignes.find((l) => l.mot.startsWith('texte volontairement'))
   expect(faute, 'la sonde n’a même pas vu le texte piège').toBeTruthy()
   // ⚠️ `color-mix()` exprès : c'est la notation que Chrome rend en

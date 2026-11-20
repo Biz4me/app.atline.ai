@@ -44,7 +44,26 @@ function lesCandidates() {
 
 test('les couvertures candidates, à leur taille réelle, entre les autres', async ({ page }) => {
   const candidates = lesCandidates()
-  expect(candidates.length, 'passer COUVERTURE=<image> ou COUVERTURES="1=a.png,2=b.png"').toBeGreaterThan(0)
+  /**
+   * ── 🔴 CE FICHIER EST UN OUTIL, PAS UNE SONDE ─────────────────────────────
+   *
+   * Il sert à JUGER une couverture candidate avant de l'adopter : on lui passe
+   * un fichier, il la pose sur la vraie étagère et la mesure entre les autres.
+   * Sans ce fichier, il n'y a rien à juger.
+   *
+   * 🔴 IL ÉCHOUAIT DONC À CHAQUE PASSAGE DE LA SUITE, en annonçant « passer
+   * COUVERTURE=<image> ». Un rouge permanent qui ne signale aucun défaut, et
+   * la suite en comptait **trente** : à ce régime, on cesse de lire la liste,
+   * et le jour où un vrai défaut s'y glisse, personne ne le voit.
+   *
+   * 🧭 UN OUTIL SE SAUTE À VOIX HAUTE, IL N'ÉCHOUE PAS. `test.skip` dit sa
+   * raison dans le rapport : il reste visible, mais il ne prétend plus avoir
+   * trouvé quelque chose.
+   */
+  test.skip(
+    candidates.length === 0,
+    'outil de jugement, pas sonde : passer COUVERTURE=<image> ou COUVERTURES="1=a.png,2=b.png"',
+  )
   for (const c of candidates) {
     c.donnee = `data:image/png;base64,${fs.readFileSync(c.fichier).toString('base64')}`
   }

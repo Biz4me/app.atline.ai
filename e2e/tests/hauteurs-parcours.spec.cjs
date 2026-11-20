@@ -1,15 +1,16 @@
-// ⏳ CETTE SONDE MESURE UN MÉCANISME SUPPRIMÉ LE 19 NOVEMBRE 2026.
+// ── 🔴 CET EN-TÊTE DISAIT QUE TOUT CE FICHIER ÉTAIT PÉRIMÉ. C'ÉTAIT FAUX ──
 //
-// Elle est bâtie sur l'attribut data-decor-objet — l'objet du module posé en
-// DÉCOR plein écran à 18 % d'opacité — et sur le chemin en pointillés de la
-// page /parcours/cours. Les deux ont disparu le même jour : l'objet est devenu
-// la COUVERTURE du module, et la page des cours a été remplacée par l'étagère
-// du hub.
+// Il annonçait « cette sonde mesure un mécanisme supprimé le 19 novembre » et
+// condamnait les trois tests d'un bloc. Mesuré le 20 au soir : **le tracé en
+// pointillés existe toujours** et son test passait au vert pendant que
+// l'en-tête le déclarait mort. Les deux autres n'étaient pas périmés non
+// plus — ils cherchaient le titre par sa STRUCTURE, `ol li a > span:nth-child(2)`,
+// et la liste des modules est passée de `ol` à `ul`.
 //
-// 🔴 ELLE NE SE REPOINTE PAS, ELLE SE RÉÉCRIT. Ses adresses ont été corrigées
-// pour qu'on voie ce qui reste, mais ce qu'elle mesure n'existe plus. Le
-// risque équivalent aujourd'hui est AILLEURS, et il est réel : un titre
-// composé en blanc sur une couverture teintée.
+// 🧭 UNE SONDE QUI ANNONCE SA PROPRE MORT NE SE RELIT PLUS. Celle-ci a passé
+// une journée à crier « 0 titre au lieu de 11 » sous un en-tête qui disait de
+// ne pas s'en occuper : le plus sûr moyen de ne jamais voir le vrai défaut le
+// jour où il arrive. Les prises sont maintenant des attributs déclarés.
 //
 // LES CARTES ONT-ELLES TOUTES LA MEME HAUTEUR, ET AUCUN TITRE N'EST-IL ROGNE ?
 //
@@ -56,7 +57,7 @@ async function controler(page, nom, selecteurCarte, selecteurTitre, combien) {
 test('les modules', async ({ page, pageErrors }) => {
   await page.goto('/parcours', { waitUntil: 'domcontentloaded' })
   await expect(page.locator('a[data-module]').first()).toBeVisible({ timeout: 20_000 })
-  await controler(page, 'modules', 'a[data-module]', 'ol li a > span:nth-child(2)', 11)
+  await controler(page, 'modules', 'a[data-module]', 'a[data-module] [data-titre-couverture]', 11)
   expect(pageErrors).toEqual([])
 })
 
@@ -67,7 +68,14 @@ test('les leçons, sur les trois modules aux titres les plus longs', async ({ pa
   const liens = await page.locator('a[data-module]').evaluateAll((n) => n.map((e) => e.getAttribute('href')))
   for (const i of [0, 3, 10]) {
     await page.goto(liens[i], { waitUntil: 'domcontentloaded' })
-    await expect(page.locator('a[data-module]').first()).toBeVisible({ timeout: 20_000 })
+    /**
+     * 🔴 ON ATTEND UNE LEÇON, PAS UNE CARTE DE MODULE. Cette ligne attendait
+     * `a[data-module]` — qui n'existe que sur l'ÉTAGÈRE. Sur la couverture
+     * d'un module il n'y en a aucune : la sonde attendait donc vingt secondes
+     * un élément qui ne pouvait pas venir, et échouait sur un `toBeVisible`
+     * qui ne disait rien du défaut qu'elle cherche.
+     */
+    await expect(page.locator('ol li a[data-lecon]').first()).toBeVisible({ timeout: 20_000 })
     // ⚠️ `[data-lecon]` et pas `ol li a` : depuis le chemin, le quiz et la
     // simulation sont aussi des nœuds, avec un gabarit qui n'est pas celui
     // d'une leçon. Les mesurer ensemble ferait crier la sonde sur un écran

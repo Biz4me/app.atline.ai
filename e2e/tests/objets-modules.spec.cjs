@@ -1,179 +1,158 @@
-// ⏳ CETTE SONDE MESURE UN MÉCANISME SUPPRIMÉ LE 19 NOVEMBRE 2026.
+// LES ONZE COUVERTURES DE MODULE — et surtout : est-ce qu'elles ARRIVENT ?
 //
-// Elle est bâtie sur l'attribut data-decor-objet — l'objet du module posé en
-// DÉCOR plein écran à 18 % d'opacité — et sur le chemin en pointillés de la
-// page /parcours/cours. Les deux ont disparu le même jour : l'objet est devenu
-// la COUVERTURE du module, et la page des cours a été remplacée par l'étagère
-// du hub.
+//   E2E_BASE=https://v2.atline.ai npx playwright test tests/objets-modules.spec.cjs
 //
-// 🔴 ELLE NE SE REPOINTE PAS, ELLE SE RÉÉCRIT. Ses adresses ont été corrigées
-// pour qu'on voie ce qui reste, mais ce qu'elle mesure n'existe plus. Le
-// risque équivalent aujourd'hui est AILLEURS, et il est réel : un titre
-// composé en blanc sur une couverture teintée.
+// ── 🔴 ELLE A CHANGÉ DE PRISE DEUX FOIS, ET LA DEUXIÈME L'AVAIT TUÉE ───────
 //
-// LES ONZE OBJETS DES MODULES.
+// L'objet d'un module fut d'abord une vignette `<img data-objet-module>` de
+// 112 px, puis le DÉCOR plein écran de la page (`[data-decor-objet]`, un fond
+// CSS à 18 %), puis — depuis le 19 novembre 2026 — la COUVERTURE du module,
+// une vraie image de 440 × 587 qu'on voit sur trois écrans.
 //
-//   E2E_BASE=https://v2.atline.ai E2E_COMME=humanstring@gmail.com \
-//     npx playwright test tests/objets-modules.spec.cjs
+// 🔴 CETTE SONDE EN ÉTAIT RESTÉE AU DÉCOR. Elle cherchait `[data-decor-objet]`,
+// qui n'existe nulle part : elle échouait tous les jours sur un écran correct.
+// Et ses deux autres tests vérifiaient l'ABSENCE de ce même décor, donc ils
+// passaient au vert sans rien éprouver — deux contrôles qui ne pouvaient plus
+// échouer, dans un fichier qui, lui, ne pouvait plus réussir.
 //
-// ── 🔴 ELLE A CHANGÉ DE PRISE LE 11 NOVEMBRE 2026 ─────────────────────────
+// ── 🧭 CE QU'ELLE PROUVE N'A JAMAIS CHANGÉ ────────────────────────────────
 //
-// L'objet était une vignette `<img data-objet-module>` de 112 px ; il est
-// devenu le DÉCOR plein écran de la page, un fond CSS porté par
-// `[data-decor-objet]`. Cette sonde est passée au rouge, et **c'est ce qu'on
-// lui demande** : elle surveillait une balise qui n'existe plus.
+// **Qu'une image arrive pour de bon.** C'est la seule chose qu'un contrôle de
+// présence ne dit pas : un 404 sur une couverture ne fait ni erreur console,
+// ni icône cassée quand elle est posée en fond, et un `<img>` vide se voit à
+// peine sur une scène sombre. On charge donc chaque fichier et on regarde ses
+// pixels.
 //
-// 🧭 On la déplace, on ne la remplace pas. Ce qu'elle prouve n'a pas changé
-// d'un pouce : **chaque module porte SON objet, et les octets arrivent
-// vraiment.** Une erreur d'un caractère dans le nom donnerait onze fois la
-// même image — toutes vertes, et personne ne le verrait.
-
+// 🔴 ET IL Y A DEUX FICHIERS PAR MODULE, PAS UN. La grande couverture
+// (`mNN.v3.webp`) et sa réduction (`mNN.v3.min.webp`), que portent l'étagère
+// ET la pochette du lecteur en arrière-plan. La seconde n'était surveillée par
+// personne : un 404 dessus aurait laissé une pastille muette avec un carré
+// vide, sur tous les écrans de l'app, sans un mot.
 const { test, expect } = require('../fixtures.cjs')
 
 test.use({ viewport: { width: 390, height: 844 } })
 
-test('chacun des onze modules porte SON objet, et l’image arrive vraiment', async ({
+/** Charger une image pour de bon, et dire ce qu'elle pèse vraiment. */
+const charger = (page, urls) =>
+  page.evaluate(
+    (urls) =>
+      Promise.all(
+        urls.map(
+          (u) =>
+            new Promise((r) => {
+              const img = new Image()
+              img.onload = () => r({ u, ok: true, l: img.naturalWidth, h: img.naturalHeight })
+              img.onerror = () => r({ u, ok: false, l: 0, h: 0 })
+              img.src = u
+            }),
+        ),
+      ),
+    urls,
+  )
+
+test('chacun des onze modules porte SA couverture, et l’image arrive vraiment', async ({
   page,
   pageErrors,
 }) => {
   await page.goto('/parcours', { waitUntil: 'domcontentloaded' })
-  const liens = page.locator('main a[href^="/parcours/"]')
-  await expect(liens.first()).toBeVisible({ timeout: 20_000 })
+  await expect(page.locator('a[data-module]').first()).toBeVisible({ timeout: 20_000 })
 
-  const adresses = await liens.evaluateAll((n) =>
-    [...new Set(n.map((e) => e.getAttribute('href')).filter((h) => /^\/parcours\/[a-z0-9]+$/.test(h)))],
+  /**
+   * 🔴 `a[data-module]` ET PAS `main a[href^="/parcours/"]`. L'ancienne prise
+   * ramassait aussi le lien « reprendre », qui mène lui aussi à un module :
+   * douze adresses pour onze modules, et un `toHaveLength(11)` qui échouait
+   * en annonçant « la liste ne donne pas onze modules » — ce qui était faux,
+   * elle les donnait tous, plus un.
+   */
+  const cartes = await page.locator('a[data-module]').evaluateAll((n) =>
+    n.map((e) => ({
+      numero: Number(e.getAttribute('data-module')),
+      href: e.getAttribute('href'),
+      src: e.querySelector('img')?.getAttribute('src') ?? null,
+      titre: e.querySelector('[data-titre-couverture]')?.textContent.trim() ?? null,
+    })),
   )
+  console.log(JSON.stringify(cartes.map((c) => c.src), null, 0))
+
+  const griefs = []
   // 🔴 CE QU'ON ATTEND, DÉCLARÉ. Sans ce compte, une liste vide ferait une
   // boucle qui ne tourne pas et un test vert qui n'a rien regardé.
-  expect(adresses, 'la liste ne donne pas onze modules').toHaveLength(11)
+  if (cartes.length !== 11) griefs.push(`l’étagère donne ${cartes.length} modules au lieu de 11`)
 
-  const vus = new Set()
-  for (const adresse of adresses) {
-    await page.goto(adresse, { waitUntil: 'domcontentloaded' })
-    const decor = page.locator('[data-decor-objet]')
-    await expect(decor).toHaveCount(1, { timeout: 20_000 })
-
-    /**
-     * 🔴 UN FOND CSS N'A PAS DE `naturalWidth` — donc on le charge pour de
-     * bon. C'est le même détour que `fond.spec.cjs` pour le décor de
-     * l'accueil, et il reste indispensable : **un 404 ne se voit pas** sur un
-     * fond CSS. Pas d'icône cassée, pas d'erreur console, rien. L'écran est
-     * simplement nu, et un contrôle de présence le valide.
-     */
-    const etat = await decor.evaluate(async (e) => {
-      const inner = e.querySelector('div') ?? e
-      const s = getComputedStyle(inner)
-      const m = s.backgroundImage.match(/url\("([^"]+)"\)/)
-      if (!m) return { numero: e.getAttribute('data-decor-objet'), url: null }
-      const url = m[1]
-      const img = new Image()
-      img.src = url
-      const ok = await new Promise((r) => {
-        img.onload = () => r(true)
-        img.onerror = () => r(false)
-      })
-      // La marge morte, lue dans le canal alpha : deux pixels de tolérance
-      // pour le pixel de garde du découpage et le ré-encodage.
-      let marges = null
-      if (ok && img.naturalWidth) {
-        const c = document.createElement('canvas')
-        c.width = img.naturalWidth
-        c.height = img.naturalHeight
-        const ctx = c.getContext('2d')
-        ctx.drawImage(img, 0, 0)
-        const d = ctx.getImageData(0, 0, c.width, c.height).data
-        let x0 = 1e9, y0 = 1e9, x1 = -1, y1 = -1
-        for (let y = 0; y < c.height; y++)
-          for (let x = 0; x < c.width; x++)
-            if (d[(y * c.width + x) * 4 + 3] > 8) {
-              if (x < x0) x0 = x
-              if (x > x1) x1 = x
-              if (y < y0) y0 = y
-              if (y > y1) y1 = y
-            }
-        const zero = (v) => (v <= 2 ? 0 : v)
-        marges = {
-          g: zero(x0),
-          d: zero(c.width - 1 - x1),
-          h: zero(y0),
-          b: zero(c.height - 1 - y1),
-        }
-      }
-      return {
-        numero: e.getAttribute('data-decor-objet'),
-        url: url.replace(/^https?:\/\/[^/]+/, ''),
-        charge: ok,
-        largeur: img.naturalWidth,
-        hauteur: img.naturalHeight,
-        marges,
-        taille: s.backgroundSize,
-        opacite: Number(s.opacity),
-      }
-    })
-
-    expect(etat.url, `${adresse} : aucun fond sur la couture du décor`).toBeTruthy()
-    expect(etat.charge, `${adresse} : ${etat.url} n'a pas chargé (404 ?)`).toBe(true)
-    expect(etat.largeur, `${adresse} : ${etat.url} est vide`).toBeGreaterThan(0)
-    /**
-     * 🔴 ELLES NE SONT PLUS CARRÉES, ET C'EST LE CORRECTIF. Ce contrôle
-     * exigeait `largeur === hauteur` : les `.v1` étaient onze carrés de 224,
-     * **chacun avec sa propre marge morte**, et c'est précisément ce qui
-     * rendait les objets incomparables à l'écran — le sablier décalé de 31 px
-     * dans son cadre, la boussole rognée par les bords. Les `.v2` sont
-     * découpés sur l'encre : leur forme EST celle de l'objet.
-     *
-     * 🧭 Ce qui le remplace est plus fort : **aucune marge morte**. L'objet
-     * doit toucher les quatre bords de son fichier, à deux pixels près — le
-     * pixel de garde du découpage. Un fichier qui reviendrait avec du vide
-     * autour casserait de nouveau la famille, et ce contrôle le dirait.
-     */
-    expect(
-      etat.marges,
-      `${etat.url} : marge morte autour de l'objet (${JSON.stringify(etat.marges)})`,
-    ).toEqual({ g: 0, d: 0, h: 0, b: 0 })
-    // ⚠️ ET IL SE VOIT. Une opacité tombée à zéro laisserait tout le reste au
-    // vert pour un écran sans décor — la faute exacte commise ce jour-là par
-    // la sonde du contraste.
-    expect(etat.opacite, `${adresse} : décor invisible (opacité ${etat.opacite})`).toBeGreaterThan(
-      0.04,
-    )
-
-    expect(etat.url).toContain(`/modules/m${String(etat.numero).padStart(2, '0')}.`)
-    expect(vus.has(etat.url), `${etat.url} servi deux fois`).toBe(false)
-    vus.add(etat.url)
+  const vues = new Set()
+  for (const c of cartes) {
+    if (!c.src) {
+      griefs.push(`module ${c.numero} : aucune image sur sa carte`)
+      continue
+    }
+    if (!c.titre) griefs.push(`module ${c.numero} : sa couverture ne porte pas de titre`)
+    // ⚠️ Le fichier doit porter le numéro du module : une couverture juste,
+    // servie au mauvais module, passerait tous les autres contrôles.
+    const attendu = `/modules/m${String(c.numero).padStart(2, '0')}.`
+    if (!c.src.includes(attendu)) griefs.push(`module ${c.numero} sert ${c.src}`)
+    if (vues.has(c.src)) griefs.push(`${c.src} servi deux fois`)
+    vues.add(c.src)
   }
 
-  expect(vus.size, 'onze objets distincts attendus').toBe(11)
+  /**
+   * ── Les deux fichiers de chaque module, chargés pour de bon ──────────────
+   *
+   * ⚠️ On dérive la grande depuis la réduite plutôt que de lire la page du
+   * module onze fois : c'est la même règle de nommage, et onze allers-retours
+   * de plus ne prouveraient rien de neuf.
+   */
+  const fichiers = [...vues].flatMap((s) => [s, s.replace('.min.webp', '.webp')])
+  const charges = await charger(page, [...new Set(fichiers)])
+  for (const f of charges) {
+    if (!f.ok) griefs.push(`${f.u} n’a pas chargé (404 ?)`)
+    else if (f.l < 100) griefs.push(`${f.u} ne fait que ${f.l} px de large`)
+  }
+  console.log(
+    charges.map((f) => `${f.u.replace(/^.*\/modules\//, '')} ${f.ok ? f.l + '×' + f.h : 'ABSENTE'}`).join(' · '),
+  )
+
+  expect(griefs, `ce qui cloche :\n  · ${griefs.join('\n  · ')}`).toEqual([])
   expect(pageErrors, `exception client : ${pageErrors.join(' · ')}`).toHaveLength(0)
 })
 
-test('la liste des modules, elle, n’en porte aucun', async ({ page }) => {
-  // 🧭 Décidé sur mesure le 9 novembre : la carte de la liste offre `W − 100`
-  // px au titre, et un objet lisible y ferait passer un titre de 64 caractères
-  // à quatre lignes. Le passage de la vignette au décor n'y change rien — onze
-  // objets dans une liste qu'on parcourt du regard seraient le bruit qu'on a
-  // refusé pour les compétences.
+/**
+ * ── 🔴 UNE LEÇON N'A PAS DE COUVERTURE ─────────────────────────────────────
+ *
+ * Tranché avec Patrice avant d'écrire une ligne : une leçon est un texte qu'on
+ * lit longtemps, et une image derrière un long texte se paie en fatigue, pas
+ * en caractère. Sans ce contrôle, la décision ne vit que dans un commentaire.
+ *
+ * ⚠️ CE TEST A REMPLACÉ DEUX CONTRÔLES QUI NE POUVAIENT PLUS ÉCHOUER : ils
+ * vérifiaient l'absence de `[data-decor-objet]` et de `[data-objet-module]`,
+ * deux attributs qui n'existent plus nulle part. Vérifier qu'une chose
+ * supprimée est absente, c'est se payer un vert gratuit.
+ */
+test('la liseuse d’une leçon ne porte aucune couverture', async ({ page }) => {
   await page.goto('/parcours', { waitUntil: 'domcontentloaded' })
-  await expect(page.locator('main a[href^="/parcours/"]').first()).toBeVisible({ timeout: 20_000 })
-  await expect(page.locator('[data-decor-objet]')).toHaveCount(0)
-  // ⚠️ L'ANCIENNE PRISE AUSSI : si une vignette `data-objet-module` revenait,
-  // ce contrôle doit la voir. Retirer son nom d'ici, c'est rouvrir la porte.
-  await expect(page.locator('[data-objet-module]')).toHaveCount(0)
-})
-
-test('une leçon n’a pas de décor', async ({ page }) => {
-  // 🧭 Tranché avec Patrice avant d'écrire une ligne : une leçon est un texte
-  // qu'on lit longtemps, et un décor derrière un long texte se paie en
-  // fatigue, pas en caractère. Sans ce contrôle, la décision ne vit que dans
-  // un commentaire.
-  await page.goto('/parcours', { waitUntil: 'domcontentloaded' })
-  const module = await page
-    .locator('main a[href^="/parcours/"]')
-    .evaluateAll((n) => n.map((e) => e.getAttribute('href')).find((h) => /^\/parcours\/[a-z0-9]+$/.test(h)))
-  await page.goto(module, { waitUntil: 'domcontentloaded' })
-  const lecon = page.locator('main a[href^="/parcours/"]').first()
+  const href = await page.locator('a[data-module="2"]').getAttribute('href')
+  await page.goto(href, { waitUntil: 'domcontentloaded' })
+  const lecon = page.locator('ol li a[data-lecon]').first()
   await expect(lecon).toBeVisible({ timeout: 20_000 })
   await lecon.click()
-  await expect(page.locator('h1')).toBeVisible({ timeout: 20_000 })
-  await expect(page.locator('[data-decor-objet]')).toHaveCount(0)
+  await expect(page.locator('[data-rang]')).toBeVisible({ timeout: 20_000 })
+
+  const images = await page.evaluate(() =>
+    [...document.querySelectorAll('img')]
+      .filter((e) => /\/modules\/m\d/.test(e.getAttribute('src') || ''))
+      .map((e) => ({
+        src: e.getAttribute('src'),
+        large: Math.round(e.getBoundingClientRect().width),
+        pastille: !!e.closest('[data-pastille-ecoute]'),
+      })),
+  )
+  console.log(JSON.stringify(images))
+
+  /**
+   * ⚠️ LA POCHETTE DE LA PASTILLE EST UNE EXCEPTION DÉCLARÉE. Si une leçon
+   * joue pendant que la sonde passe, le lecteur en arrière-plan est là avec
+   * sa couverture de 42 px — et c'est voulu. L'écarter en silence serait
+   * rouvrir la porte à un vrai décor ; l'écarter en le NOMMANT la referme.
+   */
+  const decors = images.filter((i) => !i.pastille)
+  expect(decors, `la liseuse porte ${decors.length} couverture(s) : ${JSON.stringify(decors)}`).toEqual([])
 })
