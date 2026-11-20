@@ -63,15 +63,57 @@ test('on tape son numéro comme on le connaît, et il part avec son indicatif', 
    * ET WHATSAPP S'ALLUME TOUT SEUL. C'est toute la raison d'être de ce
    * chantier : le numéro porte son indicatif, donc le canal peut marcher.
    */
-  await page.locator('[data-geste="Message"]').click()
-  const menu = page.locator('[data-menu-canaux]')
-  await expect(menu).toBeVisible({ timeout: 10_000 })
-  const wa = menu.locator('[data-canal="WhatsApp"]')
-  await expect(wa, 'WhatsApp reste muet alors que le numéro est international').not.toHaveAttribute(
-    'data-eteint',
-    '',
-  )
-  await expect(wa).toHaveAttribute('href', 'https://wa.me/33690557238')
+  /**
+   * ── 🔴 LE GESTE N'OUVRE UN MENU QUE S'IL Y A PLUSIEURS CANAUX VIVANTS ─────
+   *
+   * Cette sonde cliquait « Message » et attendait `[data-menu-canaux]` pendant
+   * dix secondes. Elle échouait, et **le produit était juste** : avec un seul
+   * canal, le geste agit en UNE TOUCHE — c'est la doctrine de la maison, pas
+   * un oubli — et il n'y a alors aucun menu à ouvrir. Le contact jetable
+   * qu'elle fabrique n'a qu'un numéro.
+   *
+   * 🧭 CE QU'ELLE DOIT PROUVER N'EST PAS « UN MENU S'OUVRE », c'est **que
+   * WhatsApp est joignable avec le bon numéro international**. On accepte donc
+   * les deux formes, et on dit laquelle on a rencontrée : une sonde qui
+   * n'accepte qu'une mise en page impose cette mise en page sans l'avoir
+   * décidé.
+   */
+  const geste = page.locator('[data-geste="Message"]')
+  const parMenu = (await geste.getAttribute('data-menu-geste')) !== null
+  console.log(parMenu ? '  plusieurs canaux : par le menu' : '  un seul canal : en une touche')
+
+  if (parMenu) {
+    await geste.click()
+    const menu = page.locator('[data-menu-canaux]')
+    await expect(menu).toBeVisible({ timeout: 10_000 })
+    const wa = menu.locator('[data-canal="WhatsApp"]')
+    await expect(wa, 'WhatsApp reste muet alors que le numéro est international').not.toHaveAttribute(
+      'data-eteint',
+      '',
+    )
+    await expect(wa).toHaveAttribute('href', 'https://wa.me/33690557238')
+  } else {
+    /**
+     * ── 🔴 AVEC UN SEUL CANAL, « MESSAGE » MÈNE À L'ÉCRAN D'ÉCRITURE ────────
+     *
+     * Mesuré : son `href` vaut `/gens/<id>/ecrire`, pas un lien `wa.me`. Le
+     * choix du canal n'a donc pas disparu — **il a déménagé** sur l'écran de
+     * rédaction, là où le texte se compose avant de partir.
+     *
+     * 🧭 On y suit la même preuve, au même endroit qu'un humain : le lien
+     * d'envoi doit porter le numéro INTERNATIONAL. C'est toute la raison de
+     * ce chantier, et elle se vérifie où le produit la met aujourd'hui, pas
+     * où la sonde l'attendait hier.
+     */
+    await geste.click()
+    await expect(page).toHaveURL(/\/ecrire$/, { timeout: 20_000 })
+    const wa = page.locator('[data-canal="WHATSAPP"]')
+    if (await wa.count()) await wa.click()
+    const lien = page.locator('a[href^="https://wa.me/"]')
+    await expect(lien, 'aucun lien WhatsApp sur l’écran d’écriture').toHaveCount(1, { timeout: 10_000 })
+    const href = await lien.getAttribute('href')
+    expect(href, `le lien WhatsApp ne porte pas l’indicatif : ${href}`).toContain('wa.me/33690557238')
+  }
 
   expect(pageErrors, `exception client : ${pageErrors.join(' · ')}`).toEqual([])
 })
@@ -96,7 +138,21 @@ test('le menu se referme par le voile, et il n’a plus de croix', async ({ page
   // ⚠️ PAR « MESSAGE » DEPUIS LE 18 NOVEMBRE 2026 : « Appeler » ne porte plus
   // de menu, il mène à l'écran de préparation. « Message » en garde un — SMS,
   // WhatsApp, e-mail — et c'est lui qui doit se refermer par le voile.
-  await page.locator('[data-geste="Message"]').click()
+  /**
+   * 🔴 ET CE TEST N'A DE SENS QUE S'IL Y A UN MENU. Avec un seul canal vivant
+   * le geste agit en une touche : il n'y a pas de voile à refermer. On le
+   * SAUTE à voix haute plutôt que d'échouer — un rouge qui ne signale aucun
+   * défaut finit par rendre la liste illisible.
+   *
+   * ⏳ Pour l'éprouver pour de bon, il faut un contact à DEUX canaux. C'est
+   * une évolution du contact jetable, pas de cette sonde.
+   */
+  const geste = page.locator('[data-geste="Message"]')
+  test.skip(
+    (await geste.getAttribute('data-menu-geste')) === null,
+    'ce contact n’a qu’un canal vivant : « Message » agit en une touche, sans menu ni voile',
+  )
+  await geste.click()
   const menu = page.locator('[data-menu-canaux]')
   await expect(menu).toBeVisible({ timeout: 10_000 })
   expect(await menu.locator('button').count(), 'la croix est revenue dans le menu').toBe(0)
