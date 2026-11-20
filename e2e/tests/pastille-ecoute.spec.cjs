@@ -337,8 +337,25 @@ test('les sauts de la pastille changent la piste sans déplacer l’écran', asy
 
   const griefs = []
   // Elle vit sur des écrans sans aucun rapport avec la formation : sans le
-  // module, « Leçon 1 de 8 » ne dit pas de quel livre.
+  // module, « Leçon 1 » ne dit pas de quel livre.
   if (!avant.texte?.includes('Module ')) griefs.push(`la pastille ne dit pas le module : « ${avant.texte} »`)
+
+  /**
+   * 🔴 LA LIGNE DU RANG NE DOIT JAMAIS ÊTRE COUPÉE. C'est la mesure qui a
+   * tranché le format : dans une colonne de 136 px, le pire cas des onze
+   * modules occupe 95 px depuis qu'il ne porte plus le total. Un rang tronqué
+   * — « Module 11 · Leç… » — se lit comme un écran cassé, là où un TITRE
+   * tronqué se lit comme un titre long. Les deux lignes n'ont pas le même
+   * droit à déborder.
+   */
+  const rang = await page.evaluate(() => {
+    const e = document.querySelector('[data-pastille-ecoute] a span span')
+    return e ? { texte: e.textContent.trim(), visible: e.clientWidth, reel: e.scrollWidth } : null
+  })
+  console.log(JSON.stringify({ rang }, null, 1))
+  if (!rang) griefs.push('ligne du rang introuvable')
+  else if (rang.reel > rang.visible)
+    griefs.push(`le rang « ${rang.texte} » est coupé : ${rang.reel} px pour ${rang.visible} disponibles`)
 
   await page.locator('[data-pastille-suivant]').click()
   await expect
