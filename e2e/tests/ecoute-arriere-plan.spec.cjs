@@ -123,14 +123,29 @@ test('l’écran verrouillé sait quoi afficher', async ({ page }) => {
 
   const griefs = []
   if (!vu.pris) griefs.push('aucune métadonnée : l’écran verrouillé affichera l’adresse du site')
+  /**
+   * ── 🔴 DEUX LIGNES, ET AUCUNE NE DIT « ATLINE » ───────────────────────────
+   *
+   * La notification d'Android en montre trois : le nom de l'APPLICATION, puis
+   * ces deux-ci. Patrice, le 20 novembre 2026, une fois l'app installée :
+   * *« Atline en titre mais aussi atline dessous »* — l'artiste et l'album
+   * retombaient sur « Atline » quand le titre du module manquait, si bien que
+   * le même mot s'affichait deux fois, une pour l'app et une pour nous.
+   *
+   * 🧭 Le rang au-dessus, le titre de la LEÇON en dessous : le même ordre de
+   * lecture que la pastille, pour que les deux surfaces ne se contredisent pas.
+   */
+  if (!/^Module \d+ · Leçon \d+$/.test(vu.titre ?? ''))
+    griefs.push(`la première ligne devrait être le rang, elle dit « ${vu.titre} »`)
   // 🔴 LE TITRE SE COMPARE À L'ÉCRAN, pas à une chaîne recopiée ici : une
   // constante dans le test se périme le jour où la leçon est renommée, et
   // ferait échouer une app parfaitement juste.
-  if (vu.titre !== vu.ecran)
-    griefs.push(`le titre annoncé (« ${vu.titre} ») n’est pas celui de l’écran (« ${vu.ecran} »)`)
-  if (!vu.auteur || vu.auteur === 'Atline')
-    griefs.push('le titre du module n’est pas passé : l’écran verrouillé ne dira pas de quel livre vient la leçon')
-  if (!vu.album?.startsWith('Atline')) griefs.push(`album inattendu : « ${vu.album} »`)
+  if (vu.auteur !== vu.ecran)
+    griefs.push(`la seconde ligne (« ${vu.auteur} ») n’est pas le titre de la leçon (« ${vu.ecran} »)`)
+  if (vu.album) griefs.push(`un album est annoncé (« ${vu.album} ») : une 3ᵉ ligne qui n’apparaît que sur certains téléphones`)
+  for (const [ou, v] of [['titre', vu.titre], ['auteur', vu.auteur], ['album', vu.album]])
+    if (typeof v === 'string' && v.includes('Atline'))
+      griefs.push(`« Atline » apparaît dans ${ou} : l’application le dit déjà sur sa propre ligne`)
   if (vu.etat !== 'playing') griefs.push(`l’état annoncé est « ${vu.etat} » alors que le son joue`)
   if (vu.pochettes.length !== 2)
     griefs.push(`${vu.pochettes.length} pochette(s) au lieu de 2 — le système doit pouvoir choisir sa taille`)
