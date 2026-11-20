@@ -5,8 +5,22 @@
 // toujours par n'en avoir qu'une de juste, sans qu'on sache laquelle.
 const { expect } = require('@playwright/test')
 
-/** ⚠️ Borné au lecteur : la page peut porter d'autres sons. */
-const AUDIO = '.lecteur-ecoute audio'
+/**
+ * ── 🔴 UN SEUL `<audio>`, ET IL N'EST PLUS DANS LE LECTEUR ──────────────────
+ *
+ * Ce sélecteur valait `.lecteur-ecoute audio` jusqu'au 20 novembre 2026, quand
+ * le son a déménagé dans la coquille pour survivre aux changements d'écran. Il
+ * vit maintenant à la racine, hors de toute page — c'est tout le point.
+ *
+ * 🧭 ET C'EST LE FILET QUI L'A DIT. Quatre sondes sont tombées sur ce seul
+ * sélecteur à la première exécution après le déménagement, en nommant la
+ * cause ; sans elles, le symptôme aurait été « le son s'arrête parfois »,
+ * trois jours plus tard, sans rien pour le rattacher à ce chantier.
+ *
+ * ⚠️ NON BORNÉ, DONC, ET C'EST VÉRIFIÉ PLUTÔT QUE SUPPOSÉ : l'application ne
+ * rend qu'UN élément de son, celui de `lecteur-global.tsx`.
+ */
+const AUDIO = 'audio'
 
 /**
  * ── 🔴 « LA DURÉE EST CONNUE » NE VEUT PAS DIRE « C'EST LA BONNE PISTE » ────
