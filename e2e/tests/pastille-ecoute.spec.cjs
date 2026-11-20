@@ -681,6 +681,56 @@ test('la prise du curseur ne mord pas sur les boutons', async ({ page }) => {
   expect(griefs, `ce qui cloche :\n  · ${griefs.join('\n  · ')}`).toEqual([])
 })
 
+/**
+ * ── 🔴 LA LEÇON SE TAIT AVANT QUE LE MICRO S'OUVRE ─────────────────────────
+ *
+ * Dernier morceau de la demande d'origine. Depuis que le son survit aux
+ * changements d'écran, une leçon peut tourner pendant qu'on se met à parler :
+ * on ne dicte pas par-dessus un cours, et le micro l'entendrait autant que la
+ * personne.
+ *
+ * 🧭 LA SONDE N'A PAS BESOIN D'AUTORISER LE MICRO, et c'est révélateur de
+ * l'ordre choisi : le silence est demandé AVANT `getUserMedia`. Si le
+ * correctif était placé après, ce test échouerait faute de permission — ce qui
+ * est exactement la garantie qu'on veut.
+ */
+test('la leçon se tait quand on commence à dicter', async ({ page }) => {
+  await ouvrirEcoute(page)
+  await lancer(page)
+  await auModule(page)
+  await aLEtagere(page)
+
+  const atlas = page.locator(`${BAS}[href="/atlas"]`).first()
+  expect(await atlas.count(), 'pas de case Atlas dans la barre du bas').toBeGreaterThan(0)
+  await atlas.click()
+  await expect.poll(() => page.url(), { timeout: 15_000 }).toContain('/atlas')
+  await page.locator(PASTILLE).waitFor({ state: 'visible', timeout: 15_000 })
+
+  const dicter = page.locator('[data-dicter]')
+  await dicter.waitFor({ state: 'visible', timeout: 15_000 })
+  expect(
+    await page.evaluate(() => document.querySelector('audio')?.paused),
+    'la leçon devrait encore jouer avant qu’on touche au micro',
+  ).toBe(false)
+
+  // On maintient, comme le geste réel le demande.
+  const b = await dicter.boundingBox()
+  await page.mouse.move(b.x + b.width / 2, b.y + b.height / 2)
+  await page.mouse.down()
+  await expect
+    .poll(() => page.evaluate(() => document.querySelector('audio')?.paused), { timeout: 10_000 })
+    .toBe(true)
+  await page.mouse.up()
+
+  // ⚠️ ET ELLE NE REPART PAS TOUTE SEULE. Un son qui reprend dans l'oreille au
+  // moment où l'on relâche serait une agression : la pastille est là, avec son
+  // bouton.
+  expect(
+    await page.evaluate(() => document.querySelector('audio')?.paused),
+    'la leçon ne doit pas repartir seule à la fin de la dictée',
+  ).toBe(true)
+})
+
 test('on ferme la pastille en la faisant glisser vers la droite', async ({ page }) => {
   await ouvrirEcoute(page)
   await lancer(page)
