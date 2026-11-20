@@ -731,6 +731,87 @@ test('la leçon se tait quand on commence à dicter', async ({ page }) => {
   ).toBe(true)
 })
 
+/**
+ * ── 🔴 UN RAFRAÎCHISSEMENT NE DOIT PAS EFFACER CE QU'ON ÉCOUTE ─────────────
+ *
+ * Patrice : *« si l'audio est en arrière-plan et que je suis sur la page
+ * contact, si j'actualise la page le lecteur disparaît »*. L'état du lecteur
+ * vit en mémoire, et un rechargement de document la vide. Tout le chantier dit
+ * que le son suit la personne ; un simple rafraîchissement ne doit pas le
+ * contredire.
+ *
+ * ⚠️ LE SON, LUI, S'ARRÊTE — et c'est inévitable : le document est détruit.
+ * Ce qu'on mesure est que la pastille REVIENT, sur la bonne leçon, à l'arrêt.
+ */
+test('le lecteur survit à un rafraîchissement de la page', async ({ page }) => {
+  await ouvrirEcoute(page)
+  await lancer(page)
+  await ailleurs(page)
+
+  const avant = await pisteJouee(page)
+  const adresse = page.url()
+  await page.reload({ waitUntil: 'domcontentloaded' })
+  await page.locator(PASTILLE).waitFor({ state: 'visible', timeout: 20_000 })
+
+  const apres = await pisteJouee(page)
+  console.log(JSON.stringify({ adresse, avant: avant.texte, apres: apres.texte, src: apres.src }, null, 1))
+
+  const griefs = []
+  if (apres.texte !== avant.texte)
+    griefs.push(`la pastille revient sur « ${apres.texte} » au lieu de « ${avant.texte} »`)
+  if (apres.src !== avant.src) griefs.push('la pastille est revenue sur une autre piste')
+  // 🔴 À L'ARRÊT. Personne n'a rien demandé en rafraîchissant, et un son qui
+  // repart seul dans l'oreille est une agression — c'est la même règle que la
+  // reprise d'une leçon commencée.
+  if (apres.arrete !== true) griefs.push('le son est reparti tout seul après le rafraîchissement')
+
+  expect(griefs, `ce qui cloche :\n  · ${griefs.join('\n  · ')}`).toEqual([])
+})
+
+/**
+ * ── 🔴 « LIRE » DOIT OUVRIR LA LEÇON QU'ON ÉCOUTE ──────────────────────────
+ *
+ * Patrice : *« si je suis sur le lecteur audio en arrière-plan et que j'ouvre
+ * la liseuse, elle devrait s'ouvrir sur la leçon en cours de lecture »*. La
+ * couverture du module calcule côté serveur la leçon où le PARCOURS s'est
+ * arrêté : juste à froid, faux dès qu'une leçon joue. Deux idées de « où j'en
+ * suis » qui ne se parlaient pas.
+ */
+test('« Lire » et « Écouter » suivent la leçon qui joue', async ({ page }) => {
+  await ouvrirEcoute(page)
+  await lancer(page)
+  await auModule(page)
+
+  // On avance d'une leçon depuis la pastille : le serveur, lui, continue de
+  // penser à la leçon « à reprendre ».
+  const avant = await pisteJouee(page)
+  await page.locator('[data-pastille-suivant]').click()
+  await expect
+    .poll(() => page.evaluate(() => document.querySelector('audio')?.currentSrc), { timeout: 20_000 })
+    .not.toBe(avant.src)
+
+  const joue = await page.evaluate(() => {
+    const s = document.querySelector('audio').currentSrc
+    return s.match(/\/api\/lecon\/([^/]+)\//)?.[1] ?? null
+  })
+  const liens = await page.evaluate(() =>
+    ['Lire', 'Écouter'].map((n) => {
+      const a = [...document.querySelectorAll('a')].find((e) => e.textContent.trim() === n)
+      return { nom: n, href: a?.getAttribute('href') ?? null }
+    }),
+  )
+  console.log(JSON.stringify({ leconQuiJoue: joue, liens }, null, 1))
+
+  const griefs = []
+  if (!joue) griefs.push('impossible de lire l’identifiant de la leçon jouée')
+  for (const l of liens) {
+    if (!l.href) griefs.push(`pas de lien « ${l.nom} » sur la couverture du module`)
+    else if (joue && !l.href.includes(joue))
+      griefs.push(`« ${l.nom} » mène à ${l.href} alors que la leçon ${joue} joue`)
+  }
+  expect(griefs, `ce qui cloche :\n  · ${griefs.join('\n  · ')}`).toEqual([])
+})
+
 test('on ferme la pastille en la faisant glisser vers la droite', async ({ page }) => {
   await ouvrirEcoute(page)
   await lancer(page)
