@@ -245,6 +245,60 @@ test('la pastille ne chevauche aucun meuble, et ne flotte pas sans meuble', asyn
   expect(griefs, `ce qui cloche :\n  · ${griefs.join('\n  · ')}`).toEqual([])
 })
 
+/**
+ * ── 🔴 UN MEUBLE FLOTTANT MANGE LA FIN DE CE QU'IL SURVOLE ─────────────────
+ *
+ * La pastille est `fixed` : au milieu d'un texte qui défile, elle le recouvre,
+ * et c'est normal — tous les lecteurs du monde font ça. Ce qui n'est PAS
+ * normal, c'est qu'une fois défilé jusqu'en bas, les dernières lignes restent
+ * dessous : elles deviennent alors **définitivement illisibles**, puisqu'il n'y
+ * a plus rien à faire défiler pour les dégager.
+ *
+ * 🧭 ET ÇA NE SE VOIT PAS EN REGARDANT L'ÉCRAN : il faut défiler jusqu'au bout
+ * ET comparer deux boîtes. La capture, elle, montrerait un écran parfaitement
+ * normal.
+ */
+test('la pastille ne mange pas la fin du texte de la leçon', async ({ page }) => {
+  await ouvrirEcoute(page)
+  await lancer(page)
+  await auModule(page)
+
+  const rangees = page.locator('[data-lecon]')
+  expect(await rangees.count(), 'aucune rangée de leçon sur la couverture du module').toBeGreaterThan(0)
+  const vers = await rangees.first().getAttribute('href')
+  await rangees.first().click()
+  await expect.poll(() => page.url(), { timeout: 15_000 }).toContain(vers)
+  await page.locator(PASTILLE).waitFor({ state: 'visible', timeout: 15_000 })
+
+  // Jusqu'en bas, et on attend que le défilement soit VRAIMENT fini — un
+  // défilement doux rend la main avant d'être arrivé.
+  const boite = () =>
+    page.evaluate(() => {
+      const e = document.scrollingElement
+      e.scrollTop = e.scrollHeight
+      const p = document.querySelector('[data-pastille-ecoute]').getBoundingClientRect()
+      const blocs = [...document.querySelectorAll('main p, main li, main h2, main h3')].filter(
+        (b) => b.textContent.trim().length > 20,
+      )
+      const d = blocs.at(-1)?.getBoundingClientRect()
+      return {
+        reste: Math.round(e.scrollHeight - e.scrollTop - e.clientHeight),
+        pastilleHaut: Math.round(p.top),
+        texteBas: d ? Math.round(d.bottom) : null,
+        extrait: blocs.at(-1)?.textContent.trim().slice(0, 60) ?? null,
+      }
+    })
+  await expect.poll(async () => (await boite()).reste, { timeout: 15_000 }).toBeLessThan(4)
+
+  const m = await boite()
+  console.log(JSON.stringify(m, null, 1))
+  expect(m.texteBas, 'aucun bloc de texte trouvé : la sonde n’éprouverait rien').not.toBeNull()
+  expect(
+    m.texteBas,
+    `le dernier texte descend à ${m.texteBas} et la pastille commence à ${m.pastilleHaut} : « ${m.extrait} » est caché pour de bon`,
+  ).toBeLessThanOrEqual(m.pastilleHaut)
+})
+
 test('la pastille met en pause, et sa croix met fin', async ({ page }) => {
   await ouvrirEcoute(page)
   await lancer(page)
