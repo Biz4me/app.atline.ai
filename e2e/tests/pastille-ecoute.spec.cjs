@@ -539,16 +539,29 @@ test('on déplace la lecture en tirant le curseur de la pastille', async ({ page
    * de pixel du seuil. Une mesure prise sur une cible en mouvement ment, même
    * quand elle donne le bon verdict.
    */
+  /**
+   * ⚠️ UNE SEULE LECTURE, ET C'EST ELLE QU'ON JUGE. Version précédente : on
+   * attendait que la boule ait grossi, PUIS on relisait dans un second appel.
+   * Deux lectures, deux instants — et la seconde retombait parfois sur 12 px,
+   * la taille au repos. Le test échouait au hasard en accusant l'app de ne pas
+   * grossir la boule, alors qu'elle l'avait fait entre les deux mesures.
+   *
+   * 🧭 La valeur qu'on affirme doit être CELLE QUI A SATISFAIT L'ATTENTE, pas
+   * une autre prise juste après.
+   */
+  let pendant = null
   await expect
     .poll(
-      () => page.evaluate(() => document.querySelector('[data-pastille-boule]')?.getBoundingClientRect().width ?? 0),
+      async () => {
+        pendant = await page.evaluate(() => ({
+          rang: document.querySelector('[data-pastille-ecoute] a span span')?.textContent.trim() ?? null,
+          boule: Math.round(document.querySelector('[data-pastille-boule]')?.getBoundingClientRect().width ?? 0),
+        }))
+        return pendant.boule
+      },
       { timeout: 5_000 },
     )
     .toBeGreaterThan(12)
-  const pendant = await page.evaluate(() => ({
-    rang: document.querySelector('[data-pastille-ecoute] a span span')?.textContent.trim() ?? null,
-    boule: Math.round(document.querySelector('[data-pastille-boule]')?.getBoundingClientRect().width ?? 0),
-  }))
   await page.mouse.up()
 
   const apres = await page.evaluate(() => ({
@@ -575,6 +588,59 @@ test('on déplace la lecture en tirant le curseur de la pastille', async ({ page
   expect(griefs, `ce qui cloche :\n  · ${griefs.join('\n  · ')}`).toEqual([])
 })
 
+/**
+ * ── 🔴 LA BOULE DOIT ÊTRE ENTIÈREMENT DANS SA ZONE DE PRISE ────────────────
+ *
+ * Le défaut que Patrice a vu sur son téléphone pendant que la sonde, à la
+ * souris, passait : la boule débordait de la zone **des deux côtés**. Trois
+ * pixels sous elle, et au début d'une leçon sa moitié gauche sortait du rail.
+ * On vise le seul repère visible, on tombe à moitié dehors, et dehors c'est le
+ * glissement de fermeture qui prend le geste — la pastille tressaille, l'audio
+ * ne bouge pas.
+ *
+ * 🧭 ON ÉPROUVE LES TROIS ENDROITS DU RAIL, parce que le défaut n'existait
+ * qu'aux extrémités : au milieu, tout allait bien.
+ */
+test('la boule reste dans sa zone de prise, du début à la fin', async ({ page }) => {
+  await ouvrirEcoute(page)
+  await lancer(page)
+  await auModule(page)
+
+  const d = await page.evaluate(() => document.querySelector('audio').duration)
+  const releve = async (nom) => {
+    const m = await page.evaluate(() => {
+      const r = (s) => {
+        const e = document.querySelector(s)
+        const b = e.getBoundingClientRect()
+        return { g: Math.round(b.left), d: Math.round(b.right), h: Math.round(b.top), b: Math.round(b.bottom) }
+      }
+      return { boule: r('[data-pastille-boule]'), zone: r('[data-pastille-curseur]') }
+    })
+    const hors = [
+      m.boule.g < m.zone.g && `${m.zone.g - m.boule.g} px à gauche`,
+      m.boule.d > m.zone.d && `${m.boule.d - m.zone.d} px à droite`,
+      m.boule.h < m.zone.h && `${m.zone.h - m.boule.h} px au-dessus`,
+      m.boule.b > m.zone.b && `${m.boule.b - m.zone.b} px en dessous`,
+    ].filter(Boolean)
+    return { nom, ...m, hors }
+  }
+
+  const vus = [await releve('au début')]
+  for (const [nom, p] of [['au milieu', 0.5], ['à la fin', 0.995]]) {
+    await page.evaluate((p) => {
+      document.querySelector('audio').currentTime = document.querySelector('audio').duration * p
+    }, p)
+    await expect
+      .poll(() => page.evaluate(() => document.querySelector('audio').currentTime), { timeout: 10_000 })
+      .toBeGreaterThan(d * p - 2)
+    vus.push(await releve(nom))
+  }
+  console.log(JSON.stringify(vus, null, 1))
+
+  const griefs = vus.filter((v) => v.hors.length).map((v) => `${v.nom} : la boule sort de ${v.hors.join(' et ')}`)
+  expect(griefs, `ce qui cloche :\n  · ${griefs.join('\n  · ')}`).toEqual([])
+})
+
 test('la prise du curseur ne mord pas sur les boutons', async ({ page }) => {
   await ouvrirEcoute(page)
   await lancer(page)
@@ -586,26 +652,31 @@ test('la prise du curseur ne mord pas sur les boutons', async ({ page }) => {
       return e ? e.getBoundingClientRect() : null
     }
     const z = b('[data-pastille-curseur]')
-    const carte = document.querySelector('[data-pastille-ecoute] .relative > div:nth-child(2)')
+    const meuble = b('[data-barre-action]') || b('[data-barre-bas]')
     return {
       zone: { haut: Math.round(z.top), bas: Math.round(z.bottom), h: Math.round(z.height) },
       play: Math.round(b('[data-pastille-basculer]').bottom),
       suivant: Math.round(b('[data-pastille-suivant]').bottom),
-      carteBas: Math.round(carte.getBoundingClientRect().bottom),
+      meubleHaut: meuble ? Math.round(meuble.top) : null,
     }
   })
   console.log(JSON.stringify(g, null, 1))
 
   const griefs = []
   const plusBas = Math.max(g.play, g.suivant)
+  // 🔴 EN HAUT ELLE S'ARRÊTE AUX BOUTONS : viser la lecture et changer de
+  // leçon est le genre de défaut qu'on met des jours à nommer.
   if (g.zone.haut < plusBas)
     griefs.push(`la prise commence à ${g.zone.haut}, soit ${plusBas - g.zone.haut} px DANS les boutons`)
-  // 🔴 ET ELLE NE DÉBORDE PAS DE LA CARTE. Une zone magique hors de l'objet
-  // qu'elle commande est une promesse qu'on ne peut pas voir : on toucherait
-  // ce qui a l'air d'être rien, et la lecture se déplacerait.
-  if (g.zone.bas > g.carteBas)
-    griefs.push(`la prise déborde de ${g.zone.bas - g.carteBas} px sous la carte, dans le vide`)
-  if (g.zone.h < 12) griefs.push(`la prise ne fait que ${g.zone.h} px : trop fine pour un doigt`)
+  /**
+   * 🔴 ET EN BAS ELLE S'ARRÊTE AVANT LE MOBILIER. Elle s'arrêtait au bord de
+   * la CARTE, ce qui laissait la boule à moitié dehors ; elle descend
+   * maintenant jusqu'au bas de la boule. Ce qu'elle ne doit pas faire, c'est
+   * mordre sur le geste du jour qui vit juste en dessous.
+   */
+  if (g.meubleHaut !== null && g.zone.bas > g.meubleHaut)
+    griefs.push(`la prise descend à ${g.zone.bas}, le meuble du bas commence à ${g.meubleHaut}`)
+  if (g.zone.h < 18) griefs.push(`la prise ne fait que ${g.zone.h} px : trop fine pour un doigt`)
 
   expect(griefs, `ce qui cloche :\n  · ${griefs.join('\n  · ')}`).toEqual([])
 })
