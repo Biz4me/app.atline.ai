@@ -82,11 +82,40 @@ test('la troisième tuile est à cheval sur le bord de l’écran', async ({ pag
   // la suite. On vérifie donc l'alignement contre une VRAIE carte de la page
   // plutôt que contre 16 en dur : le jour où la gouttière change, les deux
   // bougent ensemble et ce test continue de dire la vérité.
+  /**
+   * ── 🔴 LA RÉFÉRENCE ÉTAIT UNE CARTE QUI PEUT NE PAS ÊTRE LÀ ───────────────
+   *
+   * Elle visait `[aria-labelledby="resume-titre"]` : **la carte du résumé de
+   * nuit**. Sur un compte qui n'en a pas eu — un compte neuf, ou simplement un
+   * matin où le cron n'a rien produit — elle n'existe pas, et la sonde
+   * échouait en annonçant « aucune carte pleine pour servir de référence ».
+   * Elle ne parlait alors ni du rail, ni du débord : elle parlait d'elle-même.
+   *
+   * 🧭 LA VRAIE RÉFÉRENCE EST LA GOUTTIÈRE DE LA PAGE, pas un contenu qui s'y
+   * aligne. Elle se lit sur le rembourrage de `main` — qui existe toujours, y
+   * compris sur un écran vide — et le jour où la gouttière change, le rail et
+   * elle bougent ensemble. On garde la carte comme second choix : si elle est
+   * là, elle confirme la mesure sur du contenu réel.
+   */
   const refs = await page.evaluate(() => {
+    const main = document.querySelector('main')
     const carte = document.querySelector('[aria-labelledby="resume-titre"], [data-carte]')
-    return { carte: carte ? carte.getBoundingClientRect().x : null }
+    const gouttiere = main
+      ? Math.round(main.getBoundingClientRect().x + parseFloat(getComputedStyle(main).paddingLeft))
+      : null
+    return {
+      carte: carte ? Math.round(carte.getBoundingClientRect().x) : null,
+      gouttiere,
+      sur: carte ? 'la carte du résumé' : 'le rembourrage de main',
+    }
   })
-  expect(refs.carte, 'aucune carte pleine pour servir de référence').not.toBeNull()
+  console.log(`  référence : ${refs.sur} · gouttière ${refs.gouttiere} · carte ${refs.carte}`)
+  expect(refs.gouttiere, 'aucun `main` : la sonde ne peut rien mesurer').not.toBeNull()
+  // ⚠️ Quand les deux sont là, ils doivent dire la même chose — sinon c'est la
+  // page qui est de travers, et la sonde doit le dire avant de juger le rail.
+  if (refs.carte !== null)
+    expect(Math.abs(refs.carte - refs.gouttiere), 'la carte ne s’aligne pas sur la gouttière').toBeLessThanOrEqual(1)
+  refs.carte = refs.gouttiere
   expect(
     Math.round(boites[0].x),
     'la première tuile n’est pas alignée sur les cartes de la page',
