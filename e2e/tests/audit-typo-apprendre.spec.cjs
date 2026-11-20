@@ -60,6 +60,16 @@ const releve = (page) =>
       icones.push({
         px: Math.round(r.width),
         haut: Math.round(r.height),
+        /**
+         * 🔴 CE QUI EST DEMANDÉ, PAS SEULEMENT CE QUI EST PEINT. Une icône en
+         * `1em` prend la taille de son texte : elle apparaît donc dans le
+         * relevé sous trois ou quatre valeurs différentes alors qu'elle n'en
+         * déclare AUCUNE. Les compter comme des tailles choisies ferait dire
+         * au rapport qu'il y a huit tailles là où il y en a trois et deux
+         * exceptions — un rapport qui exagère se fait ignorer aussi sûrement
+         * qu'un rapport qui ment.
+         */
+        declare: e.getAttribute('width') ?? '(css)',
         ou: e.closest('[data-barre-bas]')
           ? 'barre du bas'
           : e.closest('[data-barre-action]')
@@ -178,8 +188,34 @@ test('relevé des tailles sur tous les écrans d’Apprendre', async ({ page }) 
   console.log('ICÔNES ' + JSON.stringify(tIcones))
 
   const hors = tTextes.filter((t) => !ECHELLE.includes(t.px))
-  console.log('\nHORS ÉCHELLE ' + JSON.stringify(hors))
-  console.log(`\nRÉSUMÉ · ${tTextes.length} tailles de texte, ${tIcones.length} tailles d’icône, ${hors.length} hors échelle`)
+  console.log('\nHORS ÉCHELLE (texte) ' + JSON.stringify(hors))
+
+  /**
+   * ── Les icônes, triées par ce qu'elles DÉCLARENT ──────────────────────────
+   *
+   * Trois familles, et seule la première est une décision de taille :
+   *   · l'échelle 22 / 18 / 14 ;
+   *   · `1em`, qui suit le texte — un chevron collé à un mot est de la
+   *     ponctuation, et il apparaît donc sous plusieurs tailles peintes sans
+   *     en déclarer aucune ;
+   *   · le reste, qui doit s'expliquer ou se corriger.
+   */
+  const ECHELLE_ICONES = [22, 18, 14]
+  const suivent = tout.icones.filter((i) => i.declare === '1em').length
+  const chiffrees = tout.icones.filter((i) => i.declare !== '1em')
+  const surEchelle = chiffrees.filter((i) => ECHELLE_ICONES.includes(i.px))
+  const aPart = parTaille(
+    chiffrees.filter((i) => !ECHELLE_ICONES.includes(i.px)),
+    'ou',
+  )
+  console.log(`\nICÔNES · ${surEchelle.length} sur l’échelle 22/18/14 · ${suivent} en 1em (suivent leur texte)`)
+  console.log('À PART ' + JSON.stringify(aPart))
+
+  console.log(
+    `\nRÉSUMÉ · ${tTextes.length} tailles de texte dont ${hors.length} hors échelle · ` +
+      `icônes : ${ECHELLE_ICONES.filter((p) => surEchelle.some((i) => i.px === p)).length} tailles d’échelle, ` +
+      `${aPart.length} à part`,
+  )
 
   // 🔴 LE RELEVÉ N'ÉCHOUE PAS : on vient CONSTATER, pas sanctionner. Les écarts
   // se règlent ensuite, et c'est alors qu'une sonde les tiendra.
