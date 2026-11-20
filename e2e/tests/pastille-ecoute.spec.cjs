@@ -131,7 +131,7 @@ test('on quitte la leçon, le son continue, et la pastille prend le relais', asy
  * d'absence qui n'a jamais vu la chose. Les deux comptes du bas sont là pour
  * que ce silence-là ne puisse plus passer pour un succès.
  */
-test('la pastille ne chevauche aucun meuble, et ne flotte pas sans meuble', async ({ page }) => {
+test('l’ordre du bas : barre, lecteur, bouton — et le lecteur pleine largeur', async ({ page }) => {
   await ouvrirEcoute(page)
   await lancer(page)
 
@@ -141,14 +141,17 @@ test('la pastille ne chevauche aucun meuble, et ne flotte pas sans meuble', asyn
         const e = document.querySelector(s)
         return e ? e.getBoundingClientRect() : null
       }
-      const p = boite('[data-pastille-ecoute]')
+      const p = boite('[data-pastille-ecoute] .relative > div:nth-child(2)')
       const bas = boite('[data-barre-bas]')
       const action = boite('[data-barre-action]')
       return {
+        pastilleHaut: Math.round(p.top),
         pastilleBas: Math.round(p.bottom),
+        large: Math.round(p.width),
         ecran: window.innerHeight,
         barreHaut: bas ? Math.round(bas.top) : null,
-        actionHaut: action ? Math.round(action.top) : null,
+        barreLarge: bas ? Math.round(bas.width) : null,
+        actionBas: action ? Math.round(action.bottom) : null,
       }
     })
 
@@ -212,16 +215,30 @@ test('la pastille ne chevauche aucun meuble, et ne flotte pas sans meuble', asyn
 
   const griefs = []
   for (const v of vus) {
-    if (v.barreHaut !== null && v.pastilleBas > v.barreHaut)
-      griefs.push(`${v.ou} : la pastille descend à ${v.pastilleBas}, la barre du bas commence à ${v.barreHaut}`)
-    if (v.actionHaut !== null && v.pastilleBas > v.actionHaut)
-      griefs.push(`${v.ou} : la pastille descend à ${v.pastilleBas}, le geste du jour commence à ${v.actionHaut}`)
-    // Sans aucun meuble, elle doit être PRÈS du bas : c'est le défaut nommé
-    // dans `ConteneurAction` — un geste qui flotte à 64 px du vide.
-    if (v.barreHaut === null && v.actionHaut === null && v.ecran - v.pastilleBas > 44)
-      griefs.push(
-        `${v.ou} : aucun meuble en bas et la pastille s’arrête ${v.ecran - v.pastilleBas} px au-dessus du bord`,
-      )
+    /**
+     * 🔴 L'ORDRE A CHANGÉ LE 20 NOVEMBRE 2026 : **barre du bas, lecteur,
+     * bouton**. Patrice : *« sur les pages où nous avons le bouton au-dessus
+     * de la bottom, la règle change »*. Cette sonde décrivait l'ordre
+     * d'avant — le lecteur par-dessus tout le mobilier — et c'est son travail
+     * de tomber quand la règle bouge.
+     */
+    if (v.actionBas !== null && v.pastilleHaut < v.actionBas - 1)
+      griefs.push(`${v.ou} : le geste du jour finit à ${v.actionBas} et le lecteur commence à ${v.pastilleHaut}`)
+    if (v.barreHaut !== null && v.pastilleBas > v.barreHaut + 1)
+      griefs.push(`${v.ou} : le lecteur descend à ${v.pastilleBas}, la barre du bas commence à ${v.barreHaut}`)
+    // 🔴 COLLÉ, pas seulement « au-dessus » : un meuble posé sur un autre
+    // forme une seule pièce, et huit pixels d'air en font deux objets qui se
+    // frôlent.
+    if (v.barreHaut !== null && v.barreHaut - v.pastilleBas > 1)
+      griefs.push(`${v.ou} : ${v.barreHaut - v.pastilleBas} px d’air entre le lecteur et la barre du bas`)
+    // ⚠️ PLEINE LARGEUR, c'est-à-dire exactement celle de la barre du bas :
+    // c'est l'harmonie demandée, et elle se mesure.
+    if (v.barreLarge !== null && v.large !== v.barreLarge)
+      griefs.push(`${v.ou} : lecteur ${v.large} px de large contre ${v.barreLarge} pour la barre du bas`)
+    // Sans aucun meuble, il reste près du bord — le défaut nommé dans
+    // `ConteneurAction` : un geste qui flotte à 64 px du vide.
+    if (v.barreHaut === null && v.ecran - v.pastilleBas > 44)
+      griefs.push(`${v.ou} : aucun meuble en bas et le lecteur s’arrête ${v.ecran - v.pastilleBas} px au-dessus du bord`)
   }
   const avecGeste = vus.filter((v) => v.actionHaut !== null).length
   const sansMeuble = vus.filter((v) => v.barreHaut === null && v.actionHaut === null).length
@@ -470,7 +487,22 @@ test('la croix en angle ne mord pas sur le bouton suivante', async ({ page }) =>
   expect(griefs, `ce qui cloche :\n  · ${griefs.join('\n  · ')}`).toEqual([])
 })
 
-test('le titre défile une fois quand il ne tient pas', async ({ page }) => {
+/**
+ * ── 🔴 LA BOUCLE, ET SURTOUT SON RACCORD ───────────────────────────────────
+ *
+ * Patrice, le 20 novembre 2026 : *« le titre de la leçon dans le lecteur doit
+ * être en défilement permanent en boucle »*. Ça renverse le choix précédent
+ * — un seul passage — que cette sonde tenait : elle exigeait `1`.
+ *
+ * 🧭 ET CE QU'ELLE PROTÈGE VRAIMENT N'EST PAS LE NOMBRE DE TOURS, c'est le
+ * RACCORD. Une boucle se fait à deux exemplaires et l'animation translate de
+ * la moitié de la piste ; si cette moitié ne vaut pas exactement un
+ * exemplaire, le texte SAUTE à chaque tour. Rien dans le code ne relie les
+ * deux — le `pr-10` des copies et le `-50%` du keyframe vivent à cent lignes
+ * l'un de l'autre. C'est donc ici, et nulle part ailleurs, que l'invariant
+ * tient : **piste = 2 × exemplaire**.
+ */
+test('le titre défile en boucle, sans raccord visible', async ({ page }) => {
   await ouvrirEcoute(page)
   await lancer(page)
   await auModule(page)
@@ -479,22 +511,37 @@ test('le titre défile une fois quand il ne tient pas', async ({ page }) => {
     const boite = document.querySelector('[data-pastille-ecoute] a span span:last-child')
     const mobile = boite?.querySelector('.titre-pastille')
     const st = mobile ? getComputedStyle(mobile) : null
+    const copies = mobile ? [...mobile.children].map((e) => Math.round(e.getBoundingClientRect().width)) : []
     return {
-      texte: boite?.textContent.trim() ?? null,
+      texte: boite?.textContent.trim().slice(0, 60) ?? null,
       colonne: boite ? Math.round(boite.clientWidth) : null,
-      texteLarge: mobile ? Math.round(mobile.offsetWidth) : Math.round(boite?.scrollWidth ?? 0),
+      // Sans boucle, la largeur demandée est celle du texte tronqué ; avec,
+      // c'est celle d'UN exemplaire, écart compris.
+      texteLarge: mobile ? copies[0] : Math.round(boite?.scrollWidth ?? 0),
+      piste: mobile ? Math.round(mobile.getBoundingClientRect().width) : null,
+      copies,
       defile: !!mobile,
       duree: st?.animationDuration ?? null,
       passages: st?.animationIterationCount ?? null,
+      courbe: st?.animationTimingFunction ?? null,
     }
   })
   console.log(JSON.stringify(t, null, 1))
 
   const griefs = []
   if (!t.defile) griefs.push(`le titre ne défile pas alors qu’il demande ${t.texteLarge} px pour ${t.colonne}`)
-  // ⚠️ UNE SEULE FOIS. Une pastille qui bouge en permanence dans le coin de
-  // l'œil pendant qu'on travaille serait pire que le titre coupé.
-  if (t.passages !== '1') griefs.push(`le titre défile ${t.passages} fois au lieu d’une`)
+  else {
+    if (t.passages !== 'infinite') griefs.push(`le titre défile ${t.passages} fois au lieu d’en boucle`)
+    // ⚠️ `linear` ET RIEN D'AUTRE : une boucle qui ralentit en fin de cycle
+    // pour repartir sec se lit comme un hoquet, pile au raccord.
+    if (t.courbe !== 'linear') griefs.push(`la boucle est en « ${t.courbe} » : elle hoquette au raccord`)
+    if (t.copies.length !== 2) griefs.push(`${t.copies.length} exemplaire(s) : une boucle sans couture en demande deux`)
+    else if (t.copies[0] !== t.copies[1])
+      griefs.push(`les deux exemplaires ne font pas la même largeur (${t.copies.join(' et ')}) : le raccord sautera`)
+    // 🔴 L'INVARIANT : la moitié de la piste doit valoir un exemplaire pile.
+    else if (Math.abs(t.piste - 2 * t.copies[0]) > 1)
+      griefs.push(`piste ${t.piste} px pour deux exemplaires de ${t.copies[0]} : le retour sautera de ${Math.abs(t.piste - 2 * t.copies[0])} px`)
+  }
   if (t.texteLarge <= t.colonne) griefs.push('le titre tient : ce test n’éprouve rien sur cette leçon')
 
   expect(griefs, `ce qui cloche :\n  · ${griefs.join('\n  · ')}`).toEqual([])
@@ -645,6 +692,11 @@ test('la prise du curseur ne mord pas sur les boutons', async ({ page }) => {
   await ouvrirEcoute(page)
   await lancer(page)
   await auModule(page)
+  // 🔴 ET ON VA JUSQU'À L'ÉTAGÈRE, parce que c'est le seul écran des deux qui
+  // porte la barre du bas. Sur la couverture d'un module il n'y a rien sous la
+  // pastille : la moitié de cette sonde ne s'y exécuterait pas, et elle
+  // passerait au vert sans avoir rien comparé.
+  await aLEtagere(page)
 
   const g = await page.evaluate(() => {
     const b = (s) => {
@@ -653,12 +705,20 @@ test('la prise du curseur ne mord pas sur les boutons', async ({ page }) => {
     }
     const z = b('[data-pastille-curseur]')
     /**
-     * 🔴 LE HAUT DES COMMANDES, PAS LE HAUT DU MEUBLE. La barre d'action
-     * porte 24 px de rembourrage avant ses boutons : comparer au cadre faisait
-     * crier la sonde alors que 18 px séparaient la prise du premier bouton.
-     * Ce qu'on protège, ce sont les CIBLES, pas les boîtes qui les contiennent.
+     * 🔴 LE HAUT DES COMMANDES, PAS LE HAUT DU MEUBLE. La barre porte 24 px de
+     * rembourrage avant ses boutons : comparer au cadre faisait crier la sonde
+     * alors que 18 px séparaient la prise du premier bouton. Ce qu'on protège,
+     * ce sont les CIBLES, pas les boîtes qui les contiennent.
+     *
+     * 🔴 ET SEULE LA BARRE DU BAS EST SOUS LA PASTILLE. Cette sonde acceptait
+     * `[data-barre-action]` en premier choix, et c'était vrai jusqu'au
+     * 20 novembre 2026 : l'ordre s'est inversé ce jour-là — barre du bas,
+     * lecteur, puis geste du jour AU-DESSUS. Mesuré sur la couverture d'un
+     * module : le geste du jour occupe 674→758 et la pastille commence à 758.
+     * La sonde comparait donc la prise du curseur à des boutons situés
+     * **plus haut qu'elle**, et criait sur un chevauchement impossible.
      */
-    const meuble = document.querySelector('[data-barre-action]') || document.querySelector('[data-barre-bas]')
+    const meuble = document.querySelector('[data-barre-bas]')
     const cibles = meuble ? [...meuble.querySelectorAll('a, button')].map((e) => e.getBoundingClientRect().top) : []
     return {
       zone: { haut: Math.round(z.top), bas: Math.round(z.bottom), h: Math.round(z.height) },
@@ -684,8 +744,23 @@ test('la prise du curseur ne mord pas sur les boutons', async ({ page }) => {
    * à 766 et le premier bouton commence à 784, les 24 px de rembourrage de la
    * barre tenant lieu de marge.
    */
-  if (g.cibleHaut !== null && g.zone.bas > g.cibleHaut)
-    griefs.push(`la prise descend à ${g.zone.bas}, le premier bouton du meuble commence à ${g.cibleHaut}`)
+  /**
+   * ⚠️ ET LE CHEVAUCHEMENT DU BAS EST PLAFONNÉ, PAS INTERDIT. La boule déborde
+   * de 6 px sous la carte — c'est ce qui la rend visable — et la carte est
+   * COLLÉE à la barre : ces 6 px tombent donc forcément sur elle. Patrice
+   * l'avait demandé ainsi. Mesuré : la barre du bas n'a qu'un pixel de
+   * rembourrage avant ses cases, la prise mord donc 5 px sur le haut de cases
+   * hautes de 76. Ce qu'on protège n'est plus « zéro contact » — ce serait
+   * refuser sa demande — mais que ce contact **ne grandisse pas**.
+   */
+  const TOLERE = 6
+  if (g.cibleHaut === null)
+    griefs.push('aucun bouton sous la pastille : la moitié basse de cette sonde n’a rien comparé')
+  else if (g.zone.bas - g.cibleHaut > TOLERE)
+    griefs.push(
+      `la prise descend à ${g.zone.bas}, soit ${g.zone.bas - g.cibleHaut} px dans les cases de la barre ` +
+        `(commencent à ${g.cibleHaut}) : plus que les ${TOLERE} px de la boule`,
+    )
   if (g.zone.h < 18) griefs.push(`la prise ne fait que ${g.zone.h} px : trop fine pour un doigt`)
 
   expect(griefs, `ce qui cloche :\n  · ${griefs.join('\n  · ')}`).toEqual([])
@@ -906,17 +981,43 @@ test('la pastille a le gabarit de la carte d’entraînement, et lui est collée
       return t.startsWith('Rejouer ça à l’entraînement') && b.height > 40 && b.height < 160
     })
     const past = document.querySelector('[data-pastille-ecoute]')
-    const meuble = document.querySelector('[data-barre-action]') || document.querySelector('[data-barre-bas]')
     return {
       exercice: r(exo),
       carte: r(past?.querySelector('.relative > div:nth-child(2)')),
-      boule: r(document.querySelector('[data-pastille-boule]')),
+    }
+  })
+
+  /**
+   * 🔴 « COLLÉE » SE MESURE LÀ OÙ IL Y A QUELQUE CHOSE SOUS ELLE, et ce n'est
+   * pas la couverture d'un module : elle n'a pas de barre du bas, la pastille
+   * s'y pose simplement sur la marge gestuelle. On emprunte donc sa hauteur à
+   * la carte d'entraînement ici, puis on va éprouver le contact à l'étagère.
+   */
+  await aLEtagere(page)
+  const c = await page.evaluate(() => {
+    const past = document.querySelector('[data-pastille-ecoute]')
+    const meuble = document.querySelector('[data-barre-bas]')
+    const carte = past?.querySelector('.relative > div:nth-child(2)')
+    return {
+      carteBas: carte ? Math.round(carte.getBoundingClientRect().bottom) : null,
+      bouleBas: document.querySelector('[data-pastille-boule]')
+        ? Math.round(document.querySelector('[data-pastille-boule]').getBoundingClientRect().bottom)
+        : null,
       meubleHaut: meuble ? Math.round(meuble.getBoundingClientRect().top) : null,
       zPastille: past ? Number(getComputedStyle(past).zIndex) : null,
       zMeuble: meuble ? Number(getComputedStyle(meuble).zIndex) : null,
+      /**
+       * 🔴 À `z` ÉGAL, C'EST L'ORDRE DU DOM QUI PEINT, et ce n'est pas un
+       * hasard dont on se méfie : c'est une règle du navigateur, aussi sûre
+       * que le `z`. Ce qu'il fallait écrire, c'est LAQUELLE des deux arrive en
+       * dernier. `DOCUMENT_POSITION_PRECEDING` (2) dit que la barre est AVANT
+       * la pastille, donc que la pastille est peinte par-dessus.
+       */
+      pastilleApres:
+        past && meuble ? !!(past.compareDocumentPosition(meuble) & Node.DOCUMENT_POSITION_PRECEDING) : null,
     }
   })
-  console.log(JSON.stringify(m, null, 1))
+  console.log(JSON.stringify({ ...m, etagere: c }, null, 1))
 
   const griefs = []
   // 🔴 SANS LA CARTE, CE TEST N'ÉPROUVE RIEN. Tous les modules n'ont pas
@@ -926,22 +1027,41 @@ test('la pastille a le gabarit de la carte d’entraînement, et lui est collée
   else {
     if (m.carte.haut !== m.exercice.haut)
       griefs.push(`hauteurs différentes : pastille ${m.carte.haut}, carte ${m.exercice.haut}`)
-    if (m.carte.large !== m.exercice.large)
-      griefs.push(`largeurs différentes : pastille ${m.carte.large}, carte ${m.exercice.large}`)
+    /**
+     * ⚠️ LA LARGEUR N'EST PLUS CELLE DE LA CARTE, et c'est voulu depuis que le
+     * lecteur est passé **pleine largeur** : Patrice, le 20 novembre 2026,
+     * *« comme ça on obtient une harmonie avec la bottom partout »*. Il
+     * emprunte donc sa hauteur à la carte d'entraînement et sa largeur à la
+     * barre du bas. Deux voisins, deux dimensions — c'est écrit ici pour que
+     * personne ne « corrige » l'un en croyant l'autre oublié.
+     */
+    if (m.carte.large <= m.exercice.large)
+      griefs.push(`le lecteur (${m.carte.large}) n’est pas plus large que la carte (${m.exercice.large}) : la pleine largeur a été perdue`)
   }
-  // Collée : le bas de la carte touche le haut du meuble.
-  if (m.meubleHaut === null) griefs.push('aucun meuble en bas : « collée » ne veut rien dire ici')
-  else if (Math.abs(m.carte.bas - m.meubleHaut) > 1)
-    griefs.push(`pas collée : la carte finit à ${m.carte.bas}, le meuble commence à ${m.meubleHaut}`)
+  // Collée : le bas de la carte touche le haut de la barre du bas.
+  if (c.meubleHaut === null) griefs.push('aucune barre du bas à l’étagère : « collée » ne veut rien dire ici')
+  else if (Math.abs(c.carteBas - c.meubleHaut) > 1)
+    griefs.push(`pas collée : la carte finit à ${c.carteBas}, la barre du bas commence à ${c.meubleHaut}`)
 
   /**
    * 🔴 ET LA BOULE PASSE DEVANT. Elle déborde de 4 px sous la carte, donc
    * collée au meuble elle le chevauche. Les deux étaient en `z-30` et c'est
    * l'ordre du DOM qui tranchait — ça marchait, et rien ne l'écrivait.
    */
-  if (m.boule && m.meubleHaut !== null && m.boule.bas > m.meubleHaut) {
-    if (!(m.zPastille > m.zMeuble))
-      griefs.push(`la boule déborde sur le meuble mais z ${m.zPastille} ≤ ${m.zMeuble} : sa moitié basse peut disparaître`)
+  if (c.bouleBas && c.meubleHaut !== null && c.bouleBas > c.meubleHaut) {
+    /**
+     * ⚠️ DEUX FAÇONS DE PASSER DEVANT, ET UNE SEULE SUFFIT. Un `z` strictement
+     * supérieur, ou — à `z` égal — être peinte APRÈS. La première version de
+     * cette sonde n'acceptait que le `z`, et elle a crié sur 40 contre 40 :
+     * la pastille **ne peut pas** monter à 41, parce que les feuilles
+     * ordinaires sont elles aussi à 40 et doivent la recouvrir. Exiger le `z`
+     * ici, c'était demander un défaut ailleurs.
+     */
+    if (!(c.zPastille > c.zMeuble || (c.zPastille === c.zMeuble && c.pastilleApres)))
+      griefs.push(
+        `la boule déborde sur le meuble sans passer devant : z ${c.zPastille} contre ${c.zMeuble}, ` +
+          `peinte après = ${c.pastilleApres} — sa moitié basse peut disparaître`,
+      )
   }
 
   expect(griefs, `ce qui cloche :\n  · ${griefs.join('\n  · ')}`).toEqual([])
