@@ -652,12 +652,20 @@ test('la prise du curseur ne mord pas sur les boutons', async ({ page }) => {
       return e ? e.getBoundingClientRect() : null
     }
     const z = b('[data-pastille-curseur]')
-    const meuble = b('[data-barre-action]') || b('[data-barre-bas]')
+    /**
+     * 🔴 LE HAUT DES COMMANDES, PAS LE HAUT DU MEUBLE. La barre d'action
+     * porte 24 px de rembourrage avant ses boutons : comparer au cadre faisait
+     * crier la sonde alors que 18 px séparaient la prise du premier bouton.
+     * Ce qu'on protège, ce sont les CIBLES, pas les boîtes qui les contiennent.
+     */
+    const meuble = document.querySelector('[data-barre-action]') || document.querySelector('[data-barre-bas]')
+    const cibles = meuble ? [...meuble.querySelectorAll('a, button')].map((e) => e.getBoundingClientRect().top) : []
     return {
       zone: { haut: Math.round(z.top), bas: Math.round(z.bottom), h: Math.round(z.height) },
       play: Math.round(b('[data-pastille-basculer]').bottom),
       suivant: Math.round(b('[data-pastille-suivant]').bottom),
-      meubleHaut: meuble ? Math.round(meuble.top) : null,
+      meubleHaut: meuble ? Math.round(meuble.getBoundingClientRect().top) : null,
+      cibleHaut: cibles.length ? Math.round(Math.min(...cibles)) : null,
     }
   })
   console.log(JSON.stringify(g, null, 1))
@@ -669,13 +677,15 @@ test('la prise du curseur ne mord pas sur les boutons', async ({ page }) => {
   if (g.zone.haut < plusBas)
     griefs.push(`la prise commence à ${g.zone.haut}, soit ${plusBas - g.zone.haut} px DANS les boutons`)
   /**
-   * 🔴 ET EN BAS ELLE S'ARRÊTE AVANT LE MOBILIER. Elle s'arrêtait au bord de
-   * la CARTE, ce qui laissait la boule à moitié dehors ; elle descend
-   * maintenant jusqu'au bas de la boule. Ce qu'elle ne doit pas faire, c'est
-   * mordre sur le geste du jour qui vit juste en dessous.
+   * 🔴 ET EN BAS ELLE S'ARRÊTE AVANT LES COMMANDES DU MEUBLE. Depuis que la
+   * pastille est COLLÉE à la barre, sa zone de prise déborde forcément sur le
+   * cadre de celle-ci — c'est la conséquence voulue de « collée ». Ce qui
+   * compte est qu'elle ne morde pas sur les BOUTONS : mesuré, la prise finit
+   * à 766 et le premier bouton commence à 784, les 24 px de rembourrage de la
+   * barre tenant lieu de marge.
    */
-  if (g.meubleHaut !== null && g.zone.bas > g.meubleHaut)
-    griefs.push(`la prise descend à ${g.zone.bas}, le meuble du bas commence à ${g.meubleHaut}`)
+  if (g.cibleHaut !== null && g.zone.bas > g.cibleHaut)
+    griefs.push(`la prise descend à ${g.zone.bas}, le premier bouton du meuble commence à ${g.cibleHaut}`)
   if (g.zone.h < 18) griefs.push(`la prise ne fait que ${g.zone.h} px : trop fine pour un doigt`)
 
   expect(griefs, `ce qui cloche :\n  · ${griefs.join('\n  · ')}`).toEqual([])
@@ -862,4 +872,77 @@ test('la pastille met en pause, et sa croix met fin', async ({ page }) => {
     await page.evaluate(() => document.querySelector('audio')?.paused ?? true),
     'la croix doit aussi faire taire le son, pas seulement cacher la pastille',
   ).toBe(true)
+})
+
+/**
+ * ── 🔴 LA PASTILLE ET LA CARTE D'ENTRAÎNEMENT SONT DU MÊME GABARIT ─────────
+ *
+ * Patrice, capture à l'appui : *« la carte entraînement du bas et le lecteur
+ * sont de hauteur différente, et cela me fait dire que le lecteur doit avoir
+ * la même hauteur que la carte »*. Relevé : 78 px contre 64, pour une largeur
+ * rigoureusement identique. Deux cartes de même largeur empilées, de hauteurs
+ * voisines mais différentes : le bruit qu'il nomme à chaque fois.
+ *
+ * ⚠️ ET C'EST POUR ÇA QUE CETTE SONDE EXISTE. La hauteur de la carte
+ * d'entraînement est une CONSÉQUENCE de son contenu ; celle de la pastille est
+ * un NOMBRE ÉCRIT. Rien dans le code ne les relie, donc rien n'empêcherait la
+ * première de bouger sans la seconde — sauf une mesure qui les compare.
+ */
+test('la pastille a le gabarit de la carte d’entraînement, et lui est collée', async ({ page }) => {
+  await ouvrirEcoute(page)
+  await lancer(page)
+  await auModule(page)
+  await page.evaluate(() => scrollTo(0, document.scrollingElement.scrollHeight))
+
+  const m = await page.evaluate(() => {
+    const r = (e) => {
+      if (!e) return null
+      const b = e.getBoundingClientRect()
+      return { haut: Math.round(b.height), large: Math.round(b.width), bas: Math.round(b.bottom) }
+    }
+    const exo = [...document.querySelectorAll('a, div')].find((e) => {
+      const t = e.textContent.trim()
+      const b = e.getBoundingClientRect()
+      return t.startsWith('Rejouer ça à l’entraînement') && b.height > 40 && b.height < 160
+    })
+    const past = document.querySelector('[data-pastille-ecoute]')
+    const meuble = document.querySelector('[data-barre-action]') || document.querySelector('[data-barre-bas]')
+    return {
+      exercice: r(exo),
+      carte: r(past?.querySelector('.relative > div:nth-child(2)')),
+      boule: r(document.querySelector('[data-pastille-boule]')),
+      meubleHaut: meuble ? Math.round(meuble.getBoundingClientRect().top) : null,
+      zPastille: past ? Number(getComputedStyle(past).zIndex) : null,
+      zMeuble: meuble ? Number(getComputedStyle(meuble).zIndex) : null,
+    }
+  })
+  console.log(JSON.stringify(m, null, 1))
+
+  const griefs = []
+  // 🔴 SANS LA CARTE, CE TEST N'ÉPROUVE RIEN. Tous les modules n'ont pas
+  // d'entraînement ; mieux vaut échouer que passer au vert sur une comparaison
+  // qui n'a pas eu lieu.
+  if (!m.exercice) griefs.push('carte d’entraînement introuvable : la comparaison n’a pas eu lieu')
+  else {
+    if (m.carte.haut !== m.exercice.haut)
+      griefs.push(`hauteurs différentes : pastille ${m.carte.haut}, carte ${m.exercice.haut}`)
+    if (m.carte.large !== m.exercice.large)
+      griefs.push(`largeurs différentes : pastille ${m.carte.large}, carte ${m.exercice.large}`)
+  }
+  // Collée : le bas de la carte touche le haut du meuble.
+  if (m.meubleHaut === null) griefs.push('aucun meuble en bas : « collée » ne veut rien dire ici')
+  else if (Math.abs(m.carte.bas - m.meubleHaut) > 1)
+    griefs.push(`pas collée : la carte finit à ${m.carte.bas}, le meuble commence à ${m.meubleHaut}`)
+
+  /**
+   * 🔴 ET LA BOULE PASSE DEVANT. Elle déborde de 4 px sous la carte, donc
+   * collée au meuble elle le chevauche. Les deux étaient en `z-30` et c'est
+   * l'ordre du DOM qui tranchait — ça marchait, et rien ne l'écrivait.
+   */
+  if (m.boule && m.meubleHaut !== null && m.boule.bas > m.meubleHaut) {
+    if (!(m.zPastille > m.zMeuble))
+      griefs.push(`la boule déborde sur le meuble mais z ${m.zPastille} ≤ ${m.zMeuble} : sa moitié basse peut disparaître`)
+  }
+
+  expect(griefs, `ce qui cloche :\n  · ${griefs.join('\n  · ')}`).toEqual([])
 })
