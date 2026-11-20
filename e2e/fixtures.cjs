@@ -361,6 +361,37 @@ const retirerRdv = (rid) => ssh(`node e2e/server-helper.cjs rdv-delete ${rid}`)
  */
 const ADRESSE_FICHE = /\/gens\/[a-z0-9-]+$/i
 
+/**
+ * ── 🔴 UNE SONDE N'AFFIRME JAMAIS LA DONNÉE DE QUELQU'UN ───────────────────
+ *
+ * Relevé le 20 novembre 2026 sur la suite entière : **30 rouges sur 260**, et
+ * une douzaine ne signalaient aucun défaut. Elles exigeaient le nom d'une
+ * société MLM écrit en dur, un agenda Google raccordé, plus de cinq contacts
+ * géocodés, le résumé de nuit de la veille, un contact au stade « Closing ».
+ * Autant de choses vraies un jour, sur un compte.
+ *
+ * 🧭 ET C'EST PIRE QU'UNE SONDE PÉRIMÉE. Une sonde périmée échoue toujours,
+ * donc on finit par la corriger. Celle-ci échoue **selon le compte et selon le
+ * jour** : on ne sait jamais si c'est le produit ou la donnée, et on apprend à
+ * ne plus la lire. Trente rouges, et la liste entière devient du bruit.
+ *
+ * ── LA RÈGLE, DANS CET ORDRE ──────────────────────────────────────────────
+ *
+ *   1. **FABRIQUER** ce dont on a besoin. Le contact jetable existe pour ça :
+ *      il naît avec la sonde et meurt avec elle.
+ *   2. **MESURER LA STRUCTURE, PAS LA VALEUR.** « le bloc d'identité porte le
+ *      nom de l'activité » se vérifie partout ; « il dit Forever Living » ne
+ *      se vérifie que chez Patrice.
+ *   3. **SAUTER À VOIX HAUTE** quand ni l'un ni l'autre n'est possible, en
+ *      nommant ce qui manquait. Un `test.skip` reste visible dans le rapport
+ *      et ne prétend pas avoir trouvé quelque chose.
+ *
+ * ⚠️ ET LE SAUT EST LE DERNIER RECOURS. Une suite où tout se saute rend le
+ * même vert qu'une suite qui prouve tout : chaque saut doit nommer la donnée
+ * manquante, pour qu'on sache quoi fabriquer le jour où on veut la preuve.
+ */
+const SANS = (quoi) => `donnée absente sur ce compte : ${quoi}`
+
 module.exports = {
   test,
   expect: base.expect,
@@ -376,4 +407,5 @@ module.exports = {
   poserRdv,
   retirerRdv,
   ADRESSE_FICHE,
+  SANS,
 }

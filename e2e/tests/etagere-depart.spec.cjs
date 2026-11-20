@@ -25,7 +25,7 @@
 // dépasser, le départ est à zéro, et la sonde le dit au lieu de passer au vert
 // pour rien. `humanstring@gmail.com` a le module 1 fini — 8 leçons sur 8 et le
 // quiz réussi.
-const { test, expect } = require('../fixtures.cjs')
+const { test, expect, SANS } = require('../fixtures.cjs')
 
 test.use({ viewport: { width: 390, height: 844 } })
 
@@ -67,10 +67,14 @@ test('la rangée garde son ordre et démarre au premier module non terminé', as
     'la rangée doit rester dans l’ordre des modules — c’est un défilement, pas un tri',
   ).toEqual([...vu.ordre].sort((a, b) => a - b))
 
-  expect(
-    vu.termines,
-    'aucun module terminé sur ce compte : la sonde ne peut rien prouver (passer E2E_COMME)',
-  ).toBeGreaterThan(0)
+  /**
+   * 🔴 ELLE NOMMAIT DÉJÀ SA DONNÉE MANQUANTE, ET ÉCHOUAIT QUAND MÊME. C'était
+   * la bonne moitié du travail : elle disait « aucun module terminé sur ce
+   * compte ». Mais un rouge annonce un DÉFAUT, et il n'y en avait aucun —
+   * seulement un compte qui n'a pas encore fini de module.
+   */
+  test.skip(vu.termines === 0, SANS('aucun module terminé, le départ de la rangée est indémontrable'))
+  expect(vu.termines).toBeGreaterThan(0)
 
   // ── ② ET ELLE EST DÉJÀ POUSSÉE ──
   expect(vu.prochain, 'aucun module non terminé n’est désigné').toBeTruthy()

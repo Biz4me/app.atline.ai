@@ -15,7 +15,7 @@
 //   4. qu'il n'existe plus AUCUN menu global : chaque écran a ses variantes,
 //      et le compte vit derrière l'avatar.
 
-const { test, expect } = require('../fixtures.cjs')
+const { test, expect, SANS } = require('../fixtures.cjs')
 
 test.use({ viewport: { width: 390, height: 844 } })
 
@@ -48,7 +48,29 @@ test('cinq lieux, un seul nom chacun, et l’identité sur l’accueil seul', as
   expect(entrees).toEqual(['Menu', 'Apprendre', 'Atlas', 'Contacts'])
 
   // ── 2. l'accueil porte l'identité, et lui seul ─────────────────────────
-  await expect(page.getByText('Forever Living')).toHaveCount(1)
+  /**
+   * 🔴 « L'ACCUEIL PORTE L'IDENTITÉ » SE VÉRIFIE PARTOUT ; « IL DIT FOREVER
+   * LIVING » NE SE VÉRIFIE QUE CHEZ PATRICE. Cette ligne attendait le nom
+   * d'une société MLM écrit en dur : sur tout autre compte elle échouait en
+   * annonçant « Expected 1, Received 0 », sans qu'aucun défaut existe.
+   *
+   * 🧭 Ce qu'on garde est plus fort, pas plus faible : **un seul** bloc
+   * d'identité, et il n'est pas vide. C'est exactement la règle que la ligne
+   * voulait tenir — elle l'avait juste écrite avec une valeur.
+   */
+  const identite = page.locator('[data-activite-nom]')
+  await page.locator('header').waitFor({ state: 'visible', timeout: 20_000 })
+  /**
+   * ⚠️ ET « PORTER L'IDENTITÉ » DÉPEND D'AVOIR UNE ACTIVITÉ. Mesuré : sur le
+   * compte de cette sonde il n'y en a aucune, donc aucun bloc — et c'est
+   * juste. Sur le compte de Patrice il affiche « Herbalife », qui n'est même
+   * plus la société que la ligne d'hier exigeait. Deux raisons de ne jamais
+   * écrire une valeur ici.
+   */
+  const combien = await identite.count()
+  test.skip(combien === 0, SANS('aucune activité, donc aucun bloc d’identité sur l’accueil'))
+  expect(combien, 'l’accueil porte plusieurs blocs d’identité').toBe(1)
+  await expect(identite, 'le bloc d’identité est vide').not.toHaveText('')
   await expect(page.getByRole('link', { name: /Mon compte/ })).toHaveCount(1)
   await poser(page)
   const hautAccueil = Math.round((await page.locator('header').boundingBox()).height)
@@ -71,12 +93,29 @@ test('cinq lieux, un seul nom chacun, et l’identité sur l’accueil seul', as
   await expect(page.getByRole('link', { name: 'Parler à Atlas' })).toHaveCount(0)
   await expect(page.locator('[data-barre-action]')).toHaveCount(0)
 
-  // 🔴 ET LA PREUVE QUE CETTE SONDE SAIT VOIR LA CHOSE. Un contrôle
-  // d'absence sur un sélecteur qui ne marche nulle part est vert pour
-  // toujours : c'est la classe de panne qui a laissé deux sondes de hauteur
-  // mentir ensemble le 8 novembre. Formation, elle, porte bien un geste fixe.
+  /**
+   * 🔴 ET LA PREUVE QUE CETTE SONDE SAIT VOIR LA CHOSE. Un contrôle d'absence
+   * sur un sélecteur qui ne marche nulle part est vert pour TOUJOURS : c'est
+   * la classe de panne qui a laissé deux sondes de hauteur mentir ensemble le
+   * 8 novembre.
+   *
+   * ⚠️ LE TÉMOIN A DÉMÉNAGÉ LE 20 NOVEMBRE 2026. Il était posé sur
+   * `/parcours`, qui portait un geste fixe — Patrice l'a fait retirer le matin
+   * même : *« le bouton commencer dans la page apprendre n'a plus lieu d'être
+   * »*. Le contrôle d'absence juste au-dessus serait donc redevenu vert pour
+   * toujours, sans que rien ne le dise. **La couverture d'un module**, elle,
+   * porte bien ses deux gestes « Écouter » et « Lire ».
+   */
   await page.goto('/parcours', { waitUntil: 'domcontentloaded' })
-  await expect(page.locator('[data-barre-action]')).toHaveCount(1, { timeout: 20_000 })
+  const versModule = await page
+    .locator('a[data-module]')
+    .first()
+    .getAttribute('href', { timeout: 20_000 })
+  await page.goto(versModule, { waitUntil: 'domcontentloaded' })
+  await expect(
+    page.locator('[data-barre-action]'),
+    'le témoin a perdu son geste : le contrôle d’absence ci-dessus ne prouve plus rien',
+  ).toHaveCount(1, { timeout: 20_000 })
   await page.goto('/accueil', { waitUntil: 'domcontentloaded' })
   await expect(barre).toBeVisible({ timeout: 20_000 })
 

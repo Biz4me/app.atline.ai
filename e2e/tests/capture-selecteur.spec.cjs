@@ -23,7 +23,7 @@
 // que sur l'accueil et dans le menu depuis le 5 novembre : le hall d'entrée
 // porte l'identité, les quatre lieux portent le travail. Ce test cherchait
 // la bande là où elle n'est plus.
-const { test, expect } = require('../fixtures.cjs')
+const { test, expect, SANS } = require('../fixtures.cjs')
 
 // On la regarde debout, d'une main. C'est aussi la seule taille où la capture
 // montre l'écran et non la moquette autour.
@@ -62,7 +62,9 @@ test('la bande d’activité se voit, et s’ouvre', async ({ page, pageErrors }
   await expect(feuille).toBeVisible({ timeout: 10_000 })
   const choix = feuille.getByRole('button')
   await expect(choix.filter({ hasText: 'NHT Global' })).toBeVisible({ timeout: 10_000 })
-  await expect(choix.filter({ hasText: 'Forever Living' })).toBeVisible()
+  // ⚠️ Le choix doit porter l'activité COURANTE, quelle qu'elle soit.
+  const courante = (await page.locator('[data-activite-nom]').first().innerText()).trim()
+  await expect(choix.filter({ hasText: courante })).toBeVisible()
 
   // La feuille épouse son contenu : on prend l'écran entier, sinon on
   // photographie son bord supérieur et rien du choix.
@@ -92,7 +94,12 @@ test('avec une seule activité, la bande informe sans se cliquer', async ({ page
   await page.goto('/accueil', { waitUntil: 'domcontentloaded' })
 
   // Le nom de l'activité est bien affiché…
-  await expect(page.getByText('Forever Living').first()).toBeVisible({ timeout: 20_000 })
+  // 🔴 LE NOM, PAS SA VALEUR : voir la même correction dans `capture-barre`.
+  await page.locator('header').waitFor({ state: 'visible', timeout: 20_000 })
+  const nom = page.locator('[data-activite-nom]').first()
+  test.skip((await nom.count()) === 0, SANS('aucune activité sur ce compte'))
+  await expect(nom, 'la bande ne montre pas le nom de l’activité').toBeVisible({ timeout: 20_000 })
+  expect((await nom.innerText()).trim().length, 'le nom de l’activité est vide').toBeGreaterThan(0)
 
   // …et AUCUN bouton ne propose d'en changer.
   await expect(page.getByRole('button', { name: /Changer d’activité|Changer d'activité/ })).toHaveCount(0)
