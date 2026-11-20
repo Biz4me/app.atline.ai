@@ -18,57 +18,9 @@
 // rien ne s'est produit du tout et le « ended : 0 » ne prouve rien. Les deux
 // chiffres se lisent ensemble ou pas du tout.
 const { test, expect } = require('../fixtures.cjs')
+const { lancer, ouvrirEcoute } = require('../son.cjs')
 
 test.use({ viewport: { width: 390, height: 844 } })
-
-/** Les six crans de l'échelle maison, pour situer ce qui se mesure ici. */
-async function ouvrirEcoute(page) {
-  await page.goto('/parcours', { waitUntil: 'domcontentloaded' })
-  const href = await page.locator('a[data-module="1"]').getAttribute('href')
-  await page.goto(href, { waitUntil: 'domcontentloaded' })
-  const ecouter = page.getByRole('link', { name: 'Écouter' })
-  await expect(ecouter).toBeVisible({ timeout: 20_000 })
-  await ecouter.click()
-  await page.locator('[data-titre-ecoute]').waitFor({ state: 'visible', timeout: 20_000 })
-  await page.locator('.lecteur-ecoute audio').waitFor({ state: 'attached', timeout: 20_000 })
-}
-
-/**
- * Mettre le son en marche POUR DE VRAI.
- *
- * 🔴 UN CLIC DE PLAYWRIGHT EST UN GESTE DE CONFIANCE, un `play()` appelé
- * depuis `evaluate` n'en est pas un : le Chrome du système exige une
- * activation de la page, donc la seconde forme serait refusée en silence et
- * la sonde conclurait à une panne qui n'existe pas.
- *
- * ⚠️ ET ON NE CLIQUE QUE SI C'EST À L'ARRÊT. La page porte `auto` : selon
- * l'humeur des règles de lecture automatique, elle joue peut-être déjà — et
- * un clic de plus la mettrait en pause, c'est-à-dire exactement l'inverse.
- *
- * ── 🔴 « PAS EN PAUSE » N'EST PAS « ÇA JOUE » ──────────────────────────────
- *
- * Première version de cette fonction : elle attendait `paused === false`.
- * `play()` le rend vrai TOUT DE SUITE, alors que le son ne part qu'au premier
- * octet décodé — l'événement `playing`, parfois une seconde plus tard. La
- * sonde lisait donc l'état du lecteur dans cet intervalle et accusait l'app
- * de ne pas l'annoncer : **une mesure prise sur une cible en mouvement
- * mentait, et c'est la mesure qui avait tort.**
- */
-async function lancer(page) {
-  await page.evaluate(() => {
-    const a = document.querySelector('audio')
-    // Déjà en route avant qu'on regarde : `playing` est passé sans nous.
-    window.__joue = !a.paused && a.currentTime > 0 && a.readyState >= 3
-    a.addEventListener('playing', () => {
-      window.__joue = true
-    })
-  })
-  const arrete = await page.evaluate(() => !!document.querySelector('audio')?.paused)
-  if (arrete) await page.locator('.lecteur-ecoute button[aria-label="Écouter la leçon"]').click()
-  await expect
-    .poll(() => page.evaluate(() => window.__joue === true), { timeout: 25_000 })
-    .toBe(true)
-}
 
 test('la leçon se termine sans que la piste atteigne sa fin', async ({ page }) => {
   await ouvrirEcoute(page)
