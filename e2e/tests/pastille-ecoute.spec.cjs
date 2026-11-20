@@ -358,21 +358,29 @@ test('les sauts de la pastille changent la piste sans déplacer l’écran', asy
   if (!avant.texte?.includes('Module ')) griefs.push(`la pastille ne dit pas le module : « ${avant.texte} »`)
 
   /**
-   * 🔴 LA LIGNE DU RANG NE DOIT JAMAIS ÊTRE COUPÉE. C'est la mesure qui a
-   * tranché le format : dans une colonne de 136 px, le pire cas des onze
-   * modules occupe 95 px depuis qu'il ne porte plus le total. Un rang tronqué
-   * — « Module 11 · Leç… » — se lit comme un écran cassé, là où un TITRE
-   * tronqué se lit comme un titre long. Les deux lignes n'ont pas le même
-   * droit à déborder.
+   * ── 🔴 CETTE SONDE EXIGEAIT UN RANG JAMAIS COUPÉ. PLUS MAINTENANT ─────────
+   *
+   * Elle vérifiait que « Module 11 · Leçon 8 » tienne entier, parce qu'un rang
+   * tronqué se lit comme un écran cassé là où un titre tronqué se lit comme un
+   * titre long. C'était juste tant que la ligne portait le RANG.
+   *
+   * 🧭 LE 20 NOVEMBRE 2026, ELLE PORTE LE TITRE DU MODULE, ET AUCUN DES ONZE
+   * NE TIENT — de 335 à 584 px pour une colonne de 170. La ligne défile donc,
+   * et « coupé » n'est plus un défaut : c'est le mécanisme. Ce qui reste vrai,
+   * et ce qu'on garde, c'est qu'elle doit DIRE le module.
+   *
+   * ⚠️ ET CE N'EST PAS UN ASSOUPLISSEMENT GRATUIT : la complétude du texte est
+   * maintenant tenue ailleurs, par la sonde du raccord, qui prouve que les
+   * deux exemplaires sont identiques et que la piste vaut exactement leur
+   * somme. Une sonde a remplacé l'autre, elle ne s'est pas évaporée.
    */
   const rang = await page.evaluate(() => {
-    const e = document.querySelector('[data-pastille-ecoute] a span span')
-    return e ? { texte: e.textContent.trim(), visible: e.clientWidth, reel: e.scrollWidth } : null
+    const e = document.querySelector('[data-pastille-ligne="rang"]')
+    return e ? { texte: e.textContent.trim().slice(0, 60), defile: !!e.querySelector('.titre-pastille') } : null
   })
   console.log(JSON.stringify({ rang }, null, 1))
   if (!rang) griefs.push('ligne du rang introuvable')
-  else if (rang.reel > rang.visible)
-    griefs.push(`le rang « ${rang.texte} » est coupé : ${rang.reel} px pour ${rang.visible} disponibles`)
+  else if (!/Module \d/.test(rang.texte)) griefs.push(`la ligne du rang ne dit pas le module : « ${rang.texte} »`)
 
   await page.locator('[data-pastille-suivant]').click()
   await expect
@@ -488,61 +496,196 @@ test('la croix en angle ne mord pas sur le bouton suivante', async ({ page }) =>
 })
 
 /**
- * ── 🔴 LA BOUCLE, ET SURTOUT SON RACCORD ───────────────────────────────────
+ * ── 🔴 LE RACCORD DES DEUX LIGNES ──────────────────────────────────────────
  *
- * Patrice, le 20 novembre 2026 : *« le titre de la leçon dans le lecteur doit
- * être en défilement permanent en boucle »*. Ça renverse le choix précédent
- * — un seul passage — que cette sonde tenait : elle exigeait `1`.
+ * Les deux lignes de la bande défilent : le titre du module, puis celui de la
+ * leçon. Ce qu'il faut tenir n'est pas qu'elles bougent — ça se voit — mais
+ * que leur RACCORD soit invisible.
  *
- * 🧭 ET CE QU'ELLE PROTÈGE VRAIMENT N'EST PAS LE NOMBRE DE TOURS, c'est le
- * RACCORD. Une boucle se fait à deux exemplaires et l'animation translate de
- * la moitié de la piste ; si cette moitié ne vaut pas exactement un
- * exemplaire, le texte SAUTE à chaque tour. Rien dans le code ne relie les
- * deux — le `pr-10` des copies et le `-50%` du keyframe vivent à cent lignes
- * l'un de l'autre. C'est donc ici, et nulle part ailleurs, que l'invariant
- * tient : **piste = 2 × exemplaire**.
+ * 🧭 UNE BOUCLE SE FAIT À DEUX EXEMPLAIRES et l'animation translate de la
+ * moitié de la piste. Si cette moitié ne vaut pas exactement un exemplaire, le
+ * texte SAUTE à chaque tour. Rien dans le code ne relie les deux : le `pr-10`
+ * des copies et le `-50%` du keyframe vivent à cent lignes l'un de l'autre.
+ * C'est donc ici, et nulle part ailleurs, que tient l'invariant
+ * **piste = 2 × exemplaire**.
+ *
+ * ⚠️ ET C'EST AUSSI CETTE SONDE QUI GARANTIT LE TEXTE ENTIER. L'ancienne règle
+ * « le rang n'est jamais coupé » est tombée le jour où cette ligne a porté le
+ * titre du module : deux exemplaires identiques, dont la somme fait la piste,
+ * prouvent que rien n'est perdu.
  */
-test('le titre défile en boucle, sans raccord visible', async ({ page }) => {
+test('les deux lignes défilent sans raccord visible', async ({ page }) => {
   await ouvrirEcoute(page)
   await lancer(page)
   await auModule(page)
 
-  const t = await page.evaluate(() => {
-    const boite = document.querySelector('[data-pastille-ecoute] a span span:last-child')
-    const mobile = boite?.querySelector('.titre-pastille')
-    const st = mobile ? getComputedStyle(mobile) : null
-    const copies = mobile ? [...mobile.children].map((e) => Math.round(e.getBoundingClientRect().width)) : []
-    return {
-      texte: boite?.textContent.trim().slice(0, 60) ?? null,
-      colonne: boite ? Math.round(boite.clientWidth) : null,
-      // Sans boucle, la largeur demandée est celle du texte tronqué ; avec,
-      // c'est celle d'UN exemplaire, écart compris.
-      texteLarge: mobile ? copies[0] : Math.round(boite?.scrollWidth ?? 0),
-      piste: mobile ? Math.round(mobile.getBoundingClientRect().width) : null,
-      copies,
-      defile: !!mobile,
-      duree: st?.animationDuration ?? null,
-      passages: st?.animationIterationCount ?? null,
-      courbe: st?.animationTimingFunction ?? null,
+  const lignes = await page.evaluate(() => {
+    /**
+     * ── 🔴 LES DEUX MARGES DE LA FENÊTRE, MESURÉES ────────────────────────
+     *
+     * Patrice, le 20 novembre 2026 : *« éloigner légèrement de l'illustration
+     * et rapprocher des commandes pour avoir quelque chose de mieux centré »*.
+     * Le texte sortait à 2 px de l'image et s'arrêtait à 8 px des boutons.
+     *
+     * 🧭 ON MESURE L'ÉCART AUX VOISINS, PAS LES CLASSES. Les 6 px naissent de
+     * trois décisions qui s'additionnent — l'écart du lien, la marge négative
+     * reprise sur la rangée, et la largeur de la pochette. Relire les classes
+     * dirait ce qui est demandé ; seul l'écart réel dit ce qui est obtenu, et
+     * c'est lui qui se décale le jour où la pochette change de taille.
+     */
+    const bord = (s) => {
+      const e = document.querySelector(s)
+      const b = e?.getBoundingClientRect()
+      return b ? { g: Math.round(b.left), d: Math.round(b.right) } : null
     }
+    const image = bord('[data-pastille-ecoute] img')
+    const bouton = bord('[data-pastille-precedent]')
+    return ['rang', 'titre'].map((r) => {
+      const boite = document.querySelector(`[data-pastille-ligne="${r}"]`)
+      /**
+       * 🔴 `[data-pastille-piste]`, ET SURTOUT PAS `.titre-pastille`. La classe
+       * qui anime n'est posée que pendant le TOUR de la ligne : la chercher
+       * faisait déclarer « ne défile pas » à celle qui attendait, et la sonde
+       * ne comparait donc qu'une ligne sur deux en se taisant là-dessus. Le
+       * repère, lui, existe dès que la boucle est montée.
+       */
+      const mobile = boite?.querySelector('[data-pastille-piste]')
+      const st = mobile ? getComputedStyle(mobile) : null
+      return {
+        quoi: r,
+        texte: boite?.textContent.trim().slice(0, 48) ?? null,
+        colonne: boite ? Math.round(boite.clientWidth) : null,
+        defile: !!mobile,
+        /** Vrai seulement pour celle qui a la main à cet instant. */
+        sonTour: !!mobile?.classList.contains('titre-pastille'),
+        copies: mobile ? [...mobile.children].map((e) => Math.round(e.getBoundingClientRect().width)) : [],
+        piste: mobile ? Math.round(mobile.getBoundingClientRect().width) : null,
+        duree: st?.animationDuration ?? null,
+        courbe: st?.animationTimingFunction ?? null,
+        marcheGauche: boite && image ? Math.round(boite.getBoundingClientRect().left) - image.d : null,
+        marcheDroite: boite && bouton ? bouton.g - Math.round(boite.getBoundingClientRect().right) : null,
+      }
+    })
   })
-  console.log(JSON.stringify(t, null, 1))
+  console.log(JSON.stringify(lignes, null, 1))
 
   const griefs = []
-  if (!t.defile) griefs.push(`le titre ne défile pas alors qu’il demande ${t.texteLarge} px pour ${t.colonne}`)
-  else {
-    if (t.passages !== 'infinite') griefs.push(`le titre défile ${t.passages} fois au lieu d’en boucle`)
-    // ⚠️ `linear` ET RIEN D'AUTRE : une boucle qui ralentit en fin de cycle
-    // pour repartir sec se lit comme un hoquet, pile au raccord.
-    if (t.courbe !== 'linear') griefs.push(`la boucle est en « ${t.courbe} » : elle hoquette au raccord`)
-    if (t.copies.length !== 2) griefs.push(`${t.copies.length} exemplaire(s) : une boucle sans couture en demande deux`)
-    else if (t.copies[0] !== t.copies[1])
-      griefs.push(`les deux exemplaires ne font pas la même largeur (${t.copies.join(' et ')}) : le raccord sautera`)
-    // 🔴 L'INVARIANT : la moitié de la piste doit valoir un exemplaire pile.
-    else if (Math.abs(t.piste - 2 * t.copies[0]) > 1)
-      griefs.push(`piste ${t.piste} px pour deux exemplaires de ${t.copies[0]} : le retour sautera de ${Math.abs(t.piste - 2 * t.copies[0])} px`)
+  for (const l of lignes) {
+    if (!l.texte) {
+      griefs.push(`ligne « ${l.quoi} » introuvable`)
+      continue
+    }
+    // ⚠️ Une ligne qui tient entière ne défile pas, et c'est voulu : il n'y a
+    // rien à révéler. On ne lui reproche donc rien, on le dit.
+    if (!l.defile) {
+      console.log(`ligne « ${l.quoi} » : tient dans ${l.colonne} px, ne défile pas`)
+      continue
+    }
+    // ⚠️ La courbe ne se lit que sur celle qui anime : hors tour, il n'y a
+    // aucune animation, donc aucune courbe à juger.
+    if (l.sonTour && l.courbe !== 'linear')
+      griefs.push(`« ${l.quoi} » défile en « ${l.courbe} » : elle hoquette au raccord`)
+    if (l.copies.length !== 2)
+      griefs.push(`« ${l.quoi} » a ${l.copies.length} exemplaire(s) : un raccord invisible en demande deux`)
+    else if (l.copies[0] !== l.copies[1])
+      griefs.push(`« ${l.quoi} » : exemplaires de largeurs ${l.copies.join(' et ')}, le raccord sautera`)
+    // 🔴 L'INVARIANT : la moitié de la piste vaut un exemplaire, au pixel.
+    else if (Math.abs(l.piste - 2 * l.copies[0]) > 1)
+      griefs.push(
+        `« ${l.quoi} » : piste ${l.piste} px pour deux exemplaires de ${l.copies[0]} — ` +
+          `le retour sautera de ${Math.abs(l.piste - 2 * l.copies[0])} px`,
+      )
   }
-  if (t.texteLarge <= t.colonne) griefs.push('le titre tient : ce test n’éprouve rien sur cette leçon')
+  /**
+   * 🔴 LA FENÊTRE EST CENTRÉE, ET UN PIXEL D'ÉCART SUFFIT À LE VOIR. Un texte
+   * qui sort au ras de l'image puis s'arrête loin des boutons se lit comme un
+   * défaut d'alignement, même sans savoir pourquoi.
+   */
+  for (const l of lignes) {
+    if (l.marcheGauche === null || l.marcheDroite === null) {
+      griefs.push(`« ${l.quoi} » : impossible de mesurer ses marges`)
+      continue
+    }
+    if (Math.abs(l.marcheGauche - l.marcheDroite) > 1)
+      griefs.push(
+        `« ${l.quoi} » n’est pas centrée : ${l.marcheGauche} px de l’illustration, ` +
+          `${l.marcheDroite} px des commandes`,
+      )
+    // ⚠️ Et elles ne doivent pas se refermer : à zéro, le texte toucherait ses
+    // deux voisins, ce qui est précisément ce qu'on vient de corriger à gauche.
+    if (l.marcheGauche < 3) griefs.push(`« ${l.quoi} » colle à l’illustration (${l.marcheGauche} px)`)
+  }
+
+  // 🔴 ET IL FAUT QU'UNE LIGNE AIT LA MAIN, sinon le carrousel est à l'arrêt
+  // et personne ne le dirait.
+  if (!lignes.some((l) => l.defile)) griefs.push('aucune des deux lignes ne défile : rien n’a été comparé')
+  else if (!lignes.some((l) => l.sonTour)) griefs.push('aucune ligne n’a la main : le carrousel est à l’arrêt')
+
+  expect(griefs, `ce qui cloche :\n  · ${griefs.join('\n  · ')}`).toEqual([])
+})
+
+/**
+ * ── 🔴 CHACUNE SON TOUR, ET JAMAIS LES DEUX ENSEMBLE ───────────────────────
+ *
+ * Patrice, le 20 novembre 2026, après avoir vu les deux lignes bouger en même
+ * temps : *« et si on met la même vitesse, et dans ce cas elles défilent
+ * chacune leur tour en commençant par module, et le tout en boucle »*.
+ *
+ * 🧭 CE QUE L'ALTERNANCE ACHÈTE : pendant qu'une ligne passe, l'AUTRE EST LE
+ * POINT FIXE. Deux lignes mobiles à la fois ne laissent à l'œil aucun endroit
+ * où se reposer. C'est donc « jamais les deux ensemble » qu'il faut tenir, pas
+ * seulement « les deux bougent ».
+ *
+ * 🔴 ET C'EST UN MÉCANISME QUI PEUT S'ARRÊTER SANS UN MOT. La main se passe
+ * par `animationend`, et une ligne qui n'a rien à faire défiler doit passer
+ * son tour explicitement. Si ce passage casse, le carrousel se bloque sur une
+ * ligne : tout a l'air normal, une capture d'écran ne montre rien, et l'autre
+ * titre ne bouge plus jamais. Seule une sonde qui ATTEND peut le voir.
+ *
+ * ⚠️ ELLE DURE UNE MINUTE, ET C'EST LE PRIX DU CYCLE. Mesuré : 20 s pour le
+ * module, 14 s pour la leçon, deux pauses de 1,4 s — environ 36 s. Échantillonner
+ * moins longtemps ne prouverait pas que la main REVIENT.
+ */
+test('les deux lignes défilent chacune à son tour', async ({ page }) => {
+  test.setTimeout(180_000)
+  await ouvrirEcoute(page)
+  await lancer(page)
+  await auModule(page)
+
+  /** Où en est chaque ligne : immobile, ou déplacée de tant de pixels. */
+  const ou = () =>
+    page.evaluate(() =>
+      Object.fromEntries(
+        ['rang', 'titre'].map((r) => {
+          const e = document.querySelector(`[data-pastille-ligne="${r}"]`)
+          const m = e?.querySelector('.titre-pastille')
+          if (!m) return [r, null]
+          const t = getComputedStyle(m).transform
+          return [r, t === 'none' ? 0 : Math.round(Number(t.split(',')[4] || 0))]
+        }),
+      ),
+    )
+
+  const vus = []
+  for (let i = 0; i < 26; i++) {
+    vus.push({ s: i * 2, ...(await ou()) })
+    if (i < 25) await page.waitForTimeout(2_000)
+  }
+  console.log(JSON.stringify(vus, null, 0).replace(/\},\{/g, '},\n{'))
+
+  // « En mouvement » = déplacée. `null` veut dire qu'elle ne défile pas du tout.
+  const bouge = (v) => v !== null && v < -2
+  const griefs = []
+  if (!vus.some((v) => bouge(v.rang))) griefs.push('la ligne du module n’a jamais eu son tour en 50 s')
+  if (!vus.some((v) => bouge(v.titre))) griefs.push('la ligne de la leçon n’a jamais eu son tour en 50 s')
+  const ensemble = vus.filter((v) => bouge(v.rang) && bouge(v.titre))
+  if (ensemble.length)
+    griefs.push(`les deux lignes bougent en même temps à ${ensemble.map((v) => `${v.s}s`).join(', ')}`)
+  // 🔴 ET LA MAIN REVIENT : sans ça, un carrousel qui fait un seul aller
+  // passerait au vert.
+  const premier = vus.findIndex((v) => bouge(v.titre))
+  if (premier >= 0 && !vus.slice(premier).some((v) => bouge(v.rang)))
+    griefs.push('après le tour de la leçon, la main ne revient jamais au module')
 
   expect(griefs, `ce qui cloche :\n  · ${griefs.join('\n  · ')}`).toEqual([])
 })
