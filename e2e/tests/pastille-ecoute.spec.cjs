@@ -299,6 +299,131 @@ test('la pastille ne mange pas la fin du texte de la leçon', async ({ page }) =
   ).toBeLessThanOrEqual(m.pastilleHaut)
 })
 
+/** Loin de la formation : un écran qui n'a rien à voir avec la leçon. */
+async function ailleurs(page) {
+  await auModule(page)
+  await aLEtagere(page)
+  const lien = page.locator(`${BAS}[href="/gens"]`).first()
+  expect(await lien.count(), 'pas de case Contacts dans la barre du bas').toBeGreaterThan(0)
+  await lien.click()
+  await expect.poll(() => page.url(), { timeout: 15_000 }).toContain('/gens')
+  await page.locator(PASTILLE).waitFor({ state: 'visible', timeout: 15_000 })
+}
+
+const pisteJouee = (page) =>
+  page.evaluate(() => ({
+    src: document.querySelector('audio')?.currentSrc ?? null,
+    arrete: document.querySelector('audio')?.paused,
+    texte: document.querySelector('[data-pastille-ecoute]')?.textContent.trim() ?? null,
+  }))
+
+/**
+ * ── 🔴 CHANGER DE PISTE N'EST PAS CHANGER DE PAGE ──────────────────────────
+ *
+ * Patrice : *« sur le lecteur en arrière-plan je n'ai pas le module et je ne
+ * peux pas passer à la leçon suivante ou précédente »*. Les deux sauts ajoutés
+ * pour ça ne valent que s'ils laissent la personne où elle est : on écoutait
+ * EN FAISANT AUTRE CHOSE, et l'éjecter vers l'écran d'écoute annulerait tout
+ * le chantier.
+ */
+test('les sauts de la pastille changent la piste sans déplacer l’écran', async ({ page }) => {
+  await ouvrirEcoute(page)
+  await lancer(page)
+  await ailleurs(page)
+
+  const avant = await pisteJouee(page)
+  const adresse = page.url()
+  console.log(JSON.stringify({ adresse, ...avant }, null, 1))
+
+  const griefs = []
+  // Elle vit sur des écrans sans aucun rapport avec la formation : sans le
+  // module, « Leçon 1 de 8 » ne dit pas de quel livre.
+  if (!avant.texte?.includes('Module ')) griefs.push(`la pastille ne dit pas le module : « ${avant.texte} »`)
+
+  await page.locator('[data-pastille-suivant]').click()
+  await expect
+    .poll(() => page.evaluate(() => document.querySelector('audio')?.currentSrc), { timeout: 20_000 })
+    .not.toBe(avant.src)
+  const apres = await pisteJouee(page)
+  console.log(JSON.stringify({ adresse: page.url(), ...apres }, null, 1))
+
+  if (page.url() !== adresse) griefs.push(`⏭ a déplacé l’écran : ${adresse} → ${page.url()}`)
+  if (!apres.texte?.includes('Leçon 2')) griefs.push(`la pastille annonce encore « ${apres.texte} »`)
+  await expect
+    .poll(() => page.evaluate(() => !document.querySelector('audio')?.paused), { timeout: 20_000 })
+    .toBe(true)
+
+  // Et le retour en arrière ramène bien la première, toujours sans bouger.
+  await page.locator('[data-pastille-precedent]').click()
+  await expect
+    .poll(() => page.evaluate(() => document.querySelector('audio')?.currentSrc), { timeout: 20_000 })
+    .toBe(avant.src)
+  if (page.url() !== adresse) griefs.push(`⏮ a déplacé l’écran : ${adresse} → ${page.url()}`)
+  // 🔴 Au premier bout du module, « précédent » doit être ÉTEINT et non retiré :
+  // une pastille qui change de forme entre deux leçons déplace les autres
+  // boutons sous le pouce.
+  const eteint = await page.locator('[data-pastille-precedent]').isDisabled()
+  if (!eteint) griefs.push('sur la leçon 1, ⏮ n’est pas éteint')
+  if ((await page.locator('[data-pastille-precedent]').count()) !== 1)
+    griefs.push('⏮ a été retiré au lieu d’être éteint')
+
+  expect(griefs, `ce qui cloche :\n  · ${griefs.join('\n  · ')}`).toEqual([])
+})
+
+/**
+ * ── 🔴 LE DÉFAUT LIVRÉ LE MATIN MÊME ───────────────────────────────────────
+ *
+ * L'enchaînement appelait `router.replace` SANS CONDITION : une leçon qui se
+ * terminait pendant qu'on travaillait dans Contacts **éjectait vers la page
+ * d'écoute**. C'est l'exact contraire de ce que « écouter en travaillant dans
+ * Atline » promet, et ça ne se voit qu'en laissant une piste aller au bout
+ * depuis un autre écran.
+ */
+test('l’enchaînement ne déplace pas l’écran où l’on travaille', async ({ page }) => {
+  await ouvrirEcoute(page)
+  await lancer(page)
+  await ailleurs(page)
+
+  const avant = await pisteJouee(page)
+  const adresse = page.url()
+  await page.evaluate(() => {
+    const a = document.querySelector('audio')
+    a.currentTime = a.duration - 1.2
+  })
+
+  await expect
+    .poll(() => page.evaluate(() => document.querySelector('audio')?.currentSrc), { timeout: 30_000 })
+    .not.toBe(avant.src)
+  const apres = await pisteJouee(page)
+  console.log(JSON.stringify({ adresse, apres: page.url(), texte: apres.texte }, null, 1))
+
+  expect(page.url(), `l’enchaînement a éjecté de ${adresse} vers ${page.url()}`).toBe(adresse)
+  expect(apres.texte, 'la pastille n’a pas suivi la leçon enchaînée').toContain('Leçon 2')
+})
+
+test('on ferme la pastille en la faisant glisser vers la droite', async ({ page }) => {
+  await ouvrirEcoute(page)
+  await lancer(page)
+  await auModule(page)
+
+  const b = await page.locator(PASTILLE).boundingBox()
+  expect(b, 'pastille introuvable').toBeTruthy()
+  const y = b.y + b.height / 2
+  // ⚠️ PLUSIEURS PAS, et non un saut : la prise ne s'arme qu'après huit pixels
+  // et seulement si le doigt va plus à l'horizontale qu'à la verticale. Un
+  // unique `move` sauterait ce seuil sans jamais le franchir.
+  await page.mouse.move(b.x + 40, y)
+  await page.mouse.down()
+  for (const p of [20, 60, 110, 170, 230]) await page.mouse.move(b.x + 40 + p, y)
+  await page.mouse.up()
+
+  await expect(page.locator(PASTILLE)).toHaveCount(0, { timeout: 10_000 })
+  expect(
+    await page.evaluate(() => document.querySelector('audio')?.paused ?? true),
+    'le glissement doit aussi faire taire le son',
+  ).toBe(true)
+})
+
 test('la pastille met en pause, et sa croix met fin', async ({ page }) => {
   await ouvrirEcoute(page)
   await lancer(page)
