@@ -135,13 +135,21 @@ test('l’écran verrouillé sait quoi afficher', async ({ page }) => {
    * 🧭 Le rang au-dessus, le titre de la LEÇON en dessous : le même ordre de
    * lecture que la pastille, pour que les deux surfaces ne se contredisent pas.
    */
-  if (!/^Module \d+ · Leçon \d+$/.test(vu.titre ?? ''))
-    griefs.push(`la première ligne devrait être le rang, elle dit « ${vu.titre} »`)
-  // 🔴 LE TITRE SE COMPARE À L'ÉCRAN, pas à une chaîne recopiée ici : une
-  // constante dans le test se périme le jour où la leçon est renommée, et
-  // ferait échouer une app parfaitement juste.
-  if (vu.auteur !== vu.ecran)
-    griefs.push(`la seconde ligne (« ${vu.auteur} ») n’est pas le titre de la leçon (« ${vu.ecran} »)`)
+  /**
+   * 🔴 LE TITRE DE LA LEÇON D'ABORD. Repliée, la notification colle les deux
+   * lignes en une seule, et une ligne se tronque PAR LA FIN : le rang en tête
+   * faisait disparaître ce qu'on veut savoir — « Module 2 · Leçon
+   * 2-Identifier s… ». L'ordre est donc une contrainte mécanique, pas un goût,
+   * et c'est pour ça qu'une sonde le tient.
+   *
+   * ⚠️ LE TITRE SE COMPARE À L'ÉCRAN, pas à une chaîne recopiée ici : une
+   * constante dans le test se périme le jour où la leçon est renommée, et
+   * ferait échouer une app parfaitement juste.
+   */
+  if (vu.titre !== vu.ecran)
+    griefs.push(`la première ligne (« ${vu.titre} ») n’est pas le titre de la leçon (« ${vu.ecran} »)`)
+  if (!/^Module \d+ · Leçon \d+$/.test(vu.auteur ?? ''))
+    griefs.push(`la seconde ligne devrait être le rang, elle dit « ${vu.auteur} »`)
   if (vu.album) griefs.push(`un album est annoncé (« ${vu.album} ») : une 3ᵉ ligne qui n’apparaît que sur certains téléphones`)
   for (const [ou, v] of [['titre', vu.titre], ['auteur', vu.auteur], ['album', vu.album]])
     if (typeof v === 'string' && v.includes('Atline'))
