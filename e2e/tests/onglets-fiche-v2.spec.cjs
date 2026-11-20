@@ -25,7 +25,7 @@
 // Le lire depuis `lib/fiche.ts` ferait une sonde qui compare le code à
 // lui-même : elle resterait verte quel que soit l'ordre. La liste ci-dessous
 // est donc la DÉCISION, recopiée, et c'est à elle que la page doit répondre.
-const { test, expect, toucher, ouvrirInfos } = require('../fixtures.cjs')
+const { test, expect, toucher, ouvrirInfos, ADRESSE_FICHE } = require('../fixtures.cjs')
 
 test.use({ viewport: { width: 390, height: 844 } })
 
@@ -185,7 +185,7 @@ test('l’en-tête ne porte que le nom', async ({ page }) => {
   const lignes = page.locator('[data-contact]')
   await expect(lignes.first()).toBeVisible({ timeout: 20_000 })
   await lignes.filter({ hasNotText: 'E2E' }).first().click()
-  await expect(page).toHaveURL(/\/gens\/[a-z0-9]+$/i, { timeout: 20_000 })
+  await expect(page).toHaveURL(ADRESSE_FICHE, { timeout: 20_000 })
 
   const titre = page.getByRole('heading', { level: 1 })
   await expect(titre).toBeVisible()
@@ -232,7 +232,7 @@ test('les rangées se suivent dans l’ordre décidé', async ({ page, pageError
   await expect(lignes.first()).toBeVisible({ timeout: 20_000 })
   const vrai = lignes.filter({ hasNotText: 'E2E' }).first()
   await vrai.click()
-  await expect(page).toHaveURL(/\/gens\/[a-z0-9]+$/i, { timeout: 20_000 })
+  await expect(page).toHaveURL(ADRESSE_FICHE, { timeout: 20_000 })
   await ouvrirInfos(page)
 
   const vues = await page

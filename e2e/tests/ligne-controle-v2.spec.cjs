@@ -6,7 +6,7 @@
 // Chercher · Filtrer · Regarder, et ce que le retrait des deux titres
 // emportait avec lui.
 
-const { test, expect } = require('../fixtures.cjs')
+const { test, expect, ADRESSE_FICHE } = require('../fixtures.cjs')
 
 test.use({ viewport: { width: 390, height: 844 } })
 
@@ -210,7 +210,7 @@ test('Entrée ouvre la personne quand il n’en reste qu’une', async ({ page, 
   await expect(page.locator('[data-compte-recherche]')).toContainText(/^1 sur /, { timeout: 10_000 })
 
   await champ.press('Enter')
-  await expect(page, 'Entrée n’a pas ouvert la fiche').toHaveURL(/\/gens\/[a-z0-9]+$/, {
+  await expect(page, 'Entrée n’a pas ouvert la fiche').toHaveURL(ADRESSE_FICHE, {
     timeout: 20_000,
   })
   await expect(page.getByRole('heading', { level: 1 })).toContainText(/Émilie|Emilie/)

@@ -345,6 +345,22 @@ const poserRdv = (cid, heures = 26, lieu) =>
   )
 const retirerRdv = (rid) => ssh(`node e2e/server-helper.cjs rdv-delete ${rid}`)
 
+/**
+ * ── 🔴 L'ADRESSE D'UNE FICHE — ÉCRITE UNE FOIS ─────────────────────────────
+ *
+ * Sept sondes portaient `/\/gens\/[a-z0-9]+$/`, chacune pour soi. Les
+ * contacts de l'app portent un **cuid**, sans tiret ; le contact jetable que
+ * les sondes fabriquent porte un **UUID**, qui en a quatre. Elles attendaient
+ * donc vingt secondes une adresse où elles étaient déjà, en annonçant
+ * « unexpected value https://…/gens/02c53b4a-294a-… » — c'est-à-dire
+ * exactement la page qu'elles voulaient.
+ *
+ * 🧭 LE DÉFAUT N'ÉTAIT PAS LE TIRET MANQUANT, c'était d'avoir écrit le FORMAT
+ * d'un identifiant là où seule sa PLACE dans l'adresse compte. Et de l'avoir
+ * écrit sept fois : le jour où le format rechange, il faut retrouver les sept.
+ */
+const ADRESSE_FICHE = /\/gens\/[a-z0-9-]+$/i
+
 module.exports = {
   test,
   expect: base.expect,
@@ -359,4 +375,5 @@ module.exports = {
   demain,
   poserRdv,
   retirerRdv,
+  ADRESSE_FICHE,
 }

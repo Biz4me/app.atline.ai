@@ -3,7 +3,7 @@
 // ⚠️ On évite le contact jetable : la fixture `seed` en crée un à chaque
 // test, et comme la liste trie par dernière modification, il arrive EN TÊTE.
 // Une capture prise dessus montrerait une fiche vide et ne prouverait rien.
-const { test, expect, ouvrirInfos } = require('../fixtures.cjs')
+const { test, expect, ouvrirInfos, ADRESSE_FICHE } = require('../fixtures.cjs')
 
 test.use({ viewport: { width: 390, height: 844 } })
 
@@ -15,7 +15,7 @@ test('capture de la fiche', async ({ page }) => {
   const vrai = lignes.filter({ hasNotText: 'E2E' }).first()
   await expect(vrai).toBeVisible()
   await vrai.click()
-  await expect(page).toHaveURL(/\/gens\/[a-z0-9]+$/i, { timeout: 20_000 })
+  await expect(page).toHaveURL(ADRESSE_FICHE, { timeout: 20_000 })
   await expect(page.getByRole('heading', { level: 1 })).toBeVisible()
 
   // 🔴 Une capture prise PENDANT une animation ment autant qu'une mesure.

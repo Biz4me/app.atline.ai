@@ -7,7 +7,7 @@
 // démarrage et le supprime à la fin : les contacts de Patrice sont sa matière
 // première, et l'app ne sait pas en effacer un.
 
-const { test, expect, toucher, ouvrirInfos, suivre } = require('../fixtures.cjs')
+const { test, expect, toucher, ouvrirInfos, suivre, ADRESSE_FICHE } = require('../fixtures.cjs')
 
 test.use({ viewport: { width: 390, height: 844 } })
 
@@ -49,7 +49,7 @@ test('la liste ne s’ouvre plus en feuille', async ({ page, seed }) => {
   await lignes.first().click()
 
   // Une PAGE : l'URL change. Une feuille aurait laissé /gens affiché.
-  await expect(page).toHaveURL(/\/gens\/[a-z0-9]+$/i, { timeout: 20_000 })
+  await expect(page).toHaveURL(ADRESSE_FICHE, { timeout: 20_000 })
 })
 
 test('un champ se corrige sur place, et ça TIENT au rechargement', async ({ page, seed }) => {

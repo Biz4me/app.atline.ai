@@ -1,6 +1,6 @@
 // Une capture de l'écran qui compose un message, sur un VRAI contact.
 // LECTURE SEULE — on évite les fiches « E2E », qui n'ont ni étape ni couleur.
-const { test, expect, suivre } = require('../fixtures.cjs')
+const { test, expect, suivre, ADRESSE_FICHE } = require('../fixtures.cjs')
 
 test.use({ viewport: { width: 390, height: 844 } })
 
@@ -18,7 +18,7 @@ test('capture de l’écran d’écriture', async ({ page, pageErrors }) => {
   let trouve = false
   for (let i = 0; i < Math.min(combien, 8); i++) {
     await vrais.nth(i).click()
-    await expect(page).toHaveURL(/\/gens\/[a-z0-9]+$/i, { timeout: 20_000 })
+    await expect(page).toHaveURL(ADRESSE_FICHE, { timeout: 20_000 })
     const carte = page.locator('[data-geste="Message"]')
     await expect(carte).toBeVisible({ timeout: 20_000 })
     if (!(await carte.getAttribute('data-eteint'))) {
