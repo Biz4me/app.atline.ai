@@ -500,6 +500,116 @@ test('le titre défile une fois quand il ne tient pas', async ({ page }) => {
   expect(griefs, `ce qui cloche :\n  · ${griefs.join('\n  · ')}`).toEqual([])
 })
 
+/**
+ * ── 🔴 UN CURSEUR DE DEUX PIXELS, ET TROIS PIÈGES ──────────────────────────
+ *
+ * Patrice voulait pouvoir se déplacer dans la leçon depuis la pastille. Le
+ * trait fait deux pixels : la prise est donc une zone de 14 px posée dans le
+ * couloir vide sous les boutons. Trois choses à prouver, et aucune ne se voit :
+ *
+ *   · que le geste déplace VRAIMENT la lecture, et au bon endroit ;
+ *   · qu'il ne ferme pas la pastille au passage — le glissement qui la ferme
+ *     vit sur la boîte juste au-dessus, et deux gestes horizontaux se
+ *     superposent ;
+ *   · que la zone ne mord pas sur les boutons, sinon on vise la lecture et on
+ *     change de leçon.
+ */
+test('on déplace la lecture en tirant le curseur de la pastille', async ({ page }) => {
+  await ouvrirEcoute(page)
+  await lancer(page)
+  await auModule(page)
+
+  const d = await page.evaluate(() => document.querySelector('audio').duration)
+  const r = await page.locator('[data-pastille-curseur]').boundingBox()
+  expect(r, 'pas de curseur sur la pastille').toBeTruthy()
+  const y = r.y + r.height / 2
+  const cible = 0.7
+
+  await page.mouse.move(r.x + r.width * 0.2, y)
+  await page.mouse.down()
+  // Le temps doit apparaître À LA PLACE DU RANG pendant le geste : sans lui on
+  // ne récolte qu'une proportion, et « à peu près un tiers » fait quatre
+  // minutes sur une leçon de onze.
+  await page.mouse.move(r.x + r.width * 0.45, y)
+  await page.mouse.move(r.x + r.width * cible, y)
+  /**
+   * ⚠️ ON ATTEND QUE LA BOULE AIT FINI DE GROSSIR. Première version : on la
+   * lisait juste après le mouvement et elle mesurait **10,33 px** — en pleine
+   * transition de cent millisecondes. Le test passait par chance, à un tiers
+   * de pixel du seuil. Une mesure prise sur une cible en mouvement ment, même
+   * quand elle donne le bon verdict.
+   */
+  await expect
+    .poll(
+      () => page.evaluate(() => document.querySelector('[data-pastille-boule]')?.getBoundingClientRect().width ?? 0),
+      { timeout: 5_000 },
+    )
+    .toBeGreaterThan(12)
+  const pendant = await page.evaluate(() => ({
+    rang: document.querySelector('[data-pastille-ecoute] a span span')?.textContent.trim() ?? null,
+    boule: Math.round(document.querySelector('[data-pastille-boule]')?.getBoundingClientRect().width ?? 0),
+  }))
+  await page.mouse.up()
+
+  const apres = await page.evaluate(() => ({
+    t: document.querySelector('audio').currentTime,
+    rang: document.querySelector('[data-pastille-ecoute] a span span')?.textContent.trim() ?? null,
+    pastille: !!document.querySelector('[data-pastille-ecoute]'),
+  }))
+  console.log(JSON.stringify({ duree: Math.round(d), vise: Math.round(d * cible), pendant, apres }, null, 1))
+
+  const griefs = []
+  // 🔴 LE GESTE NE DOIT PAS FERMER LA PASTILLE. C'est le piège de deux gestes
+  // horizontaux superposés : le plus local doit gagner.
+  if (!apres.pastille) griefs.push('tirer le curseur a fermé la pastille')
+  // Deux pour cent de tolérance : la souris vise au pixel, pas à la seconde.
+  const ecart = Math.abs(apres.t - d * cible)
+  if (ecart > d * 0.03)
+    griefs.push(`arrivé à ${Math.round(apres.t)} s au lieu de ${Math.round(d * cible)} (écart ${Math.round(ecart)} s)`)
+  if (!/^\d+:\d\d \/ \d+:\d\d$/.test(pendant.rang ?? ''))
+    griefs.push(`pendant le geste, la ligne affiche « ${pendant.rang} » au lieu du temps`)
+  if (!apres.rang?.startsWith('Module ')) griefs.push(`après le geste, la ligne reste à « ${apres.rang} »`)
+  // Le seul accusé de réception qu'on ait sur une boule de dix pixels.
+  if (pendant.boule < 13) griefs.push(`la boule ne grossit pas sous le doigt (${pendant.boule} px)`)
+
+  expect(griefs, `ce qui cloche :\n  · ${griefs.join('\n  · ')}`).toEqual([])
+})
+
+test('la prise du curseur ne mord pas sur les boutons', async ({ page }) => {
+  await ouvrirEcoute(page)
+  await lancer(page)
+  await auModule(page)
+
+  const g = await page.evaluate(() => {
+    const b = (s) => {
+      const e = document.querySelector(s)
+      return e ? e.getBoundingClientRect() : null
+    }
+    const z = b('[data-pastille-curseur]')
+    const carte = document.querySelector('[data-pastille-ecoute] .relative > div:nth-child(2)')
+    return {
+      zone: { haut: Math.round(z.top), bas: Math.round(z.bottom), h: Math.round(z.height) },
+      play: Math.round(b('[data-pastille-basculer]').bottom),
+      suivant: Math.round(b('[data-pastille-suivant]').bottom),
+      carteBas: Math.round(carte.getBoundingClientRect().bottom),
+    }
+  })
+  console.log(JSON.stringify(g, null, 1))
+
+  const griefs = []
+  const plusBas = Math.max(g.play, g.suivant)
+  if (g.zone.haut < plusBas)
+    griefs.push(`la prise commence à ${g.zone.haut}, soit ${plusBas - g.zone.haut} px DANS les boutons`)
+  // 🔴 ET ELLE NE DÉBORDE PAS DE LA CARTE. Une zone magique hors de l'objet
+  // qu'elle commande est une promesse qu'on ne peut pas voir : on toucherait
+  // ce qui a l'air d'être rien, et la lecture se déplacerait.
+  if (g.zone.bas > g.carteBas)
+    griefs.push(`la prise déborde de ${g.zone.bas - g.carteBas} px sous la carte, dans le vide`)
+  if (g.zone.h < 12) griefs.push(`la prise ne fait que ${g.zone.h} px : trop fine pour un doigt`)
+
+  expect(griefs, `ce qui cloche :\n  · ${griefs.join('\n  · ')}`).toEqual([])
+})
+
 test('on ferme la pastille en la faisant glisser vers la droite', async ({ page }) => {
   await ouvrirEcoute(page)
   await lancer(page)
