@@ -418,6 +418,88 @@ test('l’enchaînement ne déplace pas l’écran où l’on travaille', async 
   expect(apres.texte, 'la pastille n’a pas suivi la leçon enchaînée').toContain('Leçon 2')
 })
 
+/**
+ * ── 🔴 DEUX CHOSES QUI NE SE VOIENT PAS À L'ŒIL ────────────────────────────
+ *
+ * La croix est passée dans l'angle, en débordant dans la gouttière. Deux
+ * risques, tous deux invisibles sur une capture : qu'elle MORDE sur le bouton
+ * « suivante » juste en dessous — on viserait l'un et on toucherait l'autre —
+ * et qu'elle sorte de l'écran.
+ *
+ * Et le titre ne défile que s'il dépasse vraiment : un défilement qui ne part
+ * jamais, ou qui part sur un titre court, ne se remarque pas non plus.
+ */
+test('la croix en angle ne mord pas sur le bouton suivante', async ({ page }) => {
+  await ouvrirEcoute(page)
+  await lancer(page)
+  await auModule(page)
+
+  const g = await page.evaluate(() => {
+    const b = (s) => {
+      const e = document.querySelector(s)
+      return e ? e.getBoundingClientRect() : null
+    }
+    const croix = b('[data-pastille-fermer]')
+    const suiv = b('[data-pastille-suivant]')
+    const titre = document.querySelector('[data-pastille-ecoute] a span span:last-child')
+    const inter = (a, c) => ({
+      x: Math.max(0, Math.min(a.right, c.right) - Math.max(a.left, c.left)),
+      y: Math.max(0, Math.min(a.bottom, c.bottom) - Math.max(a.top, c.top)),
+    })
+    return {
+      croix: { x: Math.round(croix.x), droite: Math.round(croix.right), haut: Math.round(croix.top) },
+      ecran: window.innerWidth,
+      morsure: inter(croix, suiv),
+      colonneTitre: Math.round(titre.clientWidth),
+    }
+  })
+  console.log(JSON.stringify(g, null, 1))
+
+  const griefs = []
+  // Un chevauchement de quelques pixels est sans conséquence — aucun doigt ne
+  // vise à ce point. Au-delà, on touche une commande en croyant en viser une
+  // autre, et c'est le genre de défaut qu'on met des jours à nommer.
+  if (g.morsure.x * g.morsure.y > 16)
+    griefs.push(`la croix mord ${g.morsure.x}×${g.morsure.y} px sur « suivante »`)
+  if (g.croix.droite > g.ecran) griefs.push(`la croix sort de l’écran de ${g.croix.droite - g.ecran} px`)
+  if (g.croix.haut < -20) griefs.push(`la croix flotte ${-g.croix.haut} px au-dessus de la pastille`)
+  // 🔴 ELLE A QUITTÉ LA RANGÉE, donc le titre doit avoir récupéré sa place.
+  if (g.colonneTitre < 160)
+    griefs.push(`la colonne du titre ne fait que ${g.colonneTitre} px : la croix pèse encore sur la rangée`)
+
+  expect(griefs, `ce qui cloche :\n  · ${griefs.join('\n  · ')}`).toEqual([])
+})
+
+test('le titre défile une fois quand il ne tient pas', async ({ page }) => {
+  await ouvrirEcoute(page)
+  await lancer(page)
+  await auModule(page)
+
+  const t = await page.evaluate(() => {
+    const boite = document.querySelector('[data-pastille-ecoute] a span span:last-child')
+    const mobile = boite?.querySelector('.titre-pastille')
+    const st = mobile ? getComputedStyle(mobile) : null
+    return {
+      texte: boite?.textContent.trim() ?? null,
+      colonne: boite ? Math.round(boite.clientWidth) : null,
+      texteLarge: mobile ? Math.round(mobile.offsetWidth) : Math.round(boite?.scrollWidth ?? 0),
+      defile: !!mobile,
+      duree: st?.animationDuration ?? null,
+      passages: st?.animationIterationCount ?? null,
+    }
+  })
+  console.log(JSON.stringify(t, null, 1))
+
+  const griefs = []
+  if (!t.defile) griefs.push(`le titre ne défile pas alors qu’il demande ${t.texteLarge} px pour ${t.colonne}`)
+  // ⚠️ UNE SEULE FOIS. Une pastille qui bouge en permanence dans le coin de
+  // l'œil pendant qu'on travaille serait pire que le titre coupé.
+  if (t.passages !== '1') griefs.push(`le titre défile ${t.passages} fois au lieu d’une`)
+  if (t.texteLarge <= t.colonne) griefs.push('le titre tient : ce test n’éprouve rien sur cette leçon')
+
+  expect(griefs, `ce qui cloche :\n  · ${griefs.join('\n  · ')}`).toEqual([])
+})
+
 test('on ferme la pastille en la faisant glisser vers la droite', async ({ page }) => {
   await ouvrirEcoute(page)
   await lancer(page)
