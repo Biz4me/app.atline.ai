@@ -7,7 +7,7 @@
 // rien dans l'app ne sait en effacer un. On vérifie le formulaire, le filtre
 // et l'écran des manques — pas la création.
 
-const { test, expect, toucher, remplir, suivre } = require('../fixtures.cjs')
+const { test, expect, toucher, remplir, suivre, SANS } = require('../fixtures.cjs')
 
 test.use({ viewport: { width: 390, height: 844 } })
 
@@ -123,18 +123,41 @@ test('le filtre annonce ce qu’il donnera, et la liste dit qu’elle est filtr�
   const geste = page.getByRole('link', { name: /Voir|Personne ne correspond/ })
   await expect(geste).toHaveCount(1)
 
-  await page.getByRole('link', { name: 'Closing', exact: true }).click()
+  /**
+   * 🔴 ET « CLOSING » ÉTAIT ÉCRIT EN DUR, TROIS LIGNES SOUS LE COMMENTAIRE QUI
+   * L'INTERDIT. Le voisin du dessus dit : *« une sonde qui fige un fait sur
+   * les données le défend contre la réalité »* — et celle-ci cliquait sur une
+   * étape que ce compte n'a pas. Elle attendait soixante secondes un lien qui
+   * ne viendrait jamais, et le rapport annonçait un `timeout`, pas un défaut.
+   *
+   * 🧭 ON PREND UNE ÉTAPE QUE L'ÉCRAN PROPOSE. L'invariant visé — « ce que le
+   * bouton annonce est ce que la liste montre » — ne dépend d'AUCUNE étape en
+   * particulier : il est vrai pour toutes, ou il est faux.
+   */
+  const etapes = page.getByRole('link').filter({ hasText: /^(Nouveau|Invitation|Présentation|Suivi|Closing|Démarrage|Formation|Actif|Leader)$/ })
+  const combienEtapes = await etapes.count()
+  test.skip(combienEtapes === 0, SANS('aucune étape de tunnel proposée par le filtre'))
+  const etape = (await etapes.first().innerText()).trim()
+  console.log(`  étape choisie dans l’écran : ${etape}`)
+  await etapes.first().click()
   // 🔴 ON ATTEND L'ÉTAT QU'ON VIENT DE DEMANDER, pas un élément qui était
   // déjà là. Le bouton est visible AVANT comme APRÈS la navigation : une
   // attente sur sa visibilité passe instantanément, et on lit le compte de
   // la page d'avant.
-  await expect(page).toHaveURL(/\/gens\/filtrer\?etape=CLOSING/, { timeout: 15_000 })
+  // ⚠️ L'ADRESSE SUIT L'ÉTAPE QU'ON A PRISE, pas une étape écrite ici. Même
+  // correction que le clic : l'invariant vaut pour toutes les étapes, ou il
+  // est faux — il n'a aucune raison d'être vrai pour « Closing » seulement.
+  const codeEtape = etape
+    .toUpperCase()
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+  await expect(page).toHaveURL(new RegExp('/gens/filtrer\\?etape=' + codeEtape), { timeout: 15_000 })
 
   const annonce = await page.getByRole('link', { name: /Voir|Personne ne correspond/ }).innerText()
   const promis = Number(annonce.match(/\d+/)?.[0] ?? 0)
 
   await page.getByRole('link', { name: /Voir|Personne ne correspond/ }).click()
-  await expect(page).toHaveURL(/\/gens\?etape=CLOSING/, { timeout: 20_000 })
+  await expect(page).toHaveURL(new RegExp('/gens\\?etape=' + codeEtape), { timeout: 20_000 })
 
   // 🔴 LE COMPTE NE MENT PAS. Deux calculs séparés, et le bouton promettrait
   // 3 là où la liste en montre 2 — c'est pour ça que `lib/filtre-gens.ts` est
@@ -146,7 +169,7 @@ test('le filtre annonce ce qu’il donnera, et la liste dit qu’elle est filtr�
   // « j'ai perdu des contacts » — la panne la plus inquiétante qu'on puisse
   // infliger à quelqu'un dont le carnet EST le métier.
   const corps = await page.locator('main').innerText()
-  expect(corps, 'rien ne dit que la liste est filtrée').toMatch(/Closing/)
+  expect(corps, `rien ne dit que la liste est filtrée sur « ${etape} »`).toContain(etape)
   await expect(page.getByRole('link', { name: 'Tout voir' })).toBeVisible()
 
   // Et on en sort.

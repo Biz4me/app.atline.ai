@@ -6,7 +6,7 @@
 // Chercher · Filtrer · Regarder, et ce que le retrait des deux titres
 // emportait avec lui.
 
-const { test, expect, ADRESSE_FICHE } = require('../fixtures.cjs')
+const { test, expect, ADRESSE_FICHE, SANS } = require('../fixtures.cjs')
 
 test.use({ viewport: { width: 390, height: 844 } })
 
@@ -103,13 +103,43 @@ test('la recherche filtre pendant qu’on tape, accents compris', async ({ page,
    * l'orthographe exacte ne sert qu'à ceux qui connaissent déjà la réponse.
    * Le compte réel vient d'être vérifié : Émilie Fontaine, Strasbourg.
    */
-  await champ.fill('emi')
+  /**
+   * 🔴 « ÉMILIE » ÉTAIT ÉCRITE EN DUR, ET ELLE N'EST PAS SUR TOUS LES COMPTES.
+   * La sonde annonçait « emi ne trouve personne, alors qu'Émilie existe » —
+   * une phrase qui affirme la base de données de quelqu'un. Elle ne pouvait
+   * passer au vert que là où cette personne est.
+   *
+   * 🧭 ON PREND UN NOM ACCENTUÉ DANS LA LISTE, et on cherche sa version SANS
+   * accent. La preuve est la même — personne ne tape les accents — mais elle
+   * se refait sur n'importe quel compte, avec le nom qui s'y trouve.
+   */
+  /**
+   * ⚠️ `[data-prenom]`, ET PAS LE `textContent` DE LA CARTE. Première version :
+   * elle lisait la carte entière et récoltait « ETE2EjamaisDans ta liste, rien
+   * d'envoyé — lance la conversation.Nouveau ». L'accent qu'elle trouvait
+   * était celui d'« envoyé », dans une phrase d'état. Elle cherchait ensuite
+   * les trois premières lettres de tout ça. Un nom se lit là où il est écrit.
+   */
+  const noms = await page.locator('[data-contact] [data-prenom]').evaluateAll((n) =>
+    n.map((e) => (e.textContent || '').trim()),
+  )
+  const accentue = noms.find((t) => /[À-ÿ]/.test(t) && t.replace(/[^A-Za-zÀ-ÿ]/g, '').length >= 4)
+  test.skip(!accentue, SANS('aucun nom accentué dans la liste : l’insensibilité aux accents est indémontrable'))
+  const sansAccent = accentue
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .replace(/[^A-Za-z]/g, '')
+    .slice(0, 3)
+    .toLowerCase()
+  console.log(`  « ${sansAccent} » doit retrouver « ${accentue} »`)
+
+  await champ.fill(sansAccent)
   await expect(page.locator('[data-compte-recherche]')).toBeVisible({ timeout: 10_000 })
   const apres = await page.locator('[data-contact]').count()
-  console.log(`  « emi » : ${apres} sur ${avant}`)
+  console.log(`  « ${sansAccent} » : ${apres} sur ${avant}`)
   expect(apres, 'la recherche ne réduit rien').toBeLessThan(avant)
-  expect(apres, '« emi » ne trouve personne, alors qu’Émilie existe').toBeGreaterThan(0)
-  await expect(page.locator('[data-contact]').first()).toContainText(/Émilie|Emilie/)
+  expect(apres, `« ${sansAccent} » ne trouve personne, alors que « ${accentue} » est dans la liste`).toBeGreaterThan(0)
+  await expect(page.locator('[data-contact]').first()).toContainText(accentue.slice(0, 4))
 
   /* ⚠️ Le compte est annoncé : une liste qui rétrécit sans dire de combien se
      lit « j'ai perdu des contacts ». */
