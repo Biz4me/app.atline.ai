@@ -19,10 +19,17 @@ const { test, expect } = require('../fixtures.cjs')
 
 test.use({ viewport: { width: 390, height: 844 }, hasTouch: true })
 
-/** Glisser du doigt, en vrais événements tactiles. */
-const glisser = (page, { de, vers, pas = 10 }) =>
+/**
+ * Glisser du doigt, en vrais événements tactiles.
+ *
+ * ⚠️ `lenteur` EXISTE POUR UNE RAISON PRÉCISE. Depuis que la réduction tient
+ * au doigt, elle part aussi sur l'ÉLAN — et des événements envoyés dans une
+ * boucle serrée ont un élan énorme, donc tout partirait. Un geste lent se
+ * mesure en espaçant les pas, comme un vrai pouce.
+ */
+const glisser = (page, { de, vers, pas = 10, lenteur = 0 }) =>
   page.evaluate(
-    async ({ de, vers, pas }) => {
+    async ({ de, vers, pas, lenteur }) => {
       const cible = document.elementFromPoint(de.x, de.y) || document.body
       const doigt = (x, y) =>
         new Touch({ identifier: 1, target: cible, clientX: x, clientY: y })
@@ -37,16 +44,19 @@ const glisser = (page, { de, vers, pas = 10 }) =>
           }),
         )
       envoyer('touchstart', de.x, de.y)
-      for (let i = 1; i <= pas; i++)
+      for (let i = 1; i <= pas; i++) {
         envoyer(
           'touchmove',
           de.x + ((vers.x - de.x) * i) / pas,
           de.y + ((vers.y - de.y) * i) / pas,
         )
+        if (lenteur) await new Promise((r) => setTimeout(r, lenteur))
+      }
       envoyer('touchend', vers.x, vers.y)
-      await new Promise((r) => setTimeout(r, 60))
+      // Le temps que la course finisse (220 ms) et que la page suive.
+      await new Promise((r) => setTimeout(r, 420))
     },
-    { de, vers, pas },
+    { de, vers, pas, lenteur },
   )
 
 const ouvrirEcoute = async (page) => {
@@ -73,7 +83,7 @@ test('le geste vers le bas sort exactement comme le chevron', async ({ page, pag
   // ── 2. Le geste.
   await ouvrirEcoute(page)
   const avant2 = await page.evaluate(() => history.length)
-  await glisser(page, { de: { x: 195, y: 430 }, vers: { x: 195, y: 620 } })
+  await glisser(page, { de: { x: 195, y: 300 }, vers: { x: 195, y: 700 } })
   await expect
     .poll(() => new URL(page.url()).pathname, { timeout: 20_000 })
     .toBe(couverture)
@@ -95,14 +105,28 @@ test('le geste vers le bas sort exactement comme le chevron', async ({ page, pag
   if (new URL(page.url()).pathname !== ici)
     griefs.push('un glissement horizontal a refermé la page')
 
-  // Un glissement vers le bas trop court.
+  // Un frôlement de 40 px : sous le minimum, quelle que soit sa vivacité.
   await page.goto(ici, { waitUntil: 'domcontentloaded' })
   await page.locator('[data-titre-ecoute]').waitFor({ state: 'visible', timeout: 20_000 })
   await page.waitForTimeout(500)
   await glisser(page, { de: { x: 195, y: 430 }, vers: { x: 195, y: 470 } })
-  await page.waitForTimeout(400)
   if (new URL(page.url()).pathname !== ici)
     griefs.push('un frôlement de 40 px a refermé la page')
+
+  /**
+   * 🔴 LÂCHÉ AVANT LE QUART, L'ÉCRAN REMONTE. Patrice : *« si je la lâche
+   * avant le quart à partir du haut elle remonte, sinon elle continue »*.
+   * ⚠️ LENTEMENT, SINON ON MESURE L'AUTRE RÈGLE : un geste rapide part sur
+   * l'élan, et la sonde croirait avoir éprouvé la distance.
+   */
+  await glisser(page, { de: { x: 195, y: 300 }, vers: { x: 195, y: 450 }, pas: 12, lenteur: 40 })
+  if (new URL(page.url()).pathname !== ici)
+    griefs.push('lâché à 150 px — moins du quart — l’écran est quand même parti')
+  const remonte = await page.evaluate(
+    () => getComputedStyle(document.querySelector('[data-coquille]')).transform,
+  )
+  if (remonte !== 'none' && !/matrix\(1, 0, 0, 1, 0, 0\)/.test(remonte))
+    griefs.push(`l’écran n’est pas remonté : transform ${remonte}`)
 
   // Et la feuille des options garde ses gestes.
   await page.locator('[data-options-ecoute]').click()
