@@ -48,6 +48,84 @@ const SOUS_LE_BOUTON = 40
 /** Un pixel de tolérance : les arrondis de mise en page, rien de plus. */
 const PRES = 2
 
+/**
+ * ── 🔴 ET ILS NE BOUGENT PAS NON PLUS QUAND ON FAIT DÉFILER ────────────────
+ *
+ * Patrice, le 21 novembre 2026 : *« fixe vraiment le bouton play, car il bouge
+ * encore quand je remonte ou descends la page »*. Le test au-dessus ne le
+ * voyait pas : il mesure à 844 px de haut, où **rien ne défile**. Une sonde qui
+ * ne met jamais la page en situation de défiler ne peut rien dire du
+ * défilement.
+ *
+ * 🧭 ON MESURE DONC SUR UN ÉCRAN COURT, et on vérifie d'abord qu'il défile
+ * VRAIMENT. Sans ce contrôle, « le bouton n'a pas bougé » serait vrai pour la
+ * mauvaise raison — parce qu'on n'a rien fait défiler du tout.
+ */
+test('le bouton ne bouge pas quand on fait défiler', async ({ page }) => {
+  test.setTimeout(180_000)
+  await page.setViewportSize({ width: 390, height: 667 })
+  await page.goto('/parcours', { waitUntil: 'domcontentloaded' })
+  const href = await page.locator('a[data-module="2"]').getAttribute('href')
+  await page.goto(href, { waitUntil: 'domcontentloaded' })
+  await page.getByRole('link', { name: 'Écouter' }).click()
+  await expect(page.locator('[data-titre-ecoute]')).toBeVisible({ timeout: 20_000 })
+  await page.waitForTimeout(800)
+
+  const ou = () =>
+    page.evaluate(() => {
+      const b = [...document.querySelectorAll('button')].find((x) =>
+        /Écouter la leçon|Mettre en pause/.test(x.getAttribute('aria-label') || ''),
+      )
+      const c = document.querySelector('.piste-ecoute')
+      const meuble = document.querySelector('[data-barre-action]')
+      return {
+        bouton: b ? Math.round(b.getBoundingClientRect().top) : null,
+        curseur: c ? Math.round(c.getBoundingClientRect().top) : null,
+        sous:
+          b && meuble
+            ? Math.round(meuble.getBoundingClientRect().top - b.getBoundingClientRect().bottom)
+            : null,
+      }
+    })
+
+  const pousser = (vers) =>
+    page.evaluate((vers) => {
+      const r = [...document.querySelectorAll('div')].find(
+        (e) => e.scrollHeight > e.clientHeight + 2 && getComputedStyle(e).overflowY === 'auto',
+      )
+      const m = document.querySelector('main')
+      if (r) r.scrollTop = vers === 'bas' ? r.scrollHeight : 0
+      if (m) m.scrollTop = vers === 'bas' ? m.scrollHeight : 0
+      scrollTo(0, vers === 'bas' ? document.body.scrollHeight : 0)
+      return { region: r ? r.scrollHeight - r.clientHeight : 0 }
+    }, vers)
+
+  const combien = await pousser('bas')
+  await page.waitForTimeout(300)
+  const enBas = await ou()
+  await pousser('haut')
+  await page.waitForTimeout(300)
+  const enHaut = await ou()
+
+  const griefs = []
+  // 🔴 LA SONDE DOIT D'ABORD AVOIR FAIT DÉFILER QUELQUE CHOSE.
+  if (combien.region < 20)
+    griefs.push(`rien ne défile (${combien.region} px) : la mesure ne prouve rien`)
+  if (enHaut.bouton !== enBas.bouton)
+    griefs.push(`le bouton passe de ${enHaut.bouton} à ${enBas.bouton} au défilement`)
+  if (enHaut.curseur !== enBas.curseur)
+    griefs.push(`le curseur passe de ${enHaut.curseur} à ${enBas.curseur} au défilement`)
+  for (const [q, v] of [['en haut', enHaut.sous], ['en bas', enBas.sous]])
+    if (Math.abs(v - SOUS_LE_BOUTON) > PRES)
+      griefs.push(`${q} du défilement : ${v} px sous le bouton au lieu de ${SOUS_LE_BOUTON}`)
+
+  console.log(
+    `  région défile de ${combien.region} px · bouton ${enHaut.bouton}→${enBas.bouton} · ` +
+      `curseur ${enHaut.curseur}→${enBas.curseur} · sous ${enHaut.sous}/${enBas.sous}`,
+  )
+  expect(griefs, `ce qui cloche :\n  · ${griefs.join('\n  · ')}`).toEqual([])
+})
+
 test('le curseur et le bouton tiennent leur place sur toutes les leçons', async ({
   page,
   pageErrors,
