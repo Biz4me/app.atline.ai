@@ -90,10 +90,34 @@ test('un enchaînement commence au début, même sur une leçon déjà entamée'
    * et la reprise gagnait. Sans cette mise en scène, le test passerait au vert
    * sur une leçon neuve et ne dirait rien du défaut.
    */
-  const suivante = await page.locator('[data-pied-suivant]').getAttribute('href')
-  expect(suivante, 'la leçon 1 doit avoir une suivante').toBeTruthy()
-  await page.locator('[data-pied-suivant]').click()
+  /**
+   * 🔴 `[data-ecoute-suivant]` ET PLUS `[data-ecoute-suivant]` (21 nov. 2026).
+   * Le pied « Leçon suivante » a été supprimé : il était le troisième chemin
+   * vers la même chose, après les chevrons de la couverture et le groupe de
+   * transport de la carte du lecteur. Ce qui reste est le bouton du lecteur.
+   *
+   * ⚠️ ET C'EST UN BOUTON, PLUS UN LIEN : il n'a pas de `href` à lire. On
+   * vérifie donc qu'il est ALLUMÉ — ce qui dit la même chose, « il y a une
+   * suivante » — puis on le touche.
+   */
+  const versLaSuite = page.locator('[data-ecoute-suivant]')
+  /**
+   * ⚠️ ON ATTEND L'ÉTAT, ON NE LE LIT PAS AU VOL. Le pied était un lien rendu
+   * par le SERVEUR : son `href` existait dès la première image. Ce bouton est
+   * CLIENT, et il naît éteint — le lecteur ne sait pas encore quelle leçon il
+   * joue. Un `isEnabled()` immédiat répondait donc « non » et la sonde
+   * accusait la leçon de ne pas avoir de suivante.
+   */
+  await expect(versLaSuite, 'la leçon 1 doit avoir une suivante').toBeEnabled({ timeout: 20_000 })
+  await versLaSuite.click()
   const srcDeux = await attendrePiste(page, srcUn)
+  /**
+   * ⚠️ L'ADRESSE DE LA SUIVANTE SE RELÈVE APRÈS LE SAUT, plus avant. Le pied
+   * portait un `href` qu'on lisait sans bouger ; le bouton du lecteur, lui,
+   * ne dit pas où il mène — il le fait. On note donc où l'on est arrivé, et
+   * c'est cette adresse que l'enchaînement devra retrouver plus bas.
+   */
+  const suivante = new URL(page.url()).pathname
   await lancer(page)
   await page.evaluate((s) => {
     document.querySelector(s).currentTime = 200
@@ -102,7 +126,7 @@ test('un enchaînement commence au début, même sur une leçon déjà entamée'
 
   // Retour sur la leçon 1 : on est déjà sur une page d'écoute, il n'y a donc
   // aucun lien « Écouter » à cliquer — seulement la piste à attendre.
-  await page.locator('[data-pied-precedent]').click()
+  await page.locator('[data-ecoute-precedent]').click()
   await attendrePiste(page, srcDeux)
   await lancer(page)
 

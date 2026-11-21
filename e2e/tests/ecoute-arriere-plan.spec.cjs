@@ -25,10 +25,30 @@ test.use({ viewport: { width: 390, height: 844 } })
 test('la leçon se termine sans que la piste atteigne sa fin', async ({ page }) => {
   await ouvrirEcoute(page)
 
-  // L'adresse que l'enchaînement doit atteindre, LUE SUR LA PAGE et non
-  // devinée : une sonde à qui l'on donne la cible ne protège pas d'une cible
-  // fausse.
-  const attendu = await page.locator('[data-pied-suivant]').getAttribute('href')
+  /**
+   * ── L'ADRESSE QUE L'ENCHAÎNEMENT DOIT ATTEINDRE, LUE ET NON DEVINÉE ──────
+   *
+   * Une sonde à qui l'on donne la cible ne protège pas d'une cible fausse.
+   *
+   * 🔴 ELLE SE LIT DANS LE SOMMAIRE DEPUIS LE 21 NOVEMBRE 2026. Elle venait
+   * du pied « Leçon suivante », un lien avec son `href` ; ce pied a été
+   * supprimé — il faisait le troisième chemin vers la même chose — et le
+   * bouton du lecteur qui le remplace ne DIT pas où il mène, il y va.
+   *
+   * 🧭 Le sommaire, lui, porte les adresses de toutes les leçons du module.
+   * La cible reste donc lue sur l'écran, et pas reconstruite à la main.
+   */
+  await page.locator('[data-barre-action] button').nth(1).click()
+  const liens = await page
+    .locator('a[href*="/ecouter"], a[href*="/parcours/"]')
+    .evaluateAll((n) => n.map((e) => e.getAttribute('href')).filter(Boolean))
+  await page.keyboard.press('Escape')
+  await page.waitForTimeout(400)
+  const ici = new URL(page.url()).pathname.replace(/\/ecouter$/, '')
+  const i = liens.findIndex((h) => h === ici)
+  /* ⚠️ Le sommaire mène au TEXTE d'une leçon ; l'enchaînement, lui, reste
+     dans l'écoute. Même leçon, deux portes — on vise la bonne. */
+  const attendu = i >= 0 && liens[i + 1] ? `${liens[i + 1]}/ecouter` : undefined
   expect(attendu, 'la leçon 1 doit avoir une suivante pour que ce test ait un sujet').toBeTruthy()
 
   // Les témoins se posent AVANT de toucher au son, et retiennent l'état au
