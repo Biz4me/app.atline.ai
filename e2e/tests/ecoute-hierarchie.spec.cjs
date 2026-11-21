@@ -62,7 +62,19 @@ test('rang et titre au même corps, le thème un cran dessous', async ({ page })
   console.log(JSON.stringify(m, null, 1))
 
   const griefs = []
-  if (!m.rangEntete) griefs.push('pas de rang dans la barre du haut')
+  /**
+   * ── 🔴 `data-rang-entete` A ÉTÉ SUPPRIMÉ LE 21 NOVEMBRE 2026 ─────────────
+   *
+   * La barre du haut portait « MODULE 1 » en 11 majuscules, dans une barre de
+   * 44 px. Patrice a demandé un gabarit unique — *« toutes les barres à la
+   * même hauteur, texte centré avec icône »* — et ce rang était la dernière
+   * forme à part : 65 px et un titre en 23 désormais, comme les 29 autres.
+   *
+   * 🧭 CE QUE CETTE SONDE GARDE EST L'ESSENTIEL : la hiérarchie DANS la page.
+   * Le rang, le titre et le thème sous l'illustration ne doivent pas se
+   * confondre, et c'est là que la clarté se joue — pas dans le chrome.
+   * Le gabarit de la barre, lui, est tenu par `barre-du-haut.spec.cjs`.
+   */
   if (!m.rang) griefs.push('pas de « Leçon N de M » sous l’illustration')
   if (!m.titre) griefs.push('pas de titre de leçon')
   if (!m.theme) griefs.push('pas de thème')
@@ -83,23 +95,26 @@ test('rang et titre au même corps, le thème un cran dessous', async ({ page })
     if (!ECHELLE.includes(m.theme.corps))
       griefs.push(`le thème est à ${m.theme.corps} px, hors de l’échelle ${ECHELLE}`)
   }
-  // 🔴 La barre est tombée de 62 à 44 px le 19 novembre, et y remettre le rang
-  // ne doit pas reprendre cette hauteur. C'est la régression que personne ne
-  // verrait : l'écran marche, il est juste redevenu plus petit.
-  if (m.barre !== null && m.barre > 48)
-    griefs.push(`la barre du haut est remontée à ${m.barre} px (elle doit tenir dans 44)`)
+  /**
+   * 🔴 CE CONTRÔLE EXIGEAIT UNE BARRE SOUS 48 PX, et il a eu raison deux
+   * jours : la barre était tombée de 62 à 44 le 19 novembre, et il gardait
+   * cette hauteur. Elle vaut 65 depuis le 21, par décision — le gabarit
+   * unique. Une sonde qui défend un chiffre contre une décision n'est plus un
+   * filet, c'est un frein. La hauteur est tenue ailleurs, sur les 30 écrans.
+   */
 
   expect(griefs, `ce qui cloche :\n  · ${griefs.join('\n  · ')}`).toEqual([])
 })
 
-test('le rang est vraiment centré dans la barre, pas dans ce qui reste', async ({ page }) => {
-  await ouvrirEcoute(page)
-  const ecart = await page.evaluate(() => {
-    const p = document.querySelector('[data-rang-entete]')
-    const b = p.getBoundingClientRect()
-    return Math.round(b.x + b.width / 2 - window.innerWidth / 2)
-  })
-  // ⚠️ Deux pixels de tolérance : un rang de largeur impaire ne peut pas être
-  // à cheval sur le milieu exact d'un écran de largeur paire.
-  expect(Math.abs(ecart), `décalé de ${ecart} px par rapport au milieu`).toBeLessThanOrEqual(2)
-})
+/**
+ * ── 🔴 LE SECOND TEST DE CE FICHIER A ÉTÉ RETIRÉ LE 21 NOVEMBRE 2026 ───────
+ *
+ * Il vérifiait que `[data-rang-entete]` soit centré « dans la barre et pas
+ * dans ce qui reste ». L'élément n'existe plus, et surtout **la question est
+ * posée ailleurs, mieux** : `barre-du-haut.spec.cjs` mesure le centrage du
+ * bloc sur les TRENTE écrans, pas sur un seul.
+ *
+ * 🧭 On ne le repointe pas, on le supprime : deux sondes qui posent la même
+ * question finissent par se contredire, et c'est alors la plus ancienne qu'on
+ * croit.
+ */
