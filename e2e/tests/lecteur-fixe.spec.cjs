@@ -77,7 +77,13 @@ test('le bouton ne bouge pas quand on fait défiler', async ({ page }) => {
         /Écouter la leçon|Mettre en pause/.test(x.getAttribute('aria-label') || ''),
       )
       const c = document.querySelector('.piste-ecoute')
-      const meuble = document.querySelector('[data-barre-action]')
+      // ⚠️ L'UN OU L'AUTRE : la barre du livre est passée de barre
+      // d'action à barre de navigation le 21 nov. 2026. Chercher la
+      // première seule rendait `null`, et la sonde accusait le lecteur
+      // d'un écart qu'elle n'avait pas mesuré.
+      const meuble =
+        document.querySelector('[data-barre-action]') ||
+        document.querySelector('[data-barre-bas]')
       return {
         bouton: b ? Math.round(b.getBoundingClientRect().top) : null,
         curseur: c ? Math.round(c.getBoundingClientRect().top) : null,
