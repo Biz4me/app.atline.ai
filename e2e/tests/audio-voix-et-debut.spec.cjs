@@ -109,8 +109,24 @@ test('un enchaînement commence au début, même sur une leçon déjà entamée'
    * accusait la leçon de ne pas avoir de suivante.
    */
   await expect(versLaSuite, 'la leçon 1 doit avoir une suivante').toBeEnabled({ timeout: 20_000 })
+  const depart = new URL(page.url()).pathname
   await versLaSuite.click()
   const srcDeux = await attendrePiste(page, srcUn)
+  /**
+   * 🔴 ET ON ATTEND QUE L'ADRESSE RATTRAPE LA PISTE (21 nov. 2026, soir).
+   *
+   * Le chevron ne navigue plus : il change de piste TOUT DE SUITE, avec la
+   * donnée déjà en main, puis laisse `router.replace` suivre. Les deux ne
+   * tombent donc plus ensemble — la piste change en ~40 ms, l'adresse en ~70.
+   *
+   * ⚠️ CETTE SONDE LISAIT L'ADRESSE JUSTE APRÈS LA PISTE, et relevait donc
+   * celle de la leçon QU'ON VENAIT DE QUITTER. Elle a ensuite accusé
+   * l'enchaînement d'être parti sur la mauvaise leçon, alors qu'il était
+   * juste et que c'était sa référence qui était périmée.
+   */
+  await expect
+    .poll(() => new URL(page.url()).pathname, { timeout: 15_000 })
+    .not.toBe(depart)
   /**
    * ⚠️ L'ADRESSE DE LA SUIVANTE SE RELÈVE APRÈS LE SAUT, plus avant. Le pied
    * portait un `href` qu'on lisait sans bouger ; le bouton du lecteur, lui,

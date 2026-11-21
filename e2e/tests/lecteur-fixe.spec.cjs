@@ -134,7 +134,18 @@ test('le play est posé comme « Ajouter un contact »', async ({ page }) => {
 
 test('le bouton ne bouge pas quand on fait défiler', async ({ page }) => {
   test.setTimeout(180_000)
-  await page.setViewportSize({ width: 390, height: 667 })
+  /**
+   * 🔴 568 ET PLUS 667, LE SOIR DU 21 NOVEMBRE 2026. Elle mesurait sur un
+   * iPhone SE, où la région défilait de 130 px. Le titre de la leçon est
+   * passé de 23 à 17 et sa réserve de trois lignes à deux : l'écran a maigri
+   * de 32 px, et il ne défile plus que de **6** à cette hauteur.
+   *
+   * 🧭 ELLE A REFUSÉ DE CONCLURE, ET C'EST EXACTEMENT SON MÉTIER. « Le
+   * bouton n'a pas bougé » après six pixels de défilement ne prouve rien.
+   * On descend donc à 568 — la hauteur du premier iPhone SE — pour qu'il y
+   * ait de nouveau quelque chose à éprouver.
+   */
+  await page.setViewportSize({ width: 390, height: 568 })
   await page.goto('/parcours', { waitUntil: 'domcontentloaded' })
   const href = await page.locator('a[data-module="2"]').getAttribute('href')
   await page.goto(href, { waitUntil: 'domcontentloaded' })

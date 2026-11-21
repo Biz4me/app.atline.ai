@@ -109,9 +109,23 @@ test('rang et titre au même corps, le thème un cran dessous', async ({ page })
    * écran d'écoute, ce qu'on écoute passe devant où l'on en est.
    */
   if (m.rang && m.titre) {
-    if (m.titre.corps <= m.rang.corps)
+    /**
+     * 🔴 LA RÈGLE S'EST ASSOUPLIE LE SOIR DU 21 NOVEMBRE 2026, et pas par
+     * confort. Elle exigeait le titre **plus gros** que le rang, après avoir
+     * attrapé un vrai défaut : un titre à 17 sous un rang resté à 23, où le
+     * repère criait plus fort que le sujet.
+     *
+     * 🧭 Patrice ramène l'écran à TROIS tailles : les deux sont à 17, et ce
+     * qui les sépare est le POIDS et l'ENCRE — la doctrine de la maison,
+     * « la hiérarchie au-delà de la taille se joue au poids + couleur ».
+     * Exiger un cran de taille reviendrait à interdire cette doctrine ici.
+     * On garde donc l'ORDRE : le titre ne descend jamais SOUS le rang, et
+     * les deux autres contrôles (graisse, encre) deviennent la vraie
+     * séparation.
+     */
+    if (m.titre.corps < m.rang.corps)
       griefs.push(
-        `le titre (${m.titre.corps}) n’est pas au-dessus du rang (${m.rang.corps}) : le repère crie plus fort que le sujet`,
+        `le titre (${m.titre.corps}) est plus petit que le rang (${m.rang.corps}) : le repère crie plus fort que le sujet`,
       )
     if (m.titre.graisse <= m.rang.graisse)
       griefs.push(`la graisse ne les sépare pas (rang ${m.rang.graisse}, titre ${m.titre.graisse})`)

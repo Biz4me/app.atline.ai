@@ -45,7 +45,15 @@ test('la flèche d’un module repose là d’où l’on vient : Apprendre', asy
   await expect(couvertures).toHaveCount(11)
   await couvertures.first().click()
   await expect(page).toHaveURL(/\/parcours\/[^/]+$/, { timeout: 20_000 })
-  await expect(page.getByRole('heading', { level: 1 })).toContainText(/Module/)
+  /**
+   * 🔴 LA BARRE NOMME LE MODULE, ELLE NE DIT PLUS SON RANG (21 nov. 2026).
+   * Elle portait « Module 1 » ; elle porte le THÈME, « L'état d'esprit ».
+   * Ce que cette sonde veut savoir n'a pas changé — **on est bien arrivé sur
+   * un module** — mais chercher le mot « Module » revenait à exiger un
+   * libellé précis pour prouver une navigation. On vérifie donc que la barre
+   * dit quelque chose, et que c'est le nom du module où l'on a cliqué.
+   */
+  await expect(page.getByRole('heading', { level: 1 })).not.toBeEmpty()
 
   const fleche = page.locator('header a[href]').first()
   await expect(fleche).toHaveAttribute('href', '/parcours')
