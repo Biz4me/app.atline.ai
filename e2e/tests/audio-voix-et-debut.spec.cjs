@@ -91,7 +91,7 @@ test('un enchaînement commence au début, même sur une leçon déjà entamée'
    * sur une leçon neuve et ne dirait rien du défaut.
    */
   /**
-   * 🔴 `[data-ecoute-suivant]` ET PLUS `[data-ecoute-suivant]` (21 nov. 2026).
+   * 🔴 `[data-rang-suivant]` ET PLUS `[data-rang-suivant]` (21 nov. 2026).
    * Le pied « Leçon suivante » a été supprimé : il était le troisième chemin
    * vers la même chose, après les chevrons de la couverture et le groupe de
    * transport de la carte du lecteur. Ce qui reste est le bouton du lecteur.
@@ -100,7 +100,7 @@ test('un enchaînement commence au début, même sur une leçon déjà entamée'
    * vérifie donc qu'il est ALLUMÉ — ce qui dit la même chose, « il y a une
    * suivante » — puis on le touche.
    */
-  const versLaSuite = page.locator('[data-ecoute-suivant]')
+  const versLaSuite = page.locator('[data-rang-suivant]')
   /**
    * ⚠️ ON ATTEND L'ÉTAT, ON NE LE LIT PAS AU VOL. Le pied était un lien rendu
    * par le SERVEUR : son `href` existait dès la première image. Ce bouton est
@@ -126,7 +126,7 @@ test('un enchaînement commence au début, même sur une leçon déjà entamée'
 
   // Retour sur la leçon 1 : on est déjà sur une page d'écoute, il n'y a donc
   // aucun lien « Écouter » à cliquer — seulement la piste à attendre.
-  await page.locator('[data-ecoute-precedent]').click()
+  await page.locator('[data-rang-precedent]').click()
   await attendrePiste(page, srcDeux)
   await lancer(page)
 

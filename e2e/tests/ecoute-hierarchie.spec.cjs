@@ -79,11 +79,30 @@ test('rang et titre au même corps, le thème un cran dessous', async ({ page })
   if (!m.titre) griefs.push('pas de titre de leçon')
   if (!m.theme) griefs.push('pas de thème')
 
+  /**
+   * ── 🔴 LA RÈGLE S'EST INVERSÉE LE SOIR DU 21 NOVEMBRE 2026 ───────────────
+   *
+   * Elle exigeait le rang et le titre **au même corps**, séparés par la
+   * graisse. C'était juste tant qu'ils étaient empilés sous la couverture :
+   * deux lignes voisines, un seul niveau.
+   *
+   * 🧭 ILS NE SE TOUCHENT PLUS. Le titre est descendu DANS le lecteur, en bas
+   * de l'écran ; le rang est resté sous l'illustration, entre deux chevrons,
+   * où il est devenu l'étiquette d'un contrôle. Ce ne sont plus deux lignes
+   * d'un même bloc, ce sont deux objets à deux endroits.
+   *
+   * 🔴 ET CETTE SONDE A TROUVÉ LE VRAI DÉFAUT EN CRIANT. J'avais posé le
+   * titre à 17 en laissant le rang à 23 : **le repère criait plus fort que le
+   * sujet**. Ce qu'on tient maintenant est l'ordre, pas l'égalité — sur un
+   * écran d'écoute, ce qu'on écoute passe devant où l'on en est.
+   */
   if (m.rang && m.titre) {
-    if (m.rang.corps !== m.titre.corps)
-      griefs.push(`rang ${m.rang.corps} px contre titre ${m.titre.corps} px : deux niveaux là où il n’y en a qu’un`)
-    if (m.rang.graisse >= m.titre.graisse)
-      griefs.push(`la graisse ne les sépare pas (${m.rang.graisse} contre ${m.titre.graisse})`)
+    if (m.titre.corps <= m.rang.corps)
+      griefs.push(
+        `le titre (${m.titre.corps}) n’est pas au-dessus du rang (${m.rang.corps}) : le repère crie plus fort que le sujet`,
+      )
+    if (m.titre.graisse <= m.rang.graisse)
+      griefs.push(`la graisse ne les sépare pas (rang ${m.rang.graisse}, titre ${m.titre.graisse})`)
     if (m.rang.encre === m.titre.encre)
       griefs.push('le rang et le titre ont la même encre : rien ne dit lequel est le repère')
   }
