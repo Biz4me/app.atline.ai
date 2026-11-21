@@ -47,6 +47,15 @@ const releve = (page, nom) =>
       const h = dedans.getBoundingClientRect().height
       out.push({
         ecran: nom,
+        /**
+         * 🔴 LAQUELLE DES ONZE EST CELLE QU'ON REGARDE. Le carrousel rend
+         * **toutes** les couvertures du parcours, pas seulement la voisine de
+         * gauche et celle de droite : prendre « la première du document »
+         * revenait donc à relever le module 1 sur la page du module 2. La
+         * sonde comparait alors deux titres différents et annonçait « le
+         * titre du module n'est annoncé nulle part », ce qui était faux.
+         */
+        courante: !!img.closest('[aria-current]'),
         couverture: Math.round(b.width),
         texte: p.textContent.trim().slice(0, 30),
         px: Math.round(parseFloat(s.fontSize)),
@@ -68,7 +77,8 @@ test('le même titre se replie pareil sur les trois couvertures', async ({ page,
   const href = await page.locator('a[data-module="2"]').getAttribute('href')
   await page.goto(href, { waitUntil: 'domcontentloaded' })
   await page.locator('[data-lecon]').first().waitFor({ state: 'visible', timeout: 20_000 })
-  const module = (await releve(page, 'module'))[0]
+  const tousDuModule = await releve(page, 'module')
+  const module = tousDuModule.find((x) => x.courante) ?? tousDuModule[0]
 
   /**
    * 🔴 LE TITRE N'EST PLUS ÉCRIT SOUS L'IMAGE. Patrice : *« enlève le titre
@@ -108,7 +118,8 @@ test('le même titre se replie pareil sur les trois couvertures', async ({ page,
   const lecon = await page.locator('[data-lecon]').nth(1).getAttribute('href')
   await page.goto(lecon + '/ecouter', { waitUntil: 'domcontentloaded' })
   await page.locator('[data-titre-ecoute]').waitFor({ state: 'visible', timeout: 20_000 })
-  const ecoute = (await releve(page, 'écoute'))[0]
+  const tousDeLEcoute = await releve(page, 'écoute')
+  const ecoute = tousDeLEcoute.find((x) => x.courante) ?? tousDeLEcoute[0]
 
   console.log(JSON.stringify({ etagere, module, ecoute, visibles }, null, 1))
 

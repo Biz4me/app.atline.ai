@@ -23,8 +23,30 @@ const { test, expect } = require('../fixtures.cjs')
 
 test.use({ viewport: { width: 390, height: 844 } })
 
-/** L'air au-dessus et en dessous du bouton doit être le même, à l'imparité près. */
-const IMPARITE = 2
+/**
+ * ── 🔴 LA DISTANCE DU BOUTON AU MEUBLE, CHOISIE ET NON CALCULÉE ───────────
+ *
+ * Patrice, le 21 novembre 2026 au soir : *« et si on décidait d'une distance
+ * entre la bottom et le play pour commencer »*. **40 px.**
+ *
+ * 🧭 DEUX RÈGLES ONT ÉCHOUÉ AVANT CELLE-LÀ, ET POUR LA MÊME RAISON. D'abord
+ * un nombre, 52, « la moitié d'un total constant » — le total n'était pas
+ * constant, et l'écart du bas est tombé à 28 le soir même, dès que la mise en
+ * page a changé. Puis un partage à parts égales de l'espace libre, qui faisait
+ * dépendre la place du bouton de la hauteur de l'écran. **Les deux liaient une
+ * cible du pouce à la taille du téléphone.**
+ *
+ * Ancrée sur le meuble, elle tombe au même endroit partout, et c'est l'air du
+ * HAUT qui absorbe la différence — ce que personne ne vise.
+ *
+ * ⚠️ ET ELLE SE MESURE, parce qu'elle ne s'écrit pas d'un seul morceau : la
+ * coquille en donne 16 (sa réserve, moins la hauteur VUE de la barre) et le
+ * lecteur pose les 24 qui restent. Ces deux nombres ne vivent pas dans le
+ * même fichier et changeront sans se prévenir.
+ */
+const SOUS_LE_BOUTON = 40
+/** Un pixel de tolérance : les arrondis de mise en page, rien de plus. */
+const PRES = 2
 
 test('le curseur et le bouton tiennent leur place sur toutes les leçons', async ({
   page,
@@ -93,16 +115,13 @@ test('le curseur et le bouton tiennent leur place sur toutes les leçons', async
   if (boutons.length > 1) griefs.push(`le bouton se déplace : ${boutons.sort().join(', ')}`)
 
   /**
-   * 🔴 ET L'AIR DOIT RESTER PARTAGÉ. Les deux écarts se disputent un total
-   * CONSTANT — mesuré à 147 px — donc en donner au-dessus en reprend en
-   * dessous. Première tentative : j'avais posé 91 en haut, croyant le bloc
-   * ancré en bas ; les deux se sont simplement ÉCHANGÉS et le bouton est
-   * descendu de 625 à 704. C'est cette sonde qui l'a dit.
+   * 🔴 ET LE BOUTON RESTE À SA DISTANCE DU MEUBLE. C'est la seule des trois
+   * règles qui ne dépende pas de la hauteur de l'écran — voir l'en-tête.
    */
   for (const v of vus.filter((x) => !x.manque)) {
-    if (Math.abs(v.air.dessus - v.air.dessous) > IMPARITE)
+    if (Math.abs(v.air.dessous - SOUS_LE_BOUTON) > PRES)
       griefs.push(
-        `« ${v.texte} » : ${v.air.dessus} px au-dessus du bouton contre ${v.air.dessous} en dessous`,
+        `« ${v.texte} » : ${v.air.dessous} px sous le bouton au lieu de ${SOUS_LE_BOUTON}`,
       )
   }
 

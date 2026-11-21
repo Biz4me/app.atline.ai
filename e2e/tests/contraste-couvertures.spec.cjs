@@ -48,6 +48,37 @@ const mesurer = (page, ecran) =>
     }
     const lum = (r, g, b) => 0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b)
 
+    /**
+     * ── 🔴 ON RÉVEILLE LES COUVERTURES PARESSEUSES AVANT DE MESURER ────────
+     *
+     * Le carrousel rend les ONZE couvertures du parcours et n'en télécharge
+     * que les premières : les autres sont en chargement paresseux, puisque
+     * personne n'a encore glissé jusqu'à elles. Leur `naturalWidth` vaut donc
+     * zéro, et cette sonde annonçait « image absente » pour six d'entre
+     * elles — un défaut qui n'existe pas, et qui bougeait de place selon la
+     * largeur du carrousel.
+     *
+     * 🧭 UNE SONDE QUI ACCUSE UN COMPORTEMENT VOULU EST UNE SONDE QUI MENT.
+     * Ce qu'elle veut savoir, c'est si le titre blanc tient sur CHACUNE des
+     * onze images ; il faut donc les onze images, et les demander est la
+     * façon honnête de les avoir. ⚠️ Et pas en faisant défiler le rail :
+     * un glissement change de module au bout de 140 ms, donc la sonde
+     * s'enverrait elle-même sur une autre page.
+     */
+    await Promise.all(
+      [...document.querySelectorAll('img')]
+        .filter((i) => /\/modules\/m\d/.test(i.getAttribute('src') || ''))
+        .map((i) => {
+          if (i.complete) return null
+          i.loading = 'eager'
+          return new Promise((r) => {
+            i.onload = r
+            i.onerror = r
+            setTimeout(r, 5_000)
+          })
+        }),
+    )
+
     const out = []
     for (const p of document.querySelectorAll('[data-titre-couverture]')) {
       const cadre = p.closest('div, a, li') || p.parentElement
