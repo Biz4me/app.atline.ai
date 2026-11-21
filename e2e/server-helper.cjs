@@ -17,7 +17,26 @@
 //                      SERVEUR A GARDÉ. Lecture seule. Un test de navigateur prouve
 //                      qu'un écran a changé, pas qu'une ligne est écrite.
 //  - delete <cid>   -> supprime le contact jetable
+//  - peupler <cid>  -> sème SIX contacts jetables autour du contact <cid> : des
+//                      prénoms accentués, six villes françaises, et leurs
+//                      COORDONNÉES. Imprime la liste.
+//  - depeupler      -> les retire tous, et eux seuls.
+//
+//    🔴 POURQUOI ILS EXISTENT (20 novembre 2026). Cinq sondes exigeaient la
+//    donnée du compte : « plus de 5 points sur la carte », « une Émilie dans
+//    la liste », « un segment qui n'est pas vide ». Le compte de travail a
+//    SEPT contacts et UN seul géocodé : elles échouaient toutes, sans qu'aucun
+//    défaut existe. Sauter aurait rendu le vert gratuit ; **fabriquer garde la
+//    preuve**.
+//
+//    🔴 ET LA SUPPRESSION NE PEUT PAS DÉBORDER. Tous portent le préfixe
+//    `E2E-GEO ` dans leur `name`, et `depeupler` ne supprime QUE ça. Le préfixe
+//    n'est pas décoratif : c'est la seule chose qui sépare un contact jeté
+//    d'un vrai contact de Patrice.
 const { readFileSync } = require('fs')
+
+/** La marque des contacts semés. Elle seule autorise leur suppression. */
+const MARQUE = 'E2E-GEO '
 
 const env = readFileSync('.env.local', 'utf8')
 const pick = (k) => {
@@ -164,11 +183,74 @@ const { encode } = require('next-auth/jwt')
     } else if (cmd === 'rdv-delete') {
       await prisma.appointment.delete({ where: { id: cid } })
       console.log('rdv-delete ok')
+    } else if (cmd === 'peupler') {
+      /**
+       * SIX CONTACTS JETABLES, GÉOCODÉS, AUTOUR DU CONTACT DONNÉ.
+       *
+       * ⚠️ `firstName` EST POSÉ EXPLICITEMENT. La liste affiche
+       * `firstName?.trim() || name.split(/\s+/)[0]` : sans lui, le prénom
+       * affiché serait « E2E-GEO » pour les six, et la recherche par prénom
+       * ne prouverait rien.
+       *
+       * ⚠️ SIX VILLES ÉLOIGNÉES, PAS SIX FOIS PARIS. La sonde de la carte
+       * vérifie que les points ne s'EMPILENT pas : six contacts à la même
+       * adresse lui donneraient un seul point et elle échouerait encore.
+       *
+       * ⚠️ UN PRÉNOM UNIQUE AU MONDE — Zéphirin. Une sonde doit pouvoir
+       * réduire la liste à UNE personne pour éprouver la touche Entrée ; avec
+       * des prénoms courants elle n'y arriverait jamais à coup sûr.
+       */
+      const base = await prisma.contact.findUnique({
+        where: { id: cid },
+        select: { userId: true, mlmBusinessId: true },
+      })
+      if (!base) throw new Error(`aucun contact ${cid} pour semer autour`)
+      const gens = [
+        { p: 'Émilie', n: 'Vasseur', v: 'Paris', cp: '75011', lat: 48.8566, lng: 2.3522, k: 'PROSPECT', e: 'NOUVEAU' },
+        { p: 'Gaël', n: 'Rouvier', v: 'Lyon', cp: '69003', lat: 45.764, lng: 4.8357, k: 'PROSPECT', e: 'INVITATION' },
+        { p: 'Chloé', n: 'Berthaud', v: 'Marseille', cp: '13006', lat: 43.2965, lng: 5.3698, k: 'CLIENT', e: null },
+        { p: 'Zéphirin', n: 'Malandain', v: 'Bordeaux', cp: '33000', lat: 44.8378, lng: -0.5792, k: 'PROSPECT', e: 'SUIVI' },
+        { p: 'Hélène', n: 'Caradec', v: 'Lille', cp: '59000', lat: 50.6292, lng: 3.0573, k: 'CLIENT', e: null },
+        { p: 'Noé', n: 'Fournel', v: 'Strasbourg', cp: '67000', lat: 48.5734, lng: 7.7521, k: 'PROSPECT', e: 'CLOSING' },
+      ]
+      const faits = []
+      for (const g of gens) {
+        const c = await prisma.contact.create({
+          data: {
+            user: { connect: { id: base.userId } },
+            mlmBusiness: { connect: { id: base.mlmBusinessId } },
+            name: `${MARQUE}${g.p} ${g.n}`,
+            firstName: g.p,
+            lastName: g.n,
+            kind: g.k,
+            prospectStage: g.e,
+            initials: (g.p[0] + g.n[0]).toUpperCase(),
+            accent: '#14B8A6',
+            city: g.v,
+            postal: g.cp,
+            country: 'FR',
+            lat: g.lat,
+            lng: g.lng,
+          },
+          select: { id: true, firstName: true, city: true },
+        })
+        faits.push(c)
+      }
+      console.log(JSON.stringify(faits))
+    } else if (cmd === 'depeupler') {
+      /**
+       * 🔴 LE PRÉFIXE, ET RIEN QUE LUI. Un `deleteMany` sans filtre étroit sur
+       * la base qui porte les contacts de Patrice serait la pire commande de
+       * ce fichier. `startsWith` sur la marque est la seule condition, et elle
+       * est écrite en dur : pas d'argument, donc rien à se tromper d'appeler.
+       */
+      const r = await prisma.contact.deleteMany({ where: { name: { startsWith: MARQUE } } })
+      console.log(JSON.stringify({ retires: r.count }))
     } else if (cmd === 'delete') {
       await prisma.contact.delete({ where: { id: cid } })
       console.log('delete ok')
     } else {
-      throw new Error('commande ? create | reset <cid> | compter <cid> | adresse <cid> | rdv <cid> [heures] | rdv-delete <rid> | delete <cid>')
+      throw new Error('commande ? create | reset <cid> | compter <cid> | adresse <cid> | rdv <cid> [heures] | rdv-delete <rid> | peupler <cid> | depeupler | delete <cid>')
     }
   } finally {
     await prisma.$disconnect()
