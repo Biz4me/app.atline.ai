@@ -52,7 +52,16 @@ test('rang et titre au même corps, le thème un cran dessous', async ({ page })
       rangEntete: lis('[data-rang-entete]'),
       rang: lis('[data-rang-ecoute]'),
       titre: lis('[data-titre-ecoute]'),
-      theme: lis('[data-theme-ecoute]'),
+      /**
+       * 🔴 LE THÈME EST DANS LA BARRE DU HAUT DEPUIS LE 21 NOV. 2026, AU
+       * SOIR. Il vivait en 11 px sous le rang, et il DOUBLAIT le titre écrit
+       * sur l'illustration : les onze thèmes sont le premier mot du titre de
+       * leur module, sept au caractère près. On le lit donc où il est
+       * maintenant, et on vérifie plus bas qu'il n'est PAS revenu sous
+       * l'image.
+       */
+      theme: lis('[data-coquille] header h1'),
+      themeSousLImage: lis('[data-theme-ecoute]'),
       barre: (() => {
         const h = document.querySelector('[data-coquille] header')
         return h ? Math.round(h.getBoundingClientRect().height) : null
@@ -77,7 +86,10 @@ test('rang et titre au même corps, le thème un cran dessous', async ({ page })
    */
   if (!m.rang) griefs.push('pas de « Leçon N de M » sous l’illustration')
   if (!m.titre) griefs.push('pas de titre de leçon')
-  if (!m.theme) griefs.push('pas de thème')
+  if (!m.theme) griefs.push('pas de thème dans la barre du haut')
+  // ⚠️ ET PAS DEUX FOIS : c'est le doublon qui l'a fait déménager.
+  if (m.themeSousLImage)
+    griefs.push(`le thème est revenu sous l'image : « ${m.themeSousLImage.texte} »`)
 
   /**
    * ── 🔴 LA RÈGLE S'EST INVERSÉE LE SOIR DU 21 NOVEMBRE 2026 ───────────────
@@ -106,14 +118,17 @@ test('rang et titre au même corps, le thème un cran dessous', async ({ page })
     if (m.rang.encre === m.titre.encre)
       griefs.push('le rang et le titre ont la même encre : rien ne dit lequel est le repère')
   }
-  if (m.theme && m.titre) {
-    const i = ECHELLE.indexOf(m.titre.corps)
-    if (m.theme.corps >= m.titre.corps)
-      griefs.push(`le thème (${m.theme.corps}) n’est pas sous le titre (${m.titre.corps})`)
-    if (i === -1) griefs.push(`le titre est à ${m.titre.corps} px, hors de l’échelle ${ECHELLE}`)
-    if (!ECHELLE.includes(m.theme.corps))
-      griefs.push(`le thème est à ${m.theme.corps} px, hors de l’échelle ${ECHELLE}`)
-  }
+  /**
+   * 🧭 LE THÈME N'EST PLUS COMPARÉ AU TITRE, ET C'EST LE DÉMÉNAGEMENT QUI
+   * L'EXIGE. Tant qu'ils étaient deux lignes voisines, « le thème sous le
+   * titre » disait quelque chose. Le thème est maintenant dans le chrome, à
+   * 500 px de là : les comparer reviendrait à interdire au gabarit de la
+   * barre d'être ce qu'il est sur les 30 écrans. On garde l'échelle, qui
+   * vaut partout.
+   */
+  for (const [quoi, v] of [['le titre', m.titre], ['le thème', m.theme]])
+    if (v && !ECHELLE.includes(v.corps))
+      griefs.push(`${quoi} est à ${v.corps} px, hors de l’échelle ${ECHELLE}`)
   /**
    * 🔴 CE CONTRÔLE EXIGEAIT UNE BARRE SOUS 48 PX, et il a eu raison deux
    * jours : la barre était tombée de 62 à 44 le 19 novembre, et il gardait
