@@ -98,6 +98,30 @@ test('rang et titre au même corps, le thème un cran dessous', async ({ page })
           titre: [Math.round(r(t).top + d - bas), Math.round(r(b).top - (r(t).bottom - d))],
         }
       })(),
+      /**
+       * 🔴 LA RÉSERVE DU LECTEUR VAUT SA HAUTEUR RÉELLE.
+       *
+       * Il est `fixed`, donc la page lui réserve sa place par un `calc()` —
+       * la somme de ses constantes, pour que la valeur soit juste **dès le
+       * premier octet de HTML**. Elle était mesurée après coup par un
+       * observateur : le serveur rendait alors une réserve NULLE et le rang
+       * se centrait cent pixels trop bas jusqu'à l'hydratation.
+       *
+       * ⚠️ UNE SOMME PEUT SE TROMPER SANS BRUIT. Le jour où une rangée
+       * s'ajoute au lecteur, le `calc()` ne le saura pas — c'est cette
+       * comparaison qui le dira, et elle seule.
+       */
+      reserve: (() => {
+        const reg = [...document.querySelectorAll('div')].find(
+          (e) => getComputedStyle(e).overflowY === 'auto',
+        )
+        const lect = document.querySelector('.lecteur-ecoute')
+        if (!reg || !lect) return null
+        return [
+          Math.round(parseFloat(getComputedStyle(reg).paddingBottom)),
+          Math.round(lect.getBoundingClientRect().height),
+        ]
+      })(),
       barre: (() => {
         const h = document.querySelector('[data-coquille] header')
         return h ? Math.round(h.getBoundingClientRect().height) : null
@@ -126,6 +150,11 @@ test('rang et titre au même corps, le thème un cran dessous', async ({ page })
    * ⚠️ DEUX PIXELS DE TOLÉRANCE, et pas zéro : les demi-interlignes tombent
    * en demi-pixels, et un arrondi n'est pas un défaut de composition.
    */
+  if (!m.reserve) griefs.push('la réserve du lecteur ne se mesure pas')
+  else if (Math.abs(m.reserve[0] - m.reserve[1]) > 1)
+    griefs.push(
+      `la page réserve ${m.reserve[0]} px au lecteur, qui en fait ${m.reserve[1]}`,
+    )
   if (!m.centrages) griefs.push('un élément manque : les centrages ne se mesurent pas')
   else
     for (const [quoi, [a, b]] of Object.entries(m.centrages))
