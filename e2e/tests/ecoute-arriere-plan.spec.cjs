@@ -38,7 +38,14 @@ test('la leçon se termine sans que la piste atteigne sa fin', async ({ page }) 
    * 🧭 Le sommaire, lui, porte les adresses de toutes les leçons du module.
    * La cible reste donc lue sur l'écran, et pas reconstruite à la main.
    */
-  await page.locator('[data-barre-action] button').nth(1).click()
+  /**
+   * ⚠️ `[data-sommaire]` ET PLUS « le deuxième bouton de la barre d'action ».
+   * Deux fragilités d'un coup : la barre du livre est devenue une barre de
+   * NAVIGATION le 21 nov. 2026 (`data-barre-bas`), donc le sélecteur ne
+   * trouvait plus rien et le clic expirait au bout d'une minute ; et viser
+   * un rang dans une barre, c'est se tromper le jour où une case s'ajoute.
+   */
+  await page.locator('[data-sommaire]').click()
   const liens = await page
     .locator('a[href*="/ecouter"], a[href*="/parcours/"]')
     .evaluateAll((n) => n.map((e) => e.getAttribute('href')).filter(Boolean))

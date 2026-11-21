@@ -21,10 +21,29 @@ const { test, expect } = require('../fixtures.cjs')
 
 test.use({ viewport: { width: 390, height: 844 }, colorScheme: 'dark' })
 
-/** La clarté moyenne d'un fond, 0 à 255. */
+/**
+ * La clarté moyenne d'un fond, 0 à 255.
+ *
+ * ── 🔴 DEUX ÉCRITURES, ET UNE SEULE ÉTAIT LUE ──────────────────────────────
+ *
+ * Elle ne comprenait que `rgb(23, 24, 27)`. Le 21 novembre 2026, la barre du
+ * livre a pris le fond de la barre des lieux, un `color-mix` — que le
+ * navigateur rend en **`color(srgb 0.09 0.094 0.105 / 0.94)`**. Les décimales
+ * y sont des composantes de 0 à 1, et `\d+` y lisait « 0, 09, 0, 094… » : la
+ * sonde annonçait une barre presque blanche sur un fond qui vaut 23.
+ *
+ * 🧭 ELLE AURAIT DÛ SE TAIRE PLUTÔT QUE DE RÉPONDRE DE TRAVERS. Une mesure
+ * qui ne reconnaît pas son entrée doit le dire ; ici elle a inventé un
+ * nombre, et il a fallu lire la valeur brute pour comprendre que le produit
+ * allait bien.
+ */
 const clarte = (couleur) => {
-  const n = (couleur.match(/\d+/g) || []).map(Number)
-  return n.length >= 3 ? Math.round((n[0] + n[1] + n[2]) / 3) : null
+  if (!couleur) return null
+  const n = (couleur.match(/[\d.]+/g) || []).map(Number)
+  if (n.length < 3) return null
+  // `color(srgb …)` parle en 0→1, `rgb(…)` en 0→255.
+  const f = /^color\(/.test(couleur) ? 255 : 1
+  return Math.round(((n[0] + n[1] + n[2]) / 3) * f)
 }
 
 async function ouvrirModule(page) {
@@ -44,7 +63,14 @@ test('en thème sombre, la liseuse garde son papier mais pas son chrome', async 
     const fond = (n) => (n ? getComputedStyle(n).backgroundColor : null)
     return {
       entete: fond(document.querySelector('[data-coquille] header, [data-coquille] > div')),
-      barre: fond(document.querySelector('[data-barre-action]')),
+      // ⚠️ L'UN OU L'AUTRE : la barre du livre est passée de barre d'action
+      // à barre de navigation le 21 nov. 2026. Chercher la première seule
+      // rendait `null`, et la sonde tombait sur `null.match` au lieu de dire
+      // ce qu'elle avait trouvé.
+      barre: fond(
+        document.querySelector('[data-barre-action]') ||
+          document.querySelector('[data-barre-bas]'),
+      ),
       // 🔴 LA COUCHE DE FOND, et pas la boîte qui porte les jetons. Le papier
       // est peint par un calque `fixed inset-0` sous tout le reste : la boîte
       // `[data-livre]`, elle, n'a plus de fond du tout.
