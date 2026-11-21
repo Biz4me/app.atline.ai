@@ -97,13 +97,33 @@ const ou = (page) => page.evaluate((s) => document.querySelector(s)?.currentTime
 const arrete = (page) => page.evaluate((s) => document.querySelector(s)?.paused, AUDIO)
 
 /** La page d'écoute de la première leçon du module 1. */
+/**
+ * ── 🔴 DEUX PORTES, ET LA SECONDE EST NOUVELLE ────────────────────────────
+ *
+ * Depuis le 21 novembre 2026 au soir, la rangée « Écouter / Lire » de
+ * l'accueil d'un module **s'efface quand le lecteur réduit joue ce
+ * module-là** : il rend déjà les deux services, et trois meubles empilés
+ * faisaient 226 px, soit un quart de l'écran.
+ *
+ * 🔴 CE HELPER CHERCHAIT « Écouter » ET RIEN D'AUTRE. Il tenait tant qu'un
+ * test n'ouvrait l'écoute qu'une fois ; au deuxième passage la rangée
+ * n'était plus là, et il attendait cinq minutes un lien qui ne reviendrait
+ * jamais. Le produit allait bien, c'est la sonde qui ne connaissait qu'une
+ * porte.
+ *
+ * 🧭 ON PREND CELLE QUI EST OUVERTE : la rangée quand elle est là, la
+ * pastille sinon — qui mène précisément à la leçon qu'on écoute.
+ */
 async function ouvrirEcoute(page) {
   await page.goto('/parcours', { waitUntil: 'domcontentloaded' })
   const href = await page.locator('a[data-module="1"]').getAttribute('href')
   await page.goto(href, { waitUntil: 'domcontentloaded' })
   const ecouter = page.getByRole('link', { name: 'Écouter' })
-  await expect(ecouter).toBeVisible({ timeout: 20_000 })
-  await ecouter.click()
+  const pastille = page.locator('[data-pastille-vers-lecon]')
+  await expect
+    .poll(async () => (await ecouter.count()) + (await pastille.count()), { timeout: 20_000 })
+    .toBeGreaterThan(0)
+  await ((await ecouter.count()) ? ecouter : pastille).first().click()
   return attendrePiste(page)
 }
 

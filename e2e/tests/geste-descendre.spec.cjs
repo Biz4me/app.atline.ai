@@ -63,7 +63,14 @@ const ouvrirEcoute = async (page) => {
   await page.goto('/parcours', { waitUntil: 'domcontentloaded' })
   const href = await page.locator('a[data-module="2"]').getAttribute('href')
   await page.goto(href, { waitUntil: 'domcontentloaded' })
-  await page.getByRole('link', { name: 'Écouter' }).click()
+  // ⚠️ DEUX PORTES : la rangée « Écouter » s'efface quand le lecteur réduit
+  // joue déjà ce module, et c'est alors la pastille qui ramène à la leçon.
+  const ecouter = page.getByRole('link', { name: 'Écouter' })
+  const pastille = page.locator('[data-pastille-vers-lecon]')
+  await expect
+    .poll(async () => (await ecouter.count()) + (await pastille.count()), { timeout: 20_000 })
+    .toBeGreaterThan(0)
+  await ((await ecouter.count()) ? ecouter : pastille).first().click()
   await expect(page.locator('[data-titre-ecoute]')).toBeVisible({ timeout: 20_000 })
   await page.waitForTimeout(700)
   return href
