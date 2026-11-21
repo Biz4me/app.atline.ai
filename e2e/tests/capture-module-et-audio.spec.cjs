@@ -24,9 +24,23 @@ test.use({ viewport: { width: 390, height: 844 } })
 // différents, et c'est le second qu'une capture est censée montrer.
 const figer = async (page) => {
   await page.evaluate(async () => {
+    /**
+     * 🔴 ON N'ATTEND QUE CE QUI EST DEMANDÉ, ET JAMAIS PLUS DE 3 SECONDES.
+     *
+     * Cette ligne attendait `decode()` sur TOUTES les images de la page. Le
+     * 21 novembre 2026, le carrousel en a apporté onze, dont neuf en
+     * chargement PARESSEUX : leur `decode()` ne se résout jamais, puisqu'elles
+     * n'ont même pas commencé à être téléchargées. La capture expirait au
+     * bout de soixante secondes, et le rapport disait « page.evaluate: Test
+     * timeout » — rien sur la vraie cause.
+     *
+     * 🧭 Une attente sans borne est une panne qui attend son heure. La
+     * course contre un minuteur dit la même chose et ne peut pas pendre.
+     */
+    const borne = (p) => Promise.race([p, new Promise((r) => setTimeout(r, 3000))])
     await Promise.all(
       [...document.images].map((i) =>
-        i.complete && i.naturalWidth > 0 ? null : i.decode().catch(() => null),
+        i.complete && i.naturalWidth > 0 ? null : borne(i.decode().catch(() => null)),
       ),
     )
     document.getAnimations().forEach((a) => {
@@ -37,34 +51,67 @@ const figer = async (page) => {
   })
 }
 
-test('la couverture d’un module, chevrons compris', async ({ page, pageErrors }) => {
+/**
+ * ── 🔴 CES DEUX TESTS MESURAIENT LES CHEVRONS, SUPPRIMÉS LE 21 NOV. 2026 ───
+ *
+ * Ils vérifiaient que la couverture d'un module porte un chevron de chaque
+ * côté, et qu'aux bouts de la série il n'y en ait qu'un. Patrice, capture
+ * d'un lecteur de musique à l'appui : *« supprimer les chevrons droite et
+ * gauche et adopter le principe de la capture »*.
+ *
+ * 🧭 CE QU'ILS PROTÉGEAIENT SURVIT, SOUS UNE AUTRE FORME. Les chevrons
+ * disaient « il y a un voisin par là » ; c'est désormais **le débord de la
+ * couverture voisine** qui le dit — et aux bouts de la série, il n'y a
+ * simplement rien à déborder de ce côté-là. On mesure donc le débord.
+ */
+test('les couvertures voisines débordent, et annoncent le geste', async ({ page, pageErrors }) => {
   await page.goto('/parcours', { waitUntil: 'domcontentloaded' })
-  await expect(page.locator('a[data-module]').first()).toBeVisible({ timeout: 20_000 })
-  // Le module 2 : il a un voisin de chaque côté, donc les deux chevrons.
+  await expect(page.locator('a[data-module="2"]')).toBeVisible({ timeout: 20_000 })
   const href = await page.locator('a[data-module="2"]').getAttribute('href')
   await page.goto(href, { waitUntil: 'domcontentloaded' })
-  await expect(page.locator('[data-feuillet-module="droite"]')).toBeVisible({ timeout: 20_000 })
-  await expect(page.locator('[data-feuillet-module="gauche"]')).toBeVisible()
+  await expect(page.locator('[data-carrousel-modules]')).toBeVisible({ timeout: 20_000 })
+  await page.waitForTimeout(800)
+
+  const vu = await page.evaluate(() => {
+    const r = document.querySelector('[data-carrousel-modules]')
+    const courante = r.querySelector('[aria-current]')?.closest('li')
+    const b = courante?.getBoundingClientRect()
+    const voisines = [...r.children].filter((c) => c !== courante).map((c) => {
+      const x = c.getBoundingClientRect()
+      // Ce qui dépasse DANS l'écran, de l'un ou l'autre côté.
+      return Math.round(Math.max(0, Math.min(x.right, innerWidth) - Math.max(x.left, 0)))
+    })
+    return {
+      diapos: r.children.length,
+      courante: b ? { centre: Math.round(b.left + b.width / 2), large: Math.round(b.width) } : null,
+      debordVisible: voisines.filter((v) => v > 10).length,
+      milieu: Math.round(innerWidth / 2),
+      chevrons: document.querySelectorAll('[data-feuillet-module]').length,
+    }
+  })
+  console.log(JSON.stringify(vu))
+
+  const griefs = []
+  if (vu.diapos < 2) griefs.push(`${vu.diapos} diapositive(s) : rien à feuilleter`)
+  if (!vu.courante) griefs.push('aucune couverture marquée courante')
+  else if (Math.abs(vu.courante.centre - vu.milieu) > 2)
+    griefs.push(`la courante est centrée à ${vu.courante.centre} au lieu de ${vu.milieu}`)
+  /**
+   * 🔴 LE DÉBORD EST L'AFFORDANCE, PAS UNE DÉCORATION. Un glissement est
+   * invisible : rien ne dit qu'il existe, sauf la voisine à moitié sortie.
+   * Sans ce contrôle, on pourrait centrer les couvertures une à une et
+   * supprimer le seul indice que le geste est possible.
+   */
+  if (vu.debordVisible < 2)
+    griefs.push(`${vu.debordVisible} voisine(s) visible(s) : le geste ne s’annonce plus`)
+  if (vu.chevrons) griefs.push(`${vu.chevrons} chevron(s) de feuilletage sont revenus`)
+
   await figer(page)
-  await page.screenshot({ path: 'module-chevrons.png' })
+  await page.screenshot({ path: 'module-carrousel.png' })
+  expect(griefs, 'ce qui cloche :' + String.fromCharCode(10) + '  · ' + griefs.join(String.fromCharCode(10) + '  · ')).toEqual([])
   expect(pageErrors).toEqual([])
 })
 
-test('les bouts de la série n’ont qu’un chevron', async ({ page }) => {
-  await page.goto('/parcours', { waitUntil: 'domcontentloaded' })
-  const premier = await page.locator('a[data-module="1"]').getAttribute('href')
-  await page.goto(premier, { waitUntil: 'domcontentloaded' })
-  await expect(page.locator('[data-feuillet-module="droite"]')).toBeVisible({ timeout: 20_000 })
-  await expect(
-    page.locator('[data-feuillet-module="gauche"]'),
-    'le module 1 ne doit pas proposer de précédent',
-  ).toHaveCount(0)
-
-  // ⚠️ Et le chevron MÈNE quelque part : un lien visible qui ne navigue pas
-  // est le défaut que « il est là » ne voit jamais.
-  await page.locator('[data-feuillet-module="droite"]').click()
-  await expect(page.locator('[data-couverture-module="2"]')).toBeVisible({ timeout: 20_000 })
-})
 
 test('la page d’écoute, telle qu’elle est aujourd’hui', async ({ page, pageErrors }) => {
   await page.goto('/parcours', { waitUntil: 'domcontentloaded' })
