@@ -61,6 +61,77 @@ const PRES = 2
  * VRAIMENT. Sans ce contrôle, « le bouton n'a pas bougé » serait vrai pour la
  * mauvaise raison — parce qu'on n'a rien fait défiler du tout.
  */
+/**
+ * ── 🔴 LE PLAY EST POSÉ COMME LE GESTE DE L'APP, ET PAS SEULEMENT PLACÉ ────
+ *
+ * Patrice a dû le redire TROIS FOIS : *« le bouton play n'est pas fixe comme
+ * le bouton ajouter un contact ou ajouter un rdv »*. À chaque fois j'avais
+ * rendu le bouton immobile autrement — en le sortant du flux souple, puis de
+ * la région qui défile — et à chaque fois une sonde confirmait « il ne bouge
+ * pas ». Elle avait raison et elle ratait la demande : **immobile à la mesure
+ * n'est pas posé pareil.**
+ *
+ * 🧭 ON NE MESURE DONC PLUS UN NOMBRE, ON COMPARE À LA RÉFÉRENCE. Si le play
+ * et « Ajouter un contact » ont la même taille, la même distance au meuble,
+ * la même hauteur depuis le bas de l'écran et le même mode de positionnement,
+ * alors ils sont posés pareil — et aucune de mes trois versions n'aurait
+ * passé ce test.
+ */
+test('le play est posé comme « Ajouter un contact »', async ({ page }) => {
+  test.setTimeout(300_000)
+  await page.setViewportSize({ width: 390, height: 844 })
+
+  const releve = () =>
+    page.evaluate(() => {
+      const bas = document.querySelector('[data-barre-bas]')
+      const b =
+        [...document.querySelectorAll('button')].find((x) =>
+          /Écouter la leçon|Mettre en pause/.test(x.getAttribute('aria-label') || ''),
+        ) ||
+        [...document.querySelectorAll('[data-barre-action] button, [data-barre-action] a')].find(
+          (x) => x.getBoundingClientRect().width > 60,
+        )
+      if (!b || !bas) return null
+      const r = b.getBoundingClientRect()
+      let fixe = false
+      for (let e = b; e && e !== document.body; e = e.parentElement)
+        if (getComputedStyle(e).position === 'fixed') fixe = true
+      return {
+        fixe,
+        haute: Math.round(r.height),
+        sousLeBouton: Math.round(bas.getBoundingClientRect().top - r.bottom),
+        duBas: Math.round(innerHeight - r.bottom),
+      }
+    })
+
+  await page.goto('/gens', { waitUntil: 'domcontentloaded' })
+  await page.waitForTimeout(1500)
+  const reference = await releve()
+
+  await page.goto('/parcours', { waitUntil: 'domcontentloaded' })
+  const href = await page.locator('a[data-module="2"]').getAttribute('href')
+  await page.goto(href, { waitUntil: 'domcontentloaded' })
+  await page.getByRole('link', { name: 'Écouter' }).click()
+  await expect(page.locator('[data-titre-ecoute]')).toBeVisible({ timeout: 20_000 })
+  await page.waitForTimeout(800)
+  const play = await releve()
+
+  console.log(`  référence ${JSON.stringify(reference)}`)
+  console.log(`  play       ${JSON.stringify(play)}`)
+
+  const griefs = []
+  // 🔴 SANS LA RÉFÉRENCE, LA COMPARAISON N'EXISTE PAS.
+  if (!reference) griefs.push('« Ajouter un contact » introuvable : rien à comparer')
+  if (!play) griefs.push('le bouton de lecture est introuvable')
+  if (reference && play) {
+    if (!play.fixe) griefs.push('le bouton de lecture n’est pas dans un élément fixe')
+    for (const q of ['haute', 'sousLeBouton', 'duBas'])
+      if (play[q] !== reference[q])
+        griefs.push(`${q} : ${play[q]} pour le play contre ${reference[q]} pour la référence`)
+  }
+  expect(griefs, `ce qui cloche :\n  · ${griefs.join('\n  · ')}`).toEqual([])
+})
+
 test('le bouton ne bouge pas quand on fait défiler', async ({ page }) => {
   test.setTimeout(180_000)
   await page.setViewportSize({ width: 390, height: 667 })
