@@ -73,7 +73,7 @@ test('la page d’écoute, telle qu’elle est aujourd’hui', async ({ page, pa
   const ecouter = page.getByRole('link', { name: 'Écouter' })
   await expect(ecouter).toBeVisible({ timeout: 20_000 })
   await ecouter.click()
-  await expect(page.locator('[data-couverture-lecon]')).toBeVisible({ timeout: 20_000 })
+  await expect(page.locator('[data-carrousel-modules] [aria-current] img')).toBeVisible({ timeout: 20_000 })
   await figer(page)
   await page.screenshot({ path: 'audio-actuel.png' })
   expect(pageErrors).toEqual([])

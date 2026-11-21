@@ -185,7 +185,7 @@ test('captures de la liseuse et de la page audio', async ({ page, pageErrors }) 
   await expect(page.locator('input.curseur-taille')).toHaveCount(0, { timeout: 5000 })
 
   await suivre(page.locator('[data-ecouter]'), page, /\/ecouter$/)
-  await expect(page.locator('[data-couverture-lecon]')).toBeVisible({ timeout: 20_000 })
+  await expect(page.locator('[data-carrousel-modules] [aria-current] img')).toBeVisible({ timeout: 20_000 })
   await figer()
   await page.screenshot({ path: 'capture-audio.png' })
 

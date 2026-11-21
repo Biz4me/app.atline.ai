@@ -85,7 +85,7 @@ test('l’écouteur et le livre sont une bascule, à la même place', async ({ p
    * module. C'est la demande, mot pour mot : « page avec lecteur et couverture
    * de leçons sans le texte de la leçon ».
    */
-  await expect(page.locator('[data-couverture-lecon]')).toBeVisible({ timeout: 20_000 })
+  await expect(page.locator('[data-carrousel-modules] [aria-current] img')).toBeVisible({ timeout: 20_000 })
   await expect(page.locator('[data-fin-de-lecon]')).toHaveCount(0)
 
   // ── Et retour, par la MÊME case ──
