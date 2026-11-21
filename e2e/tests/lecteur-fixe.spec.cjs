@@ -44,7 +44,7 @@ test.use({ viewport: { width: 390, height: 844 } })
  * lecteur pose les 24 qui restent. Ces deux nombres ne vivent pas dans le
  * même fichier et changeront sans se prévenir.
  */
-const SOUS_LE_BOUTON = 40
+const SOUS_LE_BOUTON = 12
 /** Un pixel de tolérance : les arrondis de mise en page, rien de plus. */
 const PRES = 2
 
