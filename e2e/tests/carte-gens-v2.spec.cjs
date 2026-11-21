@@ -28,7 +28,11 @@ const { test, expect, suivre } = require('../fixtures.cjs')
 
 test.use({ viewport: { width: 390, height: 844 } })
 
-test('la carte place les gens, et ne les empile pas', async ({ page, pageErrors }) => {
+  /* 🔴 `foule` : six contacts géocodés, semés pour cette sonde et retirés
+     après elle. Le compte de travail n'en a qu'UN avec des coordonnées, et
+     cette sonde en demande plusieurs : sans la foule elle échouait tous les
+     jours sans qu'aucun défaut existe. Voir la fixture dans `fixtures.cjs`. */
+test('la carte place les gens, et ne les empile pas', async ({ page, pageErrors, foule }) => {
   /**
    * ── 🔴 LE GARDE CONTRE LA CARTE GRISE ────────────────────────────────
    *
@@ -102,9 +106,16 @@ test('la carte place les gens, et ne les empile pas', async ({ page, pageErrors 
    * ⚠️ On s'arrête en le DISANT si l'un des deux manque, au lieu de passer :
    * un contrôle qui saute son cas est un contrôle qui ment.
    */
+  /**
+   * 🔴 LES REPÈRES SONT CEUX QU'ON A SEMÉS. Ils étaient « Nicolas » et
+   * « Olivier », deux contacts du compte de Patrice : la sonde pariait sur
+   * deux personnes précises, à deux villes précises, et le jour où l'une
+   * change de ville ou s'en va, elle ne prouve plus le Nord. `foule` pose
+   * Hélène à Lille (50,6°) et Chloé à Marseille (43,3°), et les retire après.
+   */
   const trouve = (debut) => boites.find((b) => (b.nom ?? '').startsWith(debut))
-  const nord = trouve('Nicolas') // Lille
-  const sud = trouve('Olivier') // Marseille
+  const nord = trouve('Hélène') // Lille, 50,6°
+  const sud = trouve('Chloé') // Marseille, 43,3°
   if (!nord || !sud) {
     console.log(`  repères absents — noms vus : ${boites.map((b) => b.nom).join(' · ')}`)
     throw new Error('les deux repères géographiques ne sont pas sur la carte : rien n’est prouvé')
@@ -153,7 +164,7 @@ test('la carte place les gens, et ne les empile pas', async ({ page, pageErrors 
   expect(pageErrors, `exception client : ${pageErrors.join(' · ')}`).toEqual([])
 })
 
-test('la carte suit les populations, et la forme est rappelée', async ({ page }) => {
+test('la carte suit les populations, et la forme est rappelée', async ({ page, foule }) => {
   await page.goto('/gens?vue=carte', { waitUntil: 'domcontentloaded' })
   await expect(page.locator('[data-carte]')).toBeVisible({ timeout: 30_000 })
   const tous = await page.locator('[data-point]').count()

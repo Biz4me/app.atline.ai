@@ -90,7 +90,11 @@ test('les deux titres sont partis, et l’ordre ne l’est pas', async ({ page, 
   await expect(ligne, 'une personne qui attend ne le dit plus nulle part').toContainText('jamais')
 })
 
-test('la recherche filtre pendant qu’on tape, accents compris', async ({ page, pageErrors }) => {
+  /* 🔴 `foule` : six contacts géocodés, semés pour cette sonde et retirés
+     après elle. Le compte de travail n'en a qu'UN avec des coordonnées, et
+     cette sonde en demande plusieurs : sans la foule elle échouait tous les
+     jours sans qu'aucun défaut existe. Voir la fixture dans `fixtures.cjs`. */
+test('la recherche filtre pendant qu’on tape, accents compris', async ({ page, pageErrors, foule }) => {
   await page.goto('/gens', { waitUntil: 'domcontentloaded' })
   const champ = page.locator('[data-recherche] input')
   await expect(champ).toBeVisible({ timeout: 20_000 })
@@ -157,7 +161,7 @@ test('la recherche filtre pendant qu’on tape, accents compris', async ({ page,
   expect(pageErrors, `exception client : ${pageErrors.join(' · ')}`).toEqual([])
 })
 
-test('la recherche vaut aussi pour la carte', async ({ page }) => {
+test('la recherche vaut aussi pour la carte', async ({ page, foule }) => {
   await page.goto('/gens?vue=carte', { waitUntil: 'domcontentloaded' })
   await expect(page.locator('[data-carte]')).toBeVisible({ timeout: 30_000 })
   const avant = await page.locator('[data-point]').count()
@@ -226,24 +230,33 @@ test('toucher un point ouvre un résumé, avec Voir et Itinéraire', async ({ pa
   expect(pageErrors, `exception client : ${pageErrors.join(' · ')}`).toEqual([])
 })
 
-test('Entrée ouvre la personne quand il n’en reste qu’une', async ({ page, pageErrors }) => {
+test('Entrée ouvre la personne quand il n’en reste qu’une', async ({ page, pageErrors, foule }) => {
   await page.goto('/gens', { waitUntil: 'domcontentloaded' })
   const champ = page.locator('[data-recherche] input')
   await expect(champ).toBeVisible({ timeout: 20_000 })
 
   /**
-   * ON CHERCHE JUSQU'A N'EN AVOIR QU'UNE. « emi » ne rend qu'Emilie
-   * Fontaine sur ce compte -- verifie au moment d'ecrire. Si un homonyme
-   * arrivait un jour, la sonde le DIRAIT au lieu de passer a cote.
+   * ── 🔴 ON CHERCHE UN PRÉNOM QU'ON A SEMÉ, PAS UN QU'ON ESPÈRE ────────────
+   *
+   * Cette sonde tapait « emi » et comptait sur « Émilie Fontaine, vérifiée au
+   * moment d'écrire ». Elle a fini par rendre « 0 sur 7 » : la personne
+   * n'était plus là. **Une sonde qui parie sur un contact pariera toujours
+   * sur un jour précis.**
+   *
+   * 🧭 `foule` sème un prénom choisi pour être seul au monde — Zéphirin — et
+   * le retire après. Ce que la sonde éprouve n'a pas changé d'un pouce :
+   * quand il n'en reste qu'une, Entrée l'ouvre.
    */
-  await champ.fill('emi')
+  const seul = foule.find((g) => g.firstName === 'Zéphirin')
+  expect(seul, 'la foule n’a pas semé le prénom unique').toBeTruthy()
+  await champ.fill('zeph')
   await expect(page.locator('[data-compte-recherche]')).toContainText(/^1 sur /, { timeout: 10_000 })
 
   await champ.press('Enter')
   await expect(page, 'Entrée n’a pas ouvert la fiche').toHaveURL(ADRESSE_FICHE, {
     timeout: 20_000,
   })
-  await expect(page.getByRole('heading', { level: 1 })).toContainText(/Émilie|Emilie/)
+  await expect(page.getByRole('heading', { level: 1 })).toContainText('phirin')
   expect(pageErrors, `exception client : ${pageErrors.join(' · ')}`).toEqual([])
 })
 

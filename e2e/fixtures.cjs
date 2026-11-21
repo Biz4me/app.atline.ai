@@ -32,6 +32,42 @@ const test = base.test.extend({
     try { ssh(`node e2e/server-helper.cjs delete ${cid}`) } catch (e) { console.error('nettoyage KO', e.message) }
   },
 
+  /**
+   * ── UNE FOULE JETABLE : SIX CONTACTS GÉOCODÉS ─────────────────────────────
+   *
+   * 🔴 POURQUOI ELLE EXISTE (20 novembre 2026). Cinq sondes exigeaient la
+   * donnée du compte : « plus de cinq points sur la carte », « une Émilie
+   * dans la liste », « un segment qui n'est pas vide ». Le compte de travail
+   * a **sept contacts et un seul géocodé** : elles échouaient toutes, sans
+   * qu'aucun défaut existe, et on avait pris l'habitude de ne plus les lire.
+   *
+   * 🧭 SAUTER AURAIT RENDU LE VERT GRATUIT. Une suite où tout se saute donne
+   * exactement le même vert qu'une suite qui prouve tout. Fabriquer garde la
+   * preuve, et c'est la première marche de la règle écrite près de `SANS`.
+   *
+   * ⚠️ ELLE DÉPEND DE `seed`, et ce n'est pas un détail d'ordonnancement :
+   * les six sont semés sur le MÊME compte et la MÊME activité que le contact
+   * jetable, sinon ils n'apparaîtraient sur aucun écran de la session.
+   *
+   * 🔴 ET `depeupler` EST GLOBAL : il retire tout ce qui porte la marque, donc
+   * aussi la foule d'un autre test. C'est sans danger ici — `workers: 1`,
+   * déclaré dans la configuration, et les tests mutent déjà un contact commun.
+   * Le jour où la suite passerait en parallèle, il faudrait une marque par
+   * test. C'est écrit ici pour que ce jour-là on le sache.
+   */
+  foule: async ({ seed }, use) => {
+    // ⚠️ On lit à partir du dernier `[` : Prisma peut écrire un avertissement
+    // avant notre ligne, et `JSON.parse` sur « warn … [ { … } ] » échouerait.
+    const sortie = ssh(`node e2e/server-helper.cjs peupler ${seed.cid}`).trim()
+    const gens = JSON.parse(sortie.slice(sortie.lastIndexOf('[')))
+    await use(gens)
+    try {
+      ssh('node e2e/server-helper.cjs depeupler')
+    } catch (e) {
+      console.error('la foule n’a pas été retirée', e.message)
+    }
+  },
+
   // Surcharge du context Playwright : le cookie de session est posé AVANT toute page.
   context: async ({ context, seed }, use) => {
     const host = new URL(BASE).hostname

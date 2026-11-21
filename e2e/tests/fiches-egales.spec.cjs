@@ -63,7 +63,11 @@ test('le rognage à deux lignes est RÉELLEMENT actif', async ({ page }) => {
   ).toBeGreaterThan(0)
 })
 
-test('toutes les fiches ont la même hauteur, à toute largeur', async ({ page }) => {
+  /* 🔴 `foule` : six contacts géocodés, semés pour cette sonde et retirés
+     après elle. Le compte de travail n'en a qu'UN avec des coordonnées, et
+     cette sonde en demande plusieurs : sans la foule elle échouait tous les
+     jours sans qu'aucun défaut existe. Voir la fixture dans `fixtures.cjs`. */
+test('toutes les fiches ont la même hauteur, à toute largeur', async ({ page, foule }) => {
   for (const largeur of LARGEURS) {
     await page.setViewportSize({ width: largeur, height: 844 })
     for (const segment of SEGMENTS) {

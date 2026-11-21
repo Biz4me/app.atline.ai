@@ -199,6 +199,12 @@ const { encode } = require('next-auth/jwt')
        * ⚠️ UN PRÉNOM UNIQUE AU MONDE — Zéphirin. Une sonde doit pouvoir
        * réduire la liste à UNE personne pour éprouver la touche Entrée ; avec
        * des prénoms courants elle n'y arriverait jamais à coup sûr.
+       *
+       * ⚠️ DEUX DE CHAQUE POPULATION — prospect, client, partenaire. La sonde
+       * des fiches compare les hauteurs SEGMENT PAR SEGMENT : avec un seul
+       * partenaire sur le compte, elle n'avait aucune paire à comparer et
+       * échouait sur « aucune fiche · 320 px · partenaire ». Deux est le
+       * minimum qui prouve quelque chose.
        */
       const base = await prisma.contact.findUnique({
         where: { id: cid },
@@ -207,11 +213,11 @@ const { encode } = require('next-auth/jwt')
       if (!base) throw new Error(`aucun contact ${cid} pour semer autour`)
       const gens = [
         { p: 'Émilie', n: 'Vasseur', v: 'Paris', cp: '75011', lat: 48.8566, lng: 2.3522, k: 'PROSPECT', e: 'NOUVEAU' },
-        { p: 'Gaël', n: 'Rouvier', v: 'Lyon', cp: '69003', lat: 45.764, lng: 4.8357, k: 'PROSPECT', e: 'INVITATION' },
+        { p: 'Gaël', n: 'Rouvier', v: 'Lyon', cp: '69003', lat: 45.764, lng: 4.8357, k: 'PARTENAIRE', e: null },
         { p: 'Chloé', n: 'Berthaud', v: 'Marseille', cp: '13006', lat: 43.2965, lng: 5.3698, k: 'CLIENT', e: null },
         { p: 'Zéphirin', n: 'Malandain', v: 'Bordeaux', cp: '33000', lat: 44.8378, lng: -0.5792, k: 'PROSPECT', e: 'SUIVI' },
         { p: 'Hélène', n: 'Caradec', v: 'Lille', cp: '59000', lat: 50.6292, lng: 3.0573, k: 'CLIENT', e: null },
-        { p: 'Noé', n: 'Fournel', v: 'Strasbourg', cp: '67000', lat: 48.5734, lng: 7.7521, k: 'PROSPECT', e: 'CLOSING' },
+        { p: 'Noé', n: 'Fournel', v: 'Strasbourg', cp: '67000', lat: 48.5734, lng: 7.7521, k: 'PARTENAIRE', e: null },
       ]
       const faits = []
       for (const g of gens) {
