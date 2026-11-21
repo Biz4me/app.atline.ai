@@ -62,6 +62,42 @@ test('rang et titre au même corps, le thème un cran dessous', async ({ page })
        */
       theme: lis('[data-coquille] header h1'),
       themeSousLImage: lis('[data-theme-ecoute]'),
+      /**
+       * ── 🔴 LES DEUX CENTRAGES, EN ENCRE ET PAS EN BOÎTES ─────────────────
+       *
+       * Patrice, le 21 novembre au soir : le rang centré entre l'illustration
+       * et le curseur, le titre centré entre le curseur et le bouton.
+       *
+       * 🧭 ET C'EST L'ENCRE QU'ON MESURE, parce que les boîtes mentent ici.
+       * Trois airs invisibles s'en mêlent : le `pb-1` du rail sous l'image,
+       * les 7 px que la boîte du curseur garde sous son trait pour que la
+       * pastille déborde, et la demi-interligne du titre. Mesurés à 14/14 en
+       * boîtes, les écarts VALAIENT 21/18 — et 48/18 dans la colonne du
+       * milieu, là où l'œil regarde.
+       */
+      centrages: (() => {
+        const r = (e) => e.getBoundingClientRect()
+        const demi = (e) => {
+          const s = getComputedStyle(e)
+          return (parseFloat(s.lineHeight) - parseFloat(s.fontSize)) / 2
+        }
+        const img = document.querySelector('[data-carrousel-modules] [aria-current] img')
+        const nav = document.querySelector('[data-rang-ecoute]')?.closest('nav')
+        const piste = document.querySelector('.piste-ecoute')
+        const t = document.querySelector('[data-titre-ecoute]')
+        const b = [...document.querySelectorAll('button')].find((x) =>
+          /Écouter la leçon|Mettre en pause/.test(x.getAttribute('aria-label') || ''),
+        )
+        if (!img || !nav || !piste || !t || !b) return null
+        const rp = r(piste)
+        const haut = rp.top + (rp.height - 6) / 2
+        const bas = rp.top + (rp.height + 6) / 2
+        const d = demi(t)
+        return {
+          rang: [Math.round(r(nav).top - r(img).bottom), Math.round(haut - r(nav).bottom)],
+          titre: [Math.round(r(t).top + d - bas), Math.round(r(b).top - (r(t).bottom - d))],
+        }
+      })(),
       barre: (() => {
         const h = document.querySelector('[data-coquille] header')
         return h ? Math.round(h.getBoundingClientRect().height) : null
@@ -86,6 +122,15 @@ test('rang et titre au même corps, le thème un cran dessous', async ({ page })
    */
   if (!m.rang) griefs.push('pas de « Leçon N de M » sous l’illustration')
   if (!m.titre) griefs.push('pas de titre de leçon')
+  /**
+   * ⚠️ DEUX PIXELS DE TOLÉRANCE, et pas zéro : les demi-interlignes tombent
+   * en demi-pixels, et un arrondi n'est pas un défaut de composition.
+   */
+  if (!m.centrages) griefs.push('un élément manque : les centrages ne se mesurent pas')
+  else
+    for (const [quoi, [a, b]] of Object.entries(m.centrages))
+      if (Math.abs(a - b) > 2)
+        griefs.push(`le ${quoi} n’est pas centré : ${a} px au-dessus, ${b} en dessous`)
   if (!m.theme) griefs.push('pas de thème dans la barre du haut')
   // ⚠️ ET PAS DEUX FOIS : c'est le doublon qui l'a fait déménager.
   if (m.themeSousLImage)
