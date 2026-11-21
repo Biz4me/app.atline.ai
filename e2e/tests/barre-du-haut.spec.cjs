@@ -34,6 +34,8 @@ const TAILLE = 23
 const MILIEU = 195
 /** Le centre du bloc peut dériver de ce qui l'accompagne (un chevron). */
 const JEU = 12
+/** La gouttière de la page : `px-4`. */
+const MARGE = 16
 
 const mesurer = (page, r) =>
   page.evaluate((r) => {
@@ -75,6 +77,7 @@ const mesurer = (page, r) =>
       px: Math.round(parseFloat(getComputedStyle(titre).fontSize)),
       poids: Number(getComputedStyle(titre).fontWeight),
       icone: ic ? Math.round(ic.getBoundingClientRect().width) : null,
+      gauche: Math.round(gauche),
       centre: Math.round((gauche + droite) / 2),
     }
   }, r)
@@ -136,8 +139,29 @@ test('toutes les barres du haut portent le même gabarit', async ({ page, pageEr
     if (v.px !== TAILLE) griefs.push(`${ou} : titre en ${v.px} px au lieu de ${TAILLE} — « ${v.texte} »`)
     if (v.poids < 700) griefs.push(`${ou} : titre en graisse ${v.poids} au lieu de 700`)
     if (!v.icone) griefs.push(`${ou} : aucune icône de 22 px contre le titre — « ${v.texte} »`)
-    if (Math.abs(v.centre - MILIEU) > JEU)
+    /**
+     * ── 🔴 UNE SEULE EXCEPTION, NOMMÉE, AVEC SON CRITÈRE ──────────────────
+     *
+     * L'accueil ancre son bloc à la MARGE GAUCHE au lieu de le centrer.
+     * Patrice, le 21 novembre 2026 : *« ça crée un meilleur alignement par
+     * rapport à l'avatar profil si on met le business à gauche »*.
+     *
+     * 🧭 ET CE N'EST PAS UN CAPRICE : un titre centré n'a l'air centré que si
+     * ses deux côtés pèsent pareil. Les 29 autres portent une flèche de
+     * retour à gauche ; **l'accueil est le seul dont le coin gauche est
+     * vide**, face à l'agenda et à l'avatar. Un bloc au milieu, un trou à
+     * gauche, une grappe à droite : l'œil lit un décalage.
+     *
+     * ⚠️ LE CRITÈRE EST MÉCANIQUE — « pas de contrôle à gauche » — et pas
+     * « quand ça paraît mieux ». Une exception sans critère est une porte
+     * ouverte : la prochaine barre de travers s'y rangerait toute seule.
+     */
+    if (v.r === '/accueil') {
+      if (Math.abs(v.gauche - MARGE) > 2)
+        griefs.push(`${ou} : le bloc commence à ${v.gauche} au lieu de la marge (${MARGE})`)
+    } else if (Math.abs(v.centre - MILIEU) > JEU) {
       griefs.push(`${ou} : bloc centré à ${v.centre} au lieu de ${MILIEU} — « ${v.texte} »`)
+    }
   }
 
   const hauteurs = [...new Set(vus.map((v) => v.barre))].sort()
