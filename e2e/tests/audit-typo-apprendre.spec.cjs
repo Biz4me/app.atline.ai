@@ -200,7 +200,7 @@ test('relevé des tailles sur tous les écrans d’Apprendre', async ({ page }) 
    *     en déclarer aucune ;
    *   · le reste, qui doit s'expliquer ou se corriger.
    */
-  const ECHELLE_ICONES = [22, 18, 14]
+  const ECHELLE_ICONES = [22, 14]
   const suivent = tout.icones.filter((i) => i.declare === '1em').length
   const chiffrees = tout.icones.filter((i) => i.declare !== '1em')
   const surEchelle = chiffrees.filter((i) => ECHELLE_ICONES.includes(i.px))
@@ -208,7 +208,7 @@ test('relevé des tailles sur tous les écrans d’Apprendre', async ({ page }) 
     chiffrees.filter((i) => !ECHELLE_ICONES.includes(i.px)),
     'ou',
   )
-  console.log(`\nICÔNES · ${surEchelle.length} sur l’échelle 22/18/14 · ${suivent} en 1em (suivent leur texte)`)
+  console.log(`\nICÔNES · ${surEchelle.length} sur l’échelle 22/14 · ${suivent} en 1em (suivent leur texte)`)
   console.log('À PART ' + JSON.stringify(aPart))
 
   console.log(
