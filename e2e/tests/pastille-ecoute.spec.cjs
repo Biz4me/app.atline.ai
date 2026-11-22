@@ -16,7 +16,7 @@
 // document détruit l'élément : le son s'arrêterait pour une raison qui n'est
 // pas celle qu'on mesure, et la sonde accuserait l'app d'un défaut qu'elle
 // n'a pas.
-const { test, expect } = require('../fixtures.cjs')
+const { test, expect, toucher } = require('../fixtures.cjs')
 const { lancer, ouvrirEcoute } = require('../son.cjs')
 
 test.use({ viewport: { width: 390, height: 844 }, hasTouch: true })
@@ -1223,5 +1223,111 @@ test('la pastille a la hauteur de la barre d’action, et est collée au meuble'
    * et la carte s'est écartée de douze pixels du meuble. Plus rien ne dépasse,
    * donc plus rien à départager.
    */
+  expect(griefs, `ce qui cloche :\n  · ${griefs.join('\n  · ')}`).toEqual([])
+})
+
+/**
+ * ── 🔴 UN VOILE QUI LAISSE UNE CHOSE ALLUMÉE N'EST PAS UN VOILE ────────────
+ *
+ * Patrice, le 22 novembre 2026, capture à l'appui — les options de lecture
+ * ouvertes dans la liseuse, la pastille peinte PAR-DESSUS le panneau :
+ * *« le filtre doit passer par-dessus le lecteur également »*.
+ *
+ * 🧭 ET LA CAUSE ÉTAIT UNE RÈGLE QUI AVAIT SURVÉCU À SA RAISON. La pastille
+ * était montée à `z-40` le jour où elle était COLLÉE au meuble : la boule du
+ * curseur débordait dessous, il fallait qu'elle passe devant la barre du bas.
+ * La boule est partie le matin même et la carte s'est écartée de douze
+ * pixels ; il ne restait qu'un nombre qui gagnait contre les feuilles, qui
+ * vivent à 39.
+ *
+ * 🔴 CE QUI SE MESURE N'EST PAS LE `z-index`, C'EST QUI RÉPOND AU DOIGT.
+ * Comparer deux nombres ne prouverait rien : un parent qui porte une
+ * transformation crée un contexte d'empilement et renverse l'ordre sans que
+ * les nombres bougent. `elementFromPoint` suit la peinture réelle — on
+ * interroge donc les trois choses qu'on pourrait vouloir toucher dans la
+ * pastille, et aucune ne doit répondre.
+ *
+ * ⚠️ LA PORTE DE LA LISEUSE EST DANS LA PASTILLE. La rangée « Écouter /
+ * Lire » de la couverture s'efface quand le lecteur joue ce module-là : on
+ * passe par son bouton livre, qui mène à la leçon qu'on écoute.
+ */
+test('le filtre de lecture passe par-dessus la pastille', async ({ page }) => {
+  await ouvrirEcoute(page)
+  await lancer(page)
+  await auModule(page)
+
+  await page.locator('[data-pastille-lire]').click()
+  await page.locator('[data-options-lecture]').waitFor({ state: 'visible', timeout: 20_000 })
+  await page.locator(PASTILLE).waitFor({ state: 'visible', timeout: 20_000 })
+
+  await toucher(
+    page.locator('[data-options-lecture]'),
+    page.locator('[data-options-lecture][aria-expanded="true"]'),
+  )
+  await page
+    .locator('[role="dialog"][aria-label="Options de lecture"]')
+    .waitFor({ state: 'visible', timeout: 10_000 })
+
+  /**
+   * ⚠️ ON ATTEND QUE LE PANNEAU SOIT ARRIVÉ, et c'est un FAIT qu'on attend,
+   * pas un délai. Le panneau monte depuis le bas (`monte`, 240 ms) : mesuré
+   * dès qu'il est « visible », il est encore en route, et les points du bas
+   * de l'écran rencontrent le voile au lieu de lui. L'assertion tenait quand
+   * même — ni l'un ni l'autre n'est la pastille — mais la sonde racontait
+   * alors un état qui n'existe qu'un quart de seconde.
+   */
+  await page.waitForFunction(
+    () =>
+      document
+        .querySelector('[role="dialog"][aria-label="Options de lecture"]')
+        ?.getAnimations()
+        .every((a) => a.playState === 'finished') ?? false,
+    null,
+    { timeout: 10_000 },
+  )
+
+  const v = await page.evaluate(() => {
+    const plan = (s) => {
+      const e = document.querySelector(s)
+      return e ? getComputedStyle(e).zIndex : null
+    }
+    const points = [
+      ['le titre', '[data-pastille-colonne]'],
+      ['le bouton livre', '[data-pastille-lire]'],
+      ['le trait de progression', '[data-pastille-progression]'],
+    ].map(([nom, sel]) => {
+      const c = document.querySelector(sel)
+      const b = c?.getBoundingClientRect()
+      if (!b?.width) return { nom, absent: true }
+      const e = document.elementFromPoint(b.x + b.width / 2, b.y + b.height / 2)
+      return {
+        nom,
+        dansLaPastille: !!e?.closest('[data-pastille-ecoute]'),
+        // Ce qu'on rencontre à sa place : le voile, ou le panneau s'il couvre
+        // déjà ce point.
+        voile: e?.getAttribute('aria-label') === 'Fermer',
+        panneau: !!e?.closest('[role="dialog"]'),
+        rencontre: e ? e.tagName.toLowerCase() : null,
+      }
+    })
+    return {
+      points,
+      planPastille: plan('[data-pastille-ecoute]'),
+      planVoile: plan('button[aria-label="Fermer"]'),
+      planPanneau: plan('[role="dialog"][aria-label="Options de lecture"]'),
+    }
+  })
+  console.log(JSON.stringify(v, null, 1))
+
+  const griefs = []
+  // 🔴 SANS LES TROIS CIBLES, RIEN N'EST ÉPROUVÉ : une sonde qui parcourt une
+  // liste vide passe au vert sans avoir rencontré son sujet.
+  for (const p of v.points) {
+    if (p.absent) griefs.push(`${p.nom} est introuvable dans la pastille : rien n’a été mesuré là`)
+    else if (p.dansLaPastille) griefs.push(`${p.nom} répond encore au doigt : le voile ne le couvre pas`)
+    else if (!p.voile && !p.panneau)
+      griefs.push(`à la place de ${p.nom} on rencontre un <${p.rencontre}>, ni le voile ni le panneau`)
+  }
+
   expect(griefs, `ce qui cloche :\n  · ${griefs.join('\n  · ')}`).toEqual([])
 })
