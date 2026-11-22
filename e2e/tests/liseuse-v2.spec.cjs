@@ -85,8 +85,24 @@ test('l’écouteur et le livre sont une bascule, à la même place', async ({ p
    * module. C'est la demande, mot pour mot : « page avec lecteur et couverture
    * de leçons sans le texte de la leçon ».
    */
-  await expect(page.locator('[data-carrousel-modules] [aria-current] img')).toBeVisible({ timeout: 20_000 })
-  await expect(page.locator('[data-fin-de-lecon]')).toHaveCount(0)
+  await expect(page.locator('[data-carrousel-modules] [aria-current] img').first()).toBeVisible({
+    timeout: 20_000,
+  })
+  /**
+   * ⚠️ DANS LA FEUILLE, PAS DANS LE DOCUMENT. Depuis le 21 novembre 2026 au
+   * soir, l'écoute est une FEUILLE posée sur l'écran d'où l'on vient — ici la
+   * liseuse, qui reste donc montée derrière avec son texte. La sonde trouvait
+   * ce texte-là et accusait la page audio de le porter.
+   *
+   * 🔴 ET CETTE DÉCOUVERTE EST À TRANCHER, PAS À TAIRE : la feuille s'ouvre
+   * aussi au-dessus de la liseuse, alors qu'elle était pensée pour se poser
+   * sur la couverture du module. Ce qu'on voit en tirant vers le bas est donc
+   * le TEXTE de la leçon et non le livre, et le chevron — qui annonce
+   * « Retour au module » — referme la feuille sur la liseuse. À décider.
+   */
+  const ecran = page.locator('[data-feuille-ecoute]')
+  const dansLaFeuille = (await ecran.count()) ? ecran : page.locator('body')
+  await expect(dansLaFeuille.locator('[data-fin-de-lecon]')).toHaveCount(0)
 
   // ── Et retour, par la MÊME case ──
   const retourLire = page.locator('[data-lire]')

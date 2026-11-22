@@ -149,6 +149,89 @@ test('le geste vers le bas sort exactement comme le chevron', async ({ page, pag
   if (new URL(page.url()).pathname !== ici)
     griefs.push('un geste dans la feuille ouverte a refermé la page')
 
+  /**
+   * ── 🔴 4. LE REPLI : LA BARRE NE BOUGE PAS, LES DEUX BORDS SE REJOIGNENT ──
+   *
+   * Patrice, le 22 novembre 2026 : *« la bottom reste fixe et visible ;
+   * pendant que le haut descend, le bas remonte jusqu'au-dessus de la
+   * bottombar »*.
+   *
+   * 🧭 CE QUI SE MESURE EST LA FORME, PAS L'ARRIVÉE. Les trois sections
+   * au-dessus prouvent qu'on sort, et sortiraient aussi vertes si l'écran
+   * partait d'un bloc par le bas — ce qu'il faisait avant, et que Patrice a
+   * refusé. La phrase porte sur ce qu'on VOIT pendant le geste, donc on relève
+   * le masque et la position du meuble à chaque profondeur.
+   *
+   * ⚠️ ET LE RELEVÉ SE FAIT DANS LA PAGE. Sortir de `evaluate` entre deux pas
+   * relâcherait le doigt : le geste est un seul fil, la sonde doit l'être
+   * aussi.
+   */
+  await ouvrirEcoute(page)
+  const releve = await page.evaluate(async () => {
+    const x = 195
+    const y0 = 300
+    const cible = document.elementFromPoint(x, y0) || document.body
+    const doigt = (y) => new Touch({ identifier: 1, target: cible, clientX: x, clientY: y })
+    const envoyer = (type, y) =>
+      cible.dispatchEvent(
+        new TouchEvent(type, {
+          bubbles: true,
+          cancelable: true,
+          touches: type === 'touchend' ? [] : [doigt(y)],
+          targetTouches: type === 'touchend' ? [] : [doigt(y)],
+          changedTouches: [doigt(y)],
+        }),
+      )
+    /** Le meuble qui RESTE : celui du module, derrière la feuille. */
+    const derriere = () => {
+      const f = document.querySelector('[data-feuille-ecoute]')
+      return [...document.querySelectorAll('[data-barre-bas]')].find((e) => !f?.contains(e))
+    }
+    const b0 = derriere()
+    const sol = b0 ? Math.round(innerHeight - b0.getBoundingClientRect().top) : 0
+    const nombres = (s) => (s.match(/-?[\d.]+/g) ?? []).map(Number)
+
+    const pas = []
+    envoyer('touchstart', y0)
+    for (const dy of [60, 195, 400, 700]) {
+      envoyer('touchmove', y0 + dy)
+      await new Promise((r) => setTimeout(r, 40))
+      const f = document.querySelector('[data-feuille-ecoute]')
+      const b = derriere()
+      pas.push({
+        dy,
+        masque: f ? nombres(getComputedStyle(f).clipPath) : null,
+        barre: b ? Math.round(b.getBoundingClientRect().top) : null,
+      })
+    }
+    // On RELÂCHE AU POINT DE DÉPART : la sonde mesure la forme, pas la sortie
+    // — qui est déjà prouvée plus haut. Sans ça elle partirait, et les
+    // sections suivantes travailleraient sur un autre écran.
+    envoyer('touchmove', y0)
+    envoyer('touchend', y0)
+    await new Promise((r) => setTimeout(r, 400))
+    return { sol, pas, hauteur: innerHeight }
+  })
+
+  const course = releve.hauteur - releve.sol
+  for (const p of releve.pas) {
+    const [haut, , bas] = p.masque ?? []
+    // Le bord haut est au doigt.
+    if (Math.abs(haut - p.dy) > 2) griefs.push(`à ${p.dy} px, le bord haut est à ${haut}`)
+    // Le bord bas a dégagé le meuble dès le quart, et l'y attend ensuite.
+    const attendu = Math.min(releve.sol, (releve.sol * p.dy) / (course * 0.25))
+    if (Math.abs(bas - attendu) > 2)
+      griefs.push(`à ${p.dy} px, le bord bas est à ${bas} au lieu de ${Math.round(attendu)}`)
+    // Et le meuble n'a pas bougé d'un pixel.
+    if (p.barre !== releve.pas[0].barre)
+      griefs.push(`la barre du module a bougé pendant le repli : ${p.barre}`)
+  }
+  console.log(
+    `  repli · sol ${releve.sol} · ${releve.pas
+      .map((p) => `${p.dy}→[${p.masque?.[0]},${p.masque?.[2]}]`)
+      .join(' ')} · barre fixe à ${releve.pas[0].barre}`,
+  )
+
   expect(griefs, `ce qui cloche :\n  · ${griefs.join('\n  · ')}`).toEqual([])
   expect(pageErrors, `exception client : ${pageErrors.join(' · ')}`).toEqual([])
 })
