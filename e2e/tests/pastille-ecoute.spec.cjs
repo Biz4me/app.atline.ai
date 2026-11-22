@@ -19,7 +19,7 @@
 const { test, expect } = require('../fixtures.cjs')
 const { lancer, ouvrirEcoute } = require('../son.cjs')
 
-test.use({ viewport: { width: 390, height: 844 } })
+test.use({ viewport: { width: 390, height: 844 }, hasTouch: true })
 
 const PASTILLE = '[data-pastille-ecoute]'
 const BAS = '[data-barre-bas] a'
@@ -141,7 +141,15 @@ test('l’ordre du bas : barre, lecteur, bouton — et le lecteur pleine largeur
         const e = document.querySelector(s)
         return e ? e.getBoundingClientRect() : null
       }
-      const p = boite('[data-pastille-ecoute] .relative > div:nth-child(2)')
+      /**
+       * ⚠️ `data-pastille-carte` ET PLUS UN RANG D'ENFANT. Elle visait
+       * `.relative > div:nth-child(2)` : en retirant la croix le 21 novembre
+       * 2026, les enfants se sont décalés d'un cran et cette sonde mesurait
+       * la POIGNÉE du curseur — qui déborde de six pixels sous la carte. Elle
+       * annonçait un lecteur qui mord sur la barre du bas, alors qu'il lui
+       * est collé au pixel.
+       */
+      const p = boite('[data-pastille-carte]')
       const bas = boite('[data-barre-bas]')
       const action = boite('[data-barre-action]')
       return {
@@ -444,53 +452,47 @@ test('l’enchaînement ne déplace pas l’écran où l’on travaille', async 
 })
 
 /**
- * ── 🔴 DEUX CHOSES QUI NE SE VOIENT PAS À L'ŒIL ────────────────────────────
+ * ── 🔴 CE QUE LA RANGÉE REND AU TITRE ─────────────────────────────────────
  *
- * La croix est passée dans l'angle, en débordant dans la gouttière. Deux
- * risques, tous deux invisibles sur une capture : qu'elle MORDE sur le bouton
- * « suivante » juste en dessous — on viserait l'un et on toucherait l'autre —
- * et qu'elle sorte de l'écran.
+ * Cette sonde gardait la CROIX : qu'elle ne morde pas sur « suivante », et
+ * qu'elle ne sorte pas de l'écran. **La croix a été retirée le 21 novembre
+ * 2026** — les lecteurs réduits de Deezer, Spotify et Apple Music n'en ont
+ * pas, et la nôtre se ferme en glissant vers la droite.
  *
- * Et le titre ne défile que s'il dépasse vraiment : un défilement qui ne part
- * jamais, ou qui part sur un titre court, ne se remarque pas non plus.
+ * 🧭 CE QU'ELLE PROTÉGEAIT DE PLUS SURVIT, et c'est la seule raison de garder
+ * ce test : **la colonne du titre**. Elle manquait 202 px ; la croix lui en
+ * rendait 34 en passant dans l'angle, la pochette et la croix lui en rendent
+ * 78 en partant. Ce chiffre est le seul qui dise si la rangée a vraiment
+ * lâché la place qu'on croit lui avoir prise.
  */
-test('la croix en angle ne mord pas sur le bouton suivante', async ({ page }) => {
+test('la rangée a rendu sa place au titre', async ({ page }) => {
   await ouvrirEcoute(page)
   await lancer(page)
   await auModule(page)
 
   const g = await page.evaluate(() => {
-    const b = (s) => {
-      const e = document.querySelector(s)
-      return e ? e.getBoundingClientRect() : null
-    }
-    const croix = b('[data-pastille-fermer]')
-    const suiv = b('[data-pastille-suivant]')
     const titre = document.querySelector('[data-pastille-ecoute] a span span:last-child')
-    const inter = (a, c) => ({
-      x: Math.max(0, Math.min(a.right, c.right) - Math.max(a.left, c.left)),
-      y: Math.max(0, Math.min(a.bottom, c.bottom) - Math.max(a.top, c.top)),
-    })
     return {
-      croix: { x: Math.round(croix.x), droite: Math.round(croix.right), haut: Math.round(croix.top) },
-      ecran: window.innerWidth,
-      morsure: inter(croix, suiv),
       colonneTitre: Math.round(titre.clientWidth),
+      pochette: !!document.querySelector('[data-pastille-ecoute] img'),
+      croix: !!document.querySelector('[data-pastille-fermer]'),
+      lire: !!document.querySelector('[data-pastille-lire]'),
     }
   })
   console.log(JSON.stringify(g, null, 1))
 
   const griefs = []
-  // Un chevauchement de quelques pixels est sans conséquence — aucun doigt ne
-  // vise à ce point. Au-delà, on touche une commande en croyant en viser une
-  // autre, et c'est le genre de défaut qu'on met des jours à nommer.
-  if (g.morsure.x * g.morsure.y > 16)
-    griefs.push(`la croix mord ${g.morsure.x}×${g.morsure.y} px sur « suivante »`)
-  if (g.croix.droite > g.ecran) griefs.push(`la croix sort de l’écran de ${g.croix.droite - g.ecran} px`)
-  if (g.croix.haut < -20) griefs.push(`la croix flotte ${-g.croix.haut} px au-dessus de la pastille`)
-  // 🔴 ELLE A QUITTÉ LA RANGÉE, donc le titre doit avoir récupéré sa place.
-  if (g.colonneTitre < 160)
-    griefs.push(`la colonne du titre ne fait que ${g.colonneTitre} px : la croix pèse encore sur la rangée`)
+  /**
+   * 🔴 180 ET PLUS 160. Mesuré après le retrait : la colonne passe de 168 à
+   * 186. Laisser le seuil à 160 aurait rendu cette sonde muette sur un
+   * retour en arrière qui coûterait 25 px — exactement ce qu'elle existe
+   * pour voir.
+   */
+  if (g.colonneTitre < 180)
+    griefs.push(`la colonne du titre ne fait que ${g.colonneTitre} px`)
+  if (g.pochette) griefs.push('la pochette est revenue dans la rangée')
+  if (g.croix) griefs.push('la croix est revenue')
+  if (!g.lire) griefs.push('« Lire » manque dans la pastille')
 
   expect(griefs, `ce qui cloche :\n  · ${griefs.join('\n  · ')}`).toEqual([])
 })
@@ -538,7 +540,13 @@ test('les deux lignes défilent sans raccord visible', async ({ page }) => {
       const b = e?.getBoundingClientRect()
       return b ? { g: Math.round(b.left), d: Math.round(b.right) } : null
     }
-    const image = bord('[data-pastille-ecoute] img')
+    /**
+     * ⚠️ LA RANGÉE, ET PLUS LA POCHETTE. Elle a été retirée le 21 novembre
+     * 2026 : la borne de gauche est désormais le bord intérieur de la rangée
+     * elle-même, c'est-à-dire là où le texte commence.
+     */
+    const rangee = bord('[data-pastille-carte] > div')
+    const image = rangee ? { g: rangee.g, d: rangee.g } : null
     const bouton = bord('[data-pastille-precedent]')
     return ['rang', 'titre'].map((r) => {
       const boite = document.querySelector(`[data-pastille-ligne="${r}"]`)
@@ -1022,11 +1030,22 @@ test('« Lire » et « Écouter » suivent la leçon qui joue', async ({ page })
     const s = document.querySelector('audio').currentSrc
     return s.match(/\/api\/lecon\/([^/]+)\//)?.[1] ?? null
   })
+  /**
+   * 🔴 LA RÈGLE A CHANGÉ DE PORTEUR LE 21 NOVEMBRE 2026, AU SOIR. Elle vivait
+   * sur la rangée « Écouter / Lire » de la couverture du module — mais cette
+   * rangée **s'efface quand le lecteur réduit joue ce module-là**, parce
+   * qu'elle ne dirait plus rien de neuf : la pastille joue déjà, et elle
+   * porte « Lire » depuis le même jour.
+   *
+   * 🧭 CE QUE LA SONDE TIENT N'A PAS BOUGÉ D'UN MOT : les deux entrées
+   * doivent mener à la leçon QUI JOUE, pas à celle où le parcours s'est
+   * arrêté. C'est l'objet qui les porte qui a changé.
+   */
   const liens = await page.evaluate(() =>
-    ['Lire', 'Écouter'].map((n) => {
-      const a = [...document.querySelectorAll('a')].find((e) => e.textContent.trim() === n)
-      return { nom: n, href: a?.getAttribute('href') ?? null }
-    }),
+    [
+      ['Lire', '[data-pastille-lire]'],
+      ['Écouter', '[data-pastille-vers-lecon]'],
+    ].map(([nom, sel]) => ({ nom, href: document.querySelector(sel)?.getAttribute('href') ?? null })),
   )
   console.log(JSON.stringify({ leconQuiJoue: joue, liens }, null, 1))
 
@@ -1063,7 +1082,7 @@ test('on ferme la pastille en la faisant glisser vers la droite', async ({ page 
   ).toBe(true)
 })
 
-test('la pastille met en pause, et sa croix met fin', async ({ page }) => {
+test('la pastille met en pause, et le glissement met fin', async ({ page }) => {
   await ouvrirEcoute(page)
   await lancer(page)
   await auModule(page)
@@ -1080,17 +1099,39 @@ test('la pastille met en pause, et sa croix met fin', async ({ page }) => {
     .toBe(true)
 
   /**
-   * 🔴 LA CROIX EST LE SEUL ENDROIT OÙ L'ON DIT « J'AI FINI ». Puisque plus
-   * aucune sortie d'écran n'arrête le son, sans elle on serait obligé de
-   * mettre en pause avant de partir — et la pastille suivrait pour toujours.
+   * ── 🔴 LA CROIX A ÉTÉ RETIRÉE, LE GLISSEMENT RESTE ──────────────────────
+   *
+   * Patrice, le 21 novembre 2026 : *« les gens connaissent les lecteurs
+   * réduits de Deezer, iTunes et Spotify, donc on peut enlever la croix »*.
+   * Aucun des trois n'en a.
+   *
+   * 🧭 MAIS « J'AI FINI » DOIT RESTER DISABLE QUELQUE PART, et c'est tout
+   * l'enjeu : plus aucune sortie d'écran n'arrête le son, donc sans un geste
+   * de fin la pastille suivrait pour toujours. La sonde éprouve donc la
+   * SORTIE, pas le bouton — **glisser vers la droite** — et vérifie qu'elle
+   * fait taire le son, pas seulement disparaître la bande.
    */
-  await page.locator('[data-pastille-fermer]').click()
+  /**
+   * ⚠️ À LA SOURIS, ET PAS EN ÉVÉNEMENTS TACTILES FABRIQUÉS. Le glissement de
+   * la pastille écoute les POINTEURS — c'est écrit dans son fichier, et pour
+   * une raison trouvée à la mesure : traîner une image dans un lien annule la
+   * séquence par un `pointercancel`. Des `TouchEvent` synthétiques ne
+   * produisent aucun événement de pointeur, donc la sonde glissait dans le
+   * vide et accusait la pastille de ne pas se fermer.
+   */
+  const b = await page.locator(PASTILLE).boundingBox()
+  await page.mouse.move(b.x + 60, b.y + b.height / 2)
+  await page.mouse.down()
+  for (let x = 80; x <= 320; x += 20) await page.mouse.move(b.x + x, b.y + b.height / 2)
+  await page.mouse.up()
+
   await expect(page.locator(PASTILLE)).toHaveCount(0, { timeout: 10_000 })
   expect(
     await page.evaluate(() => document.querySelector('audio')?.paused ?? true),
-    'la croix doit aussi faire taire le son, pas seulement cacher la pastille',
+    'le glissement doit aussi faire taire le son',
   ).toBe(true)
 })
+
 
 /**
  * ── 🔴 LA PASTILLE ET LA CARTE D'ENTRAÎNEMENT SONT DU MÊME GABARIT ─────────
@@ -1126,7 +1167,7 @@ test('la pastille a le gabarit de la carte d’entraînement, et lui est collée
     const past = document.querySelector('[data-pastille-ecoute]')
     return {
       exercice: r(exo),
-      carte: r(past?.querySelector('.relative > div:nth-child(2)')),
+      carte: r(past?.querySelector('[data-pastille-carte]')),
     }
   })
 
@@ -1140,7 +1181,7 @@ test('la pastille a le gabarit de la carte d’entraînement, et lui est collée
   const c = await page.evaluate(() => {
     const past = document.querySelector('[data-pastille-ecoute]')
     const meuble = document.querySelector('[data-barre-bas]')
-    const carte = past?.querySelector('.relative > div:nth-child(2)')
+    const carte = past?.querySelector('[data-pastille-carte]')
     return {
       carteBas: carte ? Math.round(carte.getBoundingClientRect().bottom) : null,
       bouleBas: document.querySelector('[data-pastille-boule]')
