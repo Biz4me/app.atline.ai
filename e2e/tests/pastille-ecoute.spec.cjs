@@ -802,225 +802,84 @@ test('les deux lignes défilent chacune à son tour', async ({ page }) => {
 })
 
 /**
- * ── 🔴 UN CURSEUR DE DEUX PIXELS, ET TROIS PIÈGES ──────────────────────────
+ * ── 🔴 LE TRAIT DIT OÙ ON EN EST, ET NE SE TIRE PLUS ──────────────────────
  *
- * Patrice voulait pouvoir se déplacer dans la leçon depuis la pastille. Le
- * trait fait deux pixels : la prise est donc une zone de 14 px posée dans le
- * couloir vide sous les boutons. Trois choses à prouver, et aucune ne se voit :
+ * Patrice, le 22 novembre 2026 : *« on a dit qu'on pouvait enlever la boule ;
+ * s'il veut avancer, un simple geste pour agrandir en page coûte peu »*.
  *
- *   · que le geste déplace VRAIMENT la lecture, et au bon endroit ;
- *   · qu'il ne ferme pas la pastille au passage — le glissement qui la ferme
- *     vit sur la boîte juste au-dessus, et deux gestes horizontaux se
- *     superposent ;
- *   · que la zone ne mord pas sur les boutons, sinon on vise la lecture et on
- *     change de leçon.
+ * 🔴 CE FICHIER PORTAIT TROIS SONDES POUR CETTE BOULE — qu'on puisse la
+ * tirer, qu'elle reste dans sa zone de prise aux deux bouts, que cette zone
+ * ne morde pas sur les boutons — plus un fichier entier, `pastille-doigt`,
+ * né d'un défaut que la souris ne voyait pas. Tout ça disparaît avec elle.
+ *
+ * 🧭 ET CE QUI LES REMPLACE N'EST PAS « la boule n'est plus là ». Un contrôle
+ * d'absence ne vaut rien tout seul. Ce qui se prouve ici, c'est que la bande
+ * du bas a changé de MAIN : elle ne déplace plus la lecture, et le geste de
+ * fermeture — qui perdait systématiquement contre la prise du curseur — la
+ * gouverne maintenant jusqu'en bas.
+ *
+ * ⚠️ EN ÉVÉNEMENTS TACTILES RÉELS, par CDP, et c'est l'héritage de
+ * `pastille-doigt` : une sonde à la souris y avait laissé passer un vrai
+ * défaut, parce qu'un clic emprunte un autre chemin dans le navigateur.
  */
-test('on déplace la lecture en tirant le curseur de la pastille', async ({ page }) => {
+test('le trait dit où on en est, et ne se tire plus', async ({ page }) => {
   await ouvrirEcoute(page)
   await lancer(page)
   await auModule(page)
-
-  const d = await page.evaluate(() => document.querySelector('audio').duration)
-  const r = await page.locator('[data-pastille-curseur]').boundingBox()
-  expect(r, 'pas de curseur sur la pastille').toBeTruthy()
-  const y = r.y + r.height / 2
-  const cible = 0.7
-
-  await page.mouse.move(r.x + r.width * 0.2, y)
-  await page.mouse.down()
-  // Le temps doit apparaître À LA PLACE DU RANG pendant le geste : sans lui on
-  // ne récolte qu'une proportion, et « à peu près un tiers » fait quatre
-  // minutes sur une leçon de onze.
-  await page.mouse.move(r.x + r.width * 0.45, y)
-  await page.mouse.move(r.x + r.width * cible, y)
-  /**
-   * ⚠️ ON ATTEND QUE LA BOULE AIT FINI DE GROSSIR. Première version : on la
-   * lisait juste après le mouvement et elle mesurait **10,33 px** — en pleine
-   * transition de cent millisecondes. Le test passait par chance, à un tiers
-   * de pixel du seuil. Une mesure prise sur une cible en mouvement ment, même
-   * quand elle donne le bon verdict.
-   */
-  /**
-   * ⚠️ UNE SEULE LECTURE, ET C'EST ELLE QU'ON JUGE. Version précédente : on
-   * attendait que la boule ait grossi, PUIS on relisait dans un second appel.
-   * Deux lectures, deux instants — et la seconde retombait parfois sur 12 px,
-   * la taille au repos. Le test échouait au hasard en accusant l'app de ne pas
-   * grossir la boule, alors qu'elle l'avait fait entre les deux mesures.
-   *
-   * 🧭 La valeur qu'on affirme doit être CELLE QUI A SATISFAIT L'ATTENTE, pas
-   * une autre prise juste après.
-   */
-  let pendant = null
-  await expect
-    .poll(
-      async () => {
-        pendant = await page.evaluate(() => ({
-          rang: document.querySelector('[data-pastille-ecoute] a span span')?.textContent.trim() ?? null,
-          boule: Math.round(document.querySelector('[data-pastille-boule]')?.getBoundingClientRect().width ?? 0),
-        }))
-        return pendant.boule
-      },
-      { timeout: 5_000 },
-    )
-    .toBeGreaterThan(12)
-  await page.mouse.up()
-
-  const apres = await page.evaluate(() => ({
-    t: document.querySelector('audio').currentTime,
-    rang: document.querySelector('[data-pastille-ecoute] a span span')?.textContent.trim() ?? null,
-    pastille: !!document.querySelector('[data-pastille-ecoute]'),
-  }))
-  console.log(JSON.stringify({ duree: Math.round(d), vise: Math.round(d * cible), pendant, apres }, null, 1))
-
-  const griefs = []
-  // 🔴 LE GESTE NE DOIT PAS FERMER LA PASTILLE. C'est le piège de deux gestes
-  // horizontaux superposés : le plus local doit gagner.
-  if (!apres.pastille) griefs.push('tirer le curseur a fermé la pastille')
-  // Deux pour cent de tolérance : la souris vise au pixel, pas à la seconde.
-  const ecart = Math.abs(apres.t - d * cible)
-  if (ecart > d * 0.03)
-    griefs.push(`arrivé à ${Math.round(apres.t)} s au lieu de ${Math.round(d * cible)} (écart ${Math.round(ecart)} s)`)
-  if (!/^\d+:\d\d \/ \d+:\d\d$/.test(pendant.rang ?? ''))
-    griefs.push(`pendant le geste, la ligne affiche « ${pendant.rang} » au lieu du temps`)
-  // ⚠️ ELLE REVIENT AU THÈME, et plus à « Module N » : c'est le même mot que
-  // la barre du haut depuis le 22 novembre. Ce qu'on vérifie est qu'elle a
-  // QUITTÉ le chrono, pas quel texte elle porte.
-  if (/^\d+:\d\d \/ \d+:\d\d$/.test(apres.rang ?? ''))
-    griefs.push(`après le geste, la ligne affiche encore le temps « ${apres.rang} »`)
-  if (!apres.rang) griefs.push('après le geste, la ligne est vide')
-  // Le seul accusé de réception qu'on ait sur une boule de dix pixels.
-  if (pendant.boule < 13) griefs.push(`la boule ne grossit pas sous le doigt (${pendant.boule} px)`)
-
-  expect(griefs, `ce qui cloche :\n  · ${griefs.join('\n  · ')}`).toEqual([])
-})
-
-/**
- * ── 🔴 LA BOULE DOIT ÊTRE ENTIÈREMENT DANS SA ZONE DE PRISE ────────────────
- *
- * Le défaut que Patrice a vu sur son téléphone pendant que la sonde, à la
- * souris, passait : la boule débordait de la zone **des deux côtés**. Trois
- * pixels sous elle, et au début d'une leçon sa moitié gauche sortait du rail.
- * On vise le seul repère visible, on tombe à moitié dehors, et dehors c'est le
- * glissement de fermeture qui prend le geste — la pastille tressaille, l'audio
- * ne bouge pas.
- *
- * 🧭 ON ÉPROUVE LES TROIS ENDROITS DU RAIL, parce que le défaut n'existait
- * qu'aux extrémités : au milieu, tout allait bien.
- */
-test('la boule reste dans sa zone de prise, du début à la fin', async ({ page }) => {
-  await ouvrirEcoute(page)
-  await lancer(page)
-  await auModule(page)
-
-  const d = await page.evaluate(() => document.querySelector('audio').duration)
-  const releve = async (nom) => {
-    const m = await page.evaluate(() => {
-      const r = (s) => {
-        const e = document.querySelector(s)
-        const b = e.getBoundingClientRect()
-        return { g: Math.round(b.left), d: Math.round(b.right), h: Math.round(b.top), b: Math.round(b.bottom) }
-      }
-      return { boule: r('[data-pastille-boule]'), zone: r('[data-pastille-curseur]') }
-    })
-    const hors = [
-      m.boule.g < m.zone.g && `${m.zone.g - m.boule.g} px à gauche`,
-      m.boule.d > m.zone.d && `${m.boule.d - m.zone.d} px à droite`,
-      m.boule.h < m.zone.h && `${m.zone.h - m.boule.h} px au-dessus`,
-      m.boule.b > m.zone.b && `${m.boule.b - m.zone.b} px en dessous`,
-    ].filter(Boolean)
-    return { nom, ...m, hors }
-  }
-
-  const vus = [await releve('au début')]
-  for (const [nom, p] of [['au milieu', 0.5], ['à la fin', 0.995]]) {
-    await page.evaluate((p) => {
-      document.querySelector('audio').currentTime = document.querySelector('audio').duration * p
-    }, p)
-    await expect
-      .poll(() => page.evaluate(() => document.querySelector('audio').currentTime), { timeout: 10_000 })
-      .toBeGreaterThan(d * p - 2)
-    vus.push(await releve(nom))
-  }
-  console.log(JSON.stringify(vus, null, 1))
-
-  const griefs = vus.filter((v) => v.hors.length).map((v) => `${v.nom} : la boule sort de ${v.hors.join(' et ')}`)
-  expect(griefs, `ce qui cloche :\n  · ${griefs.join('\n  · ')}`).toEqual([])
-})
-
-test('la prise du curseur ne mord pas sur les boutons', async ({ page }) => {
-  await ouvrirEcoute(page)
-  await lancer(page)
-  await auModule(page)
-  // 🔴 ET ON VA JUSQU'À L'ÉTAGÈRE, parce que c'est le seul écran des deux qui
-  // porte la barre du bas. Sur la couverture d'un module il n'y a rien sous la
-  // pastille : la moitié de cette sonde ne s'y exécuterait pas, et elle
-  // passerait au vert sans avoir rien comparé.
-  await aLEtagere(page)
 
   const g = await page.evaluate(() => {
-    const b = (s) => {
-      const e = document.querySelector(s)
-      return e ? e.getBoundingClientRect() : null
-    }
-    const z = b('[data-pastille-curseur]')
-    /**
-     * 🔴 LE HAUT DES COMMANDES, PAS LE HAUT DU MEUBLE. La barre porte 24 px de
-     * rembourrage avant ses boutons : comparer au cadre faisait crier la sonde
-     * alors que 18 px séparaient la prise du premier bouton. Ce qu'on protège,
-     * ce sont les CIBLES, pas les boîtes qui les contiennent.
-     *
-     * 🔴 ET SEULE LA BARRE DU BAS EST SOUS LA PASTILLE. Cette sonde acceptait
-     * `[data-barre-action]` en premier choix, et c'était vrai jusqu'au
-     * 20 novembre 2026 : l'ordre s'est inversé ce jour-là — barre du bas,
-     * lecteur, puis geste du jour AU-DESSUS. Mesuré sur la couverture d'un
-     * module : le geste du jour occupe 674→758 et la pastille commence à 758.
-     * La sonde comparait donc la prise du curseur à des boutons situés
-     * **plus haut qu'elle**, et criait sur un chevauchement impossible.
-     */
-    const meuble = document.querySelector('[data-barre-bas]')
-    const cibles = meuble ? [...meuble.querySelectorAll('a, button')].map((e) => e.getBoundingClientRect().top) : []
+    const t = document.querySelector('[data-pastille-progression]')
+    const a = document.querySelector('audio')
+    const b = t?.getBoundingClientRect()
     return {
-      zone: { haut: Math.round(z.top), bas: Math.round(z.bottom), h: Math.round(z.height) },
-      play: Math.round(b('[data-pastille-basculer]').bottom),
-      suivant: Math.round(b('[data-pastille-suivant]').bottom),
-      meubleHaut: meuble ? Math.round(meuble.getBoundingClientRect().top) : null,
-      cibleHaut: cibles.length ? Math.round(Math.min(...cibles)) : null,
+      trait: b ? { x: b.x, y: b.y, w: b.width, h: Math.round(b.height) } : null,
+      annonce: t ? Number(t.getAttribute('aria-valuenow')) : null,
+      role: t?.getAttribute('role') ?? null,
+      boule: !!document.querySelector('[data-pastille-boule]'),
+      t: a.currentTime,
+      d: a.duration,
     }
   })
-  console.log(JSON.stringify(g, null, 1))
 
   const griefs = []
-  const plusBas = Math.max(g.play, g.suivant)
-  // 🔴 EN HAUT ELLE S'ARRÊTE AUX BOUTONS : viser la lecture et changer de
-  // leçon est le genre de défaut qu'on met des jours à nommer.
-  if (g.zone.haut < plusBas)
-    griefs.push(`la prise commence à ${g.zone.haut}, soit ${plusBas - g.zone.haut} px DANS les boutons`)
+  // 🔴 SANS LE TRAIT, RIEN N'EST ÉPROUVÉ : mieux vaut échouer que passer au
+  // vert sur une mesure qui n'a pas eu lieu.
+  expect(g.trait, 'aucun trait de progression dans la pastille').toBeTruthy()
+
+  // L'état reste énoncé ; il n'est simplement plus une promesse.
+  if (g.role !== 'progressbar') griefs.push(`le trait s’annonce « ${g.role} » et non « progressbar »`)
+  if (Math.abs(g.annonce - g.t) > 2)
+    griefs.push(`le trait annonce ${g.annonce} s pour un son à ${Math.round(g.t)} s`)
+  if (g.boule) griefs.push('la boule est revenue')
+
+  // ── Tirer sur le trait ne déplace plus la lecture, et ferme la pastille.
+  const cdp = await page.context().newCDPSession(page)
+  const y = g.trait.y + g.trait.h / 2
+  const x = g.trait.x + g.trait.w * 0.1
+  await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x, y }] })
+  for (const dx of [40, 110, 200, 280]) {
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: x + dx, y }] })
+  }
+  await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] })
+  await page.waitForTimeout(700)
+
+  const apres = await page.evaluate(() => ({
+    t: document.querySelector('audio')?.currentTime ?? null,
+    pastille: !!document.querySelector('[data-pastille-ecoute]'),
+  }))
+  console.log(JSON.stringify({ avant: Math.round(g.t), ...apres, duree: Math.round(g.d) }, null, 1))
+
   /**
-   * 🔴 ET EN BAS ELLE S'ARRÊTE AVANT LES COMMANDES DU MEUBLE. Depuis que la
-   * pastille est COLLÉE à la barre, sa zone de prise déborde forcément sur le
-   * cadre de celle-ci — c'est la conséquence voulue de « collée ». Ce qui
-   * compte est qu'elle ne morde pas sur les BOUTONS : mesuré, la prise finit
-   * à 766 et le premier bouton commence à 784, les 24 px de rembourrage de la
-   * barre tenant lieu de marge.
+   * ⚠️ « N'A PAS SAUTÉ » ET NON « N'A PAS BOUGÉ » : le son continue de jouer
+   * pendant le geste, donc il avance de quelques secondes. Ce qu'on refuse,
+   * c'est le BOND que produirait un déplacement — ici 70 % de la leçon.
    */
-  /**
-   * ⚠️ ET LE CHEVAUCHEMENT DU BAS EST PLAFONNÉ, PAS INTERDIT. La boule déborde
-   * de 6 px sous la carte — c'est ce qui la rend visable — et la carte est
-   * COLLÉE à la barre : ces 6 px tombent donc forcément sur elle. Patrice
-   * l'avait demandé ainsi. Mesuré : la barre du bas n'a qu'un pixel de
-   * rembourrage avant ses cases, la prise mord donc 5 px sur le haut de cases
-   * hautes de 76. Ce qu'on protège n'est plus « zéro contact » — ce serait
-   * refuser sa demande — mais que ce contact **ne grandisse pas**.
-   */
-  const TOLERE = 6
-  if (g.cibleHaut === null)
-    griefs.push('aucun bouton sous la pastille : la moitié basse de cette sonde n’a rien comparé')
-  else if (g.zone.bas - g.cibleHaut > TOLERE)
-    griefs.push(
-      `la prise descend à ${g.zone.bas}, soit ${g.zone.bas - g.cibleHaut} px dans les cases de la barre ` +
-        `(commencent à ${g.cibleHaut}) : plus que les ${TOLERE} px de la boule`,
-    )
-  if (g.zone.h < 18) griefs.push(`la prise ne fait que ${g.zone.h} px : trop fine pour un doigt`)
+  if (apres.t !== null && Math.abs(apres.t - g.t) > 8)
+    griefs.push(`tirer sur le trait a déplacé la lecture de ${Math.round(apres.t - g.t)} s`)
+  // 🔴 ET LA BANDE DU BAS A CHANGÉ DE MAIN : le glissement de fermeture, qui
+  // perdait contre la prise du curseur, gouverne maintenant jusqu'en bas.
+  if (apres.pastille)
+    griefs.push('glisser vers la droite depuis le trait n’a pas fermé la pastille')
 
   expect(griefs, `ce qui cloche :\n  · ${griefs.join('\n  · ')}`).toEqual([])
 })
@@ -1307,21 +1166,7 @@ test('la pastille a la hauteur de la barre d’action, et est collée au meuble'
     const carte = past?.querySelector('[data-pastille-carte]')
     return {
       carteBas: carte ? Math.round(carte.getBoundingClientRect().bottom) : null,
-      bouleBas: document.querySelector('[data-pastille-boule]')
-        ? Math.round(document.querySelector('[data-pastille-boule]').getBoundingClientRect().bottom)
-        : null,
       meubleHaut: meuble ? Math.round(meuble.getBoundingClientRect().top) : null,
-      zPastille: past ? Number(getComputedStyle(past).zIndex) : null,
-      zMeuble: meuble ? Number(getComputedStyle(meuble).zIndex) : null,
-      /**
-       * 🔴 À `z` ÉGAL, C'EST L'ORDRE DU DOM QUI PEINT, et ce n'est pas un
-       * hasard dont on se méfie : c'est une règle du navigateur, aussi sûre
-       * que le `z`. Ce qu'il fallait écrire, c'est LAQUELLE des deux arrive en
-       * dernier. `DOCUMENT_POSITION_PRECEDING` (2) dit que la barre est AVANT
-       * la pastille, donc que la pastille est peinte par-dessus.
-       */
-      pastilleApres:
-        past && meuble ? !!(past.compareDocumentPosition(meuble) & Node.DOCUMENT_POSITION_PRECEDING) : null,
     }
   })
   console.log(JSON.stringify({ ...m, etagere: c }, null, 1))
@@ -1370,25 +1215,13 @@ test('la pastille a la hauteur de la barre d’action, et est collée au meuble'
     )
 
   /**
-   * 🔴 ET LA BOULE PASSE DEVANT. Elle déborde de 4 px sous la carte, donc
-   * collée au meuble elle le chevauche. Les deux étaient en `z-30` et c'est
-   * l'ordre du DOM qui tranchait — ça marchait, et rien ne l'écrivait.
+   * 🔴 LE CONTRÔLE DE RECOUVREMENT A ÉTÉ RETIRÉ AVEC LA BOULE — 22 nov. 2026.
+   *
+   * Il prouvait qu'elle passait DEVANT la barre du bas, parce qu'elle
+   * débordait de 5 px sous la carte et que les deux partageaient `z-40`. Deux
+   * décisions du même jour l'ont vidé de son objet : la boule n'existe plus,
+   * et la carte s'est écartée de douze pixels du meuble. Plus rien ne dépasse,
+   * donc plus rien à départager.
    */
-  if (c.bouleBas && c.meubleHaut !== null && c.bouleBas > c.meubleHaut) {
-    /**
-     * ⚠️ DEUX FAÇONS DE PASSER DEVANT, ET UNE SEULE SUFFIT. Un `z` strictement
-     * supérieur, ou — à `z` égal — être peinte APRÈS. La première version de
-     * cette sonde n'acceptait que le `z`, et elle a crié sur 40 contre 40 :
-     * la pastille **ne peut pas** monter à 41, parce que les feuilles
-     * ordinaires sont elles aussi à 40 et doivent la recouvrir. Exiger le `z`
-     * ici, c'était demander un défaut ailleurs.
-     */
-    if (!(c.zPastille > c.zMeuble || (c.zPastille === c.zMeuble && c.pastilleApres)))
-      griefs.push(
-        `la boule déborde sur le meuble sans passer devant : z ${c.zPastille} contre ${c.zMeuble}, ` +
-          `peinte après = ${c.pastilleApres} — sa moitié basse peut disparaître`,
-      )
-  }
-
   expect(griefs, `ce qui cloche :\n  · ${griefs.join('\n  · ')}`).toEqual([])
 })
