@@ -234,15 +234,32 @@ test('l’ordre du bas : barre, lecteur, bouton — et le lecteur pleine largeur
       griefs.push(`${v.ou} : le geste du jour finit à ${v.actionBas} et le lecteur commence à ${v.pastilleHaut}`)
     if (v.barreHaut !== null && v.pastilleBas > v.barreHaut + 1)
       griefs.push(`${v.ou} : le lecteur descend à ${v.pastilleBas}, la barre du bas commence à ${v.barreHaut}`)
-    // 🔴 COLLÉ, pas seulement « au-dessus » : un meuble posé sur un autre
-    // forme une seule pièce, et huit pixels d'air en font deux objets qui se
-    // frôlent.
-    if (v.barreHaut !== null && v.barreHaut - v.pastilleBas > 1)
-      griefs.push(`${v.ou} : ${v.barreHaut - v.pastilleBas} px d’air entre le lecteur et la barre du bas`)
-    // ⚠️ PLEINE LARGEUR, c'est-à-dire exactement celle de la barre du bas :
-    // c'est l'harmonie demandée, et elle se mesure.
-    if (v.barreLarge !== null && v.large !== v.barreLarge)
-      griefs.push(`${v.ou} : lecteur ${v.large} px de large contre ${v.barreLarge} pour la barre du bas`)
+    /**
+     * ── 🔴 DOUZE PIXELS, ET PLUS « COLLÉ » — 22 novembre 2026 ──────────────
+     *
+     * Cette sonde exigeait le contact : *« un meuble posé sur un autre forme
+     * une seule pièce »*. C'était juste tant que la pastille ÉTAIT un meuble,
+     * d'un bord à l'autre. Patrice en a fait une **carte** — grammaire
+     * d'« Ajouter un contact » : seize de gouttière, douze au-dessus du
+     * meuble, coins arrondis. Un meuble se colle ; une carte se pose.
+     *
+     * ⚠️ ET LES DEUX NOMBRES SE TIENNENT. Collée, une carte arrondie aurait
+     * ses coins du bas rognés par la barre : on n'aurait vu le rayon qu'en
+     * haut, ce qui se lit comme un défaut de dessin, pas comme une intention.
+     */
+    const AIR = 12
+    if (v.barreHaut !== null && Math.abs(v.barreHaut - v.pastilleBas - AIR) > 1)
+      griefs.push(
+        `${v.ou} : ${v.barreHaut - v.pastilleBas} px entre le lecteur et la barre du bas, au lieu de ${AIR}`,
+      )
+    // ⚠️ LA LARGEUR UTILE, c'est-à-dire celle de la barre moins ses deux
+    // gouttières de seize : la carte s'aligne sur le CONTENU du meuble, pas
+    // sur son cadre.
+    if (v.barreLarge !== null && Math.abs(v.large - (v.barreLarge - 32)) > 1)
+      griefs.push(
+        `${v.ou} : lecteur ${v.large} px de large pour une barre de ${v.barreLarge} ` +
+          `(on attend ${v.barreLarge - 32})`,
+      )
     // Sans aucun meuble, il reste près du bord — le défaut nommé dans
     // `ConteneurAction` : un geste qui flotte à 64 px du vide.
     if (v.barreHaut === null && v.ecran - v.pastilleBas > 44)
@@ -506,18 +523,21 @@ test('la rangée a rendu sa place au titre', async ({ page }) => {
 
   const griefs = []
   /**
-   * 🔴 170, ET LE CHIFFRE EST ENFIN PRIS SUR LA BONNE BOÎTE. Relevé le
-   * 22 novembre sur la colonne nommée, à 390 px d'écran : **178**. Les 358 px
-   * utiles de la carte moins les quatre commandes (32 + 36 + 32 + 32) et leurs
-   * écarts — tout est structurel, rien ne dépend du texte.
+   * 🔴 138, ET LE CHIFFRE EST ENFIN PRIS SUR LA BONNE BOÎTE. Relevé le
+   * 22 novembre sur la colonne nommée, à 390 px d'écran : **146**. Tout y est
+   * structurel — les 326 px utiles de la carte moins les quatre commandes
+   * (32 + 36 + 32 + 32) et leurs écarts — et rien ne dépend du texte.
    *
-   * 🧭 CE QUE LE SEUIL GUETTE : le retour de la pochette ou de la croix, qui
-   * coûteraient une quarantaine de pixels et feraient tomber la colonne sous
-   * 140. Huit pixels de marge suffisent pour ça, et évitent de crier sur
-   * l'écart d'une police.
+   * ⚠️ ELLE A PERDU 32 PX LE MÊME JOUR, et c'est le prix assumé de la
+   * gouttière : la pastille est devenue une carte posée au lieu d'un bandeau
+   * d'un bord à l'autre. Le titre défile de toute façon — il demande 338 px
+   * et n'en a jamais eu la moitié.
+   *
+   * 🧭 CE QUE LE SEUIL GUETTE RESTE LE MÊME : le retour de la pochette ou de
+   * la croix, qui coûteraient une quarantaine de pixels.
    */
   if (g.colonneTitre === null) griefs.push('colonne du titre introuvable : rien n’a été mesuré')
-  else if (g.colonneTitre < 170)
+  else if (g.colonneTitre < 138)
     griefs.push(`la colonne du titre ne fait que ${g.colonneTitre} px`)
   if (g.pochette) griefs.push('la pochette est revenue dans la rangée')
   if (g.croix) griefs.push('la croix est revenue')
@@ -1315,23 +1335,39 @@ test('la pastille a la hauteur de la barre d’action, et est collée au meuble'
     if (m.carte.haut !== m.action.haut)
       griefs.push(`hauteurs différentes : pastille ${m.carte.haut}, barre d’action ${m.action.haut}`)
     /**
-     * ⚠️ MÊME LARGEUR, D'UN BORD À L'AUTRE. Je l'avais écrit « la barre moins
-     * ses deux gouttières », en croyant la pastille posée DANS la marge :
-     * mesuré, les deux font 390 sur un écran de 390. Le lecteur est passé
-     * pleine largeur le 20 novembre — Patrice : *« comme ça on obtient une
-     * harmonie avec la bottom partout »* — et il porte sa gouttière à
-     * l'intérieur, exactement comme la barre.
+     * ⚠️ LA LARGEUR UTILE, ET PLUS LE BORD À BORD. La pastille a cessé d'être
+     * un bandeau le 22 novembre : elle est une carte posée dans la gouttière,
+     * comme « Ajouter un contact ». Mesuré à 390 px d'écran : barre 390,
+     * carte 358 — les mêmes seize de chaque côté.
      */
-    if (m.carte.large !== m.action.large)
+    if (Math.abs(m.carte.large - (m.action.large - 32)) > 1)
       griefs.push(
-        `largeurs différentes : lecteur ${m.carte.large}, barre d’action ${m.action.large} — ` +
-          `la pleine largeur a bougé`,
+        `le lecteur (${m.carte.large}) ne tient pas la largeur utile de la barre ` +
+          `(${m.action.large} − 32 = ${m.action.large - 32})`,
       )
   }
-  // Collée : le bas de la carte touche le haut de la barre du bas.
-  if (c.meubleHaut === null) griefs.push('aucune barre du bas à l’étagère : « collée » ne veut rien dire ici')
-  else if (Math.abs(c.carteBas - c.meubleHaut) > 1)
-    griefs.push(`pas collée : la carte finit à ${c.carteBas}, la barre du bas commence à ${c.meubleHaut}`)
+  /**
+   * ── 🔴 À DOUZE PIXELS DU MEUBLE, ET PLUS COLLÉE — 22 novembre 2026 ───────
+   *
+   * Elle l'était : le bas de la carte touchait le haut de la barre. Patrice a
+   * demandé la grammaire d'« Ajouter un contact » pour les bords, et cette
+   * grammaire tient en deux nombres — seize de gouttière, **douze au-dessus
+   * du meuble**. Une carte arrondie collée au meuble aurait ses coins du bas
+   * rognés par lui : le rayon ne se verrait qu'en haut.
+   *
+   * 🧭 ET ÇA RÈGLE UN VIEUX LITIGE AU PASSAGE. La boule déborde de 5 px sous
+   * la carte ; collée, elle entrait DANS la barre et il fallait prouver
+   * qu'elle passait devant. Mesuré depuis : boule à 773, barre à 780 — elles
+   * ne se touchent plus. Le contrôle de recouvrement reste, mais il n'a plus
+   * d'occasion de servir.
+   */
+  const SOUS_LA_CARTE = 12
+  if (c.meubleHaut === null) griefs.push('aucune barre du bas à l’étagère : la distance ne veut rien dire ici')
+  else if (Math.abs(c.meubleHaut - c.carteBas - SOUS_LA_CARTE) > 1)
+    griefs.push(
+      `la carte finit à ${c.carteBas} pour une barre à ${c.meubleHaut} : ` +
+        `${c.meubleHaut - c.carteBas} px au lieu de ${SOUS_LA_CARTE}`,
+    )
 
   /**
    * 🔴 ET LA BOULE PASSE DEVANT. Elle déborde de 4 px sous la carte, donc
