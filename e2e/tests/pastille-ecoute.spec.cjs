@@ -354,6 +354,12 @@ const pisteJouee = (page) =>
 test('les sauts de la pastille changent la piste sans déplacer l’écran', async ({ page }) => {
   await ouvrirEcoute(page)
   await lancer(page)
+  /**
+   * ⚠️ LU AVANT DE PARTIR. `ailleurs` emmène sur un écran qui n'a aucun
+   * rapport avec la formation — et dont la barre du haut dit « Contacts ».
+   * Le thème se lit donc ici, pendant qu'on est encore dans le livre.
+   */
+  const theme = await page.evaluate(() => document.querySelector('h1')?.textContent.trim() ?? null)
   await ailleurs(page)
 
   const avant = await pisteJouee(page)
@@ -363,7 +369,16 @@ test('les sauts de la pastille changent la piste sans déplacer l’écran', asy
   const griefs = []
   // Elle vit sur des écrans sans aucun rapport avec la formation : sans le
   // module, « Leçon 1 » ne dit pas de quel livre.
-  if (!avant.texte?.includes('Module ')) griefs.push(`la pastille ne dit pas le module : « ${avant.texte} »`)
+  /**
+   * 🔴 LE MÊME MOT QUE LA BARRE DU HAUT, ET PLUS « Module N » — 22 nov. 2026.
+   * Patrice : *« on ne met plus Module 2, on met le titre raccourci qu'on a
+   * dans les top bar »*. On ne récrit donc pas le libellé attendu ici : on lit
+   * celui que l'écran affiche et on exige que la pastille dise le même. Deux
+   * écritures du même nom finissent toujours par diverger.
+   */
+  if (!theme) griefs.push('pas de titre dans la barre du haut : la comparaison n’a pas eu lieu')
+  else if (!avant.texte?.includes(theme))
+    griefs.push(`la pastille ne dit pas « ${theme} » comme la barre du haut : « ${avant.texte} »`)
 
   /**
    * ── 🔴 CETTE SONDE EXIGEAIT UN RANG JAMAIS COUPÉ. PLUS MAINTENANT ─────────
@@ -388,7 +403,8 @@ test('les sauts de la pastille changent la piste sans déplacer l’écran', asy
   })
   console.log(JSON.stringify({ rang }, null, 1))
   if (!rang) griefs.push('ligne du rang introuvable')
-  else if (!/Module \d/.test(rang.texte)) griefs.push(`la ligne du rang ne dit pas le module : « ${rang.texte} »`)
+  else if (theme && !rang.texte.includes(theme))
+    griefs.push(`la ligne du rang ne dit pas « ${theme} » : « ${rang.texte} »`)
 
   await page.locator('[data-pastille-suivant]').click()
   await expect
@@ -471,9 +487,16 @@ test('la rangée a rendu sa place au titre', async ({ page }) => {
   await auModule(page)
 
   const g = await page.evaluate(() => {
-    const titre = document.querySelector('[data-pastille-ecoute] a span span:last-child')
+    /**
+     * 🔴 PAR SON NOM, ET PLUS PAR SA POSITION. `a span span:last-child`
+     * attrapait le RUBAN ANIMÉ dès que la première ligne défilait : relevé le
+     * 22 novembre, cette sonde annonçait **1254 px de colonne sur un écran de
+     * 390**, et passait donc au vert quoi qu'il arrive. Une sonde qui mesure
+     * autre chose que son sujet ne peut pas avoir raison.
+     */
+    const titre = document.querySelector('[data-pastille-colonne]')
     return {
-      colonneTitre: Math.round(titre.clientWidth),
+      colonneTitre: titre ? Math.round(titre.clientWidth) : null,
       pochette: !!document.querySelector('[data-pastille-ecoute] img'),
       croix: !!document.querySelector('[data-pastille-fermer]'),
       lire: !!document.querySelector('[data-pastille-lire]'),
@@ -483,12 +506,18 @@ test('la rangée a rendu sa place au titre', async ({ page }) => {
 
   const griefs = []
   /**
-   * 🔴 180 ET PLUS 160. Mesuré après le retrait : la colonne passe de 168 à
-   * 186. Laisser le seuil à 160 aurait rendu cette sonde muette sur un
-   * retour en arrière qui coûterait 25 px — exactement ce qu'elle existe
-   * pour voir.
+   * 🔴 170, ET LE CHIFFRE EST ENFIN PRIS SUR LA BONNE BOÎTE. Relevé le
+   * 22 novembre sur la colonne nommée, à 390 px d'écran : **178**. Les 358 px
+   * utiles de la carte moins les quatre commandes (32 + 36 + 32 + 32) et leurs
+   * écarts — tout est structurel, rien ne dépend du texte.
+   *
+   * 🧭 CE QUE LE SEUIL GUETTE : le retour de la pochette ou de la croix, qui
+   * coûteraient une quarantaine de pixels et feraient tomber la colonne sous
+   * 140. Huit pixels de marge suffisent pour ça, et évitent de crier sur
+   * l'écart d'une police.
    */
-  if (g.colonneTitre < 180)
+  if (g.colonneTitre === null) griefs.push('colonne du titre introuvable : rien n’a été mesuré')
+  else if (g.colonneTitre < 170)
     griefs.push(`la colonne du titre ne fait que ${g.colonneTitre} px`)
   if (g.pochette) griefs.push('la pochette est revenue dans la rangée')
   if (g.croix) griefs.push('la croix est revenue')
@@ -627,7 +656,31 @@ test('les deux lignes défilent sans raccord visible', async ({ page }) => {
   // 🔴 ET IL FAUT QU'UNE LIGNE AIT LA MAIN, sinon le carrousel est à l'arrêt
   // et personne ne le dirait.
   if (!lignes.some((l) => l.defile)) griefs.push('aucune des deux lignes ne défile : rien n’a été comparé')
-  else if (!lignes.some((l) => l.sonTour)) griefs.push('aucune ligne n’a la main : le carrousel est à l’arrêt')
+  else {
+    /**
+     * ⚠️ ÇA SE GUETTE, ÇA NE SE CONSTATE PAS. Depuis que la ligne du module
+     * est courte, elle n'a rien à faire défiler : pendant SON tour, aucune des
+     * deux n'anime. Un relevé instantané tomberait donc régulièrement sur ce
+     * creux et accuserait un carrousel qui tourne très bien. Ce qu'il faut
+     * prouver, c'est qu'une ligne prend la main **dans un délai**.
+     */
+    await expect
+      .poll(
+        () =>
+          page.evaluate(() =>
+            ['rang', 'titre'].some((r) =>
+              document
+                .querySelector(`[data-pastille-ligne="${r}"] [data-pastille-piste]`)
+                ?.classList.contains('titre-pastille'),
+            ),
+          ),
+        {
+          timeout: 15_000,
+          message: 'aucune ligne n’a pris la main en 15 s : le carrousel est à l’arrêt',
+        },
+      )
+      .toBe(true)
+  }
 
   expect(griefs, `ce qui cloche :\n  · ${griefs.join('\n  · ')}`).toEqual([])
 })
@@ -684,16 +737,46 @@ test('les deux lignes défilent chacune à son tour', async ({ page }) => {
   // « En mouvement » = déplacée. `null` veut dire qu'elle ne défile pas du tout.
   const bouge = (v) => v !== null && v < -2
   const griefs = []
-  if (!vus.some((v) => bouge(v.rang))) griefs.push('la ligne du module n’a jamais eu son tour en 50 s')
+  /**
+   * ── 🔴 CE QU'ON PROUVE A CHANGÉ LE 22 NOVEMBRE 2026 ──────────────────────
+   *
+   * La ligne du module porte maintenant « Le pourquoi » et non plus
+   * « Module 2 · Clarifier son POURQUOI et son projet de vie » : **elle tient
+   * dans la colonne, donc elle ne défile plus jamais**. Exiger qu'elle bouge
+   * reviendrait à exiger un défaut.
+   *
+   * 🧭 CE QUI RESTE À PROUVER EST LE VRAI SUJET : que la main CIRCULE. Une
+   * ligne qui n'a rien à montrer doit passer son tour, et l'autre le prendre.
+   * C'est exactement la panne du 22 novembre — la garde lisait les deux lignes
+   * avant que la seconde ait parlé, et tout s'arrêtait sans un mot.
+   */
   if (!vus.some((v) => bouge(v.titre))) griefs.push('la ligne de la leçon n’a jamais eu son tour en 50 s')
   const ensemble = vus.filter((v) => bouge(v.rang) && bouge(v.titre))
   if (ensemble.length)
     griefs.push(`les deux lignes bougent en même temps à ${ensemble.map((v) => `${v.s}s`).join(', ')}`)
-  // 🔴 ET LA MAIN REVIENT : sans ça, un carrousel qui fait un seul aller
-  // passerait au vert.
-  const premier = vus.findIndex((v) => bouge(v.titre))
-  if (premier >= 0 && !vus.slice(premier).some((v) => bouge(v.rang)))
-    griefs.push('après le tour de la leçon, la main ne revient jamais au module')
+  /**
+   * 🔴 ON COMPTE LES REDÉMARRAGES, ET PAS LES CREUX — et c'est une correction
+   * de sonde, pas de produit. Première version : chercher un relevé immobile
+   * entre deux mouvements. Elle criait « la main ne revient pas » sur un
+   * carrousel qui faisait trois tours : **le creux ne dure que 2,8 s et on
+   * relève toutes les 2 s**, si bien qu'on tombait presque toujours sur la
+   * dernière image du passage (−434) plutôt que sur l'arrêt.
+   *
+   * 🧭 CE QUI SE VOIT À COUP SÛR, C'EST LE RETOUR EN ARRIÈRE. Une ligne qui
+   * défile ne fait que décroître ; quand elle remonte vers zéro, c'est qu'un
+   * nouveau tour a commencé. Deux remontées prouvent que la main est partie
+   * ET revenue deux fois, ce qu'un carrousel bloqué ne peut pas feindre.
+   */
+  let redemarrages = 0
+  for (let i = 1; i < vus.length; i++) {
+    const a = vus[i - 1].titre
+    const b = vus[i].titre
+    if (a !== null && b !== null && b > a + 50) redemarrages += 1
+  }
+  if (redemarrages < 2)
+    griefs.push(
+      `la leçon n’a redémarré que ${redemarrages} fois en 50 s : la main ne revient pas`,
+    )
 
   expect(griefs, `ce qui cloche :\n  · ${griefs.join('\n  · ')}`).toEqual([])
 })
@@ -779,7 +862,12 @@ test('on déplace la lecture en tirant le curseur de la pastille', async ({ page
     griefs.push(`arrivé à ${Math.round(apres.t)} s au lieu de ${Math.round(d * cible)} (écart ${Math.round(ecart)} s)`)
   if (!/^\d+:\d\d \/ \d+:\d\d$/.test(pendant.rang ?? ''))
     griefs.push(`pendant le geste, la ligne affiche « ${pendant.rang} » au lieu du temps`)
-  if (!apres.rang?.startsWith('Module ')) griefs.push(`après le geste, la ligne reste à « ${apres.rang} »`)
+  // ⚠️ ELLE REVIENT AU THÈME, et plus à « Module N » : c'est le même mot que
+  // la barre du haut depuis le 22 novembre. Ce qu'on vérifie est qu'elle a
+  // QUITTÉ le chrono, pas quel texte elle porte.
+  if (/^\d+:\d\d \/ \d+:\d\d$/.test(apres.rang ?? ''))
+    griefs.push(`après le geste, la ligne affiche encore le temps « ${apres.rang} »`)
+  if (!apres.rang) griefs.push('après le geste, la ligne est vide')
   // Le seul accusé de réception qu'on ait sur une boule de dix pixels.
   if (pendant.boule < 13) griefs.push(`la boule ne grossit pas sous le doigt (${pendant.boule} px)`)
 
@@ -1134,24 +1222,36 @@ test('la pastille met en pause, et le glissement met fin', async ({ page }) => {
 
 
 /**
- * ── 🔴 LA PASTILLE ET LA CARTE D'ENTRAÎNEMENT SONT DU MÊME GABARIT ─────────
+ * ── 🔴 LA PASTILLE FAIT LA HAUTEUR DE LA BARRE D'ACTION ───────────────────
  *
- * Patrice, capture à l'appui : *« la carte entraînement du bas et le lecteur
- * sont de hauteur différente, et cela me fait dire que le lecteur doit avoir
- * la même hauteur que la carte »*. Relevé : 78 px contre 64, pour une largeur
- * rigoureusement identique. Deux cartes de même largeur empilées, de hauteurs
- * voisines mais différentes : le bruit qu'il nomme à chaque fois.
+ * Patrice, le 22 novembre 2026 : *« hauteur du lecteur 84 px comme la
+ * bottombar »*.
  *
- * ⚠️ ET C'EST POUR ÇA QUE CETTE SONDE EXISTE. La hauteur de la carte
- * d'entraînement est une CONSÉQUENCE de son contenu ; celle de la pastille est
- * un NOMBRE ÉCRIT. Rien dans le code ne les relie, donc rien n'empêcherait la
- * première de bouger sans la seconde — sauf une mesure qui les compare.
+ * 🔴 CE N'EST PLUS LA CARTE D'ENTRAÎNEMENT. Cette sonde l'épinglait sur elle
+ * (78 px) depuis le 20 novembre, et ce voisin-là n'était pas le bon : la carte
+ * d'entraînement vit sur UN écran, la barre d'action sur une vingtaine — et
+ * c'est la place exacte que la pastille PREND, puisque sur la couverture du
+ * module la rangée « Écouter / Lire » s'efface quand le lecteur joue ce
+ * module. Deux objets qui occupent le même emplacement doivent faire la même
+ * taille, sinon le bas de l'écran change de hauteur selon ce qu'on écoute.
+ *
+ * 🧭 ET ON MESURE LÀ OÙ LES DEUX EXISTENT. Sur la couverture du module la
+ * barre d'action a justement disparu : s'y comparer n'aurait rien comparé.
+ * `/gens` porte « Ajouter un contact », donc les deux s'y voient ensemble.
+ *
+ * ⚠️ LA HAUTEUR DE LA PASTILLE EST UN NOMBRE ÉCRIT (84) ; celle de la barre
+ * est une CONSÉQUENCE de son dessin — 24 de voile, 48 de bouton, 12 dessous.
+ * Rien dans le code ne les relie, donc rien n'empêcherait la seconde de bouger
+ * sans la première, sauf cette mesure.
  */
-test('la pastille a le gabarit de la carte d’entraînement, et lui est collée', async ({ page }) => {
+test('la pastille a la hauteur de la barre d’action, et est collée au meuble', async ({ page }) => {
   await ouvrirEcoute(page)
   await lancer(page)
   await auModule(page)
-  await page.evaluate(() => scrollTo(0, document.scrollingElement.scrollHeight))
+  await page.goto('/gens', { waitUntil: 'domcontentloaded' })
+  await page.locator('[data-pastille-ecoute]').waitFor({ state: 'visible', timeout: 15_000 })
+  await page.locator('[data-barre-action]').waitFor({ state: 'visible', timeout: 15_000 })
+  await page.waitForTimeout(400)
 
   const m = await page.evaluate(() => {
     const r = (e) => {
@@ -1159,14 +1259,9 @@ test('la pastille a le gabarit de la carte d’entraînement, et lui est collée
       const b = e.getBoundingClientRect()
       return { haut: Math.round(b.height), large: Math.round(b.width), bas: Math.round(b.bottom) }
     }
-    const exo = [...document.querySelectorAll('a, div')].find((e) => {
-      const t = e.textContent.trim()
-      const b = e.getBoundingClientRect()
-      return t.startsWith('Rejouer ça à l’entraînement') && b.height > 40 && b.height < 160
-    })
     const past = document.querySelector('[data-pastille-ecoute]')
     return {
-      exercice: r(exo),
+      action: r(document.querySelector('[data-barre-action]')),
       carte: r(past?.querySelector('[data-pastille-carte]')),
     }
   })
@@ -1174,10 +1269,18 @@ test('la pastille a le gabarit de la carte d’entraînement, et lui est collée
   /**
    * 🔴 « COLLÉE » SE MESURE LÀ OÙ IL Y A QUELQUE CHOSE SOUS ELLE, et ce n'est
    * pas la couverture d'un module : elle n'a pas de barre du bas, la pastille
-   * s'y pose simplement sur la marge gestuelle. On emprunte donc sa hauteur à
-   * la carte d'entraînement ici, puis on va éprouver le contact à l'étagère.
+   * s'y pose simplement sur la marge gestuelle. On va donc éprouver le contact
+   * à l'étagère.
    */
-  await aLEtagere(page)
+  /**
+   * ⚠️ PAR L'ADRESSE, ET PLUS PAR LA FLÈCHE. On vient de `/gens`, qui n'a
+   * aucun « Retour à Apprendre » : `aLEtagere` y attendait un lien qui
+   * n'existe pas et expirait au bout d'une minute.
+   */
+  await page.goto('/parcours', { waitUntil: 'domcontentloaded' })
+  await page.locator('[data-pastille-ecoute]').waitFor({ state: 'visible', timeout: 15_000 })
+  await page.locator('[data-barre-bas]').waitFor({ state: 'visible', timeout: 15_000 })
+  await page.waitForTimeout(400)
   const c = await page.evaluate(() => {
     const past = document.querySelector('[data-pastille-ecoute]')
     const meuble = document.querySelector('[data-barre-bas]')
@@ -1204,23 +1307,26 @@ test('la pastille a le gabarit de la carte d’entraînement, et lui est collée
   console.log(JSON.stringify({ ...m, etagere: c }, null, 1))
 
   const griefs = []
-  // 🔴 SANS LA CARTE, CE TEST N'ÉPROUVE RIEN. Tous les modules n'ont pas
-  // d'entraînement ; mieux vaut échouer que passer au vert sur une comparaison
-  // qui n'a pas eu lieu.
-  if (!m.exercice) griefs.push('carte d’entraînement introuvable : la comparaison n’a pas eu lieu')
+  // 🔴 SANS LA BARRE, CE TEST N'ÉPROUVE RIEN. Mieux vaut échouer que passer au
+  // vert sur une comparaison qui n'a pas eu lieu.
+  if (!m.action) griefs.push('barre d’action introuvable sur /gens : la comparaison n’a pas eu lieu')
+  else if (!m.carte) griefs.push('pastille introuvable sur /gens')
   else {
-    if (m.carte.haut !== m.exercice.haut)
-      griefs.push(`hauteurs différentes : pastille ${m.carte.haut}, carte ${m.exercice.haut}`)
+    if (m.carte.haut !== m.action.haut)
+      griefs.push(`hauteurs différentes : pastille ${m.carte.haut}, barre d’action ${m.action.haut}`)
     /**
-     * ⚠️ LA LARGEUR N'EST PLUS CELLE DE LA CARTE, et c'est voulu depuis que le
-     * lecteur est passé **pleine largeur** : Patrice, le 20 novembre 2026,
-     * *« comme ça on obtient une harmonie avec la bottom partout »*. Il
-     * emprunte donc sa hauteur à la carte d'entraînement et sa largeur à la
-     * barre du bas. Deux voisins, deux dimensions — c'est écrit ici pour que
-     * personne ne « corrige » l'un en croyant l'autre oublié.
+     * ⚠️ MÊME LARGEUR, D'UN BORD À L'AUTRE. Je l'avais écrit « la barre moins
+     * ses deux gouttières », en croyant la pastille posée DANS la marge :
+     * mesuré, les deux font 390 sur un écran de 390. Le lecteur est passé
+     * pleine largeur le 20 novembre — Patrice : *« comme ça on obtient une
+     * harmonie avec la bottom partout »* — et il porte sa gouttière à
+     * l'intérieur, exactement comme la barre.
      */
-    if (m.carte.large <= m.exercice.large)
-      griefs.push(`le lecteur (${m.carte.large}) n’est pas plus large que la carte (${m.exercice.large}) : la pleine largeur a été perdue`)
+    if (m.carte.large !== m.action.large)
+      griefs.push(
+        `largeurs différentes : lecteur ${m.carte.large}, barre d’action ${m.action.large} — ` +
+          `la pleine largeur a bougé`,
+      )
   }
   // Collée : le bas de la carte touche le haut de la barre du bas.
   if (c.meubleHaut === null) griefs.push('aucune barre du bas à l’étagère : « collée » ne veut rien dire ici')
