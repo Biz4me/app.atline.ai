@@ -83,7 +83,13 @@ test('le geste vers le bas sort exactement comme le chevron', async ({ page, pag
   // ── 1. Le chevron, pour savoir ce que « la même chose » veut dire.
   const couverture = await ouvrirEcoute(page)
   const avant = await page.evaluate(() => history.length)
-  await page.locator(`a[href="${couverture}"]`).first().click()
+  /**
+   * ⚠️ LE CHEVRON PAR SON INTITULÉ, pas par son adresse. `a[href="/parcours/…"]`
+   * attrape aussi **la couverture courante du carrousel**, qui mène au même
+   * endroit — et depuis qu'il y a deux écrans montés, elle vient en premier.
+   * La sonde cliquait une image dans un rail horizontal et expirait.
+   */
+  await page.getByLabel(/^Retour au module/).first().click()
   await expect.poll(() => new URL(page.url()).pathname, { timeout: 20_000 }).toBe(couverture)
   const parLeChevron = (await page.evaluate(() => history.length)) - avant
 

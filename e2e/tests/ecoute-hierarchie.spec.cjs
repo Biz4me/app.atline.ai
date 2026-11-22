@@ -36,9 +36,22 @@ test('rang et titre au même corps, le thème un cran dessous', async ({ page })
   await ouvrirEcoute(page)
 
   const m = await page.evaluate(() => {
+    /**
+     * ── 🔴 DEUX ÉCRANS SONT MONTÉS DEPUIS LE 21 NOVEMBRE 2026, AU SOIR ────
+     *
+     * L'écoute est une FEUILLE posée sur la couverture du module : les deux
+     * vivent en même temps, et `document.querySelector` rend **celui de
+     * derrière**, qui vient en premier dans le document. La sonde comparait
+     * donc la couverture du module avec le rang de la feuille, et annonçait
+     * un rang décentré de 33 px.
+     *
+     * 🧭 ON MESURE DANS LA FEUILLE QUAND IL Y EN A UNE. Le jour où l'on
+     * arrive par l'adresse directe, il n'y en a pas et c'est le document.
+     */
+    const racine = document.querySelector('[data-feuille-ecoute]') ?? document
     const px = (s) => Math.round(parseFloat(s))
     const lis = (sel) => {
-      const e = document.querySelector(sel)
+      const e = racine.querySelector(sel)
       if (!e) return null
       const s = getComputedStyle(e)
       return {
@@ -81,11 +94,11 @@ test('rang et titre au même corps, le thème un cran dessous', async ({ page })
           const s = getComputedStyle(e)
           return (parseFloat(s.lineHeight) - parseFloat(s.fontSize)) / 2
         }
-        const img = document.querySelector('[data-carrousel-modules] [aria-current] img')
-        const nav = document.querySelector('[data-rang-ecoute]')?.closest('nav')
-        const piste = document.querySelector('.piste-ecoute')
-        const t = document.querySelector('[data-titre-ecoute]')
-        const b = [...document.querySelectorAll('button')].find((x) =>
+        const img = racine.querySelector('[data-carrousel-modules] [aria-current] img')
+        const nav = racine.querySelector('[data-rang-ecoute]')?.closest('nav')
+        const piste = racine.querySelector('.piste-ecoute')
+        const t = racine.querySelector('[data-titre-ecoute]')
+        const b = [...racine.querySelectorAll('button')].find((x) =>
           /Écouter la leçon|Mettre en pause/.test(x.getAttribute('aria-label') || ''),
         )
         if (!img || !nav || !piste || !t || !b) return null
