@@ -13,7 +13,27 @@ const path = require('path')
 const BASE = process.env.E2E_BASE || 'https://app.atline.ai'
 const KEY = process.env.E2E_SSH_KEY || path.join(os.homedir(), '.ssh', 'hetzner_atline')
 const HOST = process.env.E2E_SSH_HOST || 'root@178.105.219.148'
-const APP_DIR = process.env.E2E_APP_DIR || '/opt/atline/atline-app'
+/**
+ * ── 🔴 LE BRAS ARMÉ EST PASSÉ DANS V2 (23 novembre 2026) ───────────────────
+ *
+ * Il pointait sur `/opt/atline/atline-app`, c'est-à-dire **V1** : le harnais
+ * est né avec elle et n'avait jamais déménagé. Les sondes prouvaient donc V2
+ * en exécutant un script de V1.
+ *
+ * 🔴 CE QUE ÇA COÛTAIT, CONSTATÉ LE 22 NOVEMBRE AU SOIR : ajouter une fixture
+ * de test — une conversation jetable — obligeait à reconstruire et redémarrer
+ * **l'application que les distributeurs utilisent**.
+ *
+ * 🧭 ET SURTOUT, IL SERAIT MORT LE JOUR DE LA BASCULE. V2 est écrit pour
+ * prendre la place de V1 sur `app.atline.ai`, et V1 disparaît alors — le
+ * harnais avec elle, précisément le jour où il faudrait prouver que la
+ * bascule s'est bien passée. Logé dans V2, il voyage avec le code qu'il
+ * mesure, et ce chemin suivra tout seul.
+ *
+ * ⚠️ V2 portait déjà tout : `DATABASE_URL`, `NEXTAUTH_SECRET`,
+ * `@prisma/client`, `next-auth`. Il ne manquait que le fichier.
+ */
+const APP_DIR = process.env.E2E_APP_DIR || '/opt/atline/atline-v2'
 
 // SSH sans shell local (execFile) → zéro souci de quoting Windows/bash.
 const ssh = (remote) =>
@@ -100,6 +120,33 @@ const test = base.test.extend({
       ssh('node e2e/server-helper.cjs depeupler')
     } catch (e) {
       console.error('la foule n’a pas été retirée', e.message)
+    }
+  },
+
+  /**
+   * ── UN FIL D'ATLAS JETABLE : DEUX MESSAGES, « MOI » D'ABORD ───────────────
+   *
+   * 🔴 MÊME RAISON QUE LA FOULE, UN CRAN PLUS LOIN (23 novembre 2026). Trois
+   * sondes lisent le fil — son échelle de texte, et le fait que la bulle
+   * « moi » se voie sur le fond. **Aucun compte de la base ne nourrit tout** :
+   * celui de référence porte 34 contacts et zéro message, celui qui a des
+   * messages n'a que trois contacts. Choisir un compte affame toujours une
+   * moitié des sondes ; fabriquer est la seule sortie.
+   *
+   * 🧭 ET ON NE PARLE PAS AU MODÈLE POUR ÇA : les deux messages sont écrits en
+   * base. Faire répondre Atlas coûterait un appel payant à chaque passage,
+   * pour une question qui ne porte que sur du dessin.
+   */
+  fil: async ({ seed }, use) => {
+    // ⚠️ Même prudence que la foule : on lit à partir du dernier `{`, Prisma
+    // pouvant écrire un avertissement avant notre ligne.
+    const sortie = ssh(`node e2e/server-helper.cjs bavarder ${seed.cid}`).trim()
+    const cree = JSON.parse(sortie.slice(sortie.lastIndexOf('{')))
+    await use(cree)
+    try {
+      ssh('node e2e/server-helper.cjs taire')
+    } catch (e) {
+      console.error('le fil n’a pas été retiré', e.message)
     }
   },
 

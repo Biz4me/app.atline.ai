@@ -21,6 +21,10 @@
 //                      prénoms accentués, six villes françaises, et leurs
 //                      COORDONNÉES. Imprime la liste.
 //  - depeupler      -> les retire tous, et eux seuls.
+//  - bavarder <cid> -> crée UN fil d'Atlas jetable sur le compte du contact
+//                      <cid> : deux messages, « moi » d'abord. Imprime le fil.
+//  - taire          -> retire les fils jetables, et eux seuls (cascade sur
+//                      leurs messages).
 //
 //    🔴 POURQUOI ILS EXISTENT (20 novembre 2026). Cinq sondes exigeaient la
 //    donnée du compte : « plus de 5 points sur la carte », « une Émilie dans
@@ -37,6 +41,14 @@ const { readFileSync } = require('fs')
 
 /** La marque des contacts semés. Elle seule autorise leur suppression. */
 const MARQUE = 'E2E-GEO '
+
+/**
+ * La marque des fils jetables, posée dans leur TITRE. Elle seule autorise leur
+ * suppression — voir `bavarder` / `taire`.
+ * ⚠️ Distincte de celle des contacts : deux familles d'objets jetables, deux
+ * marques, sinon un `taire` trop large emporterait des contacts.
+ */
+const MARQUE_FIL = 'E2E-FIL '
 
 const env = readFileSync('.env.local', 'utf8')
 const pick = (k) => {
@@ -252,11 +264,80 @@ const { encode } = require('next-auth/jwt')
        */
       const r = await prisma.contact.deleteMany({ where: { name: { startsWith: MARQUE } } })
       console.log(JSON.stringify({ retires: r.count }))
+    } else if (cmd === 'bavarder') {
+      /**
+       * UN FIL D'ATLAS JETABLE — deux messages, et rien de plus.
+       *
+       * 🔴 POURQUOI IL EXISTE (23 novembre 2026). Trois sondes lisent le fil :
+       * son échelle de texte, et le fait que la bulle « moi » se VOIE sur le
+       * fond — un vrai défaut, mesuré le 10 novembre à **1,07 : 1**, là où la
+       * règle en demande 3. Or **aucun compte de la base ne les nourrit
+       * toutes** : celui qui porte 34 contacts n'a aucun message, celui qui a
+       * des messages n'a que trois contacts. Les sondes sautaient donc, et un
+       * saut ne prouve rien.
+       *
+       * 🧭 ET ON NE PARLE PAS AU MODÈLE POUR ÇA. Faire écrire Atlas pour
+       * fabriquer une bulle coûterait un appel payant à chaque passage de la
+       * suite, pour une question qui ne porte que sur du DESSIN. Les deux
+       * messages sont écrits ici, en base, et le fil est exactement celui que
+       * l'écran rend.
+       *
+       * ⚠️ `contactId` RESTE VIDE, et ce n'est pas un oubli : un fil rattaché
+       * à un contact sort de l'historique principal, et c'est celui-là que les
+       * sondes ouvrent.
+       *
+       * ⚠️ LE RÔLE DU PREMIER MESSAGE EST `USER`, parce que c'est LUI que les
+       * sondes cherchent : la bulle « moi » est celle qui s'aligne à droite.
+       * Un fil où Atlas parle seul ne prouverait rien de ce qu'on mesure.
+       */
+      const base = await prisma.contact.findUnique({
+        where: { id: cid },
+        select: { userId: true },
+      })
+      if (!base) throw new Error(`aucun contact ${cid} pour rattacher un fil`)
+      const fil = await prisma.atlasConversation.create({
+        data: {
+          userId: base.userId,
+          title: `${MARQUE_FIL}le fil que les sondes mesurent`,
+          messages: {
+            create: [
+              {
+                role: 'USER',
+                // Deux lignes, pour que la sonde de l'échelle ait un vrai bloc
+                // de texte à mesurer et pas un mot isolé.
+                content:
+                  'Je dois relancer trois personnes aujourd’hui et je ne sais pas par qui commencer.\nTu me conseilles quoi ?',
+              },
+              {
+                role: 'ASSISTANT',
+                content:
+                  'Commence par celle que tu as vue le plus récemment : la conversation est encore chaude des deux côtés.\nLes deux autres attendront demain sans rien perdre.',
+              },
+            ],
+          },
+        },
+        select: { id: true, title: true },
+      })
+      console.log(JSON.stringify(fil))
+    } else if (cmd === 'taire') {
+      /**
+       * 🔴 LE PRÉFIXE DU TITRE, ET RIEN QUE LUI — même règle que `depeupler`,
+       * et pour la même raison : la base porte les vraies conversations de
+       * Patrice avec son coach. `startsWith` est écrit en dur, sans argument,
+       * donc il n'y a rien à se tromper d'appeler.
+       *
+       * ⚠️ LES MESSAGES PARTENT AVEC, par la cascade déclarée sur la relation.
+       * Les supprimer à la main ici serait une seconde vérité à tenir.
+       */
+      const r = await prisma.atlasConversation.deleteMany({
+        where: { title: { startsWith: MARQUE_FIL } },
+      })
+      console.log(JSON.stringify({ fils_retires: r.count }))
     } else if (cmd === 'delete') {
       await prisma.contact.delete({ where: { id: cid } })
       console.log('delete ok')
     } else {
-      throw new Error('commande ? create | reset <cid> | compter <cid> | adresse <cid> | rdv <cid> [heures] | rdv-delete <rid> | peupler <cid> | depeupler | delete <cid>')
+      throw new Error('commande ? create | reset <cid> | compter <cid> | adresse <cid> | rdv <cid> [heures] | rdv-delete <rid> | peupler <cid> | depeupler | bavarder <cid> | taire | delete <cid>')
     }
   } finally {
     await prisma.$disconnect()

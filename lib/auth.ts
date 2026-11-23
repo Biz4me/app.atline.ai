@@ -4,6 +4,7 @@ import GoogleProvider from 'next-auth/providers/google'
 import { PrismaAdapter } from '@auth/prisma-adapter'
 import bcrypt from 'bcryptjs'
 import { db } from '@/lib/db'
+import { noterEchec, noterSucces, secondesAvantDeblocage } from '@/lib/freinage-connexion'
 
 const UNAME_FORMAT = /^[a-z0-9._]{3,20}$/
 const titleCase = (s: string) =>
@@ -78,8 +79,24 @@ export const authOptions: NextAuthOptions = {
           where: { OR: [{ email: identifier }, { username: identifier }] },
         })
         if (!user || !user.passwordHash) return null
+
+        // 🔴 LE FREIN EST AVANT bcrypt, et c'est voulu : un compte verrouillé
+        // ne doit même pas coûter une vérification d'empreinte. On LÈVE plutôt
+        // que de renvoyer null, pour que la personne légitime enfermée voie
+        // POURQUOI et combien de temps — un null muet se lit comme un mauvais
+        // mot de passe de plus, et elle réessaierait en boucle.
+        const reste = secondesAvantDeblocage(user.lockedUntil)
+        if (reste > 0) {
+          const min = Math.ceil(reste / 60)
+          throw new Error(`Trop de tentatives. Réessaie dans ${min} min.`)
+        }
+
         const valid = await bcrypt.compare(credentials.password, user.passwordHash)
-        if (!valid) return null
+        if (!valid) {
+          await noterEchec(user.id)
+          return null
+        }
+        await noterSucces(user.id, user.failedLoginCount > 0 || user.lockedUntil != null)
         return { id: user.id, email: user.email, name: `${user.firstName} ${user.lastName}` }
       },
     }),

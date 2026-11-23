@@ -24,6 +24,14 @@ model User {
   email               String           @unique
   emailVerified       DateTime?
   passwordHash        String?
+  // 🔴 FREIN CONTRE LES TENTATIVES DE CONNEXION EN RAFALE (23 novembre 2026).
+  // `username` est devenu un code d'affiliation partagé publiquement, et il
+  // sert AUSSI à se connecter : sans ces deux colonnes, un attaquant qui
+  // ramasse un identifiant partagé peut essayer des mots de passe sans borne.
+  // `failedLoginCount` compte les échecs d'affilée ; `lockedUntil` ferme la
+  // porte jusqu'à une date. Voir `lib/freinage-connexion.ts`.
+  failedLoginCount    Int              @default(0)
+  lockedUntil         DateTime?
   firstName           String
   lastName            String
   phone               String?

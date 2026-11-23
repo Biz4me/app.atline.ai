@@ -8,33 +8,29 @@
 // soit pleine à la fois. Un contrôle d'apparence se périme au premier
 // changement de goût ; ceux-ci gardent des décisions.
 
-const { test, expect, SANS } = require('../fixtures.cjs')
+const { test, expect } = require('../fixtures.cjs')
 
 /**
- * ── 🔴 CES TROIS SONDES EXIGENT UNE CONVERSATION, ET AUCUN COMPTE N'EN A ───
+ * ── 🔴 CES TROIS SONDES FABRIQUENT LEUR FIL (23 novembre 2026) ─────────────
  *
  * Elles lisent le fil d'Atlas : l'échelle de ses bulles, et le fait que la
- * bulle « moi » se VOIE sur le fond (un vrai défaut, mesuré le 10 novembre
- * 2026 à **1,07 : 1**). Il leur faut donc au moins un échange.
+ * bulle « moi » se VOIE sur le fond — un vrai défaut, mesuré le 10 novembre
+ * 2026 à **1,07 : 1** là où la règle en demande 3. Il leur faut donc au moins
+ * un échange.
  *
- * 🧭 AUCUN COMPTE NE SATISFAIT TOUTES LES SONDES, et c'est la leçon du
- * 23 novembre : le compte de référence porte 34 contacts mais zéro message ;
- * celui qui a des messages n'a que trois contacts. Choisir l'un affame les
- * sondes de l'autre.
+ * 🧭 ET AUCUN COMPTE DE LA BASE NE LES NOURRIT. Le compte de référence porte
+ * 34 contacts et **zéro message** ; celui qui a des messages n'a que trois
+ * contacts. Choisir l'un affame les sondes de l'autre — c'est la leçon du
+ * 23 novembre, et elle ne se règle pas en changeant de compte.
  *
- * ⚠️ ELLES SAUTENT DONC, EN NOMMANT — la troisième option du harnais, après
- * « fabriquer » et « mesurer la structure ». Un saut n'est pas une victoire :
- * il dit ce qui manque pour que la preuve existe.
+ * ⚠️ ELLES ONT SAUTÉ UNE NUIT, EN NOMMANT CE QUI MANQUAIT. C'est la troisième
+ * option du harnais, après « fabriquer » et « mesurer la structure », et elle
+ * ne prouve rien : un saut dit seulement ce qu'il faudrait. Le lendemain, on
+ * l'a fabriqué.
  *
- * ⏳ CE QU'IL FAUDRAIT, ET POURQUOI CE N'EST PAS FAIT ICI : une paire
- * `bavarder` / `taire` dans `server-helper.cjs`, sur le patron exact de
- * `peupler` / `depeupler` — une `AtlasConversation` au titre marqué, deux
- * `AtlasMessage` (USER puis ASSISTANT), et une suppression qui ne retire QUE
- * ce titre-là ; la cascade emporte les messages. Vingt-cinq lignes, aucun
- * appel au modèle, aucun coût. **Mais `server-helper.cjs` vit dans l'app V1
- * déployée** (`E2E_APP_DIR=/opt/atline/atline-app`) : l'ajouter demande de
- * reconstruire et redémarrer l'application que les distributeurs utilisent.
- * Ça ne se fait pas pour une fixture, à une heure du matin.
+ * 🧭 LA FIXTURE `fil` POSE DEUX MESSAGES EN BASE, « moi » d'abord, et les
+ * retire après. **Aucun appel au modèle** : faire répondre Atlas coûterait à
+ * chaque passage, pour une question qui ne porte que sur du dessin.
  */
 
 test.use({ viewport: { width: 390, height: 844 } })
@@ -132,7 +128,10 @@ const ouvrir = async (page, theme) => {
   }
 }
 
-test('le fil se lit en 17 sur 26, et rien n’est hors échelle', async ({ page, pageErrors }) => {
+test('le fil se lit en 17 sur 26, et rien n’est hors échelle', async ({ page, pageErrors, fil }) => {
+  // La fixture `fil` pose deux messages avant l'ouverture : sans eux il n'y a
+  // pas de bulle à mesurer. Voir l'explication en tête de fichier.
+  expect(fil.id, 'le fil jetable n’a pas été créé').toBeTruthy()
   await ouvrir(page)
 
   /**
@@ -160,9 +159,9 @@ test('le fil se lit en 17 sur 26, et rien n’est hors échelle', async ({ page,
     }
   })
 
-  // Voir l'explication en tête de fichier : on saute en nommant, on ne rend
-  // pas un vert gratuit.
-  test.skip(paires.lus.length === 0, SANS('un échange dans le fil d’Atlas (voir « bavarder »)'))
+  expect(paires.lus.length, 'aucun bloc de texte trouvé : la sonde ne mesure rien').toBeGreaterThan(
+    0,
+  )
   console.log(`  lus : ${paires.lus.map((p) => `${p.taille}/${p.interligne}`).join(' · ')}`)
 
   const lecture = paires.echelle.find((e) => e.nom === 'lecture')
@@ -185,7 +184,7 @@ test('le fil se lit en 17 sur 26, et rien n’est hors échelle', async ({ page,
 })
 
 for (const theme of ['dark', 'light']) {
-  test(`la bulle « moi » se VOIT, en ${theme}`, async ({ page }) => {
+  test(`la bulle « moi » se VOIT, en ${theme}`, async ({ page, fil }) => {
     /**
      * 🔴 LE DÉFAUT MESURÉ LE 10 NOVEMBRE 2026 : la bulle était à
      * `--color-surface` sur `--color-fond`, soit **1,07 : 1** en sombre et
@@ -220,7 +219,7 @@ for (const theme of ['dark', 'light']) {
       },
       [ECART],
     )
-    test.skip(m === null, SANS('une bulle « moi » dans le fil d’Atlas (voir « bavarder »)'))
+    expect(m, 'aucune bulle « moi » dans le fil : la sonde ne mesure rien').not.toBeNull()
     console.log(
       `  ${theme} — teinte ΔE ${m.teinte} · bordure ΔE ${m.bordure} · l’ancienne valait ΔE ${m.avant}`,
     )
