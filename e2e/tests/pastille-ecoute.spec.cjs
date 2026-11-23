@@ -1101,29 +1101,36 @@ test('la pastille met en pause, et le glissement met fin', async ({ page }) => {
 
 
 /**
- * ── 🔴 LA PASTILLE FAIT LA HAUTEUR DE LA BARRE D'ACTION ───────────────────
+ * ── 🔴 LA PASTILLE FAIT LA HAUTEUR DE LA BARRE DES LIEUX ───────────────────
  *
- * Patrice, le 22 novembre 2026 : *« hauteur du lecteur 84 px comme la
- * bottombar »*.
+ * Patrice, le 22 novembre 2026 au soir : *« tente la hauteur de la bottombar
+ * pour la hauteur du lecteur, j'y tiens, on va voir ce que ça donne »*, puis,
+ * la capture sous les yeux : **« ça me va »**. La pastille vaut donc **64**.
  *
- * 🔴 CE N'EST PLUS LA CARTE D'ENTRAÎNEMENT. Cette sonde l'épinglait sur elle
- * (78 px) depuis le 20 novembre, et ce voisin-là n'était pas le bon : la carte
- * d'entraînement vit sur UN écran, la barre d'action sur une vingtaine — et
- * c'est la place exacte que la pastille PREND, puisque sur la couverture du
- * module la rangée « Écouter / Lire » s'efface quand le lecteur joue ce
- * module. Deux objets qui occupent le même emplacement doivent faire la même
- * taille, sinon le bas de l'écran change de hauteur selon ce qu'on écoute.
+ * ── 🔴 CETTE SONDE A ÉPINGLÉ TROIS VOISINS EN TROIS JOURS ─────────────────
  *
- * 🧭 ET ON MESURE LÀ OÙ LES DEUX EXISTENT. Sur la couverture du module la
- * barre d'action a justement disparu : s'y comparer n'aurait rien comparé.
- * `/gens` porte « Ajouter un contact », donc les deux s'y voient ensemble.
+ * La carte d'entraînement (78) le 20 novembre, la barre d'ACTION (84) le 22 au
+ * matin, la barre des LIEUX (64) le 22 au soir. Ce n'est pas de l'hésitation :
+ * chaque voisin répondait à une question différente, et c'est la question qui
+ * a changé.
  *
- * ⚠️ LA HAUTEUR DE LA PASTILLE EST UN NOMBRE ÉCRIT (84) ; celle de la barre
- * est une CONSÉQUENCE de son dessin — 24 de voile, 48 de bouton, 12 dessous.
- * Rien dans le code ne les relie, donc rien n'empêcherait la seconde de bouger
- * sans la première, sauf cette mesure.
+ * ⚠️ ET LE 84 AVAIT UNE VRAIE RAISON, QUI EST MAINTENANT UN COÛT ASSUMÉ. Sur
+ * la couverture d'un module, la rangée « Écouter / Lire » s'efface quand le
+ * lecteur joue ce module, et la pastille se pose exactement à sa place : deux
+ * objets au même emplacement devraient faire la même taille. À 64, **ce bas
+ * d'écran-là change de vingt pixels** selon qu'on écoute ou non. Patrice l'a
+ * su avant de trancher — c'est écrit dans `lecteur-global.tsx`. 🔴 Ne pas
+ * « corriger » ce saut en remettant 84 : ce serait défaire une décision.
+ *
+ * 🧭 ET ON MESURE LÀ OÙ LES DEUX EXISTENT ENSEMBLE. `/parcours` porte la barre
+ * des cinq lieux, donc la comparaison de hauteur s'y fait — et c'est aussi là
+ * qu'on éprouve les douze pixels, d'une seule visite.
+ *
+ * ⚠️ LA LARGEUR, ELLE, RESTE COMPARÉE À LA BARRE D'ACTION sur `/gens` : c'est
+ * la grammaire d'« Ajouter un contact » — seize de gouttière de chaque côté —
+ * et elle n'a pas bougé.
  */
-test('la pastille a la hauteur de la barre d’action, et est collée au meuble', async ({ page }) => {
+test('la pastille a la hauteur de la barre des lieux, à douze pixels du meuble', async ({ page }) => {
   await ouvrirEcoute(page)
   await lancer(page)
   await auModule(page)
@@ -1166,7 +1173,9 @@ test('la pastille a la hauteur de la barre d’action, et est collée au meuble'
     const carte = past?.querySelector('[data-pastille-carte]')
     return {
       carteBas: carte ? Math.round(carte.getBoundingClientRect().bottom) : null,
+      carteHaut: carte ? Math.round(carte.getBoundingClientRect().height) : null,
       meubleHaut: meuble ? Math.round(meuble.getBoundingClientRect().top) : null,
+      meubleEpais: meuble ? Math.round(meuble.getBoundingClientRect().height) : null,
     }
   })
   console.log(JSON.stringify({ ...m, etagere: c }, null, 1))
@@ -1177,8 +1186,6 @@ test('la pastille a la hauteur de la barre d’action, et est collée au meuble'
   if (!m.action) griefs.push('barre d’action introuvable sur /gens : la comparaison n’a pas eu lieu')
   else if (!m.carte) griefs.push('pastille introuvable sur /gens')
   else {
-    if (m.carte.haut !== m.action.haut)
-      griefs.push(`hauteurs différentes : pastille ${m.carte.haut}, barre d’action ${m.action.haut}`)
     /**
      * ⚠️ LA LARGEUR UTILE, ET PLUS LE BORD À BORD. La pastille a cessé d'être
      * un bandeau le 22 novembre : elle est une carte posée dans la gouttière,
@@ -1207,8 +1214,19 @@ test('la pastille a la hauteur de la barre d’action, et est collée au meuble'
    * d'occasion de servir.
    */
   const SOUS_LA_CARTE = 12
-  if (c.meubleHaut === null) griefs.push('aucune barre du bas à l’étagère : la distance ne veut rien dire ici')
-  else if (Math.abs(c.meubleHaut - c.carteBas - SOUS_LA_CARTE) > 1)
+  if (c.meubleHaut === null)
+    griefs.push('aucune barre du bas à l’étagère : ni la hauteur ni la distance ne se mesurent ici')
+  /**
+   * 🔴 LA HAUTEUR SE COMPARE ICI, ET À LA BARRE DES LIEUX. Aucun des deux
+   * nombres n'est écrit dans cette sonde : la pastille porte 64 par une
+   * constante, la barre par `HAUTEUR_BARRE`, et rien dans le code ne les
+   * relie. C'est cette mesure, et elle seule, qui les tient égales.
+   */
+  if (c.meubleEpais !== null && c.carteHaut !== null && c.carteHaut !== c.meubleEpais)
+    griefs.push(
+      `hauteurs différentes : pastille ${c.carteHaut}, barre des lieux ${c.meubleEpais}`,
+    )
+  if (c.meubleHaut !== null && Math.abs(c.meubleHaut - c.carteBas - SOUS_LA_CARTE) > 1)
     griefs.push(
       `la carte finit à ${c.carteBas} pour une barre à ${c.meubleHaut} : ` +
         `${c.meubleHaut - c.carteBas} px au lieu de ${SOUS_LA_CARTE}`,
