@@ -19,14 +19,49 @@ const APP_DIR = process.env.E2E_APP_DIR || '/opt/atline/atline-app'
 const ssh = (remote) =>
   execFileSync('ssh', ['-i', KEY, '-o', 'StrictHostKeyChecking=no', HOST, `cd ${APP_DIR} && ${remote}`], { encoding: 'utf8' })
 
+/**
+ * LE COMPTE DE RÉFÉRENCE DE LA SUITE — voir la raison sur `seed`, plus bas.
+ * ⚠️ Il se change ICI, en un endroit, et jamais dans une sonde : une sonde qui
+ * choisit son compte dans son coin redevient un verdict qui dépend d'elle.
+ */
+const COMPTE_DE_REFERENCE = 'humanstring@gmail.com'
+
 const test = base.test.extend({
   // Contact jetable + token de session, forgés sur le serveur. Supprimé après le test.
-  // 🔴 `E2E_COMME=<email>` choisit SOUS QUELLE IDENTITÉ le test tourne. Sans
-  // lui, c'est le propriétaire du premier contact, et ce n'est pas celui
-  // qu'on croit : cinq comptes de la base donnent les initiales « PH ». Un
-  // test qui ignore qui il est ne prouve pas ce qu'on croit.
+  /**
+   * ── 🔴 L'IDENTITÉ SE DÉCLARE, ELLE NE SE DEVINE PLUS (23 novembre 2026) ───
+   *
+   * `E2E_COMME=<email>` choisit sous quelle identité le test tourne. Ce
+   * commentaire disait : *« sans lui, c'est le propriétaire du premier
+   * contact, et ce n'est pas celui qu'on croit »*. C'était exact, et le
+   * reconnaître ne suffisait pas.
+   *
+   * 🔴 CE QUE ÇA A COÛTÉ, MESURÉ. `prisma.contact.findFirst()` sans tri rend
+   * la ligne que la base veut bien donner en premier, et elle change dès
+   * qu'on écrit. Le matin du 22 novembre, elle appartenait à un compte de
+   * **34 contacts** : 243 vertes, zéro rouge. Le soir, après les contacts
+   * jetables créés et supprimés dans la journée, elle appartenait à un compte
+   * de **trois** : neuf sondes du carnet au rouge. **Même code, même app,
+   * deux verdicts** — et une soirée passée à chercher une régression qui
+   * n'existait pas.
+   *
+   * 🧭 UNE SUITE DONT L'IDENTITÉ DÉPEND DE L'ORDRE DES LIGNES EN BASE N'EST
+   * PAS REPRODUCTIBLE. Et le défaut n'était pas l'absence de garde : c'était
+   * qu'il n'y avait **rien à déclarer**. Maintenant il y a quelque chose.
+   *
+   * ⚠️ POURQUOI CE COMPTE-LÀ. Neuf sondes exigent un carnet fourni — « plus de
+   * cinq pour que le filtre prouve quelque chose », « une phrase qui déborde à
+   * 320 px », « une page qui défile ». Mesuré le 23 novembre : il porte
+   * **34 contacts**, tous dans son activité courante, 26 avec une couleur et
+   * 27 placés sur la carte. C'est le seul de la base qui les nourrit toutes.
+   *
+   * ⚠️ ET ÇA NE DISPENSE PAS DE FABRIQUER. La fixture `foule` reste le bon
+   * outil pour une sonde qui a besoin d'une donnée PRÉCISE ; ce compte ne
+   * répond que de l'ABONDANCE. Une sonde qui exige « une Émilie » doit la
+   * créer, pas espérer la trouver.
+   */
   seed: async ({}, use) => {
-    const comme = process.env.E2E_COMME ? ` ${process.env.E2E_COMME}` : ''
+    const comme = ` ${process.env.E2E_COMME ?? COMPTE_DE_REFERENCE}`
     const { cid, token } = JSON.parse(ssh(`node e2e/server-helper.cjs create${comme}`).trim().split('\n').pop())
     await use({ cid, token })
     try { ssh(`node e2e/server-helper.cjs delete ${cid}`) } catch (e) { console.error('nettoyage KO', e.message) }
