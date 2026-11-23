@@ -13,6 +13,7 @@
 //     npx playwright test tests/panneau-activite.spec.cjs
 
 const { test, expect } = require('../fixtures.cjs')
+const { lancer, ouvrirEcoute } = require('../son.cjs')
 
 test.use({ viewport: { width: 390, height: 844 }, hasTouch: true })
 
@@ -182,14 +183,35 @@ test('recliquer sur le switcher le fait remonter', async ({ page }) => {
   await chip.click()
   await expect(page.locator(PANNEAU)).toHaveCount(0, { timeout: 10_000 })
 
-  const chevron = await chip.locator('svg').evaluate((s) => {
-    const c = getComputedStyle(s)
-    return { transform: c.transform, rotate: c.rotate }
-  })
-  expect(
-    !chevron.transform.startsWith('matrix(-1, 0, 0, -1') && parseFloat(chevron.rotate) !== 180,
-    `le chevron reste inversé après la fermeture : ${JSON.stringify(chevron)}`,
-  ).toBe(true)
+  /**
+   * ── 🔴 ON ATTEND LA FIN DU DEMI-TOUR, ON NE LE LIT PAS AU VOL ─────────────
+   *
+   * Première version : une lecture unique juste après la disparition du
+   * panneau. Elle a tenu trois fois puis dénoncé *« le chevron reste inversé :
+   * rotate 180deg »* sur une app parfaitement juste — React avait bien retiré
+   * la classe, mais la **transition de 200 ms n'avait pas encore avancé d'un
+   * degré**, donc la valeur calculée valait encore exactement 180.
+   *
+   * 🧭 C'est le même piège que la mesure prise pendant la montée du panneau,
+   * payé deux fois dans la même journée : **une valeur animée n'a pas de
+   * valeur à un instant**, elle en a une à la fin. On interroge donc jusqu'à
+   * ce qu'elle soit revenue, au lieu de la surprendre.
+   *
+   * ⚠️ Et c'est une attente sur un FAIT, pas un délai : si le chevron ne
+   * revient jamais, la sonde échoue quand même.
+   */
+  await expect
+    .poll(
+      () =>
+        page.evaluate(() => {
+          const s = document.querySelector('button:has([data-activite-nom]) svg')
+          if (!s) return null
+          const c = getComputedStyle(s)
+          return c.transform.startsWith('matrix(-1, 0, 0, -1') || parseFloat(c.rotate) === 180
+        }),
+      { timeout: 5_000, message: 'le chevron reste inversé après la fermeture' },
+    )
+    .toBe(false)
 })
 
 test('il remonte aussi au geste vers le haut', async ({ page }) => {
@@ -233,4 +255,87 @@ test('il remonte aussi au geste vers le haut', async ({ page }) => {
   await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] })
 
   await expect(page.locator(PANNEAU)).toHaveCount(0, { timeout: 10_000 })
+})
+
+/**
+ * ── 🔴 LA BUTÉE : IL S'ARRÊTE SUR LE MEUBLE LE PLUS HAUT ───────────────────
+ *
+ * Patrice : *« quand le menu activité descend, il vient en butée du lecteur
+ * quand il y a le lecteur, et en butée de la bottombar quand il n'y a pas le
+ * lecteur »*.
+ *
+ * 🔴 ET C'ÉTAIT UN DÉFAUT LIVRÉ : la hauteur maximale soustrayait la barre du
+ * bas **écrite en dur**, donc avec le lecteur affiché le panneau lui passait
+ * dessus. Cette sonde existe parce qu'un nombre recopié ne connaît pas les
+ * meubles qui arrivent après lui.
+ *
+ * 🧭 ELLE MESURE LES DEUX CAS DANS LE MÊME PASSAGE, et c'est le point : une
+ * seule règle doit les couvrir. Sans lecteur, le panneau bute sur la barre ;
+ * avec, sur le lecteur — et aucune des deux mesures n'est écrite dans la
+ * sonde, les deux sont relevées sur l'écran.
+ */
+test('le panneau bute sur le lecteur, et sur la barre quand il n’y en a pas', async ({ page }) => {
+  // ── Sans lecteur : il doit s'arrêter sur la barre des lieux.
+  const chip = await auSelecteur(page)
+  await chip.click()
+  await page.locator(PANNEAU).waitFor({ state: 'visible', timeout: 10_000 })
+  await animationsFinies(page)
+  const sans = await page.evaluate(() => {
+    const p = document.querySelector('[data-panneau]')
+    const b = document.querySelector('nav[aria-label="Navigation principale"]')
+    return {
+      /**
+       * 🔴 CE QU'ON COMPARE EST UN BAS, PAS UNE HAUTEUR. Première version :
+       * `maxHeight` contre l'ordonnée du meuble — 715 contre 780, et la sonde
+       * criait sur une app juste. Le panneau commence à 65 : **65 + 715 = 780**,
+       * pile le haut de la barre. 🧭 Un plafond ne se compare qu'à une
+       * distance, jamais à une position.
+       */
+      bas: Math.round(p.getBoundingClientRect().top + parseFloat(getComputedStyle(p).maxHeight)),
+      plafond: Math.round(parseFloat(getComputedStyle(p).maxHeight)),
+      meuble: Math.round(b.getBoundingClientRect().top),
+      lecteur: !!document.querySelector('[data-pastille-ecoute]'),
+    }
+  })
+  console.log('SANS LECTEUR :', JSON.stringify(sans))
+
+  // ── Avec lecteur : il doit s'arrêter sur LUI, plus haut.
+  await ouvrirEcoute(page)
+  await lancer(page)
+  await page.goto('/accueil', { waitUntil: 'domcontentloaded' })
+  await page.locator('[data-pastille-ecoute]').waitFor({ state: 'visible', timeout: 20_000 })
+  const chip2 = page.locator(CHIP)
+  await chip2.waitFor({ state: 'visible', timeout: 20_000 })
+  await chip2.click()
+  await page.locator(PANNEAU).waitFor({ state: 'visible', timeout: 10_000 })
+  await animationsFinies(page)
+  const avec = await page.evaluate(() => {
+    const p = document.querySelector('[data-panneau]')
+    const l = document.querySelector('[data-pastille-ecoute]')
+    const b = document.querySelector('nav[aria-label="Navigation principale"]')
+    return {
+      bas: Math.round(p.getBoundingClientRect().top + parseFloat(getComputedStyle(p).maxHeight)),
+      plafond: Math.round(parseFloat(getComputedStyle(p).maxHeight)),
+      lecteurHaut: Math.round(l.getBoundingClientRect().top),
+      meuble: Math.round(b.getBoundingClientRect().top),
+      placePubliee: getComputedStyle(document.documentElement)
+        .getPropertyValue('--pastille-haut')
+        .trim(),
+    }
+  })
+  console.log('AVEC LECTEUR :', JSON.stringify(avec))
+
+  const griefs = []
+  if (sans.lecteur) griefs.push('un lecteur traînait déjà : le premier cas n’a pas été mesuré')
+  // ① Sans lecteur, le panneau ne peut pas descendre plus bas que la barre.
+  if (Math.abs(sans.bas - sans.meuble) > 1)
+    griefs.push(`sans lecteur, il peut descendre à ${sans.bas} et la barre est à ${sans.meuble}`)
+  // ② Avec lecteur, il bute sur LUI — donc plus haut que la barre.
+  if (Math.abs(avec.bas - avec.lecteurHaut) > 1)
+    griefs.push(`avec lecteur, il peut descendre à ${avec.bas} et le lecteur est à ${avec.lecteurHaut}`)
+  // ③ Et la différence n'est pas nulle : sinon la règle n'aurait rien changé.
+  if (avec.plafond >= sans.plafond)
+    griefs.push(`le lecteur n’a pas relevé le plancher : ${sans.plafond} → ${avec.plafond}`)
+
+  expect(griefs, `ce qui cloche :\n  · ${griefs.join('\n  · ')}`).toEqual([])
 })
