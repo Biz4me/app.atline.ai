@@ -124,18 +124,27 @@ test('les trois points portent Partager et la bascule de lecture', async ({
     page.locator('[data-menu-lecture][aria-expanded="true"]'),
   )
 
-  await expect(page.getByRole('button', { name: 'Partager' })).toBeVisible({ timeout: 10_000 })
   /**
-   * ⚠️ LE LIBELLÉ DÉPEND DE L'ÉTAT, et c'est voulu : la rangée est une
-   * BASCULE depuis le 20 novembre 2026. Elle disait « Déjà marquée comme
-   * terminée », grisée — juste tant qu'il fallait appuyer pour marquer, et
-   * éteinte en permanence depuis que le bas du texte termine la leçon.
+   * ── 🔴 « PARTAGER LA LEÇON » EST GATÉ À L'HÔTE DÉFINITIF ──────────────────
+   * Deux changements depuis l'écriture de cette sonde :
+   * · le libellé est devenu « Partager LA LEÇON » (« Partager » tout court
+   *   laissait croire qu'on envoie un lien d'app — voir `menu-lecture.tsx`) ;
+   * · surtout, l'entrée n'apparaît QUE si la leçon a un lien public, et ce lien
+   *   est supprimé hors de l'adresse définitive (`surAdresseDefinitive` →
+   *   `app.atline.ai`). Sur **v2**, où tourne ce harnais, on ne partage pas un
+   *   lien vers un hôte qu'on n'indexe pas : l'entrée est donc **légitimement
+   *   absente**. L'exiger ferait échouer la sonde pour un comportement VOULU.
    *
-   * 🧭 La sonde accepte donc les deux sens : elle vérifie que l'entrée EXISTE
-   * et qu'elle est VIVANTE, pas l'avancement du compte de test.
+   * 🧭 On vérifie donc : (1) le lien public est bien absent ici — la garde de
+   * référencement tient ; (2) le cœur host-indépendant du menu — la bascule
+   * vivante et aucune entrée de bibliothèque.
    */
+  await expect(
+    page.getByRole('button', { name: /Partager la leçon/ }),
+    'v2 n’est pas l’hôte définitif : le lien public doit rester supprimé',
+  ).toHaveCount(0)
   const bascule = page.getByRole('button', { name: /^Marquer comme (terminée|non lue)$/ })
-  await expect(bascule).toBeVisible()
+  await expect(bascule, 'le menu ne s’est pas ouvert, ou la bascule manque').toBeVisible({ timeout: 10_000 })
   await expect(bascule, 'la bascule ne doit jamais être éteinte').toBeEnabled()
 
   /**

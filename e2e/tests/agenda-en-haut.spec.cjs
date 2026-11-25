@@ -17,9 +17,15 @@ const BARRE = 'Navigation principale'
 const haut = (page) => page.locator('[data-agenda-haut]')
 
 test('l’agenda est en haut sur les lieux, et plus dans la barre', async ({ page, pageErrors }) => {
+  /**
+   * 🔴 PLUS /parcours (25 nov. 2026) : le raccourci agenda a été RETIRÉ de la
+   * barre d'Apprendre à la demande de Patrice (topbar d'Apprendre épurée). L'agenda
+   * reste un LIEU — ce que vérifient les autres épreuves de ce fichier — mais son
+   * icône n'est plus dans CETTE barre. On la mesure donc sur les lieux qui la
+   * portent encore : l'accueil et les contacts.
+   */
   for (const [adresse, titre] of [
     ['/accueil', 'Accueil'],
-    ['/parcours', 'Apprendre'],
     ['/gens', 'Contacts'],
   ]) {
     await page.goto(adresse, { waitUntil: 'domcontentloaded' })

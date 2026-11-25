@@ -20,16 +20,20 @@
 //
 // ── LE GABARIT ────────────────────────────────────────────────────────────
 //
-//   hauteur 65 · icône 22 collée au titre · titre 23/700 · la PAIRE centrée
+//   hauteur 64 · icône 22–32 collée au titre · titre 23/700 · la PAIRE centrée
 //
-// ⚠️ L'ICÔNE N'EST PAS TOUJOURS UN `<svg>` : sur l'accueil c'est la pastille
-// de l'activité, un `<span>` de 22. On cherche donc « quelque chose de 22 px
-// juste avant le titre », pas une balise.
+// 🔴 64 ET PLUS 65 (25 nov. 2026) : le filet sous la barre a été retiré partout
+// (`border-b` supprimé de la Coquille). Un pixel de bordure en moins, mesuré sur
+// les 28 écrans à Coquille.
+// 🔴 L'ICÔNE VA DE 22 À 32. Les icônes de lieu sont passées à 32 (« icônes à 32
+// partout »), la pastille de l'accueil reste un `<span>` de 22. On cherche donc
+// « quelque chose de 18–34 px juste avant le titre », pas une balise, pas une
+// taille unique.
 const { test, expect } = require('../fixtures.cjs')
 
 test.use({ viewport: { width: 390, height: 844 } })
 
-const HAUTEUR = 65
+const HAUTEUR = 64
 const TAILLE = 23
 const MILIEU = 195
 /** Le centre du bloc peut dériver de ce qui l'accompagne (un chevron). */
@@ -56,8 +60,8 @@ const mesurer = (page, r) =>
     const ic = [...h.querySelectorAll('svg, span, img')]
       .filter((e) => {
         const b = e.getBoundingClientRect()
-        return b.width >= 18 && b.width <= 26 && b.height >= 18 && b.height <= 26 &&
-          b.right <= bt.left + 2 && b.right > bt.left - 26
+        return b.width >= 18 && b.width <= 34 && b.height >= 18 && b.height <= 34 &&
+          b.right <= bt.left + 2 && b.right > bt.left - 40
       })
       .pop()
     /**
@@ -127,6 +131,16 @@ test('toutes les barres du haut portent le même gabarit', async ({ page, pageEr
   const griefs = []
   for (const v of vus) {
     const ou = v.r.replace(/\/[a-z0-9]{20,}/gi, '/…')
+    /**
+     * ── 🔴 DEUX ÉCRANS NE SONT PAS DES BARRES DE LIEU, ET C'EST ASSUMÉ ──────
+     * Comme `/auth`, ils sortent du gabarit — on les voit, on ne les juge pas :
+     * · `/coach/repeter/appel` a un EN-TÊTE PROPRE, pas une Coquille (`appel-ui.tsx`
+     *   le dit : « elle ne peut pas devenir une Coquille », l'écran d'appel est à
+     *   part) ;
+     * · l'écoute porte une Coquille NUE (`enteteNue`, 25 nov.) : pas de titre à
+     *   l'œil, donc rien à harmoniser (sa hauteur tombe à 60).
+     */
+    if (v.r === '/coach/repeter/appel' || v.r.endsWith('/ecouter')) continue
     if (v.barre === null) {
       griefs.push(`${ou} : aucune barre du haut`)
       continue

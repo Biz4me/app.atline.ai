@@ -156,14 +156,20 @@ test('captures de la liseuse et de la page audio', async ({ page, pageErrors }) 
   await page.screenshot({ path: 'capture-lecon-bas.png' })
 
   // ── Les trois points ──
+  // 🔴 LE TÉMOIN D'OUVERTURE EST LA BASCULE, PAS « PARTAGER » (25 nov. 2026).
+  // « Partager la leçon » est gaté à l'hôte définitif (`surAdresseDefinitive` →
+  // `app.atline.ai`) : sur v2 le lien public est supprimé, l'entrée est absente,
+  // et `toucher` tournait sans fin en croyant que le menu ne s'ouvrait pas. La
+  // bascule « Marquer comme… », elle, est TOUJOURS là : c'est elle qui dit que
+  // le menu est ouvert.
   await toucher(
     page.locator('[data-menu-lecture]'),
-    page.getByRole('button', { name: 'Partager' }),
+    page.getByRole('button', { name: /^Marquer comme/ }),
   )
   await figer()
   await page.screenshot({ path: 'capture-menu.png' })
   await page.getByRole('button', { name: 'Fermer' }).click()
-  await expect(page.getByRole('button', { name: 'Partager' })).toHaveCount(0, { timeout: 5000 })
+  await expect(page.getByRole('button', { name: /^Marquer comme/ })).toHaveCount(0, { timeout: 5000 })
 
   // ── Les options de lecture, et un papier choisi ──
   // ⚠️ `toucher` et non `click` : la fenêtre d'hydratation avale un clic sur
