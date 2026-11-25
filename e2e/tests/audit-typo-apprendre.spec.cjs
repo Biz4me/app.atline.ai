@@ -19,8 +19,10 @@ const { test, expect } = require('../fixtures.cjs')
 
 test.use({ viewport: { width: 390, height: 844 } })
 
-/** L'échelle maison, telle que `globals.css` la déclare. */
-const ECHELLE = [29, 23, 17, 15, 13, 11]
+/** L'échelle maison, telle que `globals.css` la déclare.
+ *  🔴 Le 19 (`--text-module`) est arrivé le 25 novembre 2026 : le thème du
+ *  module sous le curseur de l'écoute. Transitoire, mais légitime. */
+const ECHELLE = [29, 23, 21, 17, 15, 13, 11]
 
 /**
  * Relever CE QUI EST PEINT.
@@ -103,7 +105,7 @@ test('relevé des tailles sur tous les écrans d’Apprendre', async ({ page }) 
   const jetons = await page.goto('/parcours', { waitUntil: 'domcontentloaded' }).then(() =>
     page.evaluate(() => {
       const s = getComputedStyle(document.documentElement)
-      return ['display', 'titre', 'lecture', 'corps', 'label', 'micro'].map((n) => ({
+      return ['display', 'titre', 'module', 'lecture', 'corps', 'label', 'micro'].map((n) => ({
         jeton: `--text-${n}`,
         valeur: s.getPropertyValue(`--text-${n}`).trim(),
       }))

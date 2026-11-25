@@ -18,8 +18,13 @@ const { test, expect } = require('../fixtures.cjs')
 
 test.use({ viewport: { width: 390, height: 844 } })
 
-/** Les six crans de l'échelle maison. Rien d'autre n'a le droit d'exister. */
-const ECHELLE = [29, 23, 17, 15, 13, 11]
+/**
+ * Les crans de l'échelle maison. Rien d'autre n'a le droit d'exister.
+ * 🔴 LE 19 EST ARRIVÉ LE 25 NOVEMBRE 2026 — le thème du module sous le curseur.
+ * Patrice l'introduit en sachant que le compte redescendra à six quand une
+ * autre taille sortira ; en attendant, elle est légitime et doit être listée.
+ */
+const ECHELLE = [29, 23, 21, 17, 15, 13, 11]
 
 async function ouvrirEcoute(page) {
   await page.goto('/parcours', { waitUntil: 'domcontentloaded' })
