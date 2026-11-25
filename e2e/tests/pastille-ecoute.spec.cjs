@@ -368,7 +368,13 @@ const pisteJouee = (page) =>
  * EN FAISANT AUTRE CHOSE, et l'éjecter vers l'écran d'écoute annulerait tout
  * le chantier.
  */
-test('les sauts de la pastille changent la piste sans déplacer l’écran', async ({ page }) => {
+// 🔴 RETIRÉ LE 25 NOVEMBRE 2026 : LE MINI NE CHANGE PLUS DE LEÇON. Les ⏮/⏭ ont
+// quitté la pastille — le saut de leçon se fait dans le lecteur plein, à un tap
+// de là. Ce test cliquait `[data-pastille-suivant]`/`-precedent`, qui n'existent
+// plus. Sa part encore vraie (le mini DIT le thème du module) est tenue par
+// « les deux lignes défilent sans raccord visible ». On le passe donc, sans le
+// réécrire pour une capacité disparue.
+test.skip('les sauts de la pastille changent la piste sans déplacer l’écran', async ({ page }) => {
   await ouvrirEcoute(page)
   await lancer(page)
   /**
@@ -514,7 +520,12 @@ test('la rangée a rendu sa place au titre', async ({ page }) => {
     const titre = document.querySelector('[data-pastille-colonne]')
     return {
       colonneTitre: titre ? Math.round(titre.clientWidth) : null,
-      pochette: !!document.querySelector('[data-pastille-ecoute] img'),
+      // 🔴 LA VIGNETTE EST REVENUE, ET C'EST VOULU (25 novembre 2026). La
+      // pochette avait été retirée pour rendre de la place au titre ; Patrice
+      // l'a fait revenir en petit (40 px) pour que le mini DISE ce qu'on écoute.
+      // On ne guette donc plus son absence mais sa PRÉSENCE — et la colonne
+      // reste large (192 px mesurés, bien au-dessus du plancher).
+      vignette: !!document.querySelector('[data-pastille-vignette]'),
       croix: !!document.querySelector('[data-pastille-fermer]'),
       lire: !!document.querySelector('[data-pastille-lire]'),
     }
@@ -539,7 +550,7 @@ test('la rangée a rendu sa place au titre', async ({ page }) => {
   if (g.colonneTitre === null) griefs.push('colonne du titre introuvable : rien n’a été mesuré')
   else if (g.colonneTitre < 138)
     griefs.push(`la colonne du titre ne fait que ${g.colonneTitre} px`)
-  if (g.pochette) griefs.push('la pochette est revenue dans la rangée')
+  if (!g.vignette) griefs.push('la vignette de la pochette manque dans la rangée')
   if (g.croix) griefs.push('la croix est revenue')
   if (!g.lire) griefs.push('« Lire » manque dans la pastille')
 
@@ -590,13 +601,14 @@ test('les deux lignes défilent sans raccord visible', async ({ page }) => {
       return b ? { g: Math.round(b.left), d: Math.round(b.right) } : null
     }
     /**
-     * ⚠️ LA RANGÉE, ET PLUS LA POCHETTE. Elle a été retirée le 21 novembre
-     * 2026 : la borne de gauche est désormais le bord intérieur de la rangée
-     * elle-même, c'est-à-dire là où le texte commence.
+     * 🔴 LA VIGNETTE À GAUCHE, LE PLAY À DROITE (25 novembre 2026). La fenêtre
+     * du texte est bornée par la POCHETTE (revenue en petit) d'un côté et par la
+     * première commande de l'autre. Les ⏮/⏭ ont disparu du mini : la borne de
+     * droite est le bouton PLAY (`data-pastille-basculer`), pas un saut. Mesuré :
+     * 8 px de chaque côté — la fenêtre est centrée.
      */
-    const rangee = bord('[data-pastille-carte] > div')
-    const image = rangee ? { g: rangee.g, d: rangee.g } : null
-    const bouton = bord('[data-pastille-precedent]')
+    const image = bord('[data-pastille-vignette]')
+    const bouton = bord('[data-pastille-basculer]')
     return ['rang', 'titre'].map((r) => {
       const boite = document.querySelector(`[data-pastille-ligne="${r}"]`)
       /**
@@ -985,12 +997,18 @@ test('« Lire » et « Écouter » suivent la leçon qui joue', async ({ page })
   await lancer(page)
   await auModule(page)
 
-  // On avance d'une leçon depuis la pastille : le serveur, lui, continue de
-  // penser à la leçon « à reprendre ».
+  // 🔴 LE MINI N'A PLUS DE ⏭ (25 novembre 2026) : on laisse la leçon
+  // S'ENCHAÎNER sur la suivante en poussant la lecture à sa fin. La leçon qui
+  // joue devient alors différente de celle « à reprendre » que le serveur a
+  // calculée — c'est tout ce dont ce test a besoin pour éprouver que les liens
+  // suivent ce qui JOUE, et non ce que le serveur a figé.
   const avant = await pisteJouee(page)
-  await page.locator('[data-pastille-suivant]').click()
+  await page.evaluate(() => {
+    const a = document.querySelector('audio')
+    a.currentTime = a.duration - 1.2
+  })
   await expect
-    .poll(() => page.evaluate(() => document.querySelector('audio')?.currentSrc), { timeout: 20_000 })
+    .poll(() => page.evaluate(() => document.querySelector('audio')?.currentSrc), { timeout: 30_000 })
     .not.toBe(avant.src)
 
   const joue = await page.evaluate(() => {
