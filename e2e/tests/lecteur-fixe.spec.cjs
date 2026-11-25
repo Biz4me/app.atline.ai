@@ -1,4 +1,4 @@
-// LE CURSEUR ET LE BOUTON NE BOUGENT PAS D'UNE LEÇON À L'AUTRE.
+// LE CURSEUR ET LE BOUTON NE BOUGENT PAS D'UNE LEÇON À L'AUTRE, NI AU DÉFILEMENT.
 //
 //   E2E_BASE=https://v2.atline.ai npx playwright test tests/lecteur-fixe.spec.cjs
 //
@@ -7,127 +7,81 @@
 // Patrice, le 21 novembre 2026 : *« le bouton play doit toujours garder sa
 // position, de même pour le curseur »*.
 //
-// 🔴 MESURÉ SUR LES 71 LEÇONS : **1 titre tient sur une ligne, 40 sur deux,
-// 30 sur trois.** Le bloc du titre variait donc de 28 à 84 px, et le bouton
-// descendait de 28 px entre une leçon à deux lignes et une à trois. La cible
-// qu'on vise le plus souvent se déplaçait selon la longueur d'un texte.
+// 🔴 MESURÉ SUR LES 71 LEÇONS : les titres vont d'une à deux lignes, et le
+// bloc du titre varierait donc en hauteur — poussant le bouton. La parade est
+// de RÉSERVER le pire cas (le titre a sa hauteur fixe) : c'est au TEXTE
+// d'absorber sa variation, jamais aux commandes.
 //
-// 🧭 LA PARADE EST DE RÉSERVER LE PIRE CAS, pas de l'ajuster : le titre a la
-// hauteur de trois lignes et s'y centre. C'est au TEXTE d'absorber sa propre
-// variation, jamais aux commandes.
+// ── 🔴 ET LE PLAY N'EST PLUS « POSÉ COMME AJOUTER UN CONTACT » (25 nov. 2026)
 //
-// ⚠️ ET CETTE SONDE PARCOURT PLUSIEURS MODULES, parce qu'un seul ne contient
-// pas les trois longueurs. Mesurer une leçon aurait rendu « rien ne bouge »
-// sur un écran qui bouge de 28 px dès la suivante.
+// Il l'était : même taille, même distance au meuble (12 px), posé pareil. Mais
+// Patrice a demandé de CENTRER le transport *« entre le trait de la bottombar et
+// le titre qui défile »* — sur un écran d'écoute, le lecteur EST le sujet, pas
+// un geste posé sur le meuble. Le play n'a donc plus 12 px sous lui mais le MÊME
+// air que par-dessus (31). L'invariant n'est plus « à 12 du meuble », c'est
+// « CENTRÉ » : autant d'air dessus que dessous. Et il tient toujours sa place.
 const { test, expect } = require('../fixtures.cjs')
 
 test.use({ viewport: { width: 390, height: 844 } })
 
-/**
- * ── 🔴 LA DISTANCE DU BOUTON AU MEUBLE, CHOISIE ET NON CALCULÉE ───────────
- *
- * Patrice, le 21 novembre 2026 au soir : *« et si on décidait d'une distance
- * entre la bottom et le play pour commencer »*. **40 px.**
- *
- * 🧭 DEUX RÈGLES ONT ÉCHOUÉ AVANT CELLE-LÀ, ET POUR LA MÊME RAISON. D'abord
- * un nombre, 52, « la moitié d'un total constant » — le total n'était pas
- * constant, et l'écart du bas est tombé à 28 le soir même, dès que la mise en
- * page a changé. Puis un partage à parts égales de l'espace libre, qui faisait
- * dépendre la place du bouton de la hauteur de l'écran. **Les deux liaient une
- * cible du pouce à la taille du téléphone.**
- *
- * Ancrée sur le meuble, elle tombe au même endroit partout, et c'est l'air du
- * HAUT qui absorbe la différence — ce que personne ne vise.
- *
- * ⚠️ ET ELLE SE MESURE, parce qu'elle ne s'écrit pas d'un seul morceau : la
- * coquille en donne 16 (sa réserve, moins la hauteur VUE de la barre) et le
- * lecteur pose les 24 qui restent. Ces deux nombres ne vivent pas dans le
- * même fichier et changeront sans se prévenir.
- */
-const SOUS_LE_BOUTON = 12
 /** Un pixel de tolérance : les arrondis de mise en page, rien de plus. */
 const PRES = 2
 
-/**
- * ── 🔴 ET ILS NE BOUGENT PAS NON PLUS QUAND ON FAIT DÉFILER ────────────────
- *
- * Patrice, le 21 novembre 2026 : *« fixe vraiment le bouton play, car il bouge
- * encore quand je remonte ou descends la page »*. Le test au-dessus ne le
- * voyait pas : il mesure à 844 px de haut, où **rien ne défile**. Une sonde qui
- * ne met jamais la page en situation de défiler ne peut rien dire du
- * défilement.
- *
- * 🧭 ON MESURE DONC SUR UN ÉCRAN COURT, et on vérifie d'abord qu'il défile
- * VRAIMENT. Sans ce contrôle, « le bouton n'a pas bougé » serait vrai pour la
- * mauvaise raison — parce qu'on n'a rien fait défiler du tout.
- */
-/**
- * ── 🔴 LE PLAY EST POSÉ COMME LE GESTE DE L'APP, ET PAS SEULEMENT PLACÉ ────
- *
- * Patrice a dû le redire TROIS FOIS : *« le bouton play n'est pas fixe comme
- * le bouton ajouter un contact ou ajouter un rdv »*. À chaque fois j'avais
- * rendu le bouton immobile autrement — en le sortant du flux souple, puis de
- * la région qui défile — et à chaque fois une sonde confirmait « il ne bouge
- * pas ». Elle avait raison et elle ratait la demande : **immobile à la mesure
- * n'est pas posé pareil.**
- *
- * 🧭 ON NE MESURE DONC PLUS UN NOMBRE, ON COMPARE À LA RÉFÉRENCE. Si le play
- * et « Ajouter un contact » ont la même taille, la même distance au meuble,
- * la même hauteur depuis le bas de l'écran et le même mode de positionnement,
- * alors ils sont posés pareil — et aucune de mes trois versions n'aurait
- * passé ce test.
- */
-test('le play est posé comme « Ajouter un contact »', async ({ page }) => {
-  test.setTimeout(300_000)
-  await page.setViewportSize({ width: 390, height: 844 })
+/** Mesure le transport sur l'écran d'écoute : fixe, taille, et ses deux airs. */
+function mesurerTransport(page) {
+  return page.evaluate(() => {
+    const titre = document.querySelector('[data-titre-ecoute]')
+    const b = [...document.querySelectorAll('button')].find((x) =>
+      /Écouter la leçon|Mettre en pause/.test(x.getAttribute('aria-label') || ''),
+    )
+    // La barre du livre est une barre de NAVIGATION (`data-barre-bas`) depuis le
+    // 21 nov. 2026 ; l'action (`data-barre-action`) n'existe que sur d'autres
+    // écrans. On prend celle qui est là.
+    const meuble =
+      document.querySelector('[data-barre-action]') || document.querySelector('[data-barre-bas]')
+    if (!titre || !b || !meuble) return null
+    const rt = titre.getBoundingClientRect()
+    const rb = b.getBoundingClientRect()
+    let fixe = false
+    for (let e = b; e && e !== document.body; e = e.parentElement)
+      if (getComputedStyle(e).position === 'fixed') fixe = true
+    return {
+      fixe,
+      haute: Math.round(rb.height),
+      dessus: Math.round(rb.top - rt.bottom),
+      dessous: Math.round(meuble.getBoundingClientRect().top - rb.bottom),
+    }
+  })
+}
 
-  const releve = () =>
-    page.evaluate(() => {
-      const bas = document.querySelector('[data-barre-bas]')
-      const b =
-        [...document.querySelectorAll('button')].find((x) =>
-          /Écouter la leçon|Mettre en pause/.test(x.getAttribute('aria-label') || ''),
-        ) ||
-        [...document.querySelectorAll('[data-barre-action] button, [data-barre-action] a')].find(
-          (x) => x.getBoundingClientRect().width > 60,
-        )
-      if (!b || !bas) return null
-      const r = b.getBoundingClientRect()
-      let fixe = false
-      for (let e = b; e && e !== document.body; e = e.parentElement)
-        if (getComputedStyle(e).position === 'fixed') fixe = true
-      return {
-        fixe,
-        haute: Math.round(r.height),
-        sousLeBouton: Math.round(bas.getBoundingClientRect().top - r.bottom),
-        duBas: Math.round(innerHeight - r.bottom),
-      }
-    })
-
-  await page.goto('/gens', { waitUntil: 'domcontentloaded' })
-  await page.waitForTimeout(1500)
-  const reference = await releve()
-
+async function ouvrirUneEcoute(page, module = 2) {
   await page.goto('/parcours', { waitUntil: 'domcontentloaded' })
-  const href = await page.locator('a[data-module="2"]').getAttribute('href')
+  const href = await page.locator(`a[data-module="${module}"]`).getAttribute('href')
   await page.goto(href, { waitUntil: 'domcontentloaded' })
   await page.getByRole('link', { name: 'Écouter' }).click()
   await expect(page.locator('[data-titre-ecoute]')).toBeVisible({ timeout: 20_000 })
   await page.waitForTimeout(800)
-  const play = await releve()
+}
 
-  console.log(`  référence ${JSON.stringify(reference)}`)
-  console.log(`  play       ${JSON.stringify(play)}`)
+test('le transport est fixe et centré entre le titre et le meuble', async ({ page }) => {
+  test.setTimeout(120_000)
+  await ouvrirUneEcoute(page)
+  const t = await mesurerTransport(page)
+  console.log(`  transport ${JSON.stringify(t)}`)
 
   const griefs = []
-  // 🔴 SANS LA RÉFÉRENCE, LA COMPARAISON N'EXISTE PAS.
-  if (!reference) griefs.push('« Ajouter un contact » introuvable : rien à comparer')
-  if (!play) griefs.push('le bouton de lecture est introuvable')
-  if (reference && play) {
-    if (!play.fixe) griefs.push('le bouton de lecture n’est pas dans un élément fixe')
-    for (const q of ['haute', 'sousLeBouton', 'duBas'])
-      if (play[q] !== reference[q])
-        griefs.push(`${q} : ${play[q]} pour le play contre ${reference[q]} pour la référence`)
+  if (!t) griefs.push('le transport est introuvable : rien à mesurer')
+  else {
+    // 🔴 FIXE, et pas « immobile par la mise en page ». Patrice a dû le redire
+    // trois fois : un bouton sorti du flux souple a l'air fixe sans l'être, et
+    // la première mise en page de demain le déplace.
+    if (!t.fixe) griefs.push('le bouton de lecture n’est pas dans un élément fixe')
+    if (t.haute !== 48) griefs.push(`le bouton fait ${t.haute} px de haut au lieu de 48`)
+    // 🔴 L'INVARIANT DU 25 NOVEMBRE : CENTRÉ. Autant d'air au-dessus (du titre)
+    // qu'au-dessous (du meuble). On ne fige PAS le nombre — c'est l'égalité qui
+    // porte le sens, pas « 31 ».
+    if (Math.abs(t.dessus - t.dessous) > PRES)
+      griefs.push(`le transport n’est pas centré : ${t.dessus} px au-dessus, ${t.dessous} en dessous`)
   }
   expect(griefs, `ce qui cloche :\n  · ${griefs.join('\n  · ')}`).toEqual([])
 })
@@ -135,23 +89,12 @@ test('le play est posé comme « Ajouter un contact »', async ({ page }) => {
 test('le bouton ne bouge pas quand on fait défiler', async ({ page }) => {
   test.setTimeout(180_000)
   /**
-   * 🔴 568 ET PLUS 667, LE SOIR DU 21 NOVEMBRE 2026. Elle mesurait sur un
-   * iPhone SE, où la région défilait de 130 px. Le titre de la leçon est
-   * passé de 23 à 17 et sa réserve de trois lignes à deux : l'écran a maigri
-   * de 32 px, et il ne défile plus que de **6** à cette hauteur.
-   *
-   * 🧭 ELLE A REFUSÉ DE CONCLURE, ET C'EST EXACTEMENT SON MÉTIER. « Le
-   * bouton n'a pas bougé » après six pixels de défilement ne prouve rien.
-   * On descend donc à 568 — la hauteur du premier iPhone SE — pour qu'il y
-   * ait de nouveau quelque chose à éprouver.
+   * 🔴 ON MESURE SUR UN ÉCRAN COURT (568, le premier iPhone SE), parce qu'à
+   * 844 px rien ne défile et « le bouton n'a pas bougé » serait vrai pour la
+   * mauvaise raison. On vérifie d'abord qu'il y a VRAIMENT eu du défilement.
    */
   await page.setViewportSize({ width: 390, height: 568 })
-  await page.goto('/parcours', { waitUntil: 'domcontentloaded' })
-  const href = await page.locator('a[data-module="2"]').getAttribute('href')
-  await page.goto(href, { waitUntil: 'domcontentloaded' })
-  await page.getByRole('link', { name: 'Écouter' }).click()
-  await expect(page.locator('[data-titre-ecoute]')).toBeVisible({ timeout: 20_000 })
-  await page.waitForTimeout(800)
+  await ouvrirUneEcoute(page)
 
   const ou = () =>
     page.evaluate(() => {
@@ -159,20 +102,9 @@ test('le bouton ne bouge pas quand on fait défiler', async ({ page }) => {
         /Écouter la leçon|Mettre en pause/.test(x.getAttribute('aria-label') || ''),
       )
       const c = document.querySelector('.piste-ecoute')
-      // ⚠️ L'UN OU L'AUTRE : la barre du livre est passée de barre
-      // d'action à barre de navigation le 21 nov. 2026. Chercher la
-      // première seule rendait `null`, et la sonde accusait le lecteur
-      // d'un écart qu'elle n'avait pas mesuré.
-      const meuble =
-        document.querySelector('[data-barre-action]') ||
-        document.querySelector('[data-barre-bas]')
       return {
         bouton: b ? Math.round(b.getBoundingClientRect().top) : null,
         curseur: c ? Math.round(c.getBoundingClientRect().top) : null,
-        sous:
-          b && meuble
-            ? Math.round(meuble.getBoundingClientRect().top - b.getBoundingClientRect().bottom)
-            : null,
       }
     })
 
@@ -196,20 +128,16 @@ test('le bouton ne bouge pas quand on fait défiler', async ({ page }) => {
   const enHaut = await ou()
 
   const griefs = []
-  // 🔴 LA SONDE DOIT D'ABORD AVOIR FAIT DÉFILER QUELQUE CHOSE.
   if (combien.region < 20)
     griefs.push(`rien ne défile (${combien.region} px) : la mesure ne prouve rien`)
   if (enHaut.bouton !== enBas.bouton)
     griefs.push(`le bouton passe de ${enHaut.bouton} à ${enBas.bouton} au défilement`)
   if (enHaut.curseur !== enBas.curseur)
     griefs.push(`le curseur passe de ${enHaut.curseur} à ${enBas.curseur} au défilement`)
-  for (const [q, v] of [['en haut', enHaut.sous], ['en bas', enBas.sous]])
-    if (Math.abs(v - SOUS_LE_BOUTON) > PRES)
-      griefs.push(`${q} du défilement : ${v} px sous le bouton au lieu de ${SOUS_LE_BOUTON}`)
 
   console.log(
     `  région défile de ${combien.region} px · bouton ${enHaut.bouton}→${enBas.bouton} · ` +
-      `curseur ${enHaut.curseur}→${enBas.curseur} · sous ${enHaut.sous}/${enBas.sous}`,
+      `curseur ${enHaut.curseur}→${enBas.curseur}`,
   )
   expect(griefs, `ce qui cloche :\n  · ${griefs.join('\n  · ')}`).toEqual([])
 })
@@ -227,7 +155,7 @@ test('le curseur et le bouton tiennent leur place sur toutes les leçons', async
     .evaluateAll((n) => n.map((e) => e.getAttribute('href')))
 
   const vus = []
-  // Cinq modules : assez pour rencontrer les trois longueurs de titre.
+  // Cinq modules : assez pour rencontrer les différentes longueurs de titre.
   for (const m of modules.slice(0, 5)) {
     await page.goto(m, { waitUntil: 'domcontentloaded' })
     await expect(page.locator('ol li a[data-lecon]').first()).toBeVisible({ timeout: 20_000 })
@@ -250,11 +178,8 @@ test('le curseur et le bouton tiennent leur place sur toutes les leçons', async
           if (!t || !b || !c) return { manque: true }
           const rt = t.getBoundingClientRect()
           const rb = b.getBoundingClientRect()
-          const inter = parseFloat(getComputedStyle(t).lineHeight)
           return {
             texte: t.textContent.trim().slice(0, 24),
-            // Les lignes RÉELLES du texte, pas la hauteur réservée du bloc.
-            lignes: Math.round((t.firstChild?.textContent ? rt.height : 0) / inter),
             curseur: Math.round(c.getBoundingClientRect().top),
             bouton: Math.round(rb.top),
             air: {
@@ -270,8 +195,8 @@ test('le curseur et le bouton tiennent leur place sur toutes les leçons', async
   }
 
   const griefs = []
-  // 🔴 SANS PLUSIEURS LEÇONS, CETTE SONDE N'ÉPROUVE RIEN : « une position »
-  // est toujours constante quand on n'en relève qu'une.
+  // 🔴 SANS PLUSIEURS LEÇONS, CETTE SONDE N'ÉPROUVE RIEN : « une position » est
+  // toujours constante quand on n'en relève qu'une.
   if (vus.length < 10) griefs.push(`${vus.length} leçon(s) relevée(s) : trop peu pour parler de stabilité`)
   if (vus.some((v) => v.manque)) griefs.push('le lecteur manque sur au moins une leçon')
 
@@ -280,14 +205,13 @@ test('le curseur et le bouton tiennent leur place sur toutes les leçons', async
   if (curseurs.length > 1) griefs.push(`le curseur se déplace : ${curseurs.sort().join(', ')}`)
   if (boutons.length > 1) griefs.push(`le bouton se déplace : ${boutons.sort().join(', ')}`)
 
-  /**
-   * 🔴 ET LE BOUTON RESTE À SA DISTANCE DU MEUBLE. C'est la seule des trois
-   * règles qui ne dépende pas de la hauteur de l'écran — voir l'en-tête.
-   */
+  // 🔴 ET LE TRANSPORT RESTE CENTRÉ : autant d'air dessus que dessous, sur
+  // chaque leçon. C'est l'invariant du 25 novembre, en remplacement de l'ancien
+  // « 12 px du meuble ».
   for (const v of vus.filter((x) => !x.manque)) {
-    if (Math.abs(v.air.dessous - SOUS_LE_BOUTON) > PRES)
+    if (Math.abs(v.air.dessus - v.air.dessous) > PRES)
       griefs.push(
-        `« ${v.texte} » : ${v.air.dessous} px sous le bouton au lieu de ${SOUS_LE_BOUTON}`,
+        `« ${v.texte} » : transport décentré (${v.air.dessus} dessus, ${v.air.dessous} dessous)`,
       )
   }
 
