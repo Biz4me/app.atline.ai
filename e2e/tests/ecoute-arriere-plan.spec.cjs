@@ -143,7 +143,21 @@ test('l’écran verrouillé sait quoi afficher', async ({ page }) => {
       album: m?.album ?? null,
       pochettes: (m?.artwork ?? []).map((a) => ({ src: a.src, type: a.type, sizes: a.sizes })),
       etat: navigator.mediaSession?.playbackState ?? null,
-      ecran: document.querySelector('[data-titre-ecoute]')?.textContent.trim() ?? null,
+      /**
+       * 🔴 LA LIGNE DU TITRE EST UN DÉFILÉ DEPUIS LE 25 NOVEMBRE 2026 : quand
+       * elle dépasse, elle rend DEUX exemplaires du texte (voir `LigneDefilante`)
+       * pour que la boucle ne saute pas. Lire le `textContent` de la boîte
+       * renvoyait donc le titre écrit deux fois — « …bâtir sa vie…bâtir sa vie ».
+       * On lit le PREMIER exemplaire (la piste existe quand ça défile), sinon la
+       * boîte elle-même (titre court, pas de piste). Un seul titre, comme ce que
+       * l'œil voit et ce que l'écran verrouillé doit égaler.
+       */
+      ecran: (() => {
+        const b = document.querySelector('[data-titre-ecoute]')
+        if (!b) return null
+        const p = b.querySelector('[data-pastille-piste]')
+        return ((p ? p.firstElementChild : b).textContent ?? '').trim()
+      })(),
     }
   })
   console.log(JSON.stringify(vu, null, 1))

@@ -2,19 +2,18 @@
 //
 //     E2E_BASE=https://v2.atline.ai npx playwright test tests/ecoute-hierarchie.spec.cjs
 //
-// Patrice, le 20 novembre 2026 : *« on a perdu un peu de clarté dans les pages
-// audio »*, et surtout *« fais en sorte que rien ne choque ou soit décalé par
-// rapport aux tailles de police »*. Cette dernière phrase est une règle, et
+// Patrice, le 20 novembre 2026 : *« fais en sorte que rien ne choque ou soit
+// décalé par rapport aux tailles de police »*. Cette phrase est une règle, et
 // une règle qu'aucun build ne vérifie.
 //
-// 🔴 CE QU'ON MESURE : le rang et le titre AU MÊME CORPS, séparés par la
-// graisse — la composition déjà éprouvée dans la liseuse — et le thème un
-// cran de l'échelle en dessous. Trois faits, et chacun casserait en silence.
+// 🔴 CE QU'ON MESURE, DEPUIS LE 25 NOVEMBRE 2026 : sous le curseur, le module
+// en gras SURMONTE le titre de la leçon qui défile — le même bloc que la
+// pastille. Ce qui les sépare est le POIDS et l'ENCRE (les deux à 17), et
+// l'ORDRE. Le « Leçon N de M » reste, lui, sous la pochette.
 //
-// ⚠️ ET LES COULEURS SE LISENT SUR L'ÉLÉMENT, PAS SUR UNE CAPTURE. Sur le PNG
-// de contrôle, « MODULE 1 » avait l'air d'avoir un « 1 » teal : c'était
-// l'antialiasing sous-pixel du navigateur de test. Une couleur ne se juge
-// jamais à l'œil sur une image compressée.
+// ⚠️ ET LES COULEURS SE LISENT SUR L'ÉLÉMENT, PAS SUR UNE CAPTURE. Sur un PNG,
+// l'antialiasing sous-pixel invente des teintes. Une couleur ne se juge jamais
+// à l'œil sur une image compressée.
 const { test, expect } = require('../fixtures.cjs')
 
 test.use({ viewport: { width: 390, height: 844 } })
@@ -32,21 +31,15 @@ async function ouvrirEcoute(page) {
   await page.locator('[data-titre-ecoute]').waitFor({ state: 'visible', timeout: 20_000 })
 }
 
-test('rang et titre au même corps, le thème un cran dessous', async ({ page }) => {
+test('sous le curseur, le module en gras surmonte le titre qui défile', async ({ page }) => {
   await ouvrirEcoute(page)
 
   const m = await page.evaluate(() => {
     /**
-     * ── 🔴 DEUX ÉCRANS SONT MONTÉS DEPUIS LE 21 NOVEMBRE 2026, AU SOIR ────
-     *
-     * L'écoute est une FEUILLE posée sur la couverture du module : les deux
-     * vivent en même temps, et `document.querySelector` rend **celui de
-     * derrière**, qui vient en premier dans le document. La sonde comparait
-     * donc la couverture du module avec le rang de la feuille, et annonçait
-     * un rang décentré de 33 px.
-     *
-     * 🧭 ON MESURE DANS LA FEUILLE QUAND IL Y EN A UNE. Le jour où l'on
-     * arrive par l'adresse directe, il n'y en a pas et c'est le document.
+     * ── 🔴 DEUX ÉCRANS SONT MONTÉS : L'ÉCOUTE EST UNE FEUILLE ────────────
+     * Posée sur la couverture du module, les deux vivent en même temps, et
+     * `document.querySelector` rend celui de DERRIÈRE. On mesure dans la
+     * feuille quand il y en a une ; à l'adresse directe, c'est le document.
      */
     const racine = document.querySelector('[data-feuille-ecoute]') ?? document
     const px = (s) => Math.round(parseFloat(s))
@@ -58,71 +51,44 @@ test('rang et titre au même corps, le thème un cran dessous', async ({ page })
         corps: px(s.fontSize),
         graisse: Number(s.fontWeight),
         encre: s.color,
+        top: Math.round(e.getBoundingClientRect().top),
         texte: e.textContent.trim().slice(0, 50),
       }
     }
     return {
-      rangEntete: lis('[data-rang-entete]'),
+      // Sous la POCHETTE : « Leçon N de M » (RangEcoute), inchangé.
       rang: lis('[data-rang-ecoute]'),
-      titre: lis('[data-titre-ecoute]'),
       /**
-       * 🔴 LE THÈME EST DANS LA BARRE DU HAUT DEPUIS LE 21 NOV. 2026, AU
-       * SOIR. Il vivait en 11 px sous le rang, et il DOUBLAIT le titre écrit
-       * sur l'illustration : les onze thèmes sont le premier mot du titre de
-       * leur module, sept au caractère près. On le lit donc où il est
-       * maintenant, et on vérifie plus bas qu'il n'est PAS revenu sous
-       * l'image.
+       * ── 🔴 SOUS LE CURSEUR : DEUX LIGNES, LE MÊME BLOC QUE LA PASTILLE ──
+       * Patrice, le 25 novembre 2026 : *« sous le curseur on met Le pourquoi
+       * [le thème] et dessous le titre de la leçon »*. Le thème a quitté la
+       * barre du haut (épurée) pour se poser ICI, en gras, au-dessus du titre
+       * qui défile. Ce qui les sépare n'est ni la taille (les deux à 17) ni la
+       * place : c'est le POIDS et l'ENCRE — la doctrine maison. Le module porte
+       * `data-pastille-ligne="rang"`, le titre `data-titre-ecoute`.
        */
-      theme: lis('[data-coquille] header h1'),
+      module: lis('.lecteur-ecoute [data-pastille-ligne="rang"]'),
+      titre: lis('.lecteur-ecoute [data-titre-ecoute]'),
+      /**
+       * 🔴 LE THÈME NE DOIT ÊTRE ÉCRIT NULLE PART AILLEURS SUR CET ÉCRAN. Il
+       * a vécu sous l'image, puis dans la barre du haut ; il est maintenant la
+       * ligne du module sous le curseur. On vérifie qu'il n'est revenu ni sous
+       * l'illustration, ni EN CLAIR dans la barre du haut — laquelle garde un
+       * `h1` en `sr-only` (masqué à l'œil, lisible par la machine), c'est voulu.
+       */
       themeSousLImage: lis('[data-theme-ecoute]'),
-      /**
-       * ── 🔴 LES DEUX CENTRAGES, EN ENCRE ET PAS EN BOÎTES ─────────────────
-       *
-       * Patrice, le 21 novembre au soir : le rang centré entre l'illustration
-       * et le curseur, le titre centré entre le curseur et le bouton.
-       *
-       * 🧭 ET C'EST L'ENCRE QU'ON MESURE, parce que les boîtes mentent ici.
-       * Trois airs invisibles s'en mêlent : le `pb-1` du rail sous l'image,
-       * les 7 px que la boîte du curseur garde sous son trait pour que la
-       * pastille déborde, et la demi-interligne du titre. Mesurés à 14/14 en
-       * boîtes, les écarts VALAIENT 21/18 — et 48/18 dans la colonne du
-       * milieu, là où l'œil regarde.
-       */
-      centrages: (() => {
-        const r = (e) => e.getBoundingClientRect()
-        const demi = (e) => {
-          const s = getComputedStyle(e)
-          return (parseFloat(s.lineHeight) - parseFloat(s.fontSize)) / 2
-        }
-        const img = racine.querySelector('[data-carrousel-modules] [aria-current] img')
-        const nav = racine.querySelector('[data-rang-ecoute]')?.closest('nav')
-        const piste = racine.querySelector('.piste-ecoute')
-        const t = racine.querySelector('[data-titre-ecoute]')
-        const b = [...racine.querySelectorAll('button')].find((x) =>
-          /Écouter la leçon|Mettre en pause/.test(x.getAttribute('aria-label') || ''),
-        )
-        if (!img || !nav || !piste || !t || !b) return null
-        const rp = r(piste)
-        const haut = rp.top + (rp.height - 6) / 2
-        const bas = rp.top + (rp.height + 6) / 2
-        const d = demi(t)
-        return {
-          rang: [Math.round(r(nav).top - r(img).bottom), Math.round(haut - r(nav).bottom)],
-          titre: [Math.round(r(t).top + d - bas), Math.round(r(b).top - (r(t).bottom - d))],
-        }
+      enteteH1Visible: (() => {
+        const h = racine.querySelector('[data-coquille] header h1')
+        if (!h) return null
+        const s = getComputedStyle(h)
+        // `sr-only` se reconnaît à sa boîte de 1 px en `position: absolute`.
+        return !(s.position === 'absolute' && px(s.width) <= 1)
       })(),
       /**
-       * 🔴 LA RÉSERVE DU LECTEUR VAUT SA HAUTEUR RÉELLE.
-       *
-       * Il est `fixed`, donc la page lui réserve sa place par un `calc()` —
-       * la somme de ses constantes, pour que la valeur soit juste **dès le
-       * premier octet de HTML**. Elle était mesurée après coup par un
-       * observateur : le serveur rendait alors une réserve NULLE et le rang
-       * se centrait cent pixels trop bas jusqu'à l'hydratation.
-       *
-       * ⚠️ UNE SOMME PEUT SE TROMPER SANS BRUIT. Le jour où une rangée
-       * s'ajoute au lecteur, le `calc()` ne le saura pas — c'est cette
-       * comparaison qui le dira, et elle seule.
+       * 🔴 LA RÉSERVE DU LECTEUR VAUT SA HAUTEUR RÉELLE. Il est `fixed`, la
+       * page lui réserve sa place par un `calc()` ; une somme peut se tromper
+       * sans bruit le jour où une rangée s'ajoute. Elle est restée de 2 lignes
+       * en passant d'« un titre sur deux lignes » à « module + titre ».
        */
       reserve: (() => {
         const reg = [...document.querySelectorAll('div')].find(
@@ -135,108 +101,47 @@ test('rang et titre au même corps, le thème un cran dessous', async ({ page })
           Math.round(lect.getBoundingClientRect().height),
         ]
       })(),
-      barre: (() => {
-        const h = document.querySelector('[data-coquille] header')
-        return h ? Math.round(h.getBoundingClientRect().height) : null
-      })(),
     }
   })
   console.log(JSON.stringify(m, null, 1))
 
   const griefs = []
-  /**
-   * ── 🔴 `data-rang-entete` A ÉTÉ SUPPRIMÉ LE 21 NOVEMBRE 2026 ─────────────
-   *
-   * La barre du haut portait « MODULE 1 » en 11 majuscules, dans une barre de
-   * 44 px. Patrice a demandé un gabarit unique — *« toutes les barres à la
-   * même hauteur, texte centré avec icône »* — et ce rang était la dernière
-   * forme à part : 65 px et un titre en 23 désormais, comme les 29 autres.
-   *
-   * 🧭 CE QUE CETTE SONDE GARDE EST L'ESSENTIEL : la hiérarchie DANS la page.
-   * Le rang, le titre et le thème sous l'illustration ne doivent pas se
-   * confondre, et c'est là que la clarté se joue — pas dans le chrome.
-   * Le gabarit de la barre, lui, est tenu par `barre-du-haut.spec.cjs`.
-   */
   if (!m.rang) griefs.push('pas de « Leçon N de M » sous l’illustration')
-  if (!m.titre) griefs.push('pas de titre de leçon')
-  /**
-   * ⚠️ DEUX PIXELS DE TOLÉRANCE, et pas zéro : les demi-interlignes tombent
-   * en demi-pixels, et un arrondi n'est pas un défaut de composition.
-   */
+  if (!m.module) griefs.push('pas de ligne de module sous le curseur')
+  if (!m.titre) griefs.push('pas de titre de leçon sous le curseur')
+
   if (!m.reserve) griefs.push('la réserve du lecteur ne se mesure pas')
   else if (Math.abs(m.reserve[0] - m.reserve[1]) > 1)
-    griefs.push(
-      `la page réserve ${m.reserve[0]} px au lecteur, qui en fait ${m.reserve[1]}`,
-    )
-  if (!m.centrages) griefs.push('un élément manque : les centrages ne se mesurent pas')
-  else
-    for (const [quoi, [a, b]] of Object.entries(m.centrages))
-      if (Math.abs(a - b) > 2)
-        griefs.push(`le ${quoi} n’est pas centré : ${a} px au-dessus, ${b} en dessous`)
-  if (!m.theme) griefs.push('pas de thème dans la barre du haut')
-  // ⚠️ ET PAS DEUX FOIS : c'est le doublon qui l'a fait déménager.
-  if (m.themeSousLImage)
-    griefs.push(`le thème est revenu sous l'image : « ${m.themeSousLImage.texte} »`)
+    griefs.push(`la page réserve ${m.reserve[0]} px au lecteur, qui en fait ${m.reserve[1]}`)
+
+  if (m.themeSousLImage) griefs.push(`le thème est revenu sous l'image : « ${m.themeSousLImage.texte} »`)
+  if (m.enteteH1Visible)
+    griefs.push('le titre du module est redevenu visible dans la barre du haut : elle devait rester nue')
 
   /**
-   * ── 🔴 LA RÈGLE S'EST INVERSÉE LE SOIR DU 21 NOVEMBRE 2026 ───────────────
+   * ── 🔴 LA HIÉRARCHIE S'EST INVERSÉE LE 25 NOVEMBRE 2026 ─────────────────
    *
-   * Elle exigeait le rang et le titre **au même corps**, séparés par la
-   * graisse. C'était juste tant qu'ils étaient empilés sous la couverture :
-   * deux lignes voisines, un seul niveau.
-   *
-   * 🧭 ILS NE SE TOUCHENT PLUS. Le titre est descendu DANS le lecteur, en bas
-   * de l'écran ; le rang est resté sous l'illustration, entre deux chevrons,
-   * où il est devenu l'étiquette d'un contrôle. Ce ne sont plus deux lignes
-   * d'un même bloc, ce sont deux objets à deux endroits.
-   *
-   * 🔴 ET CETTE SONDE A TROUVÉ LE VRAI DÉFAUT EN CRIANT. J'avais posé le
-   * titre à 17 en laissant le rang à 23 : **le repère criait plus fort que le
-   * sujet**. Ce qu'on tient maintenant est l'ordre, pas l'égalité — sur un
-   * écran d'écoute, ce qu'on écoute passe devant où l'on en est.
+   * Un lecteur de musique met le TITRE en avant ; Patrice a choisi l'inverse,
+   * comme la pastille : le MODULE est le repère (gras, pleine encre), le titre
+   * de la leçon est le sujet qui défile (poids normal, gris). Les deux sont au
+   * même corps (17) — ce qui les sépare est le poids + l'encre, et l'ORDRE : le
+   * module AU-DESSUS du titre. C'est ce que cette sonde tient désormais, à la
+   * place de l'ancien couple « rang sous la pochette / titre en gras ».
    */
-  if (m.rang && m.titre) {
-    /**
-     * 🔴 LA RÈGLE S'EST ASSOUPLIE LE SOIR DU 21 NOVEMBRE 2026, et pas par
-     * confort. Elle exigeait le titre **plus gros** que le rang, après avoir
-     * attrapé un vrai défaut : un titre à 17 sous un rang resté à 23, où le
-     * repère criait plus fort que le sujet.
-     *
-     * 🧭 Patrice ramène l'écran à TROIS tailles : les deux sont à 17, et ce
-     * qui les sépare est le POIDS et l'ENCRE — la doctrine de la maison,
-     * « la hiérarchie au-delà de la taille se joue au poids + couleur ».
-     * Exiger un cran de taille reviendrait à interdire cette doctrine ici.
-     * On garde donc l'ORDRE : le titre ne descend jamais SOUS le rang, et
-     * les deux autres contrôles (graisse, encre) deviennent la vraie
-     * séparation.
-     */
-    if (m.titre.corps < m.rang.corps)
-      griefs.push(
-        `le titre (${m.titre.corps}) est plus petit que le rang (${m.rang.corps}) : le repère crie plus fort que le sujet`,
-      )
-    if (m.titre.graisse <= m.rang.graisse)
-      griefs.push(`la graisse ne les sépare pas (rang ${m.rang.graisse}, titre ${m.titre.graisse})`)
-    if (m.rang.encre === m.titre.encre)
-      griefs.push('le rang et le titre ont la même encre : rien ne dit lequel est le repère')
+  if (m.module && m.titre) {
+    if (m.module.graisse <= m.titre.graisse)
+      griefs.push(`la graisse ne les sépare pas (module ${m.module.graisse}, titre ${m.titre.graisse})`)
+    if (m.module.encre === m.titre.encre)
+      griefs.push('le module et le titre ont la même encre : rien ne dit lequel est le repère')
+    if (m.module.top >= m.titre.top)
+      griefs.push(`le module (${m.module.top}) n’est pas au-dessus du titre (${m.titre.top})`)
   }
-  /**
-   * 🧭 LE THÈME N'EST PLUS COMPARÉ AU TITRE, ET C'EST LE DÉMÉNAGEMENT QUI
-   * L'EXIGE. Tant qu'ils étaient deux lignes voisines, « le thème sous le
-   * titre » disait quelque chose. Le thème est maintenant dans le chrome, à
-   * 500 px de là : les comparer reviendrait à interdire au gabarit de la
-   * barre d'être ce qu'il est sur les 30 écrans. On garde l'échelle, qui
-   * vaut partout.
-   */
-  for (const [quoi, v] of [['le titre', m.titre], ['le thème', m.theme]])
+
+  // L'échelle maison : rien hors des six crans. Le rang, le module et le titre
+  // sont tous à 17 (--text-lecture).
+  for (const [quoi, v] of [['le rang', m.rang], ['le module', m.module], ['le titre', m.titre]])
     if (v && !ECHELLE.includes(v.corps))
       griefs.push(`${quoi} est à ${v.corps} px, hors de l’échelle ${ECHELLE}`)
-  /**
-   * 🔴 CE CONTRÔLE EXIGEAIT UNE BARRE SOUS 48 PX, et il a eu raison deux
-   * jours : la barre était tombée de 62 à 44 le 19 novembre, et il gardait
-   * cette hauteur. Elle vaut 65 depuis le 21, par décision — le gabarit
-   * unique. Une sonde qui défend un chiffre contre une décision n'est plus un
-   * filet, c'est un frein. La hauteur est tenue ailleurs, sur les 30 écrans.
-   */
 
   expect(griefs, `ce qui cloche :\n  · ${griefs.join('\n  · ')}`).toEqual([])
 })
@@ -248,8 +153,4 @@ test('rang et titre au même corps, le thème un cran dessous', async ({ page })
  * dans ce qui reste ». L'élément n'existe plus, et surtout **la question est
  * posée ailleurs, mieux** : `barre-du-haut.spec.cjs` mesure le centrage du
  * bloc sur les TRENTE écrans, pas sur un seul.
- *
- * 🧭 On ne le repointe pas, on le supprime : deux sondes qui posent la même
- * question finissent par se contredire, et c'est alors la plus ancienne qu'on
- * croit.
  */
