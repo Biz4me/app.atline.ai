@@ -38,8 +38,21 @@ const { test, expect, ouvrirInfos } = require('../fixtures.cjs')
 
 test.use({ viewport: { width: 390, height: 844 } })
 
-/** Ce qui est censé être du mobilier, et jamais un calque. */
-const BANDES = ['[data-barre-action]', '[data-gestes]', '[aria-label="Navigation principale"]']
+/**
+ * Ce qui est censé être du mobilier opaque, et jamais un calque.
+ *
+ * ── 🔴 LA BARRE D'ACTION A QUITTÉ CETTE LISTE (24 novembre 2026) ───────────
+ * Elle y était la vedette : c'est son dégradé opaque qui laissait lire « valorise
+ * sa progression » au travers, le défaut fondateur. Mais Patrice l'a ensuite
+ * voulue FLOTTANTE — *« les boutons d'action doivent flotter comme le lecteur
+ * audio »* : le fond opaque est parti, les boutons sont des cartes pleines qui
+ * flottent, et le CONTENU passe volontairement autour d'eux. Ce n'est donc plus
+ * une bande : exiger qu'elle cache ce qui défile dessous contredirait le design.
+ * Les boutons, eux, restent pleins (on le lit sur `[data-gestes]`, qui est une
+ * vraie rangée opaque). Restent ici les meubles qui DOIVENT couvrir : la rangée
+ * de gestes de la fiche et la barre des lieux.
+ */
+const BANDES = ['[data-gestes]', '[aria-label="Navigation principale"]']
 
 /**
  * ── ⚠️ LE SEUIL EST MESURÉ, PAS CHOISI ────────────────────────────────────
@@ -262,17 +275,23 @@ for (const ecran of ecrans) {
  * n'avait jamais rien trouvé et validait un décor qu'on ne voyait pas.
  */
 test('la-sonde-sait-echouer', async ({ page }) => {
+  // 🔴 ON ABÎME LA BARRE DES LIEUX, ET PLUS LA BARRE D'ACTION (24 nov. 2026).
+  // L'action est devenue flottante (transparente par choix) : elle n'est plus
+  // dans `BANDES`, donc elle ne peut plus servir de cobaye. On rend la barre des
+  // lieux — qui, elle, DOIT rester opaque — à moitié transparente, et on exige
+  // que la sonde le voie. Le même dégradé que le défaut fondateur.
+  const CIBLE = '[aria-label="Navigation principale"]'
   await page.goto('/gens', { waitUntil: 'domcontentloaded' })
   await page.addStyleTag({
-    content: `[data-barre-action]{background:linear-gradient(to top,var(--color-fond) 60%,transparent) !important}`,
+    content: `${CIBLE}{background:linear-gradient(to top,var(--color-fond) 60%,transparent) !important;backdrop-filter:none !important}`,
   })
   const { bouge, releve } = await mesurer(page, 'light')
   expect(bouge).toBeGreaterThan(4)
 
-  const barre = releve.find((b) => b.sel === '[data-barre-action]')
-  expect(barre, 'la barre d’action n’était pas là pour être abîmée').toBeTruthy()
+  const barre = releve.find((b) => b.sel === CIBLE)
+  expect(barre, 'la barre des lieux n’était pas là pour être abîmée').toBeTruthy()
   expect(
     barre.pire,
-    `le dégradé d’avant est de retour et la sonde ne le voit pas : écart max ${barre?.pire}`,
+    `le dégradé est de retour et la sonde ne le voit pas : écart max ${barre?.pire}`,
   ).toBeGreaterThan(SEUIL)
 })

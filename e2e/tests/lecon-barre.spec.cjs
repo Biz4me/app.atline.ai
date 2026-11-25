@@ -91,6 +91,32 @@ async function rendreNonLue(page) {
   }
 }
 
+/**
+ * ── 🔴 ROUVRIR LA LEÇON ET ATTEINDRE LE MENU « … » ───────────────────────────
+ *
+ * La liseuse REPREND à la position quittée (voir `liseuse-reprise`). Ces deux
+ * épreuves rechargent après avoir marqué la leçon **en bas** — la reprise y
+ * ramène donc, et elle rallume l'immersion avec (`immersion.tsx` : `ou > PLI`
+ * ⇒ `cache=true`). La barre du haut s'efface, le menu `[data-menu-lecture]` est
+ * `position: fixed` translaté hors de la vue, et le `scrollIntoView` de
+ * Playwright n'y peut rien.
+ *
+ * 🔴 ET REMONTER NE SUFFIT PAS. `immersion.tsx` est catégorique : *« descendre
+ * cache, TOUCHER montre, et rien d'autre »* — le défilement vers le haut ne
+ * rallume PAS le chrome (sinon il clignoterait à chaque phrase relue). Seul un
+ * TAP sur le texte le rappelle. On fait donc ce que fait déjà la 3ᵉ épreuve :
+ * on tape `[data-fin-de-lecon]` (en vue après la reprise, tout en bas), ce qui
+ * remonte la barre et son menu.
+ */
+async function rouvrirEtMenu(page, adresse) {
+  await page.goto(adresse, { waitUntil: 'domcontentloaded' })
+  await page.locator('[data-rang]').waitFor({ state: 'visible', timeout: 20_000 })
+  await page.waitForTimeout(400) // laisser la reprise se poser (scroll + immersif)
+  await page.locator('[data-fin-de-lecon]').click({ position: { x: 5, y: 0 }, force: true })
+  await expect(page.locator('[data-menu-lecture]')).toBeInViewport({ timeout: 10_000 })
+  await page.locator('[data-menu-lecture]').click()
+}
+
 test('la barre garde ses trois outils, du haut jusqu’au bas', async ({ page, pageErrors }) => {
   await premiereLecon(page)
 
@@ -175,8 +201,7 @@ test('le bas du texte marque la leçon, et le serveur s’en souvient', async ({
   await expect(dit, 'la confirmation doit paraître au bas du texte').toBeVisible({ timeout: 15_000 })
 
   // ── Et le serveur ? ──
-  await page.goto(adresse, { waitUntil: 'domcontentloaded' })
-  await page.locator('[data-menu-lecture]').click()
+  await rouvrirEtMenu(page, adresse)
   await expect(
     page.getByRole('button', { name: 'Marquer comme non lue' }),
     'rechargée, la leçon doit être lue côté serveur',
@@ -229,8 +254,7 @@ test('démarquer tient, même en restant au bas de la page', async ({ page }) =>
   await expect(dit, 'la page a re-marqué la leçon toute seule').toHaveCount(0)
 
   // ── Et le serveur est d'accord ──
-  await page.goto(adresse, { waitUntil: 'domcontentloaded' })
-  await page.locator('[data-menu-lecture]').click()
+  await rouvrirEtMenu(page, adresse)
   await expect(
     page.getByRole('button', { name: 'Marquer comme terminée' }),
     'rechargée, la leçon doit être redevenue non lue',

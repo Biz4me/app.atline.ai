@@ -21,14 +21,22 @@
 // dans la page.
 //
 // ⚠️ DEUX MEUBLES, DEUX HAUTEURS, ET C'EST VOULU. La barre des lieux fait 64,
-// la barre d'action 84 — dont **24 px de voile invisible** (sa couleur est
-// celle de la page, elle ne se voit que là où elle couvre une carte). Le
-// meuble visible fait donc 60 contre 64 : le poids perçu est le même.
+// la barre d'action 76.
+//
+// 🔴 76 ET PLUS 84 DEPUIS LE 24 NOVEMBRE 2026. Patrice : *« les boutons
+// d'action doivent flotter comme le lecteur audio »*. La barre portait 60 px de
+// meuble visible PLUS 24 px de voile opaque (un `linear-gradient` du fond) qui
+// cachait ce qui défilait dessous — 84 en tout. Le voile est parti : les
+// boutons sont des cartes pleines qui FLOTTENT, et la barre ne réserve plus que
+// `HAUTEUR_ACTION` (76, dans `mesures.ts` de l'app). Le meuble visible n'a pas
+// bougé ; c'est le voile qui faisait la différence. ⚠️ Conséquence :
+// `bandes-opaques` ne surveille plus cette barre — devenue volontairement
+// transparente, ce n'est plus une bande.
 const { test, expect } = require('../fixtures.cjs')
 
 test.use({ viewport: { width: 390, height: 844 } })
 
-const ACTION = 84
+const ACTION = 76
 const LIEUX = 64
 /** La cible minimale pour un doigt. Harmoniser par le bas dégraderait. */
 const DOIGT = 48
