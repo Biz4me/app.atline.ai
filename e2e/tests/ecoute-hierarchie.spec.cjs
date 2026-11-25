@@ -96,8 +96,14 @@ test('sous le curseur, le module en gras surmonte le titre qui défile', async (
        * en passant d'« un titre sur deux lignes » à « module + titre ».
        */
       reserve: (() => {
+        // 🔴 `clip` ET PLUS `auto` (25 nov. 2026) : la région d'écoute est passée
+        // en `overflow-y-clip` quand la page a été figée (« cette page ne doit
+        // bouger pour rien d'autre que le morphing »). La réserve, elle, vit
+        // toujours sur cette même région (son `paddingBottom`) — seule la valeur
+        // d'`overflow` qui la désigne a changé. La chercher en `auto` ne trouvait
+        // plus rien, et « la réserve ne se mesure pas » masquait la vraie mesure.
         const reg = [...document.querySelectorAll('div')].find(
-          (e) => getComputedStyle(e).overflowY === 'auto',
+          (e) => getComputedStyle(e).overflowY === 'clip',
         )
         const lect = document.querySelector('.lecteur-ecoute')
         if (!reg || !lect) return null

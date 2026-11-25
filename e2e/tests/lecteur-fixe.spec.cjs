@@ -63,6 +63,26 @@ async function ouvrirUneEcoute(page, module = 2) {
   await page.waitForTimeout(800)
 }
 
+/**
+ * ── 🔴 VISITE DIRECTE, ET PAS LE CLIC « ÉCOUTER » DEPUIS LE MODULE ─────────
+ *
+ * Tourner la page du module puis ouvrir l'écoute l'empile en FEUILLE au-dessus
+ * de la page du module : deux `[data-coquille]` en flux, donc un document deux
+ * fois plus haut que la vue — et le DOCUMENT défile alors, même si la région de
+ * l'écoute, elle, est bien clipée. C'est un artefact de l'empilement, pas l'état
+ * de l'écran que la personne voit (une seule coquille, `winSerre = 0`). On visite
+ * donc `/ecouter` EN DIRECT quand on veut juger si la page défile.
+ */
+async function ouvrirEcouteDirecte(page, module = 2) {
+  await page.goto('/parcours', { waitUntil: 'domcontentloaded' })
+  const href = await page.locator(`a[data-module="${module}"]`).getAttribute('href')
+  await page.goto(href, { waitUntil: 'domcontentloaded' })
+  const lecon = await page.locator('ol li a[data-lecon]').first().getAttribute('href')
+  await page.goto(lecon + '/ecouter', { waitUntil: 'domcontentloaded' })
+  await expect(page.locator('[data-titre-ecoute]')).toBeVisible({ timeout: 20_000 })
+  await page.waitForTimeout(600)
+}
+
 test('le transport est fixe et centré entre le titre et le meuble', async ({ page }) => {
   test.setTimeout(120_000)
   await ouvrirUneEcoute(page)
@@ -86,58 +106,80 @@ test('le transport est fixe et centré entre le titre et le meuble', async ({ pa
   expect(griefs, `ce qui cloche :\n  · ${griefs.join('\n  · ')}`).toEqual([])
 })
 
-test('le bouton ne bouge pas quand on fait défiler', async ({ page }) => {
+test('la page est figée à la verticale, même quand le contenu déborde', async ({ page }) => {
   test.setTimeout(180_000)
   /**
-   * 🔴 ON MESURE SUR UN ÉCRAN COURT (568, le premier iPhone SE), parce qu'à
-   * 844 px rien ne défile et « le bouton n'a pas bougé » serait vrai pour la
-   * mauvaise raison. On vérifie d'abord qu'il y a VRAIMENT eu du défilement.
+   * ── 🔴 L'INVARIANT A CHANGÉ LE 25 NOVEMBRE 2026 ──────────────────────────
+   *
+   * Avant, on prouvait que le bouton ne bougeait PAS QUAND la page défilait.
+   * Patrice : *« cette page ne doit bouger pour rien d'autre que la réduction
+   * avec le morphing »*. La région est passée en `overflow-y-clip` : la page
+   * ne défile donc PLUS DU TOUT à la verticale, et c'est ÇA qu'on tient
+   * maintenant. L'ancienne sonde criait « rien ne défile : la mesure ne prouve
+   * rien » — vrai hier, à l'envers aujourd'hui : le non-défilement EST l'acquis.
+   *
+   * 🧭 DEUX AXES À NE PAS CONFONDRE. Le carrousel des pochettes, lui, défile à
+   * l'HORIZONTALE (`overflow-x-visible`) — un autre axe, qu'on ne touche pas.
+   * On mesure donc le seul débord VERTICAL.
+   *
+   * 🔴 ET LA MESURE N'EST PAS VIDE. Sur un écran court (480), le contenu
+   * DÉBORDE la région clipée : il y a bien quelque chose qui défilerait sans le
+   * clip (`serre > 0`). C'est ce qui empêche « la page ne bouge pas » d'être
+   * vrai pour la mauvaise raison — une page qui ne déborde pas ne prouve rien.
    */
-  await page.setViewportSize({ width: 390, height: 568 })
-  await ouvrirUneEcoute(page)
+  await page.setViewportSize({ width: 390, height: 480 })
+  await ouvrirEcouteDirecte(page)
 
-  const ou = () =>
+  const sonde = () =>
     page.evaluate(() => {
-      const b = [...document.querySelectorAll('button')].find((x) =>
-        /Écouter la leçon|Mettre en pause/.test(x.getAttribute('aria-label') || ''),
+      const cov =
+        document.querySelector('[data-carrousel-modules] [aria-current] img') ||
+        document.querySelector('[data-carrousel-modules] img')
+      // La région d'écoute est celle que l'on a passée en `overflow-y: clip`.
+      const region = [...document.querySelectorAll('div')].find(
+        (e) => getComputedStyle(e).overflowY === 'clip',
       )
-      const c = document.querySelector('.piste-ecoute')
       return {
-        bouton: b ? Math.round(b.getBoundingClientRect().top) : null,
-        curseur: c ? Math.round(c.getBoundingClientRect().top) : null,
+        // L'illustration : c'est elle que « monte alors que mon doigt est dessus »
+        // visait. Si la page bouge, elle bouge.
+        cover: cov ? Math.round(cov.getBoundingClientRect().top) : null,
+        // Ce que la région serre sous le clip : ce qui défilerait sans lui.
+        serre: region ? Math.max(0, region.scrollHeight - region.clientHeight) : -1,
+        regionScroll: region ? Math.round(region.scrollTop) : -1,
+        scrollY: Math.round(window.scrollY),
       }
     })
 
-  const pousser = (vers) =>
-    page.evaluate((vers) => {
-      const r = [...document.querySelectorAll('div')].find(
-        (e) => e.scrollHeight > e.clientHeight + 2 && getComputedStyle(e).overflowY === 'auto',
-      )
-      const m = document.querySelector('main')
-      if (r) r.scrollTop = vers === 'bas' ? r.scrollHeight : 0
-      if (m) m.scrollTop = vers === 'bas' ? m.scrollHeight : 0
-      scrollTo(0, vers === 'bas' ? document.body.scrollHeight : 0)
-      return { region: r ? r.scrollHeight - r.clientHeight : 0 }
-    }, vers)
-
-  const combien = await pousser('bas')
+  const avant = await sonde()
+  // On tente de pousser TOUT ce qui pourrait défiler à la verticale.
+  await page.evaluate(() => {
+    scrollTo(0, 99999)
+    const m = document.querySelector('main')
+    if (m) m.scrollTop = 99999
+    document.querySelectorAll('div').forEach((e) => {
+      const o = getComputedStyle(e).overflowY
+      if (o === 'auto' || o === 'scroll') e.scrollTop = 99999
+    })
+  })
   await page.waitForTimeout(300)
-  const enBas = await ou()
-  await pousser('haut')
-  await page.waitForTimeout(300)
-  const enHaut = await ou()
+  const apres = await sonde()
 
   const griefs = []
-  if (combien.region < 20)
-    griefs.push(`rien ne défile (${combien.region} px) : la mesure ne prouve rien`)
-  if (enHaut.bouton !== enBas.bouton)
-    griefs.push(`le bouton passe de ${enHaut.bouton} à ${enBas.bouton} au défilement`)
-  if (enHaut.curseur !== enBas.curseur)
-    griefs.push(`le curseur passe de ${enHaut.curseur} à ${enBas.curseur} au défilement`)
+  // 🔴 LE GARDE ANTI-VIDE, INVERSÉ : il faut que ça DÉBORDE pour que « figé »
+  // veuille dire quelque chose. Sur un écran de 480, la pochette (280) et ses
+  // commandes ne tiennent pas : la région serre donc du contenu sous le clip.
+  if (avant.serre <= 2)
+    griefs.push(`la région ne déborde pas (${avant.serre} px serrés) : la mesure ne prouve rien`)
+  // L'ACQUIS : rien n'a bougé à la verticale malgré la poussée.
+  if (apres.scrollY > 2) griefs.push(`la fenêtre a défilé de ${apres.scrollY} px : la page n'est pas figée`)
+  if (apres.regionScroll > 2)
+    griefs.push(`la région a défilé de ${apres.regionScroll} px : le clip ne tient pas`)
+  if (avant.cover !== apres.cover)
+    griefs.push(`l'illustration passe de ${avant.cover} à ${apres.cover} sous la poussée`)
 
   console.log(
-    `  région défile de ${combien.region} px · bouton ${enHaut.bouton}→${enBas.bouton} · ` +
-      `curseur ${enHaut.curseur}→${enBas.curseur}`,
+    `  déborde de ${avant.serre} px sous le clip · fenêtre ${apres.scrollY} px · ` +
+      `région ${apres.regionScroll} px · illustration ${avant.cover}→${apres.cover}`,
   )
   expect(griefs, `ce qui cloche :\n  · ${griefs.join('\n  · ')}`).toEqual([])
 })
