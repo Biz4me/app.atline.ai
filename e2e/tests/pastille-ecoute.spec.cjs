@@ -353,11 +353,17 @@ async function ailleurs(page) {
   await page.locator(PASTILLE).waitFor({ state: 'visible', timeout: 15_000 })
 }
 
+// 🔴 LE LIBELLÉ, PAS TOUT LE TEXTE DE LA PASTILLE (26 nov. 2026). On visait
+// `[data-pastille-ecoute]`, dont le textContent inclut désormais le TEMPS
+// RESTANT — qui change à la seconde. Comparé avant/après un rafraîchissement, il
+// différait d'une unité (-11:18 vs -11:19) et faisait crier « la pastille revient
+// sur une autre leçon » alors que seule l'horloge avait tourné. On vise la
+// colonne du titre, qui porte le module + la leçon et rien d'autre.
 const pisteJouee = (page) =>
   page.evaluate(() => ({
     src: document.querySelector('audio')?.currentSrc ?? null,
     arrete: document.querySelector('audio')?.paused,
-    texte: document.querySelector('[data-pastille-ecoute]')?.textContent.trim() ?? null,
+    texte: document.querySelector('[data-pastille-colonne]')?.textContent.trim() ?? null,
   }))
 
 /**
