@@ -45,8 +45,44 @@ async function aLEtagere(page) {
   await page.locator('[data-barre-bas]').waitFor({ state: 'visible', timeout: 15_000 })
 }
 
-const etat = (page) =>
-  page.evaluate(() => {
+// 🔬 Le morph (26 nov. 2026) anime le FOND (`data-pastille-carte`, désormais
+// FRÈRE de la pastille, pas descendant) ~400 ms après une navigation. On attend
+// qu'il se POSE avant de mesurer, sinon on lit un transitoire.
+//
+// 🔴 ON ATTEND LA POSITION, PAS SEULEMENT LA HAUTEUR — 26 nov. 2026. Première
+// version : hauteur stable (= 48) suffisait. Mais le FOND porte `layout` : en
+// arrivant sur la LISEUSE, `bas` se recale d'une frame (la barre n'est mesurée
+// qu'au `requestAnimationFrame` suivant) et Motion anime la CORRECTION — la
+// hauteur reste 48 pendant que le bas DESCEND encore. La sonde « ordre du bas »
+// lisait alors un écart carte↔barre de 0 au lieu de 8, par intermittence. On
+// surveille donc la paire hauteur+bas : le FOND est au repos quand les DEUX ne
+// bougent plus. Sans pastille (-1,-1), rien à attendre.
+async function posee(page) {
+  const geo = () =>
+    page.evaluate(() => {
+      const e = document.querySelector('[data-pastille-carte]')
+      if (!e) return [-1, -1]
+      const r = e.getBoundingClientRect()
+      return [Math.round(r.height), Math.round(r.bottom)]
+    })
+  let avant = [-2, -2]
+  await expect
+    .poll(
+      async () => {
+        const v = await geo()
+        if (v[0] === -1) return true
+        const stable = v[0] === avant[0] && v[1] === avant[1] && v[0] > 0
+        avant = v
+        return stable
+      },
+      { timeout: 6000, intervals: [120, 120, 120, 120, 120, 120, 120] },
+    )
+    .toBe(true)
+}
+
+const etat = async (page) => {
+  await posee(page)
+  return page.evaluate(() => {
     const a = document.querySelector('audio')
     const p = document.querySelector('[data-pastille-ecoute]')
     return {
@@ -57,17 +93,25 @@ const etat = (page) =>
       texte: p?.textContent.trim() ?? null,
     }
   })
+}
 
 test('on quitte la leçon, le son continue, et la pastille prend le relais', async ({ page }) => {
   await ouvrirEcoute(page)
   await lancer(page)
 
-  // 🔴 PAS DE PASTILLE SUR LA PAGE DE LA LEÇON QU'ON ÉCOUTE : le lecteur
-  // entier y est, et deux commandes pour un même son sont une hésitation.
+  // 🔴 PAS DE PASTILLE QUI DOUBLE LE LECTEUR SUR SA PROPRE PAGE. Depuis le morph
+  // (26 nov. 2026) la surface (fond `data-pastille-carte`) EST montée ici — mais
+  // en PLEIN, comme fond du lecteur, le contenu (play · titre · temps) masqué et
+  // non cliquable. Le doublon qu'on refuse est une pastille RÉDUITE : on vérifie
+  // l'absence d'un fond de la taille d'une pastille (≈ 48) — soit rien, soit plein.
+  const hCarte = await page
+    .locator('[data-pastille-carte]')
+    .evaluate((e) => Math.round(e.getBoundingClientRect().height))
+    .catch(() => 0)
   expect(
-    await page.locator(PASTILLE).count(),
-    'la pastille ne doit pas doubler le lecteur sur sa propre page',
-  ).toBe(0)
+    hCarte === 0 || hCarte > 400,
+    `pastille réduite qui double le lecteur (fond ${hCarte} px)`,
+  ).toBe(true)
 
   const depart = await etat(page)
   await auModule(page)
@@ -135,8 +179,9 @@ test('l’ordre du bas : barre, lecteur, bouton — et le lecteur pleine largeur
   await ouvrirEcoute(page)
   await lancer(page)
 
-  const geo = () =>
-    page.evaluate(() => {
+  const geo = async () => {
+    await posee(page)
+    return page.evaluate(() => {
       const boite = (s) => {
         const e = document.querySelector(s)
         return e ? e.getBoundingClientRect() : null
@@ -162,6 +207,7 @@ test('l’ordre du bas : barre, lecteur, bouton — et le lecteur pleine largeur
         actionBas: action ? Math.round(action.bottom) : null,
       }
     })
+  }
 
   const vus = []
   await auModule(page)
@@ -1193,7 +1239,7 @@ test('la pastille a la hauteur des cartes d’action, à huit pixels du meuble',
     const past = document.querySelector('[data-pastille-ecoute]')
     return {
       action: r(document.querySelector('[data-barre-action]')),
-      carte: r(past?.querySelector('[data-pastille-carte]')),
+      carte: r(document.querySelector('[data-pastille-carte]')),
     }
   })
 
@@ -1215,7 +1261,7 @@ test('la pastille a la hauteur des cartes d’action, à huit pixels du meuble',
   const c = await page.evaluate(() => {
     const past = document.querySelector('[data-pastille-ecoute]')
     const meuble = document.querySelector('[data-barre-bas]')
-    const carte = past?.querySelector('[data-pastille-carte]')
+    const carte = document.querySelector('[data-pastille-carte]')
     return {
       carteBas: carte ? Math.round(carte.getBoundingClientRect().bottom) : null,
       carteHaut: carte ? Math.round(carte.getBoundingClientRect().height) : null,

@@ -36,7 +36,7 @@ test('relevé de la pastille simplifiée', async ({ page, pageErrors }) => {
 
   const m = await page.evaluate(() => {
     const p = document.querySelector('[data-pastille-ecoute]')
-    const card = p.querySelector('.rounded-xl')
+    const card = document.querySelector('[data-pastille-carte]')
     const play = p.querySelector('[data-pastille-basculer]')
     const glyphe = play && play.querySelector('svg')
     const titre = p.querySelector('[data-pastille-vers-lecon]')
