@@ -235,19 +235,20 @@ test('l’ordre du bas : barre, lecteur, bouton — et le lecteur pleine largeur
     if (v.barreHaut !== null && v.pastilleBas > v.barreHaut + 1)
       griefs.push(`${v.ou} : le lecteur descend à ${v.pastilleBas}, la barre du bas commence à ${v.barreHaut}`)
     /**
-     * ── 🔴 DOUZE PIXELS, ET PLUS « COLLÉ » — 22 novembre 2026 ──────────────
+     * ── 🔴 HUIT PIXELS, ET PLUS « COLLÉ » — 26 novembre 2026 ──────────────
      *
      * Cette sonde exigeait le contact : *« un meuble posé sur un autre forme
      * une seule pièce »*. C'était juste tant que la pastille ÉTAIT un meuble,
      * d'un bord à l'autre. Patrice en a fait une **carte** — grammaire
-     * d'« Ajouter un contact » : seize de gouttière, douze au-dessus du
-     * meuble, coins arrondis. Un meuble se colle ; une carte se pose.
+     * d'« Ajouter un contact » : seize de gouttière, un filet d'air au-dessus
+     * du meuble, coins arrondis. Un meuble se colle ; une carte se pose. L'air
+     * a valu 12, puis 4, puis **8** (`INTERSTICE_PASTILLE`, 26 nov.).
      *
      * ⚠️ ET LES DEUX NOMBRES SE TIENNENT. Collée, une carte arrondie aurait
      * ses coins du bas rognés par la barre : on n'aurait vu le rayon qu'en
      * haut, ce qui se lit comme un défaut de dessin, pas comme une intention.
      */
-    const AIR = 12
+    const AIR = 8
     if (v.barreHaut !== null && Math.abs(v.barreHaut - v.pastilleBas - AIR) > 1)
       griefs.push(
         `${v.ou} : ${v.barreHaut - v.pastilleBas} px entre le lecteur et la barre du bas, au lieu de ${AIR}`,
@@ -520,12 +521,12 @@ test('la rangée a rendu sa place au titre', async ({ page }) => {
     const titre = document.querySelector('[data-pastille-colonne]')
     return {
       colonneTitre: titre ? Math.round(titre.clientWidth) : null,
-      // 🔴 LA VIGNETTE EST REVENUE, ET C'EST VOULU (25 novembre 2026). La
-      // pochette avait été retirée pour rendre de la place au titre ; Patrice
-      // l'a fait revenir en petit (40 px) pour que le mini DISE ce qu'on écoute.
-      // On ne guette donc plus son absence mais sa PRÉSENCE — et la colonne
-      // reste large (192 px mesurés, bien au-dessus du plancher).
-      vignette: !!document.querySelector('[data-pastille-vignette]'),
+      // 🔴 PLUS DE VIGNETTE (26 novembre 2026) : la pochette a cédé la place au
+      // PLAY, passé à gauche. On guette donc sa présence à lui, et celle du temps
+      // restant qui a remplacé le trait à droite du titre. La colonne reste large
+      // (209 px mesurés, bien au-dessus du plancher).
+      play: !!document.querySelector('[data-pastille-basculer]'),
+      reste: !!document.querySelector('[data-pastille-reste]'),
       croix: !!document.querySelector('[data-pastille-fermer]'),
       lire: !!document.querySelector('[data-pastille-lire]'),
     }
@@ -544,13 +545,15 @@ test('la rangée a rendu sa place au titre', async ({ page }) => {
    * d'un bord à l'autre. Le titre défile de toute façon — il demande 338 px
    * et n'en a jamais eu la moitié.
    *
-   * 🧭 CE QUE LE SEUIL GUETTE RESTE LE MÊME : le retour de la pochette ou de
-   * la croix, qui coûteraient une quarantaine de pixels.
+   * 🧭 CE QUE LE SEUIL GUETTE : qu'un voisin ajouté à la rangée ne vole pas trop
+   * de place au titre. Le temps restant (26 nov.) en a pris sa part sans passer
+   * sous le plancher ; le retour de la croix, lui, coûterait une quarantaine de px.
    */
   if (g.colonneTitre === null) griefs.push('colonne du titre introuvable : rien n’a été mesuré')
   else if (g.colonneTitre < 138)
     griefs.push(`la colonne du titre ne fait que ${g.colonneTitre} px`)
-  if (!g.vignette) griefs.push('la vignette de la pochette manque dans la rangée')
+  if (!g.play) griefs.push('le play manque à gauche de la rangée')
+  if (!g.reste) griefs.push('le temps restant manque à droite du titre')
   if (g.croix) griefs.push('la croix est revenue')
   if (!g.lire) griefs.push('« Lire » manque dans la pastille')
 
@@ -601,14 +604,14 @@ test('les deux lignes défilent sans raccord visible', async ({ page }) => {
       return b ? { g: Math.round(b.left), d: Math.round(b.right) } : null
     }
     /**
-     * 🔴 LA VIGNETTE À GAUCHE, LE PLAY À DROITE (25 novembre 2026). La fenêtre
-     * du texte est bornée par la POCHETTE (revenue en petit) d'un côté et par la
-     * première commande de l'autre. Les ⏮/⏭ ont disparu du mini : la borne de
-     * droite est le bouton PLAY (`data-pastille-basculer`), pas un saut. Mesuré :
-     * 8 px de chaque côté — la fenêtre est centrée.
+     * 🔴 LE PLAY À GAUCHE, LE TEMPS À DROITE (26 novembre 2026). La fenêtre du
+     * texte est bornée par le PLAY (passé à gauche, `data-pastille-basculer`) d'un
+     * côté et par le TEMPS RESTANT (`data-pastille-reste`, qui a remplacé le trait)
+     * de l'autre — plus de pochette ni de ⏮/⏭. Mesuré : 8 px de chaque côté, la
+     * fenêtre est centrée.
      */
-    const image = bord('[data-pastille-vignette]')
-    const bouton = bord('[data-pastille-basculer]')
+    const play = bord('[data-pastille-basculer]')
+    const temps = bord('[data-pastille-reste]')
     return ['rang', 'titre'].map((r) => {
       const boite = document.querySelector(`[data-pastille-ligne="${r}"]`)
       /**
@@ -631,8 +634,8 @@ test('les deux lignes défilent sans raccord visible', async ({ page }) => {
         piste: mobile ? Math.round(mobile.getBoundingClientRect().width) : null,
         duree: st?.animationDuration ?? null,
         courbe: st?.animationTimingFunction ?? null,
-        marcheGauche: boite && image ? Math.round(boite.getBoundingClientRect().left) - image.d : null,
-        marcheDroite: boite && bouton ? bouton.g - Math.round(boite.getBoundingClientRect().right) : null,
+        marcheGauche: boite && play ? Math.round(boite.getBoundingClientRect().left) - play.d : null,
+        marcheDroite: boite && temps ? temps.g - Math.round(boite.getBoundingClientRect().right) : null,
       }
     })
   })
@@ -677,12 +680,12 @@ test('les deux lignes défilent sans raccord visible', async ({ page }) => {
     }
     if (Math.abs(l.marcheGauche - l.marcheDroite) > 1)
       griefs.push(
-        `« ${l.quoi} » n’est pas centrée : ${l.marcheGauche} px de l’illustration, ` +
-          `${l.marcheDroite} px des commandes`,
+        `« ${l.quoi} » n’est pas centrée : ${l.marcheGauche} px du play, ` +
+          `${l.marcheDroite} px du temps`,
       )
     // ⚠️ Et elles ne doivent pas se refermer : à zéro, le texte toucherait ses
     // deux voisins, ce qui est précisément ce qu'on vient de corriger à gauche.
-    if (l.marcheGauche < 3) griefs.push(`« ${l.quoi} » colle à l’illustration (${l.marcheGauche} px)`)
+    if (l.marcheGauche < 3) griefs.push(`« ${l.quoi} » colle au play (${l.marcheGauche} px)`)
   }
 
   // 🔴 ET IL FAUT QU'UNE LIGNE AIT LA MAIN, sinon le carrousel est à l'arrêt
@@ -814,39 +817,42 @@ test('les deux lignes défilent chacune à son tour', async ({ page }) => {
 })
 
 /**
- * ── 🔴 LE TRAIT DIT OÙ ON EN EST, ET NE SE TIRE PLUS ──────────────────────
+ * ── 🔴 LE TEMPS RESTANT DIT OÙ ON EN EST, ET LA BANDE SE FERME AU GESTE ─────
  *
  * Patrice, le 22 novembre 2026 : *« on a dit qu'on pouvait enlever la boule ;
- * s'il veut avancer, un simple geste pour agrandir en page coûte peu »*.
+ * s'il veut avancer, un simple geste pour agrandir en page coûte peu »*. Le
+ * trait qui portait l'état est tombé à son tour le 26 nov. ; c'est le TEMPS
+ * RESTANT, en négatif, qui dit désormais où on en est.
  *
  * 🔴 CE FICHIER PORTAIT TROIS SONDES POUR CETTE BOULE — qu'on puisse la
  * tirer, qu'elle reste dans sa zone de prise aux deux bouts, que cette zone
  * ne morde pas sur les boutons — plus un fichier entier, `pastille-doigt`,
  * né d'un défaut que la souris ne voyait pas. Tout ça disparaît avec elle.
  *
- * 🧭 ET CE QUI LES REMPLACE N'EST PAS « la boule n'est plus là ». Un contrôle
- * d'absence ne vaut rien tout seul. Ce qui se prouve ici, c'est que la bande
- * du bas a changé de MAIN : elle ne déplace plus la lecture, et le geste de
- * fermeture — qui perdait systématiquement contre la prise du curseur — la
- * gouverne maintenant jusqu'en bas.
+ * 🧭 ET CE QUI SE PROUVE N'EST PAS « la boule n'est plus là ». Un contrôle
+ * d'absence ne vaut rien tout seul. Deux choses tiennent ici : le temps restant
+ * affiché colle à la lecture réelle, et la bande du bas a changé de MAIN — le
+ * geste de fermeture, qui perdait contre la prise du curseur, la gouverne
+ * maintenant jusqu'en bas.
  *
  * ⚠️ EN ÉVÉNEMENTS TACTILES RÉELS, par CDP, et c'est l'héritage de
  * `pastille-doigt` : une sonde à la souris y avait laissé passer un vrai
  * défaut, parce qu'un clic emprunte un autre chemin dans le navigateur.
  */
-test('le trait dit où on en est, et ne se tire plus', async ({ page }) => {
+test('le temps restant dit où on en est, et la pastille se ferme au glissement', async ({ page }) => {
   await ouvrirEcoute(page)
   await lancer(page)
   await auModule(page)
 
   const g = await page.evaluate(() => {
-    const t = document.querySelector('[data-pastille-progression]')
+    const reste = document.querySelector('[data-pastille-reste]')
+    const carte = document.querySelector('[data-pastille-carte]')
     const a = document.querySelector('audio')
-    const b = t?.getBoundingClientRect()
+    const b = carte?.getBoundingClientRect()
     return {
-      trait: b ? { x: b.x, y: b.y, w: b.width, h: Math.round(b.height) } : null,
-      annonce: t ? Number(t.getAttribute('aria-valuenow')) : null,
-      role: t?.getAttribute('role') ?? null,
+      carte: b ? { x: b.x, y: b.y, w: b.width, h: Math.round(b.height) } : null,
+      texteReste: reste?.textContent.trim() ?? null,
+      trait: !!document.querySelector('[data-pastille-progression]'),
       boule: !!document.querySelector('[data-pastille-boule]'),
       t: a.currentTime,
       d: a.duration,
@@ -854,20 +860,38 @@ test('le trait dit où on en est, et ne se tire plus', async ({ page }) => {
   })
 
   const griefs = []
-  // 🔴 SANS LE TRAIT, RIEN N'EST ÉPROUVÉ : mieux vaut échouer que passer au
-  // vert sur une mesure qui n'a pas eu lieu.
-  expect(g.trait, 'aucun trait de progression dans la pastille').toBeTruthy()
+  // 🔴 SANS LE TEMPS, RIEN N'EST ÉPROUVÉ : mieux vaut échouer que passer au vert
+  // sur une mesure qui n'a pas eu lieu.
+  expect(g.texteReste, 'aucun temps restant dans la pastille').toBeTruthy()
+  expect(g.carte, 'pastille introuvable').toBeTruthy()
 
-  // L'état reste énoncé ; il n'est simplement plus une promesse.
-  if (g.role !== 'progressbar') griefs.push(`le trait s’annonce « ${g.role} » et non « progressbar »`)
-  if (Math.abs(g.annonce - g.t) > 2)
-    griefs.push(`le trait annonce ${g.annonce} s pour un son à ${Math.round(g.t)} s`)
+  /**
+   * 🔴 LE TEMPS RESTANT DIT OÙ ON EN EST, EN NÉGATIF. On relit `-M:SS` et on le
+   * compare à (durée − position), à deux secondes près : le texte vient d'un
+   * état React rafraîchi au quart de seconde, la position se lit en direct sur
+   * l'`<audio>`, un léger décalage est normal mais un décrochage ne l'est pas.
+   */
+  const m = /^-(\d+):(\d{2})$/.exec(g.texteReste)
+  if (!m) griefs.push(`le temps restant s’écrit « ${g.texteReste} » et non « -M:SS »`)
+  else {
+    const restantAffiche = Number(m[1]) * 60 + Number(m[2])
+    const restantReel = g.d - g.t
+    if (Math.abs(restantAffiche - restantReel) > 2)
+      griefs.push(
+        `le temps affiche ${g.texteReste} (${restantAffiche} s) ` +
+          `pour un reste réel de ${Math.round(restantReel)} s`,
+      )
+  }
+  // L'ancien trait et sa boule ont disparu ; ils ne doivent pas revenir.
+  if (g.trait) griefs.push('le trait de progression est revenu')
   if (g.boule) griefs.push('la boule est revenue')
 
-  // ── Tirer sur le trait ne déplace plus la lecture, et ferme la pastille.
+  // ── Glisser vers la droite depuis la pastille la ferme. La bande a changé de
+  // main : plus de prise de curseur pour voler le doigt, le geste gouverne
+  // jusqu'en bas.
   const cdp = await page.context().newCDPSession(page)
-  const y = g.trait.y + g.trait.h / 2
-  const x = g.trait.x + g.trait.w * 0.1
+  const y = g.carte.y + g.carte.h / 2
+  const x = g.carte.x + g.carte.w * 0.1
   await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x, y }] })
   for (const dx of [40, 110, 200, 280]) {
     await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: x + dx, y }] })
@@ -879,19 +903,14 @@ test('le trait dit où on en est, et ne se tire plus', async ({ page }) => {
     t: document.querySelector('audio')?.currentTime ?? null,
     pastille: !!document.querySelector('[data-pastille-ecoute]'),
   }))
-  console.log(JSON.stringify({ avant: Math.round(g.t), ...apres, duree: Math.round(g.d) }, null, 1))
+  console.log(
+    JSON.stringify({ avant: Math.round(g.t), reste: g.texteReste, ...apres, duree: Math.round(g.d) }, null, 1),
+  )
 
-  /**
-   * ⚠️ « N'A PAS SAUTÉ » ET NON « N'A PAS BOUGÉ » : le son continue de jouer
-   * pendant le geste, donc il avance de quelques secondes. Ce qu'on refuse,
-   * c'est le BOND que produirait un déplacement — ici 70 % de la leçon.
-   */
-  if (apres.t !== null && Math.abs(apres.t - g.t) > 8)
-    griefs.push(`tirer sur le trait a déplacé la lecture de ${Math.round(apres.t - g.t)} s`)
-  // 🔴 ET LA BANDE DU BAS A CHANGÉ DE MAIN : le glissement de fermeture, qui
-  // perdait contre la prise du curseur, gouverne maintenant jusqu'en bas.
+  // 🔴 LE GLISSEMENT GOUVERNE LA BANDE JUSQU'EN BAS : la pastille doit avoir
+  // disparu. (Le son, lui, a pu avancer de quelques secondes pendant le geste.)
   if (apres.pastille)
-    griefs.push('glisser vers la droite depuis le trait n’a pas fermé la pastille')
+    griefs.push('glisser vers la droite depuis la pastille ne l’a pas fermée')
 
   expect(griefs, `ce qui cloche :\n  · ${griefs.join('\n  · ')}`).toEqual([])
 })
@@ -1119,11 +1138,12 @@ test('la pastille met en pause, et le glissement met fin', async ({ page }) => {
 
 
 /**
- * ── 🔴 LA PASTILLE FAIT LA HAUTEUR DE LA BARRE DES LIEUX ───────────────────
+ * ── 🔴 LA PASTILLE FAIT LA HAUTEUR DES CARTES D'ACTION ─────────────────────
  *
- * Patrice, le 22 novembre 2026 au soir : *« tente la hauteur de la bottombar
- * pour la hauteur du lecteur, j'y tiens, on va voir ce que ça donne »*, puis,
- * la capture sous les yeux : **« ça me va »**. La pastille vaut donc **64**.
+ * Elle valait 64 (= la barre des lieux) du 22 au 25 novembre 2026. Patrice,
+ * capture de Deezer à l'appui le 26 : trait et vignette retirés, *« la pastille
+ * de la même hauteur que les cartes Ajouter un contact / un rdv, ce sera bien
+ * aligné »*. Elle vaut donc **48** (`HAUTEUR_PASTILLE`).
  *
  * ── 🔴 CETTE SONDE A ÉPINGLÉ TROIS VOISINS EN TROIS JOURS ─────────────────
  *
@@ -1140,15 +1160,16 @@ test('la pastille met en pause, et le glissement met fin', async ({ page }) => {
  * su avant de trancher — c'est écrit dans `lecteur-global.tsx`. 🔴 Ne pas
  * « corriger » ce saut en remettant 84 : ce serait défaire une décision.
  *
- * 🧭 ET ON MESURE LÀ OÙ LES DEUX EXISTENT ENSEMBLE. `/parcours` porte la barre
- * des cinq lieux, donc la comparaison de hauteur s'y fait — et c'est aussi là
- * qu'on éprouve les douze pixels, d'une seule visite.
+ * 🧭 ET ON ÉPROUVE L'ÉCART LÀ OÙ IL Y A UN MEUBLE SOUS LA CARTE. `/parcours`
+ * porte la barre des cinq lieux : c'est là qu'on mesure les huit pixels sous la
+ * carte, d'une seule visite. La hauteur, elle, s'affirme (48) faute d'une carte
+ * d'action à comparer ici.
  *
  * ⚠️ LA LARGEUR, ELLE, RESTE COMPARÉE À LA BARRE D'ACTION sur `/gens` : c'est
  * la grammaire d'« Ajouter un contact » — seize de gouttière de chaque côté —
  * et elle n'a pas bougé.
  */
-test('la pastille a la hauteur de la barre des lieux, à douze pixels du meuble', async ({ page }) => {
+test('la pastille a la hauteur des cartes d’action, à huit pixels du meuble', async ({ page }) => {
   await ouvrirEcoute(page)
   await lancer(page)
   await auModule(page)
@@ -1217,33 +1238,26 @@ test('la pastille a la hauteur de la barre des lieux, à douze pixels du meuble'
       )
   }
   /**
-   * ── 🔴 À DOUZE PIXELS DU MEUBLE, ET PLUS COLLÉE — 22 novembre 2026 ───────
+   * ── 🔴 À HUIT PIXELS DU MEUBLE — 26 novembre 2026 ───────────────────────
    *
-   * Elle l'était : le bas de la carte touchait le haut de la barre. Patrice a
-   * demandé la grammaire d'« Ajouter un contact » pour les bords, et cette
-   * grammaire tient en deux nombres — seize de gouttière, **douze au-dessus
-   * du meuble**. Une carte arrondie collée au meuble aurait ses coins du bas
-   * rognés par lui : le rayon ne se verrait qu'en haut.
-   *
-   * 🧭 ET ÇA RÈGLE UN VIEUX LITIGE AU PASSAGE. La boule déborde de 5 px sous
-   * la carte ; collée, elle entrait DANS la barre et il fallait prouver
-   * qu'elle passait devant. Mesuré depuis : boule à 773, barre à 780 — elles
-   * ne se touchent plus. Le contrôle de recouvrement reste, mais il n'a plus
-   * d'occasion de servir.
+   * Collée au meuble, une carte arrondie a ses coins du bas rognés par lui : le
+   * rayon ne se verrait qu'en haut. Il lui faut donc un filet d'air. Il a valu
+   * 12 (« douze au-dessus du meuble »), puis 4 le 25 pour gagner de la place ; à
+   * 4 la carte se confondait avec le meuble, Patrice l'a remonté à **8** le 26
+   * (`INTERSTICE_PASTILLE`).
    */
-  const SOUS_LA_CARTE = 12
+  const SOUS_LA_CARTE = 8
   if (c.meubleHaut === null)
     griefs.push('aucune barre du bas à l’étagère : ni la hauteur ni la distance ne se mesurent ici')
   /**
-   * 🔴 LA HAUTEUR SE COMPARE ICI, ET À LA BARRE DES LIEUX. Aucun des deux
-   * nombres n'est écrit dans cette sonde : la pastille porte 64 par une
-   * constante, la barre par `HAUTEUR_BARRE`, et rien dans le code ne les
-   * relie. C'est cette mesure, et elle seule, qui les tient égales.
+   * 🔴 LA PASTILLE FAIT 48 : LA HAUTEUR DES CARTES D'ACTION, PLUS CELLE DE LA
+   * BARRE DES LIEUX (26 nov. 2026). Faute d'une carte « Ajouter un contact » à
+   * mesurer sur cet écran, on affirme la valeur — c'est `HAUTEUR_PASTILLE` ; la
+   * largeur, elle, reste comparée à la barre d'action, plus haut.
    */
-  if (c.meubleEpais !== null && c.carteHaut !== null && c.carteHaut !== c.meubleEpais)
-    griefs.push(
-      `hauteurs différentes : pastille ${c.carteHaut}, barre des lieux ${c.meubleEpais}`,
-    )
+  const HAUTEUR_CARTE_ACTION = 48
+  if (c.carteHaut !== null && c.carteHaut !== HAUTEUR_CARTE_ACTION)
+    griefs.push(`la pastille fait ${c.carteHaut} et non ${HAUTEUR_CARTE_ACTION} (la carte d’action)`)
   if (c.meubleHaut !== null && Math.abs(c.meubleHaut - c.carteBas - SOUS_LA_CARTE) > 1)
     griefs.push(
       `la carte finit à ${c.carteBas} pour une barre à ${c.meubleHaut} : ` +
@@ -1330,7 +1344,7 @@ test('le filtre de lecture passe par-dessus la pastille', async ({ page }) => {
     const points = [
       ['le titre', '[data-pastille-colonne]'],
       ['le bouton livre', '[data-pastille-lire]'],
-      ['le trait de progression', '[data-pastille-progression]'],
+      ['le temps restant', '[data-pastille-reste]'],
     ].map(([nom, sel]) => {
       const c = document.querySelector(sel)
       const b = c?.getBoundingClientRect()
