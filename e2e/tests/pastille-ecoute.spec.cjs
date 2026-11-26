@@ -895,6 +895,13 @@ test('le temps restant dit où on en est, et la pastille se ferme au glissement'
   await ouvrirEcoute(page)
   await lancer(page)
   await auModule(page)
+  // 🔴 ON ATTEND QUE LE FOND SE POSE AVANT DE VISER — 26 nov. 2026. Le swipe part
+  // des coordonnées de `data-pastille-carte` (le FOND, qui porte `layout`). Depuis
+  // que le morph l'anime POUR DE BON au retour sur le module (au lieu de claquer),
+  // le mesurer sans attendre donnait une position transitoire, haute : le doigt
+  // tombait à côté de la pastille et le geste ne fermait rien. Le produit ferme
+  // bien ; c'est la sonde qui visait un fond encore en vol.
+  await posee(page)
 
   const g = await page.evaluate(() => {
     const reste = document.querySelector('[data-pastille-reste]')
