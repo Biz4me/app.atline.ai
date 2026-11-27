@@ -36,13 +36,22 @@ const BAS = '[data-barre-bas] a'
 async function auModule(page) {
   await page.getByRole('link', { name: /Retour au module/ }).click()
   await page.locator(PASTILLE).waitFor({ state: 'visible', timeout: 15_000 })
+  // 🔬 Morph `layoutId` (27 nov. 2026) : le repli tient PleinEcoute monté
+  // ~500 ms (AnimatePresence) — sa barre « Navigation du livre » coexiste alors
+  // avec la barre principale (DEUX `[data-barre-bas]`) et la géométrie est en
+  // transitoire. On attend que le morph se POSE, comme toute mesure de pastille.
+  await posee(page)
 }
 
 /** Puis l'étagère, qui porte la barre des cinq lieux. */
 async function aLEtagere(page) {
   await page.getByRole('link', { name: 'Retour à Apprendre' }).click()
   await page.locator(PASTILLE).waitFor({ state: 'visible', timeout: 15_000 })
-  await page.locator('[data-barre-bas]').waitFor({ state: 'visible', timeout: 15_000 })
+  // 🔬 Poser le morph AVANT de chercher la barre : pendant le repli il y a DEUX
+  // `[data-barre-bas]` (PleinEcoute encore là), ce qui ferait échouer le locator
+  // en mode strict. Une fois posé, PleinEcoute est démonté → une seule barre.
+  await posee(page)
+  await page.locator('[data-barre-bas][aria-label="Navigation principale"]').waitFor({ state: 'visible', timeout: 15_000 })
 }
 
 // 🔬 Le morph (26 nov. 2026) anime le FOND (`data-pastille-carte`, désormais
@@ -96,6 +105,11 @@ const etat = async (page) => {
 }
 
 test('on quitte la leçon, le son continue, et la pastille prend le relais', async ({ page }) => {
+  // 🔬 Morph `layoutId` (27 nov.) : chaque nav attend que le morph se pose
+  // (`posee`), et ce test en enchaîne plusieurs (module → étagère → un lieu) ;
+  // les 60 s par défaut ne suffisent plus. Plafond élargi, comme le test du
+  // carrousel. (Le morph ajoute du temps RÉEL, il n'y a rien qui boucle.)
+  test.setTimeout(120_000)
   await ouvrirEcoute(page)
   await lancer(page)
 
@@ -104,10 +118,15 @@ test('on quitte la leçon, le son continue, et la pastille prend le relais', asy
   // en PLEIN, comme fond du lecteur, le contenu (play · titre · temps) masqué et
   // non cliquable. Le doublon qu'on refuse est une pastille RÉDUITE : on vérifie
   // l'absence d'un fond de la taille d'une pastille (≈ 48) — soit rien, soit plein.
-  const hCarte = await page
-    .locator('[data-pastille-carte]')
-    .evaluate((e) => Math.round(e.getBoundingClientRect().height))
-    .catch(() => 0)
+  // 🔬 Morph A3.2 (27 nov.) : sur /ecouter, le plein est `data-plein-ecoute` et
+  // la carte `data-pastille-carte` est ABSENTE (elle n'existe qu'en réduit). On
+  // interroge donc par `page.evaluate` — PAS par `locator().evaluate()`, qui
+  // AUTO-ATTENDRAIT la carte absente jusqu'au timeout (le test gelait 120 s).
+  // 0 = absente (ok), >400 = plein (ok) : ce qu'on refuse est une carte ≈ 48 px.
+  const hCarte = await page.evaluate(() => {
+    const e = document.querySelector('[data-pastille-carte]')
+    return e ? Math.round(e.getBoundingClientRect().height) : 0
+  })
   expect(
     hCarte === 0 || hCarte > 400,
     `pastille réduite qui double le lecteur (fond ${hCarte} px)`,
@@ -634,7 +653,7 @@ test('la rangée a rendu sa place au titre', async ({ page }) => {
 test('les deux lignes défilent sans raccord visible', async ({ page }) => {
   await ouvrirEcoute(page)
   await lancer(page)
-  await auModule(page)
+  await auModule(page) // inclut `posee()` : le morph est posé avant toute mesure
 
   const lignes = await page.evaluate(() => {
     /**
@@ -798,7 +817,7 @@ test('les deux lignes défilent chacune à son tour', async ({ page }) => {
   test.setTimeout(180_000)
   await ouvrirEcoute(page)
   await lancer(page)
-  await auModule(page)
+  await auModule(page) // inclut `posee()` : on ne relève pas dans le transitoire
 
   /** Où en est chaque ligne : immobile, ou déplacée de tant de pixels. */
   const ou = () =>

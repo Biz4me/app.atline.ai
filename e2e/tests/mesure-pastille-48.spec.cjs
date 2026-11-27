@@ -26,7 +26,13 @@ test('relevé de la pastille simplifiée', async ({ page, pageErrors }) => {
   await page.getByRole('link', { name: /Retour au module/ }).click()
   await page.locator(PASTILLE).waitFor({ state: 'visible', timeout: 15_000 })
   await page.getByRole('link', { name: 'Retour à Apprendre' }).click()
-  await page.locator('[data-barre-bas]').waitFor({ state: 'visible', timeout: 15_000 })
+  // 🔬 Morph `layoutId` (27 nov.) : en quittant `/ecouter`, PleinEcoute est tenu
+  // monté ~500 ms et porte SA barre « Navigation du livre » — un `[data-barre-bas]`
+  // nu matcherait alors DEUX éléments (mode strict). On vise la barre principale,
+  // la seule qui compte sur l'étagère ; la mesure réelle a son `waitForTimeout`.
+  await page
+    .locator('[data-barre-bas][aria-label="Navigation principale"]')
+    .waitFor({ state: 'visible', timeout: 15_000 })
   const gens = page.locator('[data-barre-bas] a[href="/gens"]')
   if ((await gens.count()) > 0) {
     await gens.first().click()
