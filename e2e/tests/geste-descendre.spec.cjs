@@ -19,6 +19,17 @@ const { test, expect } = require('../fixtures.cjs')
 
 test.use({ viewport: { width: 390, height: 844 }, hasTouch: true })
 
+// 🔬 LE PLI FINIT SUR LA PASTILLE (27 nov.), pas en ligne fine au ras du meuble.
+// Ces trois nombres sont ceux de `geste-descendre.tsx` : la carte de la pastille
+// fait 48 px (`h-12`) et flotte à `INTERSTICE` (8 px) au-dessus du meuble. Le pli
+// s'arrête donc sur un rectangle de 48 px dont le bas est à `sol + INTERSTICE`,
+// et la carte prend le relais sans saut. Avant, le bas montait jusqu'au meuble
+// (`sol`) : la feuille se refermait sur ~17 px — « le trait vert fin avant la
+// pastille » que Patrice voyait.
+const HAUTEUR_PASTILLE = 48
+const INTERSTICE = 8
+const RESERVE = HAUTEUR_PASTILLE + INTERSTICE
+
 /**
  * Glisser du doigt, en vrais événements tactiles.
  *
@@ -204,13 +215,22 @@ test('le geste vers le bas sort exactement comme le chevron', async ({ page, pag
         barre: b ? Math.round(b.getBoundingClientRect().top) : null,
       })
     }
+    // 🔴 ET LE PLI COMPLET : poussé à fond, il doit finir SUR LA PASTILLE — un
+    // rectangle de 48 px au bas de l'écran — et NON se refermer en ligne fine au
+    // ras du meuble (« le trait vert fin avant la pastille », 27 nov.). On ne
+    // relâche pas ici : touchend reste au départ, donc rien ne navigue.
+    envoyer('touchmove', y0 + innerHeight)
+    await new Promise((r) => setTimeout(r, 40))
+    const fFond = document.querySelector('[data-feuille-ecoute]')
+    const profond = fFond ? nombres(getComputedStyle(fFond).clipPath) : null
+
     // On RELÂCHE AU POINT DE DÉPART : la sonde mesure la forme, pas la sortie
     // — qui est déjà prouvée plus haut. Sans ça elle partirait, et les
     // sections suivantes travailleraient sur un autre écran.
     envoyer('touchmove', y0)
     envoyer('touchend', y0)
     await new Promise((r) => setTimeout(r, 400))
-    return { sol, pas, hauteur: innerHeight }
+    return { sol, pas, profond, hauteur: innerHeight }
   })
 
   const course = releve.hauteur - releve.sol
@@ -218,8 +238,11 @@ test('le geste vers le bas sort exactement comme le chevron', async ({ page, pag
     const [haut, , bas] = p.masque ?? []
     // Le bord haut est au doigt.
     if (Math.abs(haut - p.dy) > 2) griefs.push(`à ${p.dy} px, le bord haut est à ${haut}`)
-    // Le bord bas a dégagé le meuble dès le quart, et l'y attend ensuite.
-    const attendu = Math.min(releve.sol, (releve.sol * p.dy) / (course * 0.25))
+    // Le bord bas a dégagé le meuble dès le quart, et attend ensuite AU BAS DE
+    // LA PASTILLE (`sol + INTERSTICE`) — pas au ras du meuble : c'est là que la
+    // carte prend le relais, et c'est ce qui tue le trait vert fin.
+    const cible = releve.sol + INTERSTICE
+    const attendu = Math.min(cible, (cible * p.dy) / (course * 0.25))
     if (Math.abs(bas - attendu) > 2)
       griefs.push(`à ${p.dy} px, le bord bas est à ${bas} au lieu de ${Math.round(attendu)}`)
     // Et le meuble n'a pas bougé d'un pixel.
@@ -231,6 +254,24 @@ test('le geste vers le bas sort exactement comme le chevron', async ({ page, pag
       .map((p) => `${p.dy}→[${p.masque?.[0]},${p.masque?.[2]}]`)
       .join(' ')} · barre fixe à ${releve.pas[0].barre}`,
   )
+
+  // 🔴 LE PLI COMPLET FINIT SUR LA PASTILLE, PAS EN LIGNE FINE. C'est la sonde
+  // qui garde le défaut que Patrice a vu : le haut s'arrête à `course - RESERVE`,
+  // le bas à `sol + INTERSTICE`, et ce qui reste visible fait 48 px — la carte,
+  // pas un trait.
+  if (releve.profond) {
+    const [haut, , bas] = releve.profond
+    const visible = releve.hauteur - haut - bas
+    console.log(`  pli complet · masque [${haut},${bas}] · visible ${visible} px`)
+    if (Math.abs(haut - (course - RESERVE)) > 2)
+      griefs.push(`pli complet : bord haut à ${haut} au lieu de ${Math.round(course - RESERVE)}`)
+    if (Math.abs(bas - (releve.sol + INTERSTICE)) > 2)
+      griefs.push(`pli complet : bord bas à ${bas} au lieu de ${releve.sol + INTERSTICE}`)
+    if (Math.abs(visible - HAUTEUR_PASTILLE) > 2)
+      griefs.push(`pli complet : ${visible} px visibles au lieu de ${HAUTEUR_PASTILLE} — ligne fine ?`)
+  } else {
+    griefs.push('pli complet : la feuille a disparu avant la mesure')
+  }
 
   expect(griefs, `ce qui cloche :\n  · ${griefs.join('\n  · ')}`).toEqual([])
   expect(pageErrors, `exception client : ${pageErrors.join(' · ')}`).toEqual([])
