@@ -59,11 +59,19 @@ test('la pastille remonte au doigt, et seulement assez haut', async ({ page, pag
   const griefs = []
 
   // ── 1. Lâchée sous le seuil : elle redescend, et rien ne s'ouvre.
+  //
+  // 🔴 ET C'EST UN GESTE DÉLIBÉRÉ, PAS UN FLICK. Comme à la descente, l'ouverture
+  // a DEUX portes : la distance (les 3/4) OU l'élan (« j'ai jeté »). Un glissement
+  // qu'on relâche encore en mouvement est un flick — il ouvre, et c'est voulu. Ce
+  // qu'on éprouve ici, c'est l'AUTRE porte : un glissement qui n'atteint pas la
+  // distance et qu'on POSE (vitesse finale faible) doit redescendre. `lenteur: 70`
+  // le rend franchement délibéré (élan ~0,35, loin de ELAN=1) ; à 25, l'élan
+  // tombait pile sur 1 et la sonde battait au gré de la latence.
   await auLecteur(page)
   await page.goto('/accueil', { waitUntil: 'domcontentloaded' })
   await expect(page.locator('[data-pastille-ecoute]')).toBeVisible({ timeout: 20_000 })
   await page.waitForTimeout(900)
-  await tirer(page, { haut: Math.round(844 * SEUIL) - 120, lenteur: 25 })
+  await tirer(page, { haut: Math.round(844 * SEUIL) - 120, lenteur: 70 })
   const apresCourt = new URL(page.url()).pathname
   const revenue = await page.evaluate(() => {
     const p = document.querySelector('[data-pastille-ecoute] .relative')
