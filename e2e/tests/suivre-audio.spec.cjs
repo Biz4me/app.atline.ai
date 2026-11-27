@@ -34,6 +34,11 @@ async function versLeTexte(page) {
   // 🔬 Morph `layoutId` : attendre que le plein (PleinEcoute) se démonte, sinon
   // SON « Lire » (RetourAuTexte) double celui du module → locator ambigu. Voir posee.
   await posee(page)
+  // 🔴 ET ATTENDRE LA FEUILLE DÉTACHÉE, pas seulement le FOND posé : la fin du
+  // morph et le démontage de PleinEcoute courent l'un contre l'autre, et `posee`
+  // (qui guette le FOND) rend parfois une image AVANT que le « Lire » du plein ne
+  // parte. Détaché = plus qu'un seul « Lire », celui du module.
+  await page.locator('[data-feuille-ecoute]').waitFor({ state: 'detached', timeout: 15_000 })
   const lire = page.getByRole('link', { name: 'Lire' })
   await expect(lire).toBeVisible({ timeout: 15_000 })
   await lire.click()
