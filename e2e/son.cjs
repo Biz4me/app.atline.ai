@@ -127,4 +127,43 @@ async function ouvrirEcoute(page) {
   return attendrePiste(page)
 }
 
-module.exports = { AUDIO, attendrePiste, lancer, ou, arrete, ouvrirEcoute }
+/**
+ * ── 🔬 ATTENDRE QUE LE MORPH `layoutId` SE POSE (27 novembre 2026) ──────────
+ *
+ * Le cadre d'écoute MORPHE (~500 ms) entre la pastille et le plein écran. En
+ * quittant `/ecouter`, le plein (`PleinEcoute`, la feuille) reste MONTÉ pendant
+ * tout le morph — il porte alors SA barre du livre et SON lien « Lire », qui
+ * DOUBLENT ceux de l'écran de dessous. Mesurer avant la pose lit un transitoire :
+ * colonne du titre à 362 px au lieu de 203, DEUX `[data-barre-bas]`, DEUX « Lire »,
+ * et la carte réduite encore absente (auto-attendue à l'infini par un locator).
+ *
+ * 🔴 ON ATTEND LA POSITION, PAS SEULEMENT LA HAUTEUR. Le FOND (`data-pastille-carte`)
+ * porte le morph : à hauteur figée (48), son BAS descend encore d'une frame
+ * pendant que `bas` se recale. Le repos, c'est hauteur ET bas immobiles. Sans
+ * pastille (`-1,-1`), il n'y a rien à attendre.
+ *
+ * 🧭 CENTRALISÉ ICI, ET PAS RECOPIÉ : toute sonde qui quitte `/ecouter` et
+ * mesure doit `posee()` d'abord — c'est la même règle pour toutes.
+ */
+async function posee(page) {
+  let avant = [-2, -2]
+  await expect
+    .poll(
+      async () => {
+        const v = await page.evaluate(() => {
+          const e = document.querySelector('[data-pastille-carte]')
+          if (!e) return [-1, -1]
+          const r = e.getBoundingClientRect()
+          return [Math.round(r.height), Math.round(r.bottom)]
+        })
+        if (v[0] === -1) return true
+        const stable = v[0] === avant[0] && v[1] === avant[1] && v[0] > 0
+        avant = v
+        return stable
+      },
+      { timeout: 6000, intervals: [120, 120, 120, 120, 120, 120, 120] },
+    )
+    .toBe(true)
+}
+
+module.exports = { AUDIO, attendrePiste, lancer, ou, arrete, ouvrirEcoute, posee }

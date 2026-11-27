@@ -12,7 +12,7 @@
 // quelqu'un en train de relire est insupportable, bien plus que l'absence de
 // défilement.
 const { test, expect } = require('../fixtures.cjs')
-const { lancer, ouvrirEcoute } = require('../son.cjs')
+const { lancer, ouvrirEcoute, posee } = require('../son.cjs')
 
 test.use({ viewport: { width: 390, height: 844 } })
 
@@ -31,6 +31,9 @@ const defilement = (page) =>
 async function versLeTexte(page) {
   await page.getByRole('link', { name: /Retour au module/ }).click()
   await page.locator('[data-pastille-ecoute]').waitFor({ state: 'visible', timeout: 15_000 })
+  // 🔬 Morph `layoutId` : attendre que le plein (PleinEcoute) se démonte, sinon
+  // SON « Lire » (RetourAuTexte) double celui du module → locator ambigu. Voir posee.
+  await posee(page)
   const lire = page.getByRole('link', { name: 'Lire' })
   await expect(lire).toBeVisible({ timeout: 15_000 })
   await lire.click()
