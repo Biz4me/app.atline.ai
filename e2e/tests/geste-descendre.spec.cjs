@@ -223,6 +223,27 @@ test('le geste vers le bas sort exactement comme le chevron', async ({ page, pag
     await new Promise((r) => setTimeout(r, 40))
     const fFond = document.querySelector('[data-feuille-ecoute]')
     const profond = fFond ? nombres(getComputedStyle(fFond).clipPath) : null
+    // Ce qui reste VISIBLE dans la fente au pli complet : on doit y voir les
+    // commandes du lecteur, JAMAIS la topbar du plein (chevron « Retour au
+    // module » + options). On liste les éléments dont la boîte coupe la fente.
+    let dansLaFente = []
+    if (profond && fFond) {
+      const hautF = profond[0]
+      const basF = innerHeight - profond[2]
+      const vus = new Set()
+      for (const e of fFond.querySelectorAll('*')) {
+        const r = e.getBoundingClientRect()
+        if (r.width < 6 || r.height < 6) continue
+        if (r.bottom > hautF + 4 && r.top < basF - 4) {
+          const sig = (e.getAttribute('aria-label') || e.textContent?.trim() || e.tagName).slice(0, 28)
+          if (sig && !vus.has(sig)) {
+            vus.add(sig)
+            dansLaFente.push(sig)
+          }
+        }
+      }
+      dansLaFente = dansLaFente.slice(0, 10)
+    }
 
     // On RELÂCHE AU POINT DE DÉPART : la sonde mesure la forme, pas la sortie
     // — qui est déjà prouvée plus haut. Sans ça elle partirait, et les
@@ -230,7 +251,7 @@ test('le geste vers le bas sort exactement comme le chevron', async ({ page, pag
     envoyer('touchmove', y0)
     envoyer('touchend', y0)
     await new Promise((r) => setTimeout(r, 400))
-    return { sol, pas, profond, hauteur: innerHeight }
+    return { sol, pas, profond, dansLaFente, largeur: innerWidth, hauteur: innerHeight }
   })
 
   const course = releve.hauteur - releve.sol
@@ -260,15 +281,25 @@ test('le geste vers le bas sort exactement comme le chevron', async ({ page, pag
   // le bas à `sol + INTERSTICE`, et ce qui reste visible fait 48 px — la carte,
   // pas un trait.
   if (releve.profond) {
-    const [haut, , bas] = releve.profond
+    const [haut, cote, bas] = releve.profond
     const visible = releve.hauteur - haut - bas
-    console.log(`  pli complet · masque [${haut},${bas}] · visible ${visible} px`)
+    const margeH = (releve.largeur - Math.min(releve.largeur, 430)) / 2 + 16
+    console.log(
+      `  pli complet · masque [${haut}, ${cote}, ${bas}] · visible ${visible}px · fente: ${releve.dansLaFente.join(' | ')}`,
+    )
     if (Math.abs(haut - (course - RESERVE)) > 2)
       griefs.push(`pli complet : bord haut à ${haut} au lieu de ${Math.round(course - RESERVE)}`)
     if (Math.abs(bas - (releve.sol + INTERSTICE)) > 2)
       griefs.push(`pli complet : bord bas à ${bas} au lieu de ${releve.sol + INTERSTICE}`)
+    // 🔴 LES CÔTÉS RENTRENT À LA GOUTTIÈRE DE LA PASTILLE, pas à 0 (sinon bande
+    // pleine largeur avant la carte).
+    if (Math.abs(cote - margeH) > 3)
+      griefs.push(`pli complet : côtés à ${cote} au lieu de ${Math.round(margeH)} — bande pleine largeur ?`)
     if (Math.abs(visible - HAUTEUR_PASTILLE) > 2)
       griefs.push(`pli complet : ${visible} px visibles au lieu de ${HAUTEUR_PASTILLE} — ligne fine ?`)
+    // 🔴 JAMAIS LA TOPBAR DU PLEIN DANS LA FENTE (le chevron de repli).
+    if (releve.dansLaFente.some((s) => /Retour au module/i.test(s)))
+      griefs.push('pli complet : la topbar (chevron « Retour au module ») est dans la fente')
   } else {
     griefs.push('pli complet : la feuille a disparu avant la mesure')
   }
