@@ -223,9 +223,15 @@ test('le geste vers le bas sort exactement comme le chevron', async ({ page, pag
     await new Promise((r) => setTimeout(r, 40))
     const fFond = document.querySelector('[data-feuille-ecoute]')
     const profond = fFond ? nombres(getComputedStyle(fFond).clipPath) : null
-    // Ce qui reste VISIBLE dans la fente au pli complet : on doit y voir les
-    // commandes du lecteur, JAMAIS la topbar du plein (chevron « Retour au
-    // module » + options). On liste les éléments dont la boîte coupe la fente.
+    // 🔴 Au pli complet le contenu du plein doit être EFFACÉ (opacity ~0) — sinon
+    // ses commandes restent visibles dans la fente — et la feuille clippée doit
+    // rester TEAL (fond non transparent), sinon la fente devient un trou.
+    const contenuPlein = fFond?.firstElementChild
+    const opaciteContenu = contenuPlein ? Number(getComputedStyle(contenuPlein).opacity) : null
+    const fondFeuille = fFond ? getComputedStyle(fFond).backgroundColor : null
+    // Ce qui reste dans la boîte de la fente au pli complet : la topbar du plein
+    // (chevron « Retour au module ») ne doit JAMAIS y figurer (contrôle de forme,
+    // indépendant de l'opacité).
     let dansLaFente = []
     if (profond && fFond) {
       const hautF = profond[0]
@@ -251,7 +257,16 @@ test('le geste vers le bas sort exactement comme le chevron', async ({ page, pag
     envoyer('touchmove', y0)
     envoyer('touchend', y0)
     await new Promise((r) => setTimeout(r, 400))
-    return { sol, pas, profond, dansLaFente, largeur: innerWidth, hauteur: innerHeight }
+    return {
+      sol,
+      pas,
+      profond,
+      dansLaFente,
+      opaciteContenu,
+      fondFeuille,
+      largeur: innerWidth,
+      hauteur: innerHeight,
+    }
   })
 
   const course = releve.hauteur - releve.sol
@@ -285,7 +300,7 @@ test('le geste vers le bas sort exactement comme le chevron', async ({ page, pag
     const visible = releve.hauteur - haut - bas
     const margeH = (releve.largeur - Math.min(releve.largeur, 430)) / 2 + 16
     console.log(
-      `  pli complet · masque [${haut}, ${cote}, ${bas}] · visible ${visible}px · fente: ${releve.dansLaFente.join(' | ')}`,
+      `  pli complet · masque [${haut}, ${cote}, ${bas}] · visible ${visible}px · contenu op ${releve.opaciteContenu} · fond ${releve.fondFeuille}`,
     )
     if (Math.abs(haut - (course - RESERVE)) > 2)
       griefs.push(`pli complet : bord haut à ${haut} au lieu de ${Math.round(course - RESERVE)}`)
@@ -300,6 +315,13 @@ test('le geste vers le bas sort exactement comme le chevron', async ({ page, pag
     // 🔴 JAMAIS LA TOPBAR DU PLEIN DANS LA FENTE (le chevron de repli).
     if (releve.dansLaFente.some((s) => /Retour au module/i.test(s)))
       griefs.push('pli complet : la topbar (chevron « Retour au module ») est dans la fente')
+    // 🔴 LE CONTENU DU PLEIN EST EFFACÉ : pas de commandes (play · avant/après)
+    // visibles dans la fente au pli complet.
+    if (releve.opaciteContenu === null || releve.opaciteContenu > 0.05)
+      griefs.push(`pli complet : contenu du plein encore visible (opacity ${releve.opaciteContenu})`)
+    // 🔴 ET LA FENTE RESTE TEAL : fond non transparent, sinon un trou dans la carte.
+    if (!releve.fondFeuille || /rgba?\([^)]*,\s*0\)/.test(releve.fondFeuille))
+      griefs.push(`pli complet : la fente n'est pas teal (fond ${releve.fondFeuille})`)
   } else {
     griefs.push('pli complet : la feuille a disparu avant la mesure')
   }
